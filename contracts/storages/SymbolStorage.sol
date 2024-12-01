@@ -5,52 +5,52 @@
 pragma solidity >=0.8.18;
 
 struct PublicKey {
-	uint256 x;
-	uint8 parity;
+    uint256 x;
+    uint8 parity;
 }
 
 struct MuonConfig {
-	uint256 muonAppId;
-	PublicKey muonPublicKey;
-	address validGateway;
+    uint256 muonAppId;
+    PublicKey muonPublicKey;
+    address validGateway;
 }
 
 enum OptionType {
-	PUT,
-	CALL
+    PUT,
+    CALL
 }
 
 struct Oracle {
-	uint256 id;
-	string name;
-	MuonConfig muonConfig;
+    uint256 id;
+    string name;
+    MuonConfig muonConfig;
 }
 
 struct Symbol {
-	uint256 symbolId;
-	bool isValid;
-	string name;
-	OptionType optionType;
-	uint256 oracleId;
-	uint256 tradingFee;
+    uint256 symbolId;
+    bool isValid;
+    string name;
+    OptionType optionType;
+    uint256 oracleId;
+    uint256 tradingFee;
 }
 
-
 library SymbolStorage {
-	bytes32 internal constant SYMBOL_STORAGE_SLOT = keccak256("diamond.standard.storage.symbol");
+    bytes32 internal constant SYMBOL_STORAGE_SLOT =
+        keccak256("diamond.standard.storage.symbol");
 
-	struct Layout {
-		mapping(uint256 => Oracle) oracles;
-		uint256 lastOracleId;
-		/////////////////////////////////////////
-		mapping(uint256 => Symbol) symbols;
-		uint256 lastSymbolId;
-	}
+    struct Layout {
+        mapping(uint256 => Oracle) oracles;
+        uint256 lastOracleId;
+        /////////////////////////////////////////
+        mapping(uint256 => Symbol) symbols;
+        uint256 lastSymbolId;
+    }
 
-	function layout() internal pure returns (Layout storage l) {
-		bytes32 slot = SYMBOL_STORAGE_SLOT;
-		assembly {
-			l.slot := slot
-		}
-	}
+    function layout() internal pure returns (Layout storage l) {
+        bytes32 slot = SYMBOL_STORAGE_SLOT;
+        assembly {
+            l.slot := slot
+        }
+    }
 }

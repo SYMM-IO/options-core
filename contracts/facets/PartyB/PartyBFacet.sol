@@ -119,4 +119,14 @@ contract PartyBFacet is Accessibility, Pausable, IPartyBFacet {
             price
         );
     }
+
+    function expireTrade(
+        uint256 tradeId,
+        SettlementPriceSig memory settlementPriceSig
+    ) external whenNotPartyBActionsPaused {}
+
+    function exerciseTrade(
+        uint256 tradeId,
+        SettlementPriceSig memory settlementPriceSig
+    ) external whenNotPartyBActionsPaused onlyPartyBOfTrade(tradeId) {}
 }

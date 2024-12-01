@@ -71,6 +71,22 @@ struct CloseIntent {
     uint256 deadline;
 }
 
+struct SchnorrSign {
+	uint256 signature;
+	address owner;
+	address nonce;
+}
+
+struct SettlementPriceSig {
+	bytes reqId;
+	uint256 timestamp;
+    uint256 symbolId;
+    uint256 settlementPrice;
+    uint256 settlementTimestamp;
+	bytes gatewaySignature;
+	SchnorrSign sigs;
+}
+
 library IntentStorage {
     bytes32 internal constant INTENT_STORAGE_SLOT =
         keccak256("diamond.standard.storage.intent");

@@ -85,7 +85,7 @@ library PartyAFacetImpl {
         // lock funds the in middle of way
         accountLayout.lockedBalances[msg.sender] += LibIntent
             .getPremiumOfOpenIntent(intentId);
-
+        
         uint256 fee = LibIntent.getTradingFee(intentId);
         accountLayout.balances[msg.sender] -= fee;
     }

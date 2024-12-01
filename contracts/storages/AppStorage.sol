@@ -37,6 +37,8 @@ library AppStorage {
         mapping(address => mapping(bytes32 => bool)) hasRole;
         mapping(address => PartyBConfig) partyBConfigs;
         address[] partyBList;
+        ///////////////////////////////////
+        uint256 settlementPriceSigValidTime;
     }
 
     function layout() internal pure returns (Layout storage l) {

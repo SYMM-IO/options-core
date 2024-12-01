@@ -23,4 +23,14 @@ interface IPartyBFacet is IPartyBEvents {
         uint256 quantity,
         uint256 price
     ) external;
+
+    function expireTrade(
+        uint256 tradeId,
+        SettlementPriceSig memory settlementPriceSig
+    ) external;
+
+    function exerciseTrade(
+        uint256 tradeId,
+        SettlementPriceSig memory settlementPriceSig
+    ) external;
 }
