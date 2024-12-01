@@ -1,17 +1,42 @@
-node_modules
-.env
-
-# Hardhat files
-/cache
-/artifacts
-
-# TypeChain files
-/typechain
-/typechain-types
-
-# solidity-coverage files
-/coverage
-/coverage.json
 
 # Hardhat Ignition default folder for deployments against a local node
 ignition/deployments/chain-31337
+
+/node_modules
+/package-lock.json
+.env
+coverage
+coverage.json
+typechain
+typechain-types
+
+#Hardhat files
+/cache/
+/artifacts/
+/src/
+.cache
+.local
+.npm
+
+node_modules
+.env
+coverage
+coverage.json
+typechain
+typechain-types
+
+yarn.lock
+.idea
+addresses.json
+/abi.json
+.vscode
+tasks/data
+output.log
+serverLog.log
+detailedDebug.log
+pnpm-lock.yaml
+.openzeppelin
+
+docs
+.yarn/
+.venv

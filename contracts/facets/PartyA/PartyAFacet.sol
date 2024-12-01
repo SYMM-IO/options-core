@@ -1,0 +1,176 @@
+// SPDX-License-Identifier: SYMM-Core-Business-Source-License-1.1
+// This contract is licensed under the SYMM Core Business Source License 1.1
+// Copyright (c) 2023 Symmetry Labs AG
+// For more information, see https://docs.symm.io/legal-disclaimer/license
+pragma solidity >=0.8.18;
+
+import "./PartyAFacetImpl.sol";
+import "../../utils/Accessibility.sol";
+import "../../utils/Pausable.sol";
+import "./IPartyAFacet.sol";
+
+contract PartyAFacet is Accessibility, Pausable, IPartyAFacet {
+    /**
+     * @notice Send a open intent to the protocol. The intent status will be pending.
+     * @param partyBsWhiteList List of party B addresses allowed to act on this intent.
+     * @param symbolId Each symbol within the system possesses a unique identifier, for instance, BTCUSDT carries its own distinct ID
+     * @param price This is the user-requested price that the user is willing to open a trade. For example, if the market price for an arbitrary symbol is $1000 and the user wants to
+     * 				open a trade on this symbol they might be ok with prices up to $1050
+     * @param quantity Size of the trade
+     * @param strikePrice The strike price for the options contract
+     * @param expirationTimestamp The expiration time for the options contract
+     * @param deadline The user should set a deadline for their request. If no PartyB takes action on the intent within this timeframe, the request will expire
+     * @param affiliate The affiliate of this intent
+     */
+    function sendOpenIntent(
+        address[] calldata partyBsWhiteList,
+        uint256 symbolId,
+        uint256 price,
+        uint256 quantity,
+        uint256 strikePrice,
+        uint256 expirationTimestamp,
+        uint256 deadline,
+        address affiliate
+    )
+        external
+        whenNotPartyAActionsPaused
+        notSuspended(msg.sender)
+        returns (uint256 intentId)
+    {
+        intentId = PartyAFacetImpl.sendOpenIntent(
+            partyBsWhiteList,
+            symbolId,
+            price,
+            quantity,
+            strikePrice,
+            expirationTimestamp,
+            deadline,
+            affiliate
+        );
+        OpenIntent storage intent = IntentStorage.layout().openIntents[
+            intentId
+        ];
+        emit SendOpenIntent(
+            msg.sender,
+            intentId,
+            partyBsWhiteList,
+            symbolId,
+            price,
+            quantity,
+            strikePrice,
+            expirationTimestamp,
+            intent.tradingFee,
+            deadline
+        );
+    }
+
+    /**
+     * @notice Expires the specified open intents.
+     * @param expiredIntentIds An array of IDs of the open intents to be expired.
+     */
+    function expireOpenIntent(
+        uint256[] memory expiredIntentIds
+    ) external whenNotPartyAActionsPaused {
+        for (uint8 i; i < expiredIntentIds.length; i++) {
+            LibIntent.expireOpenIntent(expiredIntentIds[i]);
+            emit ExpireOpenIntent(expiredIntentIds[i]);
+        }
+    }
+
+    /**
+     * @notice Expires the specified close intents.
+     * @param expiredIntentIds An array of IDs of the close intents to be expired.
+     */
+    function expireCloseIntent(
+        uint256[] memory expiredIntentIds
+    ) external whenNotPartyAActionsPaused {
+        for (uint8 i; i < expiredIntentIds.length; i++) {
+            LibIntent.expireCloseIntent(expiredIntentIds[i]);
+            emit ExpireCloseIntent(expiredIntentIds[i]);
+        }
+    }
+
+    /**
+     * @notice Requests to cancel the specified open intent. Two scenarios can occur:
+    		If the intent has not yet been locked, it will be immediately canceled.
+    		For a locked intent, the outcome depends on PartyB's decision to either accept the cancellation request or to proceed with opening the trade, disregarding the request.
+    		If PartyB agrees to cancel, the intent will no longer be accessible for others to interact with.
+    		Conversely, if the position has been opened, the user is unable to issue this request.
+     * @param intentId The ID of the open intent to be canceled.
+     */
+    function cancelOpenIntent(
+        uint256 intentId
+    ) external whenNotPartyAActionsPaused onlyPartyAOfOpenIntent(intentId) {
+        IntentStatus result = PartyAFacetImpl.cancelOpenIntent(intentId);
+        OpenIntent storage intent = IntentStorage.layout().openIntents[
+            intentId
+        ];
+
+        if (result == IntentStatus.EXPIRED) {
+            emit ExpireOpenIntent(intentId);
+        } else if (
+            result == IntentStatus.CANCELED ||
+            result == IntentStatus.CANCEL_PENDING
+        ) {
+            emit CancelOpenIntent(
+                intent.partyA,
+                intent.partyB,
+                result,
+                intentId
+            );
+        }
+    }
+
+     /**
+     * @notice Requests to cancel a close intent.
+     * @param intentId The ID of the close intent.
+     */
+    function cancelCloseIntent(
+        uint256 intentId
+    ) external whenNotPartyAActionsPaused onlyPartyAOfCloseIntent(intentId) {
+        IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+        Trade storage trade = intentLayout.trades[
+            intentLayout.closeIntents[intentId].tradeId
+        ];
+        IntentStatus result = PartyAFacetImpl.cancelCloseIntent(intentId);
+        if (result == IntentStatus.EXPIRED) {
+            emit ExpireCloseIntent(intentId);
+        } else if (result == IntentStatus.CANCEL_PENDING) {
+            emit CancelCloseIntent(trade.partyA, trade.partyB, intentId);
+        }
+    }
+
+    /**
+     * @notice User sends a close intent to close their trade.
+     * @param tradeId The ID of the trade to be closed.
+     * @param price The closing price for the position. this is the price the user wants to close the trade at. Say, for a random symbol, the market price is $1000.
+     * 						If a user wants to close a trade on this symbol, they might be cool with prices up to $990
+     * @param quantity The quantity of the trade to be closed.
+     * @param deadline The deadline for executing the position closure. If 'partyB' doesn't get back to the request within a certain time, then the request will just time out
+     */
+    function sendCloseIntent(
+        uint256 tradeId,
+        uint256 price,
+        uint256 quantity,
+        uint256 deadline
+    ) external whenNotPartyAActionsPaused onlyPartyAOfTrade(tradeId) {
+        uint256 closeIntentId = PartyAFacetImpl.sendCloseIntent(
+            tradeId,
+            price,
+            quantity,
+            deadline
+        );
+        IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+        Trade storage trade = intentLayout.trades[tradeId];
+        emit SendCloseIntent(
+            trade.partyA,
+            trade.partyB,
+            tradeId,
+            closeIntentId,
+            price,
+            quantity,
+            deadline,
+            IntentStatus.PENDING
+        );
+    }
+}

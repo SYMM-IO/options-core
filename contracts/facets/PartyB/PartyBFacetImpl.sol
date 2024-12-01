@@ -1,0 +1,137 @@
+// SPDX-License-Identifier: SYMM-Core-Business-Source-License-1.1
+// This contract is licensed under the SYMM Core Business Source License 1.1
+// Copyright (c) 2023 Symmetry Labs AG
+// For more information, see https://docs.symm.io/legal-disclaimer/license
+pragma solidity >=0.8.18;
+
+import "../../libraries/LibIntent.sol";
+import "../../libraries/LibPartyB.sol";
+import "../../storages/AppStorage.sol";
+import "../../storages/IntentStorage.sol";
+import "../../storages/AccountStorage.sol";
+import "../../storages/SymbolStorage.sol";
+
+library PartyBFacetImpl {
+    function lockOpenIntent(uint256 intentId) internal {
+        IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+        OpenIntent storage intent = intentLayout.openIntents[intentId];
+
+        require(
+            intent.status == IntentStatus.PENDING,
+            "PartyBFacet: Invalid state"
+        );
+        require(
+            block.timestamp <= intent.deadline,
+            "PartyBFacet: Intent is expired"
+        );
+
+        require(
+            block.timestamp <= intent.expirationTimestamp,
+            "PartyBFacet: Requested expiration has been passed"
+        );
+
+        require(
+            intentId <= intentLayout.lastOpenIntentId,
+            "PartyBFacet: Invalid intentId"
+        );
+
+        bool isValidPartyB;
+        if (intent.partyBsWhiteList.length == 0) {
+            require(
+                msg.sender != intent.partyA,
+                "PartyBFacet: PartyA can't be partyB too"
+            );
+            isValidPartyB = true;
+        } else {
+            for (
+                uint8 index = 0;
+                index < intent.partyBsWhiteList.length;
+                index++
+            ) {
+                if (msg.sender == intent.partyBsWhiteList[index]) {
+                    isValidPartyB = true;
+                    break;
+                }
+            }
+        }
+        require(isValidPartyB, "PartyBFacet: Sender isn't whitelisted");
+        intent.statusModifyTimestamp = block.timestamp;
+        intent.status = IntentStatus.LOCKED;
+        intent.partyB = msg.sender;
+        LibIntent.addToPartyBOpenIntents(intentId);
+        intentLayout.openIntentsOf[intent.partyB].push(intent.id);
+    }
+
+    function unlockOpenIntent(
+        uint256 intentId
+    ) internal returns (IntentStatus) {
+        IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+        OpenIntent storage intent = intentLayout.openIntents[intentId];
+
+        require(
+            intent.status == IntentStatus.LOCKED,
+            "PartyBFacet: Invalid state"
+        );
+
+        if (block.timestamp > intent.deadline) {
+            LibIntent.expireOpenIntent(intentId);
+            return IntentStatus.EXPIRED;
+        } else {
+            intent.statusModifyTimestamp = block.timestamp;
+            intent.status = IntentStatus.PENDING;
+            LibIntent.removeFromPartyBOpenIntents(intentId);
+            intent.partyB = address(0);
+            return IntentStatus.PENDING;
+        }
+    }
+
+    function acceptCancelOpenIntent(uint256 intentId) internal {
+        AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+
+        OpenIntent storage intent = IntentStorage.layout().openIntents[
+            intentId
+        ];
+        require(
+            intent.status == IntentStatus.CANCEL_PENDING,
+            "PartyBFacet: Invalid state"
+        );
+        intent.statusModifyTimestamp = block.timestamp;
+        intent.status = IntentStatus.CANCELED;
+        accountLayout.lockedBalances[intent.partyA] -= LibIntent.getPremiumOfOpenIntent(intentId);
+
+        // send trading Fee back to partyA
+        uint256 fee = LibIntent.getTradingFee(intentId);
+        accountLayout.balances[intent.partyA] += fee;
+
+        LibIntent.removeFromPartyAOpenIntents(intentId);
+        LibIntent.removeFromPartyBOpenIntents(intentId);
+    }
+
+	function fillOpenIntent(
+		uint256 intentId,
+		uint256 quantity,
+		uint256 price
+	) internal returns (uint256 tradeId) {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		AppStorage.Layout storage appLayout = AppStorage.layout();
+
+		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
+
+		require(accountLayout.suspendedAddresses[intent.partyA] == false, "PartyBFacet: PartyA is suspended");
+		require(!accountLayout.suspendedAddresses[msg.sender], "PartyBFacet: Sender is Suspended");
+		require(!appLayout.partyBEmergencyStatus[intent.partyB], "PartyBFacet: PartyB is in emergency mode");
+		require(!appLayout.emergencyMode, "PartyBFacet: System is in emergency mode");
+		
+		tradeId = LibPartyB.fillOpenIntent(intentId, quantity, price);
+	}
+
+    function fillCloseIntent(
+        uint256 intentId,
+        uint256 quantity,
+        uint256 price
+    ) internal {
+        AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		CloseIntent storage intent = IntentStorage.layout().closeIntents[intentId];
+        LibPartyB.fillCloseIntent(intentId, quantity, price);
+    }
+}

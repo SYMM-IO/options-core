@@ -11,5 +11,10 @@
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "hardhat": "^2.22.16"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.1.0",
+    "@openzeppelin/hardhat-upgrades": "^3.6.0",
+    "solidity-docgen": "^0.6.0-beta.36"
   }
 }
