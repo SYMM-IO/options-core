@@ -58,7 +58,7 @@ library LibPartyB {
         Trade memory trade = Trade({
             id: tradeId,
             openIntentId: intentId,
-            closeIntentIds: new uint256[](0),
+            activeCloseIntentIds: new uint256[](0),
             quantity: quantity,
             strikePrice: intent.strikePrice,
             expirationTimestamp: intent.expirationTimestamp,
@@ -180,11 +180,14 @@ library LibPartyB {
 
         if (intent.filledAmount == intent.quantity) {
             intent.statusModifyTimestamp = block.timestamp;
-            intent.intentStatus = IntentStatus.FILLED;
+            intent.status = IntentStatus.FILLED;
             LibIntent.removeFromActiveCloseIntents(intentId);
-            //TODO check the trade status
-        } else if (intent.intentStatus == IntentStatus.CANCEL_PENDING) {
-            intent.intentStatus = IntentStatus.CANCELED;
+            if (trade.quantity == trade.closedAmount) {
+                trade.status = TradeStatus.CLOSED;
+                trade.statusModifyTimestamp = block.timestamp;
+            }
+        } else if (intent.status == IntentStatus.CANCEL_PENDING) {
+            intent.status = IntentStatus.CANCELED;
             intent.statusModifyTimestamp = block.timestamp;
         }
     }

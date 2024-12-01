@@ -15,6 +15,7 @@ enum IntentStatus {
 
 enum TradeStatus {
     OPENED,
+    CLOSED,
     EXERCISED,
     EXPIRED,
     LIQUIDATED
@@ -23,7 +24,7 @@ enum TradeStatus {
 struct Trade {
     uint256 id;
     uint256 openIntentId;
-    uint256[] closeIntentIds;
+    uint256[] activeCloseIntentIds;
     uint256 quantity;
     uint256 strikePrice;
     uint256 expirationTimestamp;
@@ -91,6 +92,7 @@ library IntentStorage {
         uint256 lastTradeId;
         /////////////////////////////////////////////////
         mapping(uint256 => CloseIntent) closeIntents;
+        mapping(uint256 => uint256[]) closeIntentIdsOf;
         uint256 lastCloseIntentId;
     }
 

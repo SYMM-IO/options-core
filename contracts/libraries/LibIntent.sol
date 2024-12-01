@@ -318,7 +318,7 @@ library LibIntent {
         CloseIntent storage intent = intentLayout.closeIntents[intentId];
         Trade storage trade = intentLayout.trades[intent.tradeId];
 
-        removeFromArray(trade.closeIntentIds, intentId);
+        removeFromArray(trade.activeCloseIntentIds, intentId);
 
         trade.closePendingAmount -= intent.quantity;
     }

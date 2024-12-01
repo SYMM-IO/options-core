@@ -130,8 +130,6 @@ library PartyBFacetImpl {
         uint256 quantity,
         uint256 price
     ) internal {
-        AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		CloseIntent storage intent = IntentStorage.layout().closeIntents[intentId];
         LibPartyB.fillCloseIntent(intentId, quantity, price);
     }
 }

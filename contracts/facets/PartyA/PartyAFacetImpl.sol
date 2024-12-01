@@ -178,7 +178,8 @@ library PartyAFacetImpl {
         });
 
         intentLayout.closeIntents[intentId] = intent;
-        trade.closeIntentIds.push(intent.id);
+        trade.activeCloseIntentIds.push(intent.id);
+        intentLayout.closeIntentIdsOf[trade.id].push(intentId);
         trade.closePendingAmount += quantity;
 
         // check valid length of close intents
