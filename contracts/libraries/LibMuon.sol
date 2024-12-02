@@ -71,6 +71,9 @@ library LibMuon {
                 sig.reqId,
                 address(this),
                 sig.timestamp,
+                sig.symbolId,
+                sig.settlementPrice,
+                sig.settlementTimestamp,
                 getChainId()
             )
         );

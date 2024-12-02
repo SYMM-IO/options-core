@@ -151,36 +151,6 @@ library LibIntent {
         intentLayout.partyBTradesIndex[trade.id] = 0;
     }
 
-    // /**
-    //  * @notice Calculates the value of a intent for Party A based on the current price and filled amount.
-    //  * @param currentPrice The current price of the intent.
-    //  * @param filledAmount The filled amount of the intent.
-    //  * @param intent The intent for which to calculate the value.
-    //  * @return hasMadeProfit A boolean indicating whether Party A has made a profit.
-    //  * @return pnl The profit or loss value for Party A.
-    //  */
-    // function getValueOfIntentForPartyA(
-    //     uint256 currentPrice,
-    //     uint256 filledAmount,
-    //     Intent storage intent
-    // ) internal view returns (bool hasMadeProfit, uint256 pnl) {
-    //     if (currentPrice > intent.openedPrice) {
-    //         if (intent.positionType == PositionType.LONG) {
-    //             hasMadeProfit = true;
-    //         } else {
-    //             hasMadeProfit = false;
-    //         }
-    //         pnl = ((currentPrice - intent.openedPrice) * filledAmount) / 1e18;
-    //     } else {
-    //         if (intent.positionType == PositionType.LONG) {
-    //             hasMadeProfit = false;
-    //         } else {
-    //             hasMadeProfit = true;
-    //         }
-    //         pnl = ((intent.openedPrice - currentPrice) * filledAmount) / 1e18;
-    //     }
-    // }
-
     /**
      * @notice Gets the trading fee for a intent.
      * @param intentId The ID of the intent for which to get the trading fee.
@@ -194,96 +164,6 @@ library LibIntent {
         ];
         fee = (intent.quantity * intent.price * intent.tradingFee) / 1e36;
     }
-
-    // /**
-    //  * @notice Closes a intent.
-    //  * @param intent The intent to close.
-    //  * @param filledAmount The filled amount of the intent.
-    //  * @param closedPrice The price at which the intent is closed.
-    //  */
-    // function closeIntent(Intent storage intent, uint256 filledAmount, uint256 closedPrice) internal {
-    // 	IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-    // 	AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-    // 	SymbolStorage.Layout storage symbolLayout = SymbolStorage.layout();
-
-    // 	require(
-    // 		intent.lockedValues.cva == 0 || (intent.lockedValues.cva * filledAmount) / LibIntent.intentOpenAmount(intent) > 0,
-    // 		"LibIntent: Low filled amount"
-    // 	);
-    // 	require(
-    // 		intent.lockedValues.partyAmm == 0 || (intent.lockedValues.partyAmm * filledAmount) / LibIntent.intentOpenAmount(intent) > 0,
-    // 		"LibIntent: Low filled amount"
-    // 	);
-    // 	require(
-    // 		intent.lockedValues.partyBmm == 0 || (intent.lockedValues.partyBmm * filledAmount) / LibIntent.intentOpenAmount(intent) > 0,
-    // 		"LibIntent: Low filled amount"
-    // 	);
-    // 	require((intent.lockedValues.lf * filledAmount) / LibIntent.intentOpenAmount(intent) > 0, "LibIntent: Low filled amount");
-    // 	LockedValues memory lockedValues = LockedValues(
-    // 		intent.lockedValues.cva - ((intent.lockedValues.cva * filledAmount) / (LibIntent.intentOpenAmount(intent))),
-    // 		intent.lockedValues.lf - ((intent.lockedValues.lf * filledAmount) / (LibIntent.intentOpenAmount(intent))),
-    // 		intent.lockedValues.partyAmm - ((intent.lockedValues.partyAmm * filledAmount) / (LibIntent.intentOpenAmount(intent))),
-    // 		intent.lockedValues.partyBmm - ((intent.lockedValues.partyBmm * filledAmount) / (LibIntent.intentOpenAmount(intent)))
-    // 	);
-    // 	accountLayout.lockedBalances[intent.partyA].subIntent(intent).add(lockedValues);
-    // 	accountLayout.partyBLockedBalances[intent.partyB][intent.partyA].subIntent(intent).add(lockedValues);
-    // 	intent.lockedValues = lockedValues;
-
-    // 	if (LibIntent.intentOpenAmount(intent) == intent.quantityToClose) {
-    // 		require(
-    // 			intent.lockedValues.totalForPartyA() == 0 ||
-    // 				intent.lockedValues.totalForPartyA() >= symbolLayout.symbols[intent.symbolId].minAcceptableIntentValue,
-    // 			"LibIntent: Remaining intent value is low"
-    // 		);
-    // 	}
-
-    // 	chargeAccumulatedFundingFee(intent.id);
-
-    // 	(bool hasMadeProfit, uint256 pnl) = LibIntent.getValueOfIntentForPartyA(closedPrice, filledAmount, intent);
-
-    // 	if (hasMadeProfit) {
-    // 		require(
-    // 			accountLayout.partyBAllocatedBalances[intent.partyB][intent.partyA] >= pnl,
-    // 			"LibIntent: PartyA should first exit its positions that are incurring losses"
-    // 		);
-    // 		accountLayout.allocatedBalances[intent.partyA] += pnl;
-    // 		emit SharedEvents.BalanceChangePartyA(intent.partyA, pnl, SharedEvents.BalanceChangeType.REALIZED_PNL_IN);
-    // 		accountLayout.partyBAllocatedBalances[intent.partyB][intent.partyA] -= pnl;
-    // 		emit SharedEvents.BalanceChangePartyB(intent.partyB, intent.partyA, pnl, SharedEvents.BalanceChangeType.REALIZED_PNL_OUT);
-    // 	} else {
-    // 		require(
-    // 			accountLayout.allocatedBalances[intent.partyA] >= pnl,
-    // 			"LibIntent: PartyA should first exit its positions that are currently in profit."
-    // 		);
-    // 		accountLayout.allocatedBalances[intent.partyA] -= pnl;
-    // 		emit SharedEvents.BalanceChangePartyA(intent.partyA, pnl, SharedEvents.BalanceChangeType.REALIZED_PNL_OUT);
-    // 		accountLayout.partyBAllocatedBalances[intent.partyB][intent.partyA] += pnl;
-    // 		emit SharedEvents.BalanceChangePartyB(intent.partyB, intent.partyA, pnl, SharedEvents.BalanceChangeType.REALIZED_PNL_IN);
-    // 	}
-
-    // 	intent.avgClosedPrice = (intent.avgClosedPrice * intent.closedAmount + filledAmount * closedPrice) / (intent.closedAmount + filledAmount);
-
-    // 	intent.closedAmount += filledAmount;
-    // 	intent.quantityToClose -= filledAmount;
-
-    // 	if (intent.closedAmount == intent.quantity) {
-    // 		intent.statusModifyTimestamp = block.timestamp;
-    // 		intent.status = IntentStatus.CLOSED;
-    // 		intent.requestedClosePrice = 0;
-    // 		removeFromOpenPositions(intent.id);
-    // 	} else if (intent.status == IntentStatus.CANCEL_CLOSE_PENDING || intent.quantityToClose == 0) {
-    // 		intent.status = IntentStatus.OPENED;
-    // 		intent.statusModifyTimestamp = block.timestamp;
-    // 		intent.requestedClosePrice = 0;
-    // 		intent.quantityToClose = 0; // for CANCEL_CLOSE_PENDING status
-    // 	}
-    // 	if (
-    // 		intentLayout.partyBPendingIntents[intent.partyB][intent.partyA].length == 0 &&
-    // 		intentLayout.partyBPositionsCount[intent.partyB][intent.partyA] == 0
-    // 	) {
-    // 		accountLayout.connectedPartyBCount[intent.partyA] -= 1;
-    // 	}
-    // }
 
     /**
      * @notice Gets the index of an item in an array.
@@ -378,5 +258,25 @@ library LibIntent {
         intent.statusModifyTimestamp = block.timestamp;
         intent.status = IntentStatus.EXPIRED;
         removeFromActiveCloseIntents(intentId);
+    }
+    function closeTrade(
+        uint256 tradeId,
+        TradeStatus tradeStatus,
+        IntentStatus intentStatus
+    ) internal {
+        Trade storage trade = IntentStorage.layout().trades[tradeId];
+        uint256 len = trade.activeCloseIntentIds.length;
+        for (uint8 i = 0; i < len; i++) {
+            CloseIntent storage intent = IntentStorage.layout().closeIntents[
+                trade.activeCloseIntentIds[0]
+            ];
+            intent.statusModifyTimestamp = block.timestamp;
+            intent.status = intentStatus;
+            trade.closePendingAmount -= intent.quantity;
+            removeFromActiveCloseIntents(intent.id);
+        }
+        // trade.closedAmount = trade.quantity;
+        trade.status = tradeStatus;
+        trade.statusModifyTimestamp = block.timestamp;
     }
 }

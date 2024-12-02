@@ -59,6 +59,7 @@ library LibPartyB {
             id: tradeId,
             openIntentId: intentId,
             activeCloseIntentIds: new uint256[](0),
+            symbolId: intent.symbolId,
             quantity: quantity,
             strikePrice: intent.strikePrice,
             expirationTimestamp: intent.expirationTimestamp,
@@ -156,6 +157,10 @@ library LibPartyB {
             intent.status == IntentStatus.PENDING ||
                 intent.status == IntentStatus.CANCEL_PENDING,
             "LibIntent: Invalid state"
+        );
+        require(
+            trade.status == TradeStatus.OPENED,
+            "LibIntent: Invalid trade state"
         );
         require(
             block.timestamp <= intent.deadline,

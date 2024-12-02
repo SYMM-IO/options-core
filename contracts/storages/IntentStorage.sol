@@ -25,6 +25,7 @@ struct Trade {
     uint256 id;
     uint256 openIntentId;
     uint256[] activeCloseIntentIds;
+    uint256 symbolId;
     uint256 quantity;
     uint256 strikePrice;
     uint256 expirationTimestamp;

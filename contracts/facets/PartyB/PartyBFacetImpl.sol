@@ -6,6 +6,7 @@ pragma solidity >=0.8.18;
 
 import "../../libraries/LibIntent.sol";
 import "../../libraries/LibPartyB.sol";
+import "../../libraries/LibMuon.sol";
 import "../../storages/AppStorage.sol";
 import "../../storages/IntentStorage.sol";
 import "../../storages/AccountStorage.sol";
@@ -97,7 +98,8 @@ library PartyBFacetImpl {
         );
         intent.statusModifyTimestamp = block.timestamp;
         intent.status = IntentStatus.CANCELED;
-        accountLayout.lockedBalances[intent.partyA] -= LibIntent.getPremiumOfOpenIntent(intentId);
+        accountLayout.lockedBalances[intent.partyA] -= LibIntent
+            .getPremiumOfOpenIntent(intentId);
 
         // send trading Fee back to partyA
         uint256 fee = LibIntent.getTradingFee(intentId);
@@ -107,23 +109,37 @@ library PartyBFacetImpl {
         LibIntent.removeFromPartyBOpenIntents(intentId);
     }
 
-	function fillOpenIntent(
-		uint256 intentId,
-		uint256 quantity,
-		uint256 price
-	) internal returns (uint256 tradeId) {
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		AppStorage.Layout storage appLayout = AppStorage.layout();
+    function fillOpenIntent(
+        uint256 intentId,
+        uint256 quantity,
+        uint256 price
+    ) internal returns (uint256 tradeId) {
+        AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+        AppStorage.Layout storage appLayout = AppStorage.layout();
 
-		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
+        OpenIntent storage intent = IntentStorage.layout().openIntents[
+            intentId
+        ];
 
-		require(accountLayout.suspendedAddresses[intent.partyA] == false, "PartyBFacet: PartyA is suspended");
-		require(!accountLayout.suspendedAddresses[msg.sender], "PartyBFacet: Sender is Suspended");
-		require(!appLayout.partyBEmergencyStatus[intent.partyB], "PartyBFacet: PartyB is in emergency mode");
-		require(!appLayout.emergencyMode, "PartyBFacet: System is in emergency mode");
-		
-		tradeId = LibPartyB.fillOpenIntent(intentId, quantity, price);
-	}
+        require(
+            accountLayout.suspendedAddresses[intent.partyA] == false,
+            "PartyBFacet: PartyA is suspended"
+        );
+        require(
+            !accountLayout.suspendedAddresses[msg.sender],
+            "PartyBFacet: Sender is Suspended"
+        );
+        require(
+            !appLayout.partyBEmergencyStatus[intent.partyB],
+            "PartyBFacet: PartyB is in emergency mode"
+        );
+        require(
+            !appLayout.emergencyMode,
+            "PartyBFacet: System is in emergency mode"
+        );
+
+        tradeId = LibPartyB.fillOpenIntent(intentId, quantity, price);
+    }
 
     function fillCloseIntent(
         uint256 intentId,
@@ -131,5 +147,93 @@ library PartyBFacetImpl {
         uint256 price
     ) internal {
         LibPartyB.fillCloseIntent(intentId, quantity, price);
+    }
+
+    function expireTrade(
+        uint256 tradeId,
+        SettlementPriceSig memory sig
+    ) internal {
+        Trade storage trade = IntentStorage.layout().trades[tradeId];
+        Symbol storage symbol = SymbolStorage.layout().symbols[trade.symbolId];
+        LibMuon.verifySettlementPriceSig(sig);
+        require(
+            sig.symbolId == trade.symbolId,
+            "PartyBFacet: Invalid symbolId"
+        );
+        require(
+            trade.status == TradeStatus.OPENED,
+            "PartyBFacet: Invalid trade state"
+        );
+        require(
+            block.timestamp > trade.expirationTimestamp,
+            "PartyBFacet: Trade isn't expired"
+        );
+        if (symbol.optionType == OptionType.PUT) {
+            require(
+                sig.settlementPrice >= trade.strikePrice,
+                "PartyBFacet: Invalid price"
+            );
+        } else {
+            require(
+                sig.settlementPrice <= trade.strikePrice,
+                "PartyBFacet: Invalid price"
+            );
+        }
+        LibIntent.closeTrade(
+            tradeId,
+            TradeStatus.EXPIRED,
+            IntentStatus.CANCELED
+        );
+    }
+
+    function exerciseTrade(
+        uint256 tradeId,
+        SettlementPriceSig memory sig
+    ) internal {
+        AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+        Trade storage trade = IntentStorage.layout().trades[tradeId];
+        Symbol storage symbol = SymbolStorage.layout().symbols[trade.symbolId];
+        LibMuon.verifySettlementPriceSig(sig);
+        require(
+            sig.symbolId == trade.symbolId,
+            "PartyBFacet: Invalid symbolId"
+        );
+        require(
+            trade.status == TradeStatus.OPENED,
+            "PartyBFacet: Invalid trade state"
+        );
+        require(
+            block.timestamp > trade.expirationTimestamp,
+            "PartyBFacet: Trade isn't expired"
+        );
+
+        uint256 pnl;
+        if (symbol.optionType == OptionType.PUT) {
+            require(
+                sig.settlementPrice < trade.strikePrice,
+                "PartyBFacet: Invalid price"
+            );
+            pnl =
+                ((trade.quantity - trade.closedAmount) *
+                    (trade.strikePrice - sig.settlementPrice)) /
+                1e18;
+        } else {
+            require(
+                sig.settlementPrice > trade.strikePrice,
+                "PartyBFacet: Invalid price"
+            );
+            pnl =
+                ((trade.quantity - trade.closedAmount) *
+                    (sig.settlementPrice - trade.strikePrice)) /
+                1e18;
+        }
+        //TODO handle exercise fee
+        accountLayout.balances[trade.partyA] += pnl;
+        accountLayout.balances[trade.partyB] -= pnl;
+        LibIntent.closeTrade(
+            tradeId,
+            TradeStatus.EXERCISED,
+            IntentStatus.CANCELED
+        );
     }
 }
