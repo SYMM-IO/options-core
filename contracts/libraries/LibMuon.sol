@@ -31,7 +31,7 @@ library LibMuon {
         bytes memory gatewaySignature,
         PublicKey memory publicKey,
         address validGateway
-    ) internal view {
+    ) internal pure {
         // == SignatureCheck( ==
         bool verified = LibMuonV04ClientBase.muonVerify(
             uint256(hash),
