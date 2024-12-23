@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.18;
 
-import "../storages/IntentStorage.sol";
+import "../storages/AppStorage.sol";
 import "../storages/SymbolStorage.sol";
 
 library LibMuonV04ClientBase {

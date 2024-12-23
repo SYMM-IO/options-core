@@ -10,6 +10,12 @@ import "../storages/AppStorage.sol";
 import "../storages/SymbolStorage.sol";
 
 library LibIntent {
+    function tradeOpenAmount(
+        Trade storage trade
+    ) internal view returns (uint256) {
+        return trade.quantity - trade.closedAmount;
+    }
+
     function getAvailableAmountToClose(
         uint256 tradeId
     ) internal view returns (uint256) {
@@ -24,6 +30,26 @@ library LibIntent {
             intentId
         ];
         return (intent.quantity * intent.price) / 1e18;
+    }
+
+    function getValueOfTradeForPartyA(
+        uint256 currentPrice,
+        uint256 filledAmount,
+        Trade storage trade
+    ) internal view returns (uint256 pnl) {
+        Symbol storage symbol = SymbolStorage.layout().symbols[trade.symbolId];
+
+        if (
+            currentPrice > trade.strikePrice &&
+            symbol.optionType == OptionType.CALL
+        ) {
+            pnl = ((currentPrice - trade.strikePrice) * filledAmount) / 1e18;
+        } else if (
+            currentPrice < trade.strikePrice &&
+            symbol.optionType == OptionType.PUT
+        ) {
+            pnl = ((trade.strikePrice - currentPrice) * filledAmount) / 1e18;
+        }
     }
 
     /**

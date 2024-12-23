@@ -16,6 +16,7 @@ library PartyBFacetImpl {
     function lockOpenIntent(uint256 intentId) internal {
         IntentStorage.Layout storage intentLayout = IntentStorage.layout();
         OpenIntent storage intent = intentLayout.openIntents[intentId];
+        Symbol storage symbol = SymbolStorage.layout().symbols[intent.symbolId];
 
         require(
             intent.status == IntentStatus.PENDING,
@@ -25,17 +26,22 @@ library PartyBFacetImpl {
             block.timestamp <= intent.deadline,
             "PartyBFacet: Intent is expired"
         );
-
+        require(symbol.isValid, "PartyBFacet: Symbol is not valid");
         require(
             block.timestamp <= intent.expirationTimestamp,
             "PartyBFacet: Requested expiration has been passed"
         );
-
         require(
             intentId <= intentLayout.lastOpenIntentId,
             "PartyBFacet: Invalid intentId"
         );
-
+        if (AppStorage.layout().partyBConfigs[msg.sender].lossCoverage != 0) {
+            require(
+                AppStorage.layout().partyBConfigs[msg.sender].oracleId ==
+                    symbol.oracleId
+            );
+        }
+        
         bool isValidPartyB;
         if (intent.partyBsWhiteList.length == 0) {
             require(
@@ -228,6 +234,7 @@ library PartyBFacetImpl {
                 1e18;
         }
         //TODO handle exercise fee
+
         accountLayout.balances[trade.partyA] += pnl;
         accountLayout.balances[trade.partyB] -= pnl;
         LibIntent.closeTrade(

@@ -85,7 +85,7 @@ library PartyAFacetImpl {
         // lock funds the in middle of way
         accountLayout.lockedBalances[msg.sender] += LibIntent
             .getPremiumOfOpenIntent(intentId);
-        
+
         uint256 fee = LibIntent.getTradingFee(intentId);
         accountLayout.balances[msg.sender] -= fee;
     }
@@ -162,6 +162,11 @@ library PartyAFacetImpl {
             LibIntent.getAvailableAmountToClose(trade.id) >= quantity,
             "PartyAFacet: Invalid quantity"
         );
+        require(
+            trade.activeCloseIntentIds.length <
+                AppStorage.layout().maxCloseOrdersLength,
+            "PartyAFacet: Too many close orders"
+        );
 
         // create intent.
         intentId = ++intentLayout.lastCloseIntentId;
@@ -181,7 +186,5 @@ library PartyAFacetImpl {
         trade.activeCloseIntentIds.push(intent.id);
         intentLayout.closeIntentIdsOf[trade.id].push(intentId);
         trade.closePendingAmount += quantity;
-
-        // check valid length of close intents
     }
 }

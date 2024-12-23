@@ -50,4 +50,13 @@ abstract contract Pausable {
         );
         _;
     }
+
+    modifier whenNotLiquidationPaused() {
+        require(!AppStorage.layout().globalPaused, "Pausable: Global paused");
+        require(
+            !AppStorage.layout().liquidatingPaused,
+            "Pausable: Liquidating paused"
+        );
+        _;
+    }
 }

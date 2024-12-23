@@ -5,6 +5,8 @@
 pragma solidity >=0.8.18;
 
 import "./IPartyBEvents.sol";
+import "../../storages/AppStorage.sol";
+
 interface IPartyBFacet is IPartyBEvents {
     function lockOpenIntent(uint256 intentId) external;
 

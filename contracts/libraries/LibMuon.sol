@@ -85,4 +85,40 @@ library LibMuon {
             oracle.muonConfig.validGateway
         );
     }
+
+    function verifyLiquidationSig(
+        LiquidationSig memory liquidationSig,
+        address partyB
+    ) internal view {
+        AppStorage.Layout storage appLayout = AppStorage.layout();
+        Oracle storage oracle = SymbolStorage.layout().oracles[
+            appLayout.partyBConfigs[partyB].oracleId
+        ];
+        require(
+            liquidationSig.prices.length == liquidationSig.symbolIds.length,
+            "LibMuon: Invalid length"
+        );
+        bytes32 hash = keccak256(
+            abi.encodePacked(
+                oracle.muonConfig.muonAppId,
+                liquidationSig.reqId,
+                liquidationSig.liquidationId,
+                address(this),
+                "verifyLiquidationSig",
+                partyB,
+                liquidationSig.upnl,
+                liquidationSig.symbolIds,
+                liquidationSig.prices,
+                liquidationSig.timestamp,
+                getChainId()
+            )
+        );
+        LibMuon.verifyTSSAndGateway(
+            hash,
+            liquidationSig.sigs,
+            liquidationSig.gatewaySignature,
+            oracle.muonConfig.muonPublicKey,
+            oracle.muonConfig.validGateway
+        );
+    }
 }

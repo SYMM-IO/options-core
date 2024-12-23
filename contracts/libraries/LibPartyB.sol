@@ -63,6 +63,7 @@ library LibPartyB {
             quantity: quantity,
             strikePrice: intent.strikePrice,
             expirationTimestamp: intent.expirationTimestamp,
+            settledPrice: 0,
             partyA: intent.partyA,
             partyB: intent.partyB,
             openedPrice: price,
@@ -85,7 +86,7 @@ library LibPartyB {
             .getPremiumOfOpenIntent(intentId);
 
         // partially fill
-        if (intent.quantity >= quantity) {
+        if (intent.quantity > quantity) {
             newIntentId = ++intentLayout.lastOpenIntentId;
             IntentStatus newStatus;
             if (intent.status == IntentStatus.CANCEL_PENDING) {
