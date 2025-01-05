@@ -298,10 +298,8 @@ library LibIntent {
             ];
             intent.statusModifyTimestamp = block.timestamp;
             intent.status = intentStatus;
-            trade.closePendingAmount -= intent.quantity;
             removeFromActiveCloseIntents(intent.id);
         }
-        // trade.closedAmount = trade.quantity;
         trade.status = tradeStatus;
         trade.statusModifyTimestamp = block.timestamp;
     }

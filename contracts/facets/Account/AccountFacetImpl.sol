@@ -31,7 +31,9 @@ library AccountFacetImpl {
         AccountStorage.Layout storage accountLayout = AccountStorage.layout();
         require(to != address(0), "AccountFacet: Zero address");
         require(
-            accountLayout.balances[msg.sender] >= amount,
+            accountLayout.balances[msg.sender] -
+                accountLayout.lockedBalances[msg.sender] >=
+                amount,
             "AccountFacet: Insufficient balance"
         );
 
