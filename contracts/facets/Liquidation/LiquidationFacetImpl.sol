@@ -49,7 +49,6 @@ library LiquidationFacetImpl {
         LiquidationSig memory liquidationSig
     ) internal {
         AppStorage.Layout storage appLayout = AppStorage.layout();
-        AccountStorage.Layout storage accountLayout = AccountStorage.layout();
         LibMuon.verifyLiquidationSig(liquidationSig, partyB);
         require(
             appLayout.liquidationStatus[partyB],
@@ -124,7 +123,6 @@ library LiquidationFacetImpl {
         internal
         returns (uint256[] memory liquidatedAmounts, bytes memory liquidationId)
     {
-        AccountStorage.Layout storage accountLayout = AccountStorage.layout();
         AppStorage.Layout storage appLayout = AppStorage.layout();
         IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 

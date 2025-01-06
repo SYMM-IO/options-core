@@ -18,6 +18,7 @@ library PartyAFacetImpl {
         uint256 quantity,
         uint256 strikePrice,
         uint256 expirationTimestamp,
+        ExerciseFee memory exerciseFee,
         uint256 deadline,
         address affiliate
     ) internal returns (uint256 intentId) {
@@ -67,6 +68,7 @@ library PartyAFacetImpl {
             quantity: quantity,
             strikePrice: strikePrice,
             expirationTimestamp: expirationTimestamp,
+            exerciseFee: exerciseFee,
             partyA: msg.sender,
             partyB: address(0),
             status: IntentStatus.PENDING,

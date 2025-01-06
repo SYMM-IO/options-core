@@ -41,7 +41,7 @@ library PartyBFacetImpl {
                     symbol.oracleId
             );
         }
-        
+
         bool isValidPartyB;
         if (intent.partyBsWhiteList.length == 0) {
             require(
@@ -233,10 +233,17 @@ library PartyBFacetImpl {
                     (sig.settlementPrice - trade.strikePrice)) /
                 1e18;
         }
-        //TODO handle exercise fee
+        uint256 exerciseFee;
+        {
+            uint256 cap = (trade.exerciseFee.cap * pnl) / 1e18;
+            uint256 fee = (trade.exerciseFee.rate *
+                sig.settlementPrice *
+                (trade.quantity - trade.closedAmount)) / 1e36;
+            exerciseFee = cap < fee ? cap : fee;
+        }
 
-        accountLayout.balances[trade.partyA] += pnl;
-        accountLayout.balances[trade.partyB] -= pnl;
+        accountLayout.balances[trade.partyA] += (pnl - exerciseFee);
+        accountLayout.balances[trade.partyB] -= (pnl - exerciseFee);
         LibIntent.closeTrade(
             tradeId,
             TradeStatus.EXERCISED,

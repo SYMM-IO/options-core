@@ -19,6 +19,7 @@ contract PartyAFacet is Accessibility, Pausable, IPartyAFacet {
      * @param quantity Size of the trade
      * @param strikePrice The strike price for the options contract
      * @param expirationTimestamp The expiration time for the options contract
+     * @param exerciseFee The exercise fee for the options contract during the exercise
      * @param deadline The user should set a deadline for their request. If no PartyB takes action on the intent within this timeframe, the request will expire
      * @param affiliate The affiliate of this intent
      */
@@ -29,6 +30,7 @@ contract PartyAFacet is Accessibility, Pausable, IPartyAFacet {
         uint256 quantity,
         uint256 strikePrice,
         uint256 expirationTimestamp,
+        ExerciseFee memory exerciseFee,
         uint256 deadline,
         address affiliate
     )
@@ -44,6 +46,7 @@ contract PartyAFacet is Accessibility, Pausable, IPartyAFacet {
             quantity,
             strikePrice,
             expirationTimestamp,
+            exerciseFee,
             deadline,
             affiliate
         );
@@ -59,6 +62,8 @@ contract PartyAFacet is Accessibility, Pausable, IPartyAFacet {
             quantity,
             strikePrice,
             expirationTimestamp,
+            exerciseFee.rate,
+            exerciseFee.cap,
             intent.tradingFee,
             deadline
         );

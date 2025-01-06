@@ -21,6 +21,11 @@ enum TradeStatus {
     LIQUIDATED
 }
 
+struct ExerciseFee {
+    uint256 rate;
+    uint256 cap;
+}
+
 struct Trade {
     uint256 id;
     uint256 openIntentId;
@@ -30,6 +35,7 @@ struct Trade {
     uint256 strikePrice;
     uint256 expirationTimestamp;
     uint256 settledPrice;
+    ExerciseFee exerciseFee;
     address partyA;
     address partyB;
     uint256 openedPrice;
@@ -50,6 +56,7 @@ struct OpenIntent {
     uint256 quantity;
     uint256 strikePrice;
     uint256 expirationTimestamp;
+    ExerciseFee exerciseFee;
     address partyA;
     address partyB;
     IntentStatus status;
