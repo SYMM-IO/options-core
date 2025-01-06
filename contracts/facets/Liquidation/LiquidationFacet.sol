@@ -25,13 +25,13 @@ contract LiquidationFacet is Pausable, Accessibility, ILiquidationFacet {
         onlyRole(LibAccessibility.LIQUIDATOR_ROLE)
     {
         LiquidationFacetImpl.liquidate(partyB, liquidationSig);
-        emit Liquidate(
-            msg.sender,
-            partyB,
-            AccountStorage.layout().balances[partyB],
-            liquidationSig.upnl,
-            liquidationSig.liquidationId
-        );
+        // emit Liquidate(
+        //     msg.sender,
+        //     partyB,
+        //     AccountStorage.layout().balances[partyB],
+        //     liquidationSig.upnl,
+        //     liquidationSig.liquidationId
+        // );
     }
 
     /**

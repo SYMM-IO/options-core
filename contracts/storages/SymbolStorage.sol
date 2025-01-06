@@ -32,6 +32,7 @@ struct Symbol {
     string name;
     OptionType optionType;
     uint256 oracleId;
+    address collateral;
     uint256 tradingFee;
 }
 

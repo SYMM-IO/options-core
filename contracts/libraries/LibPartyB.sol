@@ -19,10 +19,8 @@ library LibPartyB {
         AppStorage.Layout storage appLayout = AppStorage.layout();
 
         OpenIntent storage intent = intentLayout.openIntents[intentId];
-        require(
-            SymbolStorage.layout().symbols[intent.symbolId].isValid,
-            "PartyBFacet: Symbol is not valid"
-        );
+        Symbol memory symbol = SymbolStorage.layout().symbols[intent.symbolId];
+        require(symbol.isValid, "PartyBFacet: Symbol is not valid");
         require(
             intent.status == IntentStatus.LOCKED ||
                 intent.status == IntentStatus.CANCEL_PENDING,
@@ -48,7 +46,7 @@ library LibPartyB {
             intent.quantity >= quantity && quantity > 0,
             "PartyBFacet: Invalid quantity"
         );
-        accountLayout.balances[feeCollector] +=
+        accountLayout.balances[feeCollector][symbol.collateral] +=
             (quantity * intent.price * intent.tradingFee) /
             1e36;
 
@@ -83,8 +81,9 @@ library LibPartyB {
         LibIntent.removeFromPartyAOpenIntents(intentId);
         LibIntent.removeFromPartyBOpenIntents(intentId);
 
-        accountLayout.lockedBalances[intent.partyA] -= LibIntent
-            .getPremiumOfOpenIntent(intentId);
+        accountLayout.lockedBalances[intent.partyA][
+            symbol.collateral
+        ] -= LibIntent.getPremiumOfOpenIntent(intentId);
 
         // partially fill
         if (intent.quantity > quantity) {
@@ -128,17 +127,20 @@ library LibPartyB {
             if (newStatus == IntentStatus.CANCELED) {
                 // send trading Fee back to partyA
                 uint256 fee = LibIntent.getTradingFee(newIntent.id);
-                accountLayout.balances[newIntent.partyA] += fee;
+                accountLayout.balances[newIntent.partyA][
+                    symbol.collateral
+                ] += fee;
             } else {
-                accountLayout.lockedBalances[intent.partyA] += LibIntent
-                    .getPremiumOfOpenIntent(newIntent.id);
+                accountLayout.lockedBalances[intent.partyA][
+                    symbol.collateral
+                ] += LibIntent.getPremiumOfOpenIntent(newIntent.id);
             }
             intent.quantity = quantity;
         }
         LibIntent.addToActiveTrades(tradeId);
         uint256 premium = LibIntent.getPremiumOfOpenIntent(intentId);
-        accountLayout.balances[trade.partyA] -= premium;
-        accountLayout.balances[trade.partyB] += premium;
+        accountLayout.balances[trade.partyA][symbol.collateral] -= premium;
+        accountLayout.balances[trade.partyB][symbol.collateral] += premium;
     }
 
     function fillCloseIntent(
@@ -151,6 +153,7 @@ library LibPartyB {
 
         CloseIntent storage intent = intentLayout.closeIntents[intentId];
         Trade storage trade = intentLayout.trades[intent.tradeId];
+        Symbol memory symbol = SymbolStorage.layout().symbols[trade.symbolId];
 
         require(
             quantity > 0 && quantity <= intent.quantity - intent.filledAmount,
@@ -176,8 +179,8 @@ library LibPartyB {
         require(price >= intent.price, "LibIntent: Closed price isn't valid");
 
         uint256 pnl = (quantity * price) / 1e18;
-        accountLayout.balances[trade.partyA] += pnl;
-        accountLayout.balances[trade.partyB] -= pnl;
+        accountLayout.balances[trade.partyA][symbol.collateral] += pnl;
+        accountLayout.balances[trade.partyB][symbol.collateral] -= pnl;
 
         trade.avgClosedPrice =
             (trade.avgClosedPrice * trade.closedAmount + quantity * price) /

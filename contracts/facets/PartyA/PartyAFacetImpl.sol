@@ -25,12 +25,10 @@ library PartyAFacetImpl {
         IntentStorage.Layout storage intentLayout = IntentStorage.layout();
         AccountStorage.Layout storage accountLayout = AccountStorage.layout();
         AppStorage.Layout storage appLayout = AppStorage.layout();
-        SymbolStorage.Layout storage symbolLayout = SymbolStorage.layout();
 
-        require(
-            symbolLayout.symbols[symbolId].isValid,
-            "PartyAFacet: Symbol is not valid"
-        );
+        Symbol memory symbol = SymbolStorage.layout().symbols[symbolId];
+
+        require(symbol.isValid, "PartyAFacet: Symbol is not valid");
         require(deadline >= block.timestamp, "PartyAFacet: Low deadline");
         require(
             expirationTimestamp >= block.timestamp,
@@ -45,11 +43,8 @@ library PartyAFacetImpl {
         }
 
         require(
-            uint256(accountLayout.balances[msg.sender]) >=
-                (quantity *
-                    price *
-                    (1e18 + symbolLayout.symbols[symbolId].tradingFee)) /
-                    1e36,
+            uint256(accountLayout.balances[msg.sender][symbol.collateral]) >=
+                (quantity * price * (1e18 + symbol.tradingFee)) / 1e36,
             "PartyAFacet: insufficient available balance"
         );
         require(
@@ -76,7 +71,7 @@ library PartyAFacetImpl {
             createTimestamp: block.timestamp,
             statusModifyTimestamp: block.timestamp,
             deadline: deadline,
-            tradingFee: symbolLayout.symbols[symbolId].tradingFee,
+            tradingFee: symbol.tradingFee,
             affiliate: affiliate
         });
 
@@ -85,11 +80,11 @@ library PartyAFacetImpl {
         LibIntent.addToPartyAOpenIntents(intent.id);
 
         // lock funds the in middle of way
-        accountLayout.lockedBalances[msg.sender] += LibIntent
+        accountLayout.lockedBalances[msg.sender][symbol.collateral] += LibIntent
             .getPremiumOfOpenIntent(intentId);
 
         uint256 fee = LibIntent.getTradingFee(intentId);
-        accountLayout.balances[msg.sender] -= fee;
+        accountLayout.balances[msg.sender][symbol.collateral] -= fee;
     }
 
     function cancelOpenIntent(
@@ -99,6 +94,8 @@ library PartyAFacetImpl {
         OpenIntent storage intent = IntentStorage.layout().openIntents[
             intentId
         ];
+        Symbol memory symbol = SymbolStorage.layout().symbols[intent.symbolId];
+
         require(
             intent.status == IntentStatus.PENDING ||
                 intent.status == IntentStatus.LOCKED,
@@ -111,10 +108,11 @@ library PartyAFacetImpl {
         } else if (intent.status == IntentStatus.PENDING) {
             intent.status = IntentStatus.CANCELED;
             uint256 fee = LibIntent.getTradingFee(intent.id);
-            accountLayout.balances[intent.partyA] += fee;
+            accountLayout.balances[intent.partyA][symbol.collateral] += fee;
 
-            accountLayout.lockedBalances[intent.partyA] -= LibIntent
-                .getPremiumOfOpenIntent(intentId);
+            accountLayout.lockedBalances[intent.partyA][
+                symbol.collateral
+            ] -= LibIntent.getPremiumOfOpenIntent(intentId);
             LibIntent.removeFromPartyAOpenIntents(intentId);
             result = IntentStatus.CANCELED;
         } else {

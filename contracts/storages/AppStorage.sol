@@ -59,9 +59,10 @@ library AppStorage {
         keccak256("diamond.standard.storage.app");
 
     struct Layout {
-        address collateral;
+        mapping(address => bool) whiteListedCollateral;
         uint256 balanceLimitPerUser;
         uint256 maxCloseOrdersLength;
+        uint256 maxTradePerPartyA;
         ///////////////////////////////////
         bool globalPaused;
         bool depositingPaused;

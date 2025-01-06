@@ -8,12 +8,14 @@ interface IAccountEvents {
     event Deposit(
         address sender,
         address user,
+        address collateral,
         uint256 amount,
         uint256 newBalance
     );
     event InitWithdraw(
         address user,
         address to,
+        address collateral,
         uint256 amount,
         uint256 newBalance
     );

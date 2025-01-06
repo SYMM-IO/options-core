@@ -98,18 +98,19 @@ library PartyBFacetImpl {
         OpenIntent storage intent = IntentStorage.layout().openIntents[
             intentId
         ];
+        Symbol memory symbol = SymbolStorage.layout().symbols[intent.symbolId];
         require(
             intent.status == IntentStatus.CANCEL_PENDING,
             "PartyBFacet: Invalid state"
         );
         intent.statusModifyTimestamp = block.timestamp;
         intent.status = IntentStatus.CANCELED;
-        accountLayout.lockedBalances[intent.partyA] -= LibIntent
+        accountLayout.lockedBalances[intent.partyA][symbol.collateral] -= LibIntent
             .getPremiumOfOpenIntent(intentId);
 
         // send trading Fee back to partyA
         uint256 fee = LibIntent.getTradingFee(intentId);
-        accountLayout.balances[intent.partyA] += fee;
+        accountLayout.balances[intent.partyA][symbol.collateral] += fee;
 
         LibIntent.removeFromPartyAOpenIntents(intentId);
         LibIntent.removeFromPartyBOpenIntents(intentId);
@@ -241,9 +242,9 @@ library PartyBFacetImpl {
                 (trade.quantity - trade.closedAmount)) / 1e36;
             exerciseFee = cap < fee ? cap : fee;
         }
-
-        accountLayout.balances[trade.partyA] += (pnl - exerciseFee);
-        accountLayout.balances[trade.partyB] -= (pnl - exerciseFee);
+        // FIXME: handle the collateral amount
+        accountLayout.balances[trade.partyA][symbol.collateral] += (pnl - exerciseFee);
+        accountLayout.balances[trade.partyB][symbol.collateral] -= (pnl - exerciseFee);
         LibIntent.closeTrade(
             tradeId,
             TradeStatus.EXERCISED,

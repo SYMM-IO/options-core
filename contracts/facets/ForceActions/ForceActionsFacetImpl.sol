@@ -15,6 +15,7 @@ library ForceActionsFacetImpl {
         OpenIntent storage intent = IntentStorage.layout().openIntents[
             intentId
         ];
+        Symbol memory symbol = SymbolStorage.layout().symbols[intent.symbolId];
 
         require(
             intent.status == IntentStatus.CANCEL_PENDING,
@@ -28,12 +29,12 @@ library ForceActionsFacetImpl {
         );
         intent.statusModifyTimestamp = block.timestamp;
         intent.status = IntentStatus.CANCELED;
-        accountLayout.lockedBalances[intent.partyA] -= LibIntent
+        accountLayout.lockedBalances[intent.partyA][symbol.collateral] -= LibIntent
             .getPremiumOfOpenIntent(intentId);
 
         // send trading Fee back to partyA
         uint256 fee = LibIntent.getTradingFee(intent.id);
-        accountLayout.balances[intent.partyA] += fee;
+        accountLayout.balances[intent.partyA][symbol.collateral] += fee;
 
         LibIntent.removeFromPartyAOpenIntents(intent.id);
         LibIntent.removeFromPartyBOpenIntents(intent.id);

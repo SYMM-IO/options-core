@@ -14,14 +14,16 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
     /// @notice Allows either PartyA or PartyB to deposit collateral.
     /// @param amount The amount of collateral to be deposited, specified in collateral decimals.
     function deposit(
+        address collateral,
         uint256 amount
     ) external whenNotDepositingPaused notSuspended(msg.sender) {
-        AccountFacetImpl.deposit(msg.sender, amount);
+        AccountFacetImpl.deposit(collateral, msg.sender, amount);
         emit Deposit(
             msg.sender,
             msg.sender,
+            collateral,
             amount,
-            AccountStorage.layout().balances[msg.sender]
+            AccountStorage.layout().balances[msg.sender][collateral]
         );
     }
 
@@ -29,6 +31,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
     /// @param user The recipient address for the deposit.
     /// @param amount The amount of collateral to be deposited, specified in collateral decimals.
     function depositFor(
+        address collateral,
         address user,
         uint256 amount
     )
@@ -37,12 +40,13 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
         notSuspended(msg.sender)
         notSuspended(user)
     {
-        AccountFacetImpl.deposit(user, amount);
+        AccountFacetImpl.deposit(collateral, user, amount);
         emit Deposit(
             msg.sender,
             user,
+            collateral,
             amount,
-            AccountStorage.layout().balances[user]
+            AccountStorage.layout().balances[user][collateral]
         );
     }
 
@@ -50,6 +54,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
     /// @param amount The precise amount of collateral to be withdrawn, specified in 18 decimals.
     /// @param to The address that the collateral transfers
     function withdraw(
+        address collateral,
         uint256 amount,
         address to
     )
@@ -58,12 +63,13 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
         notSuspended(msg.sender)
         notSuspended(to)
     {
-        AccountFacetImpl.withdraw(amount, to);
+        AccountFacetImpl.withdraw(collateral, amount, to);
         emit InitWithdraw(
             msg.sender,
             to,
+            collateral,
             amount,
-            AccountStorage.layout().balances[msg.sender]
+            AccountStorage.layout().balances[msg.sender][collateral]
         );
     }
 
@@ -85,7 +91,9 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
         AccountFacetImpl.cancelWithdraw(id);
         emit CancelWithdraw(
             id,
-            AccountStorage.layout().balances[withdrawObject.user]
+            AccountStorage.layout().balances[withdrawObject.user][
+                withdrawObject.collateral
+            ]
         );
     }
 }

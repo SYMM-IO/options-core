@@ -12,38 +12,50 @@ import "../../storages/AppStorage.sol";
 library AccountFacetImpl {
     using SafeERC20 for IERC20;
 
-    function deposit(address user, uint256 amount) internal {
+    function deposit(
+        address collateral,
+        address user,
+        uint256 amount
+    ) internal {
         AppStorage.Layout storage appLayout = AppStorage.layout();
-        IERC20(appLayout.collateral).safeTransferFrom(
-            msg.sender,
-            address(this),
-            amount
+        require(
+            appLayout.whiteListedCollateral[collateral],
+            "AccountFacet: Collateral isn't white-listed"
         );
+        IERC20(collateral).safeTransferFrom(msg.sender, address(this), amount);
         uint256 amountWith18Decimals = (amount * 1e18) /
-            (10 ** IERC20Metadata(appLayout.collateral).decimals());
-        AccountStorage.layout().balances[user] += amountWith18Decimals;
+            (10 ** IERC20Metadata(collateral).decimals());
+        AccountStorage.layout().balances[user][
+            collateral
+        ] += amountWith18Decimals;
     }
 
     function withdraw(
+        address collateral,
         uint256 amount,
         address to
     ) internal returns (uint256 currentId) {
         AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+        require(
+            AppStorage.layout().whiteListedCollateral[collateral],
+            "AccountFacet: Collateral isn't white-listed"
+        );
         require(to != address(0), "AccountFacet: Zero address");
         require(
-            accountLayout.balances[msg.sender] -
-                accountLayout.lockedBalances[msg.sender] >=
+            accountLayout.balances[msg.sender][collateral] -
+                accountLayout.lockedBalances[msg.sender][collateral] >=
                 amount,
             "AccountFacet: Insufficient balance"
         );
 
-        accountLayout.balances[msg.sender] -= amount;
+        accountLayout.balances[msg.sender][collateral] -= amount;
 
         currentId = ++accountLayout.lastWithdrawId;
         Withdraw memory withdrawObject = Withdraw({
             id: currentId,
             amount: amount,
             user: msg.sender,
+            collateral: collateral,
             to: to,
             timestamp: block.timestamp,
             status: WithdrawStatus.INITIATED
@@ -83,9 +95,9 @@ library AccountFacetImpl {
 
         withdrawObject.status = WithdrawStatus.COMPLETED;
         uint256 amountInCollateralDecimals = (withdrawObject.amount *
-            (10 ** IERC20Metadata(AppStorage.layout().collateral).decimals())) /
+            (10 ** IERC20Metadata(withdrawObject.collateral).decimals())) /
             1e18;
-        IERC20(AppStorage.layout().collateral).safeTransfer(
+        IERC20(withdrawObject.collateral).safeTransfer(
             withdrawObject.to,
             amountInCollateralDecimals
         );
@@ -105,6 +117,8 @@ library AccountFacetImpl {
         );
 
         withdrawObject.status = WithdrawStatus.CANCELED;
-        accountLayout.balances[withdrawObject.user] += withdrawObject.amount;
+        accountLayout.balances[withdrawObject.user][
+            withdrawObject.collateral
+        ] += withdrawObject.amount;
     }
 }

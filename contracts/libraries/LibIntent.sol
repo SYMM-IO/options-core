@@ -238,6 +238,7 @@ library LibIntent {
         AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
         OpenIntent storage intent = intentLayout.openIntents[intentId];
+        Symbol memory symbol = SymbolStorage.layout().symbols[intent.symbolId];
         require(
             block.timestamp > intent.deadline,
             "LibIntent: Intent isn't expired"
@@ -249,13 +250,13 @@ library LibIntent {
             "LibIntent: Invalid state"
         );
         intent.statusModifyTimestamp = block.timestamp;
-        accountLayout.lockedBalances[intent.partyA] -= getPremiumOfOpenIntent(
+        accountLayout.lockedBalances[intent.partyA][symbol.collateral] -= getPremiumOfOpenIntent(
             intentId
         );
 
         // send trading Fee back to partyA
         uint256 fee = getTradingFee(intent.id);
-        accountLayout.balances[intent.partyA] += fee;
+        accountLayout.balances[intent.partyA][symbol.collateral] += fee;
 
         removeFromPartyAOpenIntents(intent.id);
         if (

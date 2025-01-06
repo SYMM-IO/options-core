@@ -7,6 +7,7 @@ pragma solidity >=0.8.18;
 struct Withdraw {
     uint256 id;
     uint256 amount;
+    address collateral;
     address user;
     address to;
     uint256 timestamp;
@@ -24,15 +25,14 @@ library AccountStorage {
         keccak256("diamond.standard.storage.account");
 
     struct Layout {
-        mapping(address => uint256) balances;
-        mapping(address => uint256) lockedBalances;
+        mapping(address => mapping(address => uint256)) balances; // user => collateral => balance
+        mapping(address => mapping(address => uint256)) lockedBalances; // user => collateral => lockedBalance
         mapping(address => bool) suspendedAddresses;
         /////////////////////////////////////////////////////////
         mapping(uint256 => Withdraw) withdraws;
         mapping(address => uint256[]) withdrawIds;
         uint256 lastWithdrawId;
         /////////////////////////////////////////////////////////
-        
     }
 
     function layout() internal pure returns (Layout storage l) {
