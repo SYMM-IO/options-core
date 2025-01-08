@@ -13,14 +13,14 @@ library LibIntent {
     function tradeOpenAmount(
         Trade storage trade
     ) internal view returns (uint256) {
-        return trade.quantity - trade.closedAmount;
+        return trade.quantity - trade.closedAmountBeforeExpiration;
     }
 
     function getAvailableAmountToClose(
         uint256 tradeId
     ) internal view returns (uint256) {
         Trade storage trade = IntentStorage.layout().trades[tradeId];
-        return trade.quantity - trade.closedAmount - trade.closePendingAmount;
+        return trade.quantity - trade.closedAmountBeforeExpiration - trade.closePendingAmount;
     }
 
     function getPremiumOfOpenIntent(
@@ -303,5 +303,6 @@ library LibIntent {
         }
         trade.status = tradeStatus;
         trade.statusModifyTimestamp = block.timestamp;
+        removeFromActiveTrades(tradeId);
     }
 }

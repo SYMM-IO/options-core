@@ -34,6 +34,11 @@ library PartyAFacetImpl {
             expirationTimestamp >= block.timestamp,
             "PartyAFacet: Low expiration timestamp"
         );
+        // TODO: should be double checked
+        require(
+            exerciseFee.cap <= 1e18,
+            "PartyAFacet: High cap for exercise fee"
+        );
 
         for (uint8 i = 0; i < partyBsWhiteList.length; i++) {
             require(
@@ -53,7 +58,6 @@ library PartyAFacetImpl {
         );
 
         intentId = ++intentLayout.lastOpenIntentId;
-        // create intent.
         OpenIntent memory intent = OpenIntent({
             id: intentId,
             tradeId: 0,
@@ -79,7 +83,6 @@ library PartyAFacetImpl {
         intentLayout.openIntentsOf[msg.sender].push(intent.id);
         LibIntent.addToPartyAOpenIntents(intent.id);
 
-        // lock funds the in middle of way
         accountLayout.lockedBalances[msg.sender][symbol.collateral] += LibIntent
             .getPremiumOfOpenIntent(intentId);
 
@@ -100,6 +103,10 @@ library PartyAFacetImpl {
             intent.status == IntentStatus.PENDING ||
                 intent.status == IntentStatus.LOCKED,
             "PartyAFacet: Invalid state"
+        );
+        require(
+            intent.partyA == msg.sender,
+            "PartyAFacet: Should be partyA of Intent"
         );
 
         if (block.timestamp > intent.deadline) {
@@ -132,6 +139,10 @@ library PartyAFacetImpl {
         require(
             intent.status == IntentStatus.PENDING,
             "PartyAFacet: Invalid state"
+        );
+        require(
+            IntentStorage.layout().trades[intent.tradeId].partyA == msg.sender,
+            "PartyAFacet: Should be partyA of Intent"
         );
         if (block.timestamp > intent.deadline) {
             LibIntent.expireCloseIntent(intentId);

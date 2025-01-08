@@ -33,6 +33,7 @@ struct Symbol {
     OptionType optionType;
     uint256 oracleId;
     address collateral;
+    bool isStableCoin; // true if the collateral is stablecoin and false if the collateral is same with the symbol underlying token
     uint256 tradingFee;
 }
 

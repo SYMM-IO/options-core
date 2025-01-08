@@ -170,7 +170,7 @@ library LiquidationFacetImpl {
         //         TradeStatus.LIQUIDATED,
         //         IntentStatus.CANCELED
         //     );
-        //     trade.closedAmount = trade.quantity;
+        //     trade.closedAmountBeforeExpiration = trade.quantity;
         //     LibIntent.removeFromActiveTrades(trade.id);
         // }
     }

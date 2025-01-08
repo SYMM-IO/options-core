@@ -9,6 +9,7 @@ import "../../interfaces/IPartiesEvents.sol";
 
 interface IPartyBEvents is IPartiesEvents {
     event AcceptCancelOpenIntent(uint256 intentId);
+    event AcceptCancelCloseIntent(uint256 intentId);
     event LockOpenIntent(address partyB, uint256 intentId);
     event UnlockOpenIntent(address partyB, uint256 intentId);
     event FillOpenIntent(

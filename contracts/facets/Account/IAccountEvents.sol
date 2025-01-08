@@ -20,5 +20,5 @@ interface IAccountEvents {
         uint256 newBalance
     );
     event ClaimWithdraw(uint256 id);
-    event CancelWithdraw(uint256 id, uint256 newBalance);
+    event CancelWithdraw(uint256 id, address user, uint256 newBalance);
 }

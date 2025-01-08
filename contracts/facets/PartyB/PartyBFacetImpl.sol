@@ -35,12 +35,10 @@ library PartyBFacetImpl {
             intentId <= intentLayout.lastOpenIntentId,
             "PartyBFacet: Invalid intentId"
         );
-        if (AppStorage.layout().partyBConfigs[msg.sender].lossCoverage != 0) {
-            require(
-                AppStorage.layout().partyBConfigs[msg.sender].oracleId ==
-                    symbol.oracleId
-            );
-        }
+        require(
+            AppStorage.layout().partyBConfigs[msg.sender].oracleId ==
+                symbol.oracleId
+        );
 
         bool isValidPartyB;
         if (intent.partyBsWhiteList.length == 0) {
@@ -105,8 +103,9 @@ library PartyBFacetImpl {
         );
         intent.statusModifyTimestamp = block.timestamp;
         intent.status = IntentStatus.CANCELED;
-        accountLayout.lockedBalances[intent.partyA][symbol.collateral] -= LibIntent
-            .getPremiumOfOpenIntent(intentId);
+        accountLayout.lockedBalances[intent.partyA][
+            symbol.collateral
+        ] -= LibIntent.getPremiumOfOpenIntent(intentId);
 
         // send trading Fee back to partyA
         uint256 fee = LibIntent.getTradingFee(intentId);
@@ -114,6 +113,20 @@ library PartyBFacetImpl {
 
         LibIntent.removeFromPartyAOpenIntents(intentId);
         LibIntent.removeFromPartyBOpenIntents(intentId);
+    }
+
+    function acceptCancelCloseIntent(uint256 intentId) internal {
+        IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+        CloseIntent storage intent = intentLayout.closeIntents[intentId];
+
+        require(
+            intent.status == IntentStatus.CANCEL_PENDING,
+            "LibIntent: Invalid state"
+        );
+
+        intent.statusModifyTimestamp = block.timestamp;
+        intent.status = IntentStatus.CANCELED;
+        LibIntent.removeFromActiveCloseIntents(intentId);
     }
 
     function fillOpenIntent(
@@ -186,6 +199,8 @@ library PartyBFacetImpl {
                 "PartyBFacet: Invalid price"
             );
         }
+        trade.settledPrice = sig.settlementPrice;
+
         LibIntent.closeTrade(
             tradeId,
             TradeStatus.EXPIRED,
@@ -221,7 +236,7 @@ library PartyBFacetImpl {
                 "PartyBFacet: Invalid price"
             );
             pnl =
-                ((trade.quantity - trade.closedAmount) *
+                ((trade.quantity - trade.closedAmountBeforeExpiration) *
                     (trade.strikePrice - sig.settlementPrice)) /
                 1e18;
         } else {
@@ -230,7 +245,7 @@ library PartyBFacetImpl {
                 "PartyBFacet: Invalid price"
             );
             pnl =
-                ((trade.quantity - trade.closedAmount) *
+                ((trade.quantity - trade.closedAmountBeforeExpiration) *
                     (sig.settlementPrice - trade.strikePrice)) /
                 1e18;
         }
@@ -239,12 +254,21 @@ library PartyBFacetImpl {
             uint256 cap = (trade.exerciseFee.cap * pnl) / 1e18;
             uint256 fee = (trade.exerciseFee.rate *
                 sig.settlementPrice *
-                (trade.quantity - trade.closedAmount)) / 1e36;
+                (trade.quantity - trade.closedAmountBeforeExpiration)) / 1e36;
             exerciseFee = cap < fee ? cap : fee;
         }
-        // FIXME: handle the collateral amount
-        accountLayout.balances[trade.partyA][symbol.collateral] += (pnl - exerciseFee);
-        accountLayout.balances[trade.partyB][symbol.collateral] -= (pnl - exerciseFee);
+        uint256 amountToTransfer = pnl - exerciseFee;
+        if (!symbol.isStableCoin) {
+            amountToTransfer = (amountToTransfer * 1e18) / sig.settlementPrice;
+        }
+
+        accountLayout.balances[trade.partyA][
+            symbol.collateral
+        ] += amountToTransfer;
+        accountLayout.balances[trade.partyB][
+            symbol.collateral
+        ] -= amountToTransfer;
+        
         LibIntent.closeTrade(
             tradeId,
             TradeStatus.EXERCISED,

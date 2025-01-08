@@ -51,6 +51,17 @@ contract PartyBFacet is Accessibility, Pausable, IPartyBFacet {
     }
 
     /**
+     * @notice Accepts the cancellation request for the specified close intent.
+     * @param intentId The ID of the close intent for which the cancellation request is accepted.
+     */
+    function acceptCancelCloseIntent(
+        uint256 intentId
+    ) external whenNotPartyBActionsPaused onlyPartyBOfCloseIntent(intentId) {
+        PartyBFacetImpl.acceptCancelCloseIntent(intentId);
+        emit AcceptCancelCloseIntent(intentId);
+    }
+
+    /**
      * @notice Opens a trade for the specified open intent.
      * @param intentId The ID of the open intent for which the trade is opened.
      * @param quantity PartyB has the option to open the position with either the full amount requested by the user or a specific fraction of it

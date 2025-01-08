@@ -30,10 +30,14 @@ library LibPartyB {
             block.timestamp <= intent.deadline,
             "PartyBFacet: Intent is expired"
         );
-
         require(
             block.timestamp <= intent.expirationTimestamp,
             "PartyBFacet: Requested expiration has been passed"
+        );
+        require(
+            intentLayout.activeTradesOf[intent.partyA].length <
+                appLayout.maxTradePerPartyA,
+            "PartyBFacet: Too many active trades for partyA"
         );
 
         address feeCollector = appLayout.affiliateFeeCollector[
@@ -66,9 +70,9 @@ library LibPartyB {
             partyA: intent.partyA,
             partyB: intent.partyB,
             openedPrice: price,
-            closedAmount: 0,
+            closedAmountBeforeExpiration: 0,
             closePendingAmount: 0,
-            avgClosedPrice: 0,
+            avgClosedPriceBeforeExpiration: 0,
             status: TradeStatus.OPENED,
             createTimestamp: block.timestamp,
             statusModifyTimestamp: block.timestamp
@@ -157,7 +161,7 @@ library LibPartyB {
 
         require(
             quantity > 0 && quantity <= intent.quantity - intent.filledAmount,
-            "LibIntent: Low filled amount"
+            "LibIntent: Invalid filled amount"
         );
         require(
             intent.status == IntentStatus.PENDING ||
@@ -182,24 +186,29 @@ library LibPartyB {
         accountLayout.balances[trade.partyA][symbol.collateral] += pnl;
         accountLayout.balances[trade.partyB][symbol.collateral] -= pnl;
 
-        trade.avgClosedPrice =
-            (trade.avgClosedPrice * trade.closedAmount + quantity * price) /
-            (trade.closedAmount + quantity);
+        trade.avgClosedPriceBeforeExpiration =
+            (trade.avgClosedPriceBeforeExpiration *
+                trade.closedAmountBeforeExpiration +
+                quantity *
+                price) /
+            (trade.closedAmountBeforeExpiration + quantity);
 
-        trade.closedAmount += quantity;
+        trade.closedAmountBeforeExpiration += quantity;
         intent.filledAmount += quantity;
 
         if (intent.filledAmount == intent.quantity) {
             intent.statusModifyTimestamp = block.timestamp;
             intent.status = IntentStatus.FILLED;
             LibIntent.removeFromActiveCloseIntents(intentId);
-            if (trade.quantity == trade.closedAmount) {
+            if (trade.quantity == trade.closedAmountBeforeExpiration) {
                 trade.status = TradeStatus.CLOSED;
                 trade.statusModifyTimestamp = block.timestamp;
+                LibIntent.removeFromActiveTrades(trade.id);
             }
         } else if (intent.status == IntentStatus.CANCEL_PENDING) {
             intent.status = IntentStatus.CANCELED;
             intent.statusModifyTimestamp = block.timestamp;
+            LibIntent.removeFromActiveCloseIntents(intentId);
         }
     }
 }

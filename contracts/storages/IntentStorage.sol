@@ -39,9 +39,9 @@ struct Trade {
     address partyA;
     address partyB;
     uint256 openedPrice;
-    uint256 closedAmount;
+    uint256 closedAmountBeforeExpiration;
     uint256 closePendingAmount;
-    uint256 avgClosedPrice;
+    uint256 avgClosedPriceBeforeExpiration;
     TradeStatus status;
     uint256 createTimestamp;
     uint256 statusModifyTimestamp;

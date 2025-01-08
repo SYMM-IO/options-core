@@ -91,6 +91,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
         AccountFacetImpl.cancelWithdraw(id);
         emit CancelWithdraw(
             id,
+            withdrawObject.user,
             AccountStorage.layout().balances[withdrawObject.user][
                 withdrawObject.collateral
             ]

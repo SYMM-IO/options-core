@@ -14,6 +14,8 @@ interface IPartyBFacet is IPartyBEvents {
 
     function acceptCancelOpenIntent(uint256 intentId) external;
 
+    function acceptCancelCloseIntent(uint256 intentId) external;
+
     function fillOpenIntent(
         uint256 intentId,
         uint256 quantity,

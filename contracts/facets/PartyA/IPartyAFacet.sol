@@ -21,8 +21,8 @@ interface IPartyAFacet is IPartyAEvents {
     function expireOpenIntent(uint256[] memory expiredIntentIds) external;
     function expireCloseIntent(uint256[] memory expiredIntentIds) external;
 
-    function cancelOpenIntent(uint256 intentId) external;
-    function cancelCloseIntent(uint256 intentId) external;
+    function cancelOpenIntent(uint256[] memory intentIds) external;
+    function cancelCloseIntent(uint256[] memory intentIds) external;
 
     function sendCloseIntent(
         uint256 tradeId,

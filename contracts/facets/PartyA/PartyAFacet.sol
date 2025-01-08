@@ -76,7 +76,7 @@ contract PartyAFacet is Accessibility, Pausable, IPartyAFacet {
     function expireOpenIntent(
         uint256[] memory expiredIntentIds
     ) external whenNotPartyAActionsPaused {
-        for (uint8 i; i < expiredIntentIds.length; i++) {
+        for (uint256 i; i < expiredIntentIds.length; i++) {
             LibIntent.expireOpenIntent(expiredIntentIds[i]);
             emit ExpireOpenIntent(expiredIntentIds[i]);
         }
@@ -89,7 +89,7 @@ contract PartyAFacet is Accessibility, Pausable, IPartyAFacet {
     function expireCloseIntent(
         uint256[] memory expiredIntentIds
     ) external whenNotPartyAActionsPaused {
-        for (uint8 i; i < expiredIntentIds.length; i++) {
+        for (uint256 i; i < expiredIntentIds.length; i++) {
             LibIntent.expireCloseIntent(expiredIntentIds[i]);
             emit ExpireCloseIntent(expiredIntentIds[i]);
         }
@@ -101,47 +101,59 @@ contract PartyAFacet is Accessibility, Pausable, IPartyAFacet {
     		For a locked intent, the outcome depends on PartyB's decision to either accept the cancellation request or to proceed with opening the trade, disregarding the request.
     		If PartyB agrees to cancel, the intent will no longer be accessible for others to interact with.
     		Conversely, if the position has been opened, the user is unable to issue this request.
-     * @param intentId The ID of the open intent to be canceled.
+     * @param intentIds The ID of the open intents to be canceled.
      */
     function cancelOpenIntent(
-        uint256 intentId
-    ) external whenNotPartyAActionsPaused onlyPartyAOfOpenIntent(intentId) {
-        IntentStatus result = PartyAFacetImpl.cancelOpenIntent(intentId);
-        OpenIntent storage intent = IntentStorage.layout().openIntents[
-            intentId
-        ];
-
-        if (result == IntentStatus.EXPIRED) {
-            emit ExpireOpenIntent(intentId);
-        } else if (
-            result == IntentStatus.CANCELED ||
-            result == IntentStatus.CANCEL_PENDING
-        ) {
-            emit CancelOpenIntent(
-                intent.partyA,
-                intent.partyB,
-                result,
-                intentId
+        uint256[] memory intentIds
+    ) external whenNotPartyAActionsPaused {
+        for (uint256 i; i < intentIds.length; i++) {
+            IntentStatus result = PartyAFacetImpl.cancelOpenIntent(
+                intentIds[i]
             );
+            OpenIntent storage intent = IntentStorage.layout().openIntents[
+                intentIds[i]
+            ];
+
+            if (result == IntentStatus.EXPIRED) {
+                emit ExpireOpenIntent(intent.id);
+            } else if (
+                result == IntentStatus.CANCELED ||
+                result == IntentStatus.CANCEL_PENDING
+            ) {
+                emit CancelOpenIntent(
+                    intent.partyA,
+                    intent.partyB,
+                    result,
+                    intent.id
+                );
+            }
         }
     }
 
-     /**
+    /**
      * @notice Requests to cancel a close intent.
-     * @param intentId The ID of the close intent.
+     * @param intentIds The ID of the close intents to be canceled.
      */
     function cancelCloseIntent(
-        uint256 intentId
-    ) external whenNotPartyAActionsPaused onlyPartyAOfCloseIntent(intentId) {
+        uint256[] memory intentIds
+    ) external whenNotPartyAActionsPaused {
         IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-        Trade storage trade = intentLayout.trades[
-            intentLayout.closeIntents[intentId].tradeId
-        ];
-        IntentStatus result = PartyAFacetImpl.cancelCloseIntent(intentId);
-        if (result == IntentStatus.EXPIRED) {
-            emit ExpireCloseIntent(intentId);
-        } else if (result == IntentStatus.CANCEL_PENDING) {
-            emit CancelCloseIntent(trade.partyA, trade.partyB, intentId);
+        for (uint256 i; i < intentIds.length; i++) {
+            Trade storage trade = intentLayout.trades[
+                intentLayout.closeIntents[intentIds[i]].tradeId
+            ];
+            IntentStatus result = PartyAFacetImpl.cancelCloseIntent(
+                intentIds[i]
+            );
+            if (result == IntentStatus.EXPIRED) {
+                emit ExpireCloseIntent(intentIds[i]);
+            } else if (result == IntentStatus.CANCEL_PENDING) {
+                emit CancelCloseIntent(
+                    trade.partyA,
+                    trade.partyB,
+                    intentIds[i]
+                );
+            }
         }
     }
 

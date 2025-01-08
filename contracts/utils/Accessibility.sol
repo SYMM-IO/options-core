@@ -42,34 +42,11 @@ abstract contract Accessibility {
         _;
     }
 
-    modifier onlyPartyAOfOpenIntent(uint256 intentId) {
-        OpenIntent storage intent = IntentStorage.layout().openIntents[
-            intentId
-        ];
-        require(
-            intent.partyA == msg.sender,
-            "Accessibility: Should be partyA of Intent"
-        );
-        _;
-    }
-
     modifier onlyPartyAOfTrade(uint256 tradeId) {
         Trade storage trade = IntentStorage.layout().trades[tradeId];
         require(
             trade.partyA == msg.sender,
             "Accessibility: Should be partyA of Trade"
-        );
-        _;
-    }
-
-    modifier onlyPartyAOfCloseIntent(uint256 intentId) {
-        Trade storage trade = IntentStorage.layout().trades[
-            IntentStorage.layout().closeIntents[intentId].tradeId
-        ];
-
-        require(
-            trade.partyA == msg.sender,
-            "Accessibility: Should be partyA of Intent"
         );
         _;
     }
