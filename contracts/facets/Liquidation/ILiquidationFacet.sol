@@ -12,9 +12,7 @@ interface ILiquidationFacet is ILiquidationEvents {
 
 	function liquidate(address partyB, address collateral, LiquidationSig memory liquidationSig) external;
 
-	function setSymbolsPrice(address partyA, LiquidationSig memory liquidationSig) external;
-
-	function liquidateOpenIntents(address partyB, uint256[] memory openIntentIds) external;
+	function setSymbolsPrice(address partyB, address collateral, LiquidationSig memory liquidationSig) external;
 
 	function liquidateTrades(address partyB, uint256[] memory tradeIds) external;
 

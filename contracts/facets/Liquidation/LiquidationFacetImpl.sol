@@ -59,66 +59,20 @@ library LiquidationFacetImpl {
 		appLayout.liquidationDetails[partyB][collateral].liquidators.push(msg.sender);
 	}
 
-	function setSymbolsPrice(address partyB, LiquidationSig memory liquidationSig) internal {
-		// AppStorage.Layout storage appLayout = AppStorage.layout();
-		// LibMuon.verifyLiquidationSig(liquidationSig, partyB);
-		// require(
-		//     appLayout.liquidationStatus[partyB],
-		//     "LiquidationFacet: PartyB is solvent"
-		// );
-		// require(
-		//     keccak256(appLayout.liquidationDetails[partyB].liquidationId) ==
-		//         keccak256(liquidationSig.liquidationId),
-		//     "LiquidationFacet: Invalid liquidationId"
-		// );
-		// for (
-		//     uint256 index = 0;
-		//     index < liquidationSig.symbolIds.length;
-		//     index++
-		// ) {
-		//     appLayout.symbolsPrices[partyB][
-		//         liquidationSig.symbolIds[index]
-		//     ] = Price(
-		//         liquidationSig.prices[index],
-		//         appLayout.liquidationDetails[partyB].timestamp
-		//     );
-		// }
-	}
-
-	function liquidateOpenIntents(
-		address partyB,
-		uint256[] memory openIntentIds
-	) internal returns (uint256[] memory liquidatedAmounts, bytes memory liquidationId) {
-		// IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-		// AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		// AppStorage.Layout storage appLayout = AppStorage.layout();
-		// require(
-		//     AppStorage.layout().liquidationStatus[partyB],
-		//     "LiquidationFacet: PartyA is solvent"
-		// );
-		// liquidatedAmounts = new uint256[](openIntentIds.length);
-		// liquidationId = appLayout.liquidationDetails[partyB].liquidationId;
-		// for (uint256 index = 0; index < openIntentIds.length; index++) {
-		//     OpenIntent storage intent = intentLayout.openIntents[
-		//         openIntentIds[index]
-		//     ];
-		//     require(
-		//         intent.status == IntentStatus.LOCKED ||
-		//             intent.status == IntentStatus.CANCEL_PENDING,
-		//         "LiquidationFacet: Invalid state"
-		//     );
-		//     require(intent.partyB == partyB, "LiquidationFacet: Invalid party");
-		//     intent.statusModifyTimestamp = block.timestamp;
-		//     accountLayout.lockedBalances[intent.partyA] -= LibIntent
-		//         .getPremiumOfOpenIntent(intent.id);
-		//     // send trading Fee back to partyA
-		//     uint256 fee = LibIntent.getTradingFee(intent.id);
-		//     accountLayout.balances[intent.partyA] += fee;
-		//     LibIntent.removeFromPartyAOpenIntents(intent.id);
-		//     LibIntent.removeFromPartyBOpenIntents(intent.id);
-		//     intent.status = IntentStatus.CANCELED;
-		//     liquidatedAmounts[index] = intent.quantity;
-		// }
+	function setSymbolsPrice(address partyB, address collateral, LiquidationSig memory liquidationSig) internal {
+		AppStorage.Layout storage appLayout = AppStorage.layout();
+		LibMuon.verifyLiquidationSig(liquidationSig, partyB, collateral);
+		require(appLayout.liquidationDetails[partyB][collateral].status == LiquidationStatus.IN_PROGRESS, "LiquidationFacet: PartyB is solvent");
+		require(
+			keccak256(appLayout.liquidationDetails[partyB][collateral].liquidationId) == keccak256(liquidationSig.liquidationId),
+			"LiquidationFacet: Invalid liquidationId"
+		);
+		for (uint256 index = 0; index < liquidationSig.symbolIds.length; index++) {
+			appLayout.symbolsPrices[partyB][liquidationSig.symbolIds[index]] = Price(
+				liquidationSig.prices[index],
+				appLayout.liquidationDetails[partyB][collateral].liquidationTimestamp
+			);
+		}
 	}
 
 	function liquidateTrades(

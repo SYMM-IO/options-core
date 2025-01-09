@@ -45,25 +45,11 @@ contract LiquidationFacet is Pausable, Accessibility, ILiquidationFacet {
 	 */
 	function setSymbolsPrice(
 		address partyB,
+		address collateral,
 		LiquidationSig memory liquidationSig
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.LIQUIDATOR_ROLE) {
-		LiquidationFacetImpl.setSymbolsPrice(partyB, liquidationSig);
+		LiquidationFacetImpl.setSymbolsPrice(partyB, collateral, liquidationSig);
 		emit SetSymbolsPrices(msg.sender, partyB, liquidationSig.symbolIds, liquidationSig.prices, liquidationSig.liquidationId);
-	}
-
-	/**
-	 * @notice Cancels open intents of Party B.
-	 * @param partyB The address of Party B whose open intents will be canceled.
-	 * @param openIntentIds An array of open intent IDs representing the Intents to be canceled.
-	 */
-	function liquidateOpenIntents(
-		address partyB,
-		uint256[] memory openIntentIds
-	) external whenNotLiquidationPaused onlyRole(LibAccessibility.LIQUIDATOR_ROLE) {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-		uint256[] memory pendingIntents = intentLayout.activeOpenIntentsOf[partyB];
-		(uint256[] memory liquidatedAmounts, bytes memory liquidationId) = LiquidationFacetImpl.liquidateOpenIntents(partyB, openIntentIds);
-		emit LiquidateOpenIntents(msg.sender, partyB, pendingIntents, liquidatedAmounts, liquidationId);
 	}
 
 	/**
