@@ -71,7 +71,11 @@ contract PartyBFacet is Accessibility, Pausable, IPartyBFacet {
         uint256 intentId,
         uint256 quantity,
         uint256 price
-    ) external whenNotPartyBActionsPaused onlyPartyBOfOpenIntent(intentId) {
+    )
+        external
+        whenNotPartyBActionsPaused
+        onlyPartyBOfOpenIntent(intentId)
+    {
         uint256 newId = PartyBFacetImpl.fillOpenIntent(
             intentId,
             quantity,

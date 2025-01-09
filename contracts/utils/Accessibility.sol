@@ -5,6 +5,7 @@
 pragma solidity >=0.8.18;
 
 import "../storages/AppStorage.sol";
+import "../storages/SymbolStorage.sol";
 import "../storages/AccountStorage.sol";
 import "../storages/IntentStorage.sol";
 import "../libraries/LibAccessibility.sol";
@@ -90,7 +91,7 @@ abstract contract Accessibility {
         );
         _;
     }
-
+   
     modifier notSuspendedWithdrawal(uint256 withdrawId) {
         Withdraw storage withdrawObject = AccountStorage.layout().withdraws[
             withdrawId

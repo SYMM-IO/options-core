@@ -89,11 +89,11 @@ library AppStorage {
         uint256 settlementPriceSigValidTime;
         uint256 liquidationSigValidTime;
         ///////////////////////////////////
-        mapping(address => bool) liquidationStatus;
-        mapping(address => LiquidationDetail) liquidationDetails;
+        mapping(address => mapping(address => bool)) liquidationStatus; // partyBAddress => collateral => state
+        mapping(address => mapping(address => LiquidationDetail)) liquidationDetails;
         mapping(address => mapping(uint256 => Price)) symbolsPrices;
-        mapping(address => address[]) liquidators;
-        mapping(address => uint256) partyAReimbursement;
+        mapping(address => mapping(address => address[])) liquidators;
+        mapping(address => mapping(address => uint256)) partyAReimbursement;
         // partyA => partyB => SettlementState
         mapping(address => mapping(address => SettlementState)) settlementStates;
     }

@@ -176,6 +176,13 @@ library PartyBFacetImpl {
         Trade storage trade = IntentStorage.layout().trades[tradeId];
         Symbol storage symbol = SymbolStorage.layout().symbols[trade.symbolId];
         LibMuon.verifySettlementPriceSig(sig);
+
+        require(
+            !AppStorage.layout().liquidationStatus[trade.partyB][
+                symbol.collateral
+            ],
+            "PartyBFacet: PartyB is liquidated"
+        );
         require(
             sig.symbolId == trade.symbolId,
             "PartyBFacet: Invalid symbolId"
@@ -216,6 +223,7 @@ library PartyBFacetImpl {
         Trade storage trade = IntentStorage.layout().trades[tradeId];
         Symbol storage symbol = SymbolStorage.layout().symbols[trade.symbolId];
         LibMuon.verifySettlementPriceSig(sig);
+
         require(
             sig.symbolId == trade.symbolId,
             "PartyBFacet: Invalid symbolId"
@@ -227,6 +235,12 @@ library PartyBFacetImpl {
         require(
             block.timestamp > trade.expirationTimestamp,
             "PartyBFacet: Trade isn't expired"
+        );
+        require(
+            !AppStorage.layout().liquidationStatus[trade.partyB][
+                symbol.collateral
+            ],
+            "PartyBFacet: PartyB is liquidated"
         );
 
         uint256 pnl;
@@ -268,7 +282,7 @@ library PartyBFacetImpl {
         accountLayout.balances[trade.partyB][
             symbol.collateral
         ] -= amountToTransfer;
-        
+
         LibIntent.closeTrade(
             tradeId,
             TradeStatus.EXERCISED,

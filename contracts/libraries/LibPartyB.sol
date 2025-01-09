@@ -20,24 +20,29 @@ library LibPartyB {
 
         OpenIntent storage intent = intentLayout.openIntents[intentId];
         Symbol memory symbol = SymbolStorage.layout().symbols[intent.symbolId];
-        require(symbol.isValid, "PartyBFacet: Symbol is not valid");
+
+        require(symbol.isValid, "LibPartyB: Symbol is not valid");
         require(
             intent.status == IntentStatus.LOCKED ||
                 intent.status == IntentStatus.CANCEL_PENDING,
-            "PartyBFacet: Invalid state"
+            "LibPartyB: Invalid state"
+        );
+        require(
+            !appLayout.liquidationStatus[intent.partyB][symbol.collateral],
+            "LibPartyB: PartyB is liquidated"
         );
         require(
             block.timestamp <= intent.deadline,
-            "PartyBFacet: Intent is expired"
+            "LibPartyB: Intent is expired"
         );
         require(
             block.timestamp <= intent.expirationTimestamp,
-            "PartyBFacet: Requested expiration has been passed"
+            "LibPartyB: Requested expiration has been passed"
         );
         require(
             intentLayout.activeTradesOf[intent.partyA].length <
                 appLayout.maxTradePerPartyA,
-            "PartyBFacet: Too many active trades for partyA"
+            "LibPartyB: Too many active trades for partyA"
         );
 
         address feeCollector = appLayout.affiliateFeeCollector[
@@ -48,13 +53,13 @@ library LibPartyB {
 
         require(
             intent.quantity >= quantity && quantity > 0,
-            "PartyBFacet: Invalid quantity"
+            "LibPartyB: Invalid quantity"
         );
         accountLayout.balances[feeCollector][symbol.collateral] +=
             (quantity * intent.price * intent.tradingFee) /
             1e36;
 
-        require(price <= intent.price, "PartyBFacet: Opened price isn't valid");
+        require(price <= intent.price, "LibPartyB: Opened price isn't valid");
 
         uint256 tradeId = ++intentLayout.lastTradeId;
         Trade memory trade = Trade({
@@ -160,27 +165,33 @@ library LibPartyB {
         Symbol memory symbol = SymbolStorage.layout().symbols[trade.symbolId];
 
         require(
+            !AppStorage.layout().liquidationStatus[trade.partyB][
+                symbol.collateral
+            ],
+            "LibPartyB: PartyB is liquidated"
+        );
+        require(
             quantity > 0 && quantity <= intent.quantity - intent.filledAmount,
-            "LibIntent: Invalid filled amount"
+            "LibPartyB: Invalid filled amount"
         );
         require(
             intent.status == IntentStatus.PENDING ||
                 intent.status == IntentStatus.CANCEL_PENDING,
-            "LibIntent: Invalid state"
+            "LibPartyB: Invalid state"
         );
         require(
             trade.status == TradeStatus.OPENED,
-            "LibIntent: Invalid trade state"
+            "LibPartyB: Invalid trade state"
         );
         require(
             block.timestamp <= intent.deadline,
-            "LibIntent: Intent is expired"
+            "LibPartyB: Intent is expired"
         );
         require(
             block.timestamp < trade.expirationTimestamp,
-            "LibIntent: Trade is expired"
+            "LibPartyB: Trade is expired"
         );
-        require(price >= intent.price, "LibIntent: Closed price isn't valid");
+        require(price >= intent.price, "LibPartyB: Closed price isn't valid");
 
         uint256 pnl = (quantity * price) / 1e18;
         accountLayout.balances[trade.partyA][symbol.collateral] += pnl;
