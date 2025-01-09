@@ -7,6 +7,6 @@ pragma solidity >=0.8.18;
 import "../../storages/IntentStorage.sol";
 
 interface ForceActionsFacetEvents {
-    event ForceCancelOpenIntent(uint256 intentId);
-    event ForceCancelCloseIntent(uint256 intentId);
+	event ForceCancelOpenIntent(uint256 intentId);
+	event ForceCancelCloseIntent(uint256 intentId);
 }

@@ -10,25 +10,21 @@ import "./IForceActionsFacet.sol";
 import "./ForceActionsFacetImpl.sol";
 
 contract ForceActionsFacet is Pausable, IForceActionsFacet {
-    /**
-     * @notice Forces the cancellation of the specified open intent when partyB is not responsive for a certian amount of time(forceCancelOpenIntentTimeout).
-     * @param intentId The ID of the open intent to be canceled.
-     */
-    function forceCancelOpenIntent(
-        uint256 intentId
-    ) external whenNotPartyAActionsPaused {
-        ForceActionsFacetImpl.forceCancelOpenIntent(intentId);
-        emit ForceCancelOpenIntent(intentId);
-    }
+	/**
+	 * @notice Forces the cancellation of the specified open intent when partyB is not responsive for a certian amount of time(forceCancelOpenIntentTimeout).
+	 * @param intentId The ID of the open intent to be canceled.
+	 */
+	function forceCancelOpenIntent(uint256 intentId) external whenNotPartyAActionsPaused {
+		ForceActionsFacetImpl.forceCancelOpenIntent(intentId);
+		emit ForceCancelOpenIntent(intentId);
+	}
 
-    /**
-     * @notice Forces the cancellation of the close intent associated with the specified intent when partyB is not responsive for a certain amount of time(forceCancelCloseIntentTimeout).
-     * @param intentId The ID of the close intent to be canceled.
-     */
-    function forceCancelCloseIntent(
-        uint256 intentId
-    ) external whenNotPartyAActionsPaused {
-        ForceActionsFacetImpl.forceCancelCloseIntent(intentId);
-        emit ForceCancelCloseIntent(intentId);
-    }
+	/**
+	 * @notice Forces the cancellation of the close intent associated with the specified intent when partyB is not responsive for a certain amount of time(forceCancelCloseIntentTimeout).
+	 * @param intentId The ID of the close intent to be canceled.
+	 */
+	function forceCancelCloseIntent(uint256 intentId) external whenNotPartyAActionsPaused {
+		ForceActionsFacetImpl.forceCancelCloseIntent(intentId);
+		emit ForceCancelCloseIntent(intentId);
+	}
 }

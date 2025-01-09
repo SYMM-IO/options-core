@@ -7,56 +7,38 @@ pragma solidity >=0.8.18;
 import "../storages/AppStorage.sol";
 
 abstract contract Pausable {
-    modifier whenNotGlobalPaused() {
-        require(!AppStorage.layout().globalPaused, "Pausable: Global paused");
-        _;
-    }
+	modifier whenNotGlobalPaused() {
+		require(!AppStorage.layout().globalPaused, "Pausable: Global paused");
+		_;
+	}
 
-    modifier whenNotDepositingPaused() {
-        require(!AppStorage.layout().globalPaused, "Pausable: Global paused");
-        require(
-            !AppStorage.layout().depositingPaused,
-            "Pausable: Depositing paused"
-        );
-        _;
-    }
+	modifier whenNotDepositingPaused() {
+		require(!AppStorage.layout().globalPaused, "Pausable: Global paused");
+		require(!AppStorage.layout().depositingPaused, "Pausable: Depositing paused");
+		_;
+	}
 
-    modifier whenNotWithdrawingPaused() {
-        require(
-            !AppStorage.layout().globalPaused,
-            "Pausable: Depositing paused"
-        );
-        require(
-            !AppStorage.layout().withdrawingPaused,
-            "Pausable: Withdrawing paused"
-        );
-        _;
-    }
+	modifier whenNotWithdrawingPaused() {
+		require(!AppStorage.layout().globalPaused, "Pausable: Depositing paused");
+		require(!AppStorage.layout().withdrawingPaused, "Pausable: Withdrawing paused");
+		_;
+	}
 
-    modifier whenNotPartyAActionsPaused() {
-        require(!AppStorage.layout().globalPaused, "Pausable: Global paused");
-        require(
-            !AppStorage.layout().partyAActionsPaused,
-            "Pausable: PartyA actions paused"
-        );
-        _;
-    }
+	modifier whenNotPartyAActionsPaused() {
+		require(!AppStorage.layout().globalPaused, "Pausable: Global paused");
+		require(!AppStorage.layout().partyAActionsPaused, "Pausable: PartyA actions paused");
+		_;
+	}
 
-    modifier whenNotPartyBActionsPaused() {
-        require(!AppStorage.layout().globalPaused, "Pausable: Global paused");
-        require(
-            !AppStorage.layout().partyBActionsPaused,
-            "Pausable: PartyB actions paused"
-        );
-        _;
-    }
+	modifier whenNotPartyBActionsPaused() {
+		require(!AppStorage.layout().globalPaused, "Pausable: Global paused");
+		require(!AppStorage.layout().partyBActionsPaused, "Pausable: PartyB actions paused");
+		_;
+	}
 
-    modifier whenNotLiquidationPaused() {
-        require(!AppStorage.layout().globalPaused, "Pausable: Global paused");
-        require(
-            !AppStorage.layout().liquidatingPaused,
-            "Pausable: Liquidating paused"
-        );
-        _;
-    }
+	modifier whenNotLiquidationPaused() {
+		require(!AppStorage.layout().globalPaused, "Pausable: Global paused");
+		require(!AppStorage.layout().liquidatingPaused, "Pausable: Liquidating paused");
+		_;
+	}
 }

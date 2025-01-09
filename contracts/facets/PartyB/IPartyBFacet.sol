@@ -8,33 +8,19 @@ import "./IPartyBEvents.sol";
 import "../../storages/AppStorage.sol";
 
 interface IPartyBFacet is IPartyBEvents {
-    function lockOpenIntent(uint256 intentId) external;
+	function lockOpenIntent(uint256 intentId) external;
 
-    function unlockOpenIntent(uint256 intentId) external;
+	function unlockOpenIntent(uint256 intentId) external;
 
-    function acceptCancelOpenIntent(uint256 intentId) external;
+	function acceptCancelOpenIntent(uint256 intentId) external;
 
-    function acceptCancelCloseIntent(uint256 intentId) external;
+	function acceptCancelCloseIntent(uint256 intentId) external;
 
-    function fillOpenIntent(
-        uint256 intentId,
-        uint256 quantity,
-        uint256 price
-    ) external;
+	function fillOpenIntent(uint256 intentId, uint256 quantity, uint256 price) external;
 
-    function fillCloseIntent(
-        uint256 intentId,
-        uint256 quantity,
-        uint256 price
-    ) external;
+	function fillCloseIntent(uint256 intentId, uint256 quantity, uint256 price) external;
 
-    function expireTrade(
-        uint256 tradeId,
-        SettlementPriceSig memory settlementPriceSig
-    ) external;
+	function expireTrade(uint256 tradeId, SettlementPriceSig memory settlementPriceSig) external;
 
-    function exerciseTrade(
-        uint256 tradeId,
-        SettlementPriceSig memory settlementPriceSig
-    ) external;
+	function exerciseTrade(uint256 tradeId, SettlementPriceSig memory settlementPriceSig) external;
 }

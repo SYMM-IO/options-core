@@ -5,40 +5,39 @@
 pragma solidity >=0.8.18;
 
 struct Withdraw {
-    uint256 id;
-    uint256 amount;
-    address collateral;
-    address user;
-    address to;
-    uint256 timestamp;
-    WithdrawStatus status;
+	uint256 id;
+	uint256 amount;
+	address collateral;
+	address user;
+	address to;
+	uint256 timestamp;
+	WithdrawStatus status;
 }
 
 enum WithdrawStatus {
-    INITIATED,
-    CANCELED,
-    COMPLETED
+	INITIATED,
+	CANCELED,
+	COMPLETED
 }
 
 library AccountStorage {
-    bytes32 internal constant ACCOUNT_STORAGE_SLOT =
-        keccak256("diamond.standard.storage.account");
+	bytes32 internal constant ACCOUNT_STORAGE_SLOT = keccak256("diamond.standard.storage.account");
 
-    struct Layout {
-        mapping(address => mapping(address => uint256)) balances; // user => collateral => balance
-        mapping(address => mapping(address => uint256)) lockedBalances; // user => collateral => lockedBalance
-        mapping(address => bool) suspendedAddresses;
-        /////////////////////////////////////////////////////////
-        mapping(uint256 => Withdraw) withdraws;
-        mapping(address => uint256[]) withdrawIds;
-        uint256 lastWithdrawId;
-        /////////////////////////////////////////////////////////
-    }
+	struct Layout {
+		mapping(address => mapping(address => uint256)) balances; // user => collateral => balance
+		mapping(address => mapping(address => uint256)) lockedBalances; // user => collateral => lockedBalance
+		mapping(address => bool) suspendedAddresses;
+		/////////////////////////////////////////////////////////
+		mapping(uint256 => Withdraw) withdraws;
+		mapping(address => uint256[]) withdrawIds;
+		uint256 lastWithdrawId;
+		/////////////////////////////////////////////////////////
+	}
 
-    function layout() internal pure returns (Layout storage l) {
-        bytes32 slot = ACCOUNT_STORAGE_SLOT;
-        assembly {
-            l.slot := slot
-        }
-    }
+	function layout() internal pure returns (Layout storage l) {
+		bytes32 slot = ACCOUNT_STORAGE_SLOT;
+		assembly {
+			l.slot := slot
+		}
+	}
 }

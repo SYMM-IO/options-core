@@ -7,13 +7,13 @@ pragma solidity >=0.8.18;
 import "./IAccountEvents.sol";
 
 interface IAccountFacet is IAccountEvents {
-    function deposit(address collateral, uint256 amount) external;
+	function deposit(address collateral, uint256 amount) external;
 
-    function depositFor(address collateral, address user, uint256 amount) external;
+	function depositFor(address collateral, address user, uint256 amount) external;
 
-    function withdraw(address collateral, uint256 amount, address to) external;
+	function withdraw(address collateral, uint256 amount, address to) external;
 
-    function claimWithdraw(uint256 id) external;
+	function claimWithdraw(uint256 id) external;
 
-    function cancelWithdraw(uint256 id) external;
+	function cancelWithdraw(uint256 id) external;
 }

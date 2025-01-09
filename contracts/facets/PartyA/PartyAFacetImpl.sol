@@ -11,191 +11,139 @@ import "../../storages/AccountStorage.sol";
 import "../../storages/SymbolStorage.sol";
 
 library PartyAFacetImpl {
-    function sendOpenIntent(
-        address[] calldata partyBsWhiteList,
-        uint256 symbolId,
-        uint256 price,
-        uint256 quantity,
-        uint256 strikePrice,
-        uint256 expirationTimestamp,
-        ExerciseFee memory exerciseFee,
-        uint256 deadline,
-        address affiliate
-    ) internal returns (uint256 intentId) {
-        IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-        AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-        AppStorage.Layout storage appLayout = AppStorage.layout();
+	function sendOpenIntent(
+		address[] calldata partyBsWhiteList,
+		uint256 symbolId,
+		uint256 price,
+		uint256 quantity,
+		uint256 strikePrice,
+		uint256 expirationTimestamp,
+		ExerciseFee memory exerciseFee,
+		uint256 deadline,
+		address affiliate
+	) internal returns (uint256 intentId) {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		AppStorage.Layout storage appLayout = AppStorage.layout();
 
-        Symbol memory symbol = SymbolStorage.layout().symbols[symbolId];
+		Symbol memory symbol = SymbolStorage.layout().symbols[symbolId];
 
-        require(symbol.isValid, "PartyAFacet: Symbol is not valid");
-        require(deadline >= block.timestamp, "PartyAFacet: Low deadline");
-        require(
-            expirationTimestamp >= block.timestamp,
-            "PartyAFacet: Low expiration timestamp"
-        );
-        // TODO: should be double checked
-        require(
-            exerciseFee.cap <= 1e18,
-            "PartyAFacet: High cap for exercise fee"
-        );
+		require(symbol.isValid, "PartyAFacet: Symbol is not valid");
+		require(deadline >= block.timestamp, "PartyAFacet: Low deadline");
+		require(expirationTimestamp >= block.timestamp, "PartyAFacet: Low expiration timestamp");
+		// TODO: should be double checked
+		require(exerciseFee.cap <= 1e18, "PartyAFacet: High cap for exercise fee");
 
-        for (uint8 i = 0; i < partyBsWhiteList.length; i++) {
-            require(
-                partyBsWhiteList[i] != msg.sender,
-                "PartyAFacet: Sender isn't allowed in partyBWhiteList"
-            );
-        }
+		for (uint8 i = 0; i < partyBsWhiteList.length; i++) {
+			require(partyBsWhiteList[i] != msg.sender, "PartyAFacet: Sender isn't allowed in partyBWhiteList");
+		}
 
-        require(
-            uint256(accountLayout.balances[msg.sender][symbol.collateral]) >=
-                (quantity * price * (1e18 + symbol.tradingFee)) / 1e36,
-            "PartyAFacet: insufficient available balance"
-        );
-        require(
-            appLayout.affiliateStatus[affiliate] || affiliate == address(0),
-            "PartyAFacet: Invalid affiliate"
-        );
+		require(
+			uint256(accountLayout.balances[msg.sender][symbol.collateral]) >= (quantity * price * (1e18 + symbol.tradingFee)) / 1e36,
+			"PartyAFacet: insufficient available balance"
+		);
+		require(appLayout.affiliateStatus[affiliate] || affiliate == address(0), "PartyAFacet: Invalid affiliate");
 
-        intentId = ++intentLayout.lastOpenIntentId;
-        OpenIntent memory intent = OpenIntent({
-            id: intentId,
-            tradeId: 0,
-            partyBsWhiteList: partyBsWhiteList,
-            symbolId: symbolId,
-            price: price,
-            quantity: quantity,
-            strikePrice: strikePrice,
-            expirationTimestamp: expirationTimestamp,
-            exerciseFee: exerciseFee,
-            partyA: msg.sender,
-            partyB: address(0),
-            status: IntentStatus.PENDING,
-            parentId: 0,
-            createTimestamp: block.timestamp,
-            statusModifyTimestamp: block.timestamp,
-            deadline: deadline,
-            tradingFee: symbol.tradingFee,
-            affiliate: affiliate
-        });
+		intentId = ++intentLayout.lastOpenIntentId;
+		OpenIntent memory intent = OpenIntent({
+			id: intentId,
+			tradeId: 0,
+			partyBsWhiteList: partyBsWhiteList,
+			symbolId: symbolId,
+			price: price,
+			quantity: quantity,
+			strikePrice: strikePrice,
+			expirationTimestamp: expirationTimestamp,
+			exerciseFee: exerciseFee,
+			partyA: msg.sender,
+			partyB: address(0),
+			status: IntentStatus.PENDING,
+			parentId: 0,
+			createTimestamp: block.timestamp,
+			statusModifyTimestamp: block.timestamp,
+			deadline: deadline,
+			tradingFee: symbol.tradingFee,
+			affiliate: affiliate
+		});
 
-        intentLayout.openIntents[intentId] = intent;
-        intentLayout.openIntentsOf[msg.sender].push(intent.id);
-        LibIntent.addToPartyAOpenIntents(intent.id);
+		intentLayout.openIntents[intentId] = intent;
+		intentLayout.openIntentsOf[msg.sender].push(intent.id);
+		LibIntent.addToPartyAOpenIntents(intent.id);
 
-        accountLayout.lockedBalances[msg.sender][symbol.collateral] += LibIntent
-            .getPremiumOfOpenIntent(intentId);
+		accountLayout.lockedBalances[msg.sender][symbol.collateral] += LibIntent.getPremiumOfOpenIntent(intentId);
 
-        uint256 fee = LibIntent.getTradingFee(intentId);
-        accountLayout.balances[msg.sender][symbol.collateral] -= fee;
-    }
+		uint256 fee = LibIntent.getTradingFee(intentId);
+		accountLayout.balances[msg.sender][symbol.collateral] -= fee;
+	}
 
-    function cancelOpenIntent(
-        uint256 intentId
-    ) internal returns (IntentStatus result) {
-        AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-        OpenIntent storage intent = IntentStorage.layout().openIntents[
-            intentId
-        ];
-        Symbol memory symbol = SymbolStorage.layout().symbols[intent.symbolId];
+	function cancelOpenIntent(uint256 intentId) internal returns (IntentStatus result) {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
+		Symbol memory symbol = SymbolStorage.layout().symbols[intent.symbolId];
 
-        require(
-            intent.status == IntentStatus.PENDING ||
-                intent.status == IntentStatus.LOCKED,
-            "PartyAFacet: Invalid state"
-        );
-        require(
-            intent.partyA == msg.sender,
-            "PartyAFacet: Should be partyA of Intent"
-        );
+		require(intent.status == IntentStatus.PENDING || intent.status == IntentStatus.LOCKED, "PartyAFacet: Invalid state");
+		require(intent.partyA == msg.sender, "PartyAFacet: Should be partyA of Intent");
 
-        if (block.timestamp > intent.deadline) {
-            LibIntent.expireOpenIntent(intentId);
-            result = IntentStatus.EXPIRED;
-        } else if (intent.status == IntentStatus.PENDING) {
-            intent.status = IntentStatus.CANCELED;
-            uint256 fee = LibIntent.getTradingFee(intent.id);
-            accountLayout.balances[intent.partyA][symbol.collateral] += fee;
+		if (block.timestamp > intent.deadline) {
+			LibIntent.expireOpenIntent(intentId);
+			result = IntentStatus.EXPIRED;
+		} else if (intent.status == IntentStatus.PENDING) {
+			intent.status = IntentStatus.CANCELED;
+			uint256 fee = LibIntent.getTradingFee(intent.id);
+			accountLayout.balances[intent.partyA][symbol.collateral] += fee;
 
-            accountLayout.lockedBalances[intent.partyA][
-                symbol.collateral
-            ] -= LibIntent.getPremiumOfOpenIntent(intentId);
-            LibIntent.removeFromPartyAOpenIntents(intentId);
-            result = IntentStatus.CANCELED;
-        } else {
-            // Intent is locked
-            intent.status = IntentStatus.CANCEL_PENDING;
-            result = IntentStatus.CANCEL_PENDING;
-        }
-        intent.statusModifyTimestamp = block.timestamp;
-    }
+			accountLayout.lockedBalances[intent.partyA][symbol.collateral] -= LibIntent.getPremiumOfOpenIntent(intentId);
+			LibIntent.removeFromPartyAOpenIntents(intentId);
+			result = IntentStatus.CANCELED;
+		} else {
+			// Intent is locked
+			intent.status = IntentStatus.CANCEL_PENDING;
+			result = IntentStatus.CANCEL_PENDING;
+		}
+		intent.statusModifyTimestamp = block.timestamp;
+	}
 
-    function cancelCloseIntent(
-        uint256 intentId
-    ) internal returns (IntentStatus) {
-        CloseIntent storage intent = IntentStorage.layout().closeIntents[
-            intentId
-        ];
-        require(
-            intent.status == IntentStatus.PENDING,
-            "PartyAFacet: Invalid state"
-        );
-        require(
-            IntentStorage.layout().trades[intent.tradeId].partyA == msg.sender,
-            "PartyAFacet: Should be partyA of Intent"
-        );
-        if (block.timestamp > intent.deadline) {
-            LibIntent.expireCloseIntent(intentId);
-            return IntentStatus.EXPIRED;
-        } else {
-            intent.statusModifyTimestamp = block.timestamp;
-            intent.status = IntentStatus.CANCEL_PENDING;
-            return IntentStatus.CANCEL_PENDING;
-        }
-    }
+	function cancelCloseIntent(uint256 intentId) internal returns (IntentStatus) {
+		CloseIntent storage intent = IntentStorage.layout().closeIntents[intentId];
+		require(intent.status == IntentStatus.PENDING, "PartyAFacet: Invalid state");
+		require(IntentStorage.layout().trades[intent.tradeId].partyA == msg.sender, "PartyAFacet: Should be partyA of Intent");
+		if (block.timestamp > intent.deadline) {
+			LibIntent.expireCloseIntent(intentId);
+			return IntentStatus.EXPIRED;
+		} else {
+			intent.statusModifyTimestamp = block.timestamp;
+			intent.status = IntentStatus.CANCEL_PENDING;
+			return IntentStatus.CANCEL_PENDING;
+		}
+	}
 
-    function sendCloseIntent(
-        uint256 tradeId,
-        uint256 price,
-        uint256 quantity,
-        uint256 deadline
-    ) internal returns (uint256 intentId) {
-        IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-        Trade storage trade = intentLayout.trades[tradeId];
+	function sendCloseIntent(uint256 tradeId, uint256 price, uint256 quantity, uint256 deadline) internal returns (uint256 intentId) {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		Trade storage trade = intentLayout.trades[tradeId];
 
-        require(
-            trade.status == TradeStatus.OPENED,
-            "PartyAFacet: Invalid state"
-        );
-        require(deadline >= block.timestamp, "PartyAFacet: Low deadline");
+		require(trade.status == TradeStatus.OPENED, "PartyAFacet: Invalid state");
+		require(deadline >= block.timestamp, "PartyAFacet: Low deadline");
 
-        require(
-            LibIntent.getAvailableAmountToClose(trade.id) >= quantity,
-            "PartyAFacet: Invalid quantity"
-        );
-        require(
-            trade.activeCloseIntentIds.length <
-                AppStorage.layout().maxCloseOrdersLength,
-            "PartyAFacet: Too many close orders"
-        );
+		require(LibIntent.getAvailableAmountToClose(trade.id) >= quantity, "PartyAFacet: Invalid quantity");
+		require(trade.activeCloseIntentIds.length < AppStorage.layout().maxCloseOrdersLength, "PartyAFacet: Too many close orders");
 
-        // create intent.
-        intentId = ++intentLayout.lastCloseIntentId;
-        CloseIntent memory intent = CloseIntent({
-            id: intentId,
-            tradeId: tradeId,
-            price: price,
-            quantity: quantity,
-            filledAmount: 0,
-            status: IntentStatus.PENDING,
-            createTimestamp: block.timestamp,
-            statusModifyTimestamp: block.timestamp,
-            deadline: deadline
-        });
+		// create intent.
+		intentId = ++intentLayout.lastCloseIntentId;
+		CloseIntent memory intent = CloseIntent({
+			id: intentId,
+			tradeId: tradeId,
+			price: price,
+			quantity: quantity,
+			filledAmount: 0,
+			status: IntentStatus.PENDING,
+			createTimestamp: block.timestamp,
+			statusModifyTimestamp: block.timestamp,
+			deadline: deadline
+		});
 
-        intentLayout.closeIntents[intentId] = intent;
-        trade.activeCloseIntentIds.push(intent.id);
-        intentLayout.closeIntentIdsOf[trade.id].push(intentId);
-        trade.closePendingAmount += quantity;
-    }
+		intentLayout.closeIntents[intentId] = intent;
+		trade.activeCloseIntentIds.push(intent.id);
+		intentLayout.closeIntentIdsOf[trade.id].push(intentId);
+		trade.closePendingAmount += quantity;
+	}
 }

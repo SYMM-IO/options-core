@@ -11,99 +11,60 @@ import "../storages/IntentStorage.sol";
 import "../libraries/LibAccessibility.sol";
 
 abstract contract Accessibility {
-    modifier onlyPartyB() {
-        require(
-            AppStorage.layout().partyBConfigs[msg.sender].isActive,
-            "Accessibility: Should be partyB"
-        );
-        _;
-    }
+	modifier onlyPartyB() {
+		require(AppStorage.layout().partyBConfigs[msg.sender].isActive, "Accessibility: Should be partyB");
+		_;
+	}
 
-    modifier notPartyB() {
-        require(
-            !AppStorage.layout().partyBConfigs[msg.sender].isActive,
-            "Accessibility: Shouldn't be partyB"
-        );
-        _;
-    }
+	modifier notPartyB() {
+		require(!AppStorage.layout().partyBConfigs[msg.sender].isActive, "Accessibility: Shouldn't be partyB");
+		_;
+	}
 
-    modifier userNotPartyB(address user) {
-        require(
-            !AppStorage.layout().partyBConfigs[user].isActive,
-            "Accessibility: Shouldn't be partyB"
-        );
-        _;
-    }
+	modifier userNotPartyB(address user) {
+		require(!AppStorage.layout().partyBConfigs[user].isActive, "Accessibility: Shouldn't be partyB");
+		_;
+	}
 
-    modifier onlyRole(bytes32 role) {
-        require(
-            LibAccessibility.hasRole(msg.sender, role),
-            "Accessibility: Must has role"
-        );
-        _;
-    }
+	modifier onlyRole(bytes32 role) {
+		require(LibAccessibility.hasRole(msg.sender, role), "Accessibility: Must has role");
+		_;
+	}
 
-    modifier onlyPartyAOfTrade(uint256 tradeId) {
-        Trade storage trade = IntentStorage.layout().trades[tradeId];
-        require(
-            trade.partyA == msg.sender,
-            "Accessibility: Should be partyA of Trade"
-        );
-        _;
-    }
+	modifier onlyPartyAOfTrade(uint256 tradeId) {
+		Trade storage trade = IntentStorage.layout().trades[tradeId];
+		require(trade.partyA == msg.sender, "Accessibility: Should be partyA of Trade");
+		_;
+	}
 
-    modifier onlyPartyBOfOpenIntent(uint256 intentId) {
-        OpenIntent storage intent = IntentStorage.layout().openIntents[
-            intentId
-        ];
-        require(
-            intent.partyB == msg.sender,
-            "Accessibility: Should be partyB of Intent"
-        );
-        _;
-    }
+	modifier onlyPartyBOfOpenIntent(uint256 intentId) {
+		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
+		require(intent.partyB == msg.sender, "Accessibility: Should be partyB of Intent");
+		_;
+	}
 
-    modifier onlyPartyBOfTrade(uint256 tradeId) {
-        Trade storage trade = IntentStorage.layout().trades[tradeId];
-        require(
-            trade.partyB == msg.sender,
-            "Accessibility: Should be partyB of Trade"
-        );
-        _;
-    }
+	modifier onlyPartyBOfTrade(uint256 tradeId) {
+		Trade storage trade = IntentStorage.layout().trades[tradeId];
+		require(trade.partyB == msg.sender, "Accessibility: Should be partyB of Trade");
+		_;
+	}
 
-    modifier onlyPartyBOfCloseIntent(uint256 intentId) {
-        Trade storage trade = IntentStorage.layout().trades[
-            IntentStorage.layout().closeIntents[intentId].tradeId
-        ];
+	modifier onlyPartyBOfCloseIntent(uint256 intentId) {
+		Trade storage trade = IntentStorage.layout().trades[IntentStorage.layout().closeIntents[intentId].tradeId];
 
-        require(
-            trade.partyB == msg.sender,
-            "Accessibility: Should be partyA of Intent"
-        );
-        _;
-    }
+		require(trade.partyB == msg.sender, "Accessibility: Should be partyA of Intent");
+		_;
+	}
 
-    modifier notSuspended(address user) {
-        require(
-            !AccountStorage.layout().suspendedAddresses[user],
-            "Accessibility: Sender is Suspended"
-        );
-        _;
-    }
-   
-    modifier notSuspendedWithdrawal(uint256 withdrawId) {
-        Withdraw storage withdrawObject = AccountStorage.layout().withdraws[
-            withdrawId
-        ];
-        require(
-            !AccountStorage.layout().suspendedAddresses[withdrawObject.user],
-            "Accessibility: User is Suspended"
-        );
-        require(
-            !AccountStorage.layout().suspendedAddresses[withdrawObject.to],
-            "Accessibility: Reciever is Suspended"
-        );
-        _;
-    }
+	modifier notSuspended(address user) {
+		require(!AccountStorage.layout().suspendedAddresses[user], "Accessibility: Sender is Suspended");
+		_;
+	}
+
+	modifier notSuspendedWithdrawal(uint256 withdrawId) {
+		Withdraw storage withdrawObject = AccountStorage.layout().withdraws[withdrawId];
+		require(!AccountStorage.layout().suspendedAddresses[withdrawObject.user], "Accessibility: User is Suspended");
+		require(!AccountStorage.layout().suspendedAddresses[withdrawObject.to], "Accessibility: Reciever is Suspended");
+		_;
+	}
 }

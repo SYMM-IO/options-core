@@ -9,56 +9,35 @@ import "../../storages/AppStorage.sol";
 import "../../libraries/LibIntent.sol";
 
 library ForceActionsFacetImpl {
-    function forceCancelOpenIntent(uint256 intentId) internal {
-        AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-        AppStorage.Layout storage appLayout = AppStorage.layout();
-        OpenIntent storage intent = IntentStorage.layout().openIntents[
-            intentId
-        ];
-        Symbol memory symbol = SymbolStorage.layout().symbols[intent.symbolId];
+	function forceCancelOpenIntent(uint256 intentId) internal {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		AppStorage.Layout storage appLayout = AppStorage.layout();
+		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
+		Symbol memory symbol = SymbolStorage.layout().symbols[intent.symbolId];
 
-        require(
-            intent.status == IntentStatus.CANCEL_PENDING,
-            "PartyAFacet: Invalid state"
-        );
-        require(
-            block.timestamp >
-                intent.statusModifyTimestamp +
-                    appLayout.forceCancelOpenIntentTimeout,
-            "PartyAFacet: Cooldown not reached"
-        );
-        intent.statusModifyTimestamp = block.timestamp;
-        intent.status = IntentStatus.CANCELED;
-        accountLayout.lockedBalances[intent.partyA][symbol.collateral] -= LibIntent
-            .getPremiumOfOpenIntent(intentId);
+		require(intent.status == IntentStatus.CANCEL_PENDING, "PartyAFacet: Invalid state");
+		require(block.timestamp > intent.statusModifyTimestamp + appLayout.forceCancelOpenIntentTimeout, "PartyAFacet: Cooldown not reached");
+		intent.statusModifyTimestamp = block.timestamp;
+		intent.status = IntentStatus.CANCELED;
+		accountLayout.lockedBalances[intent.partyA][symbol.collateral] -= LibIntent.getPremiumOfOpenIntent(intentId);
 
-        // send trading Fee back to partyA
-        uint256 fee = LibIntent.getTradingFee(intent.id);
-        accountLayout.balances[intent.partyA][symbol.collateral] += fee;
+		// send trading Fee back to partyA
+		uint256 fee = LibIntent.getTradingFee(intent.id);
+		accountLayout.balances[intent.partyA][symbol.collateral] += fee;
 
-        LibIntent.removeFromPartyAOpenIntents(intent.id);
-        LibIntent.removeFromPartyBOpenIntents(intent.id);
-    }
+		LibIntent.removeFromPartyAOpenIntents(intent.id);
+		LibIntent.removeFromPartyBOpenIntents(intent.id);
+	}
 
-    function forceCancelCloseIntent(uint256 intentId) internal {
-        AppStorage.Layout storage appLayout = AppStorage.layout();
-        CloseIntent storage intent = IntentStorage.layout().closeIntents[
-            intentId
-        ];
-        require(
-            intent.status == IntentStatus.CANCEL_PENDING,
-            "PartyAFacet: Invalid state"
-        );
-        require(
-            block.timestamp >
-                intent.statusModifyTimestamp +
-                    appLayout.forceCancelCloseIntentTimeout,
-            "PartyAFacet: Cooldown not reached"
-        );
+	function forceCancelCloseIntent(uint256 intentId) internal {
+		AppStorage.Layout storage appLayout = AppStorage.layout();
+		CloseIntent storage intent = IntentStorage.layout().closeIntents[intentId];
+		require(intent.status == IntentStatus.CANCEL_PENDING, "PartyAFacet: Invalid state");
+		require(block.timestamp > intent.statusModifyTimestamp + appLayout.forceCancelCloseIntentTimeout, "PartyAFacet: Cooldown not reached");
 
-        intent.statusModifyTimestamp = block.timestamp;
-        intent.status = IntentStatus.CANCELED;
+		intent.statusModifyTimestamp = block.timestamp;
+		intent.status = IntentStatus.CANCELED;
 
-        LibIntent.removeFromActiveCloseIntents(intentId);
-    }
+		LibIntent.removeFromActiveCloseIntents(intentId);
+	}
 }

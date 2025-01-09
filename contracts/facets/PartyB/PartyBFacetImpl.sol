@@ -13,280 +13,161 @@ import "../../storages/AccountStorage.sol";
 import "../../storages/SymbolStorage.sol";
 
 library PartyBFacetImpl {
-    function lockOpenIntent(uint256 intentId) internal {
-        IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-        OpenIntent storage intent = intentLayout.openIntents[intentId];
-        Symbol storage symbol = SymbolStorage.layout().symbols[intent.symbolId];
+	function lockOpenIntent(uint256 intentId) internal {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		OpenIntent storage intent = intentLayout.openIntents[intentId];
+		Symbol storage symbol = SymbolStorage.layout().symbols[intent.symbolId];
 
-        require(
-            intent.status == IntentStatus.PENDING,
-            "PartyBFacet: Invalid state"
-        );
-        require(
-            block.timestamp <= intent.deadline,
-            "PartyBFacet: Intent is expired"
-        );
-        require(symbol.isValid, "PartyBFacet: Symbol is not valid");
-        require(
-            block.timestamp <= intent.expirationTimestamp,
-            "PartyBFacet: Requested expiration has been passed"
-        );
-        require(
-            intentId <= intentLayout.lastOpenIntentId,
-            "PartyBFacet: Invalid intentId"
-        );
-        require(
-            AppStorage.layout().partyBConfigs[msg.sender].oracleId ==
-                symbol.oracleId
-        );
+		require(intent.status == IntentStatus.PENDING, "PartyBFacet: Invalid state");
+		require(block.timestamp <= intent.deadline, "PartyBFacet: Intent is expired");
+		require(symbol.isValid, "PartyBFacet: Symbol is not valid");
+		require(block.timestamp <= intent.expirationTimestamp, "PartyBFacet: Requested expiration has been passed");
+		require(intentId <= intentLayout.lastOpenIntentId, "PartyBFacet: Invalid intentId");
+		require(AppStorage.layout().partyBConfigs[msg.sender].oracleId == symbol.oracleId);
 
-        bool isValidPartyB;
-        if (intent.partyBsWhiteList.length == 0) {
-            require(
-                msg.sender != intent.partyA,
-                "PartyBFacet: PartyA can't be partyB too"
-            );
-            isValidPartyB = true;
-        } else {
-            for (
-                uint8 index = 0;
-                index < intent.partyBsWhiteList.length;
-                index++
-            ) {
-                if (msg.sender == intent.partyBsWhiteList[index]) {
-                    isValidPartyB = true;
-                    break;
-                }
-            }
-        }
-        require(isValidPartyB, "PartyBFacet: Sender isn't whitelisted");
-        intent.statusModifyTimestamp = block.timestamp;
-        intent.status = IntentStatus.LOCKED;
-        intent.partyB = msg.sender;
-        LibIntent.addToPartyBOpenIntents(intentId);
-        intentLayout.openIntentsOf[intent.partyB].push(intent.id);
-    }
+		bool isValidPartyB;
+		if (intent.partyBsWhiteList.length == 0) {
+			require(msg.sender != intent.partyA, "PartyBFacet: PartyA can't be partyB too");
+			isValidPartyB = true;
+		} else {
+			for (uint8 index = 0; index < intent.partyBsWhiteList.length; index++) {
+				if (msg.sender == intent.partyBsWhiteList[index]) {
+					isValidPartyB = true;
+					break;
+				}
+			}
+		}
+		require(isValidPartyB, "PartyBFacet: Sender isn't whitelisted");
+		intent.statusModifyTimestamp = block.timestamp;
+		intent.status = IntentStatus.LOCKED;
+		intent.partyB = msg.sender;
+		LibIntent.addToPartyBOpenIntents(intentId);
+		intentLayout.openIntentsOf[intent.partyB].push(intent.id);
+	}
 
-    function unlockOpenIntent(
-        uint256 intentId
-    ) internal returns (IntentStatus) {
-        IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-        OpenIntent storage intent = intentLayout.openIntents[intentId];
+	function unlockOpenIntent(uint256 intentId) internal returns (IntentStatus) {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		OpenIntent storage intent = intentLayout.openIntents[intentId];
 
-        require(
-            intent.status == IntentStatus.LOCKED,
-            "PartyBFacet: Invalid state"
-        );
+		require(intent.status == IntentStatus.LOCKED, "PartyBFacet: Invalid state");
 
-        if (block.timestamp > intent.deadline) {
-            LibIntent.expireOpenIntent(intentId);
-            return IntentStatus.EXPIRED;
-        } else {
-            intent.statusModifyTimestamp = block.timestamp;
-            intent.status = IntentStatus.PENDING;
-            LibIntent.removeFromPartyBOpenIntents(intentId);
-            intent.partyB = address(0);
-            return IntentStatus.PENDING;
-        }
-    }
+		if (block.timestamp > intent.deadline) {
+			LibIntent.expireOpenIntent(intentId);
+			return IntentStatus.EXPIRED;
+		} else {
+			intent.statusModifyTimestamp = block.timestamp;
+			intent.status = IntentStatus.PENDING;
+			LibIntent.removeFromPartyBOpenIntents(intentId);
+			intent.partyB = address(0);
+			return IntentStatus.PENDING;
+		}
+	}
 
-    function acceptCancelOpenIntent(uint256 intentId) internal {
-        AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+	function acceptCancelOpenIntent(uint256 intentId) internal {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
-        OpenIntent storage intent = IntentStorage.layout().openIntents[
-            intentId
-        ];
-        Symbol memory symbol = SymbolStorage.layout().symbols[intent.symbolId];
-        require(
-            intent.status == IntentStatus.CANCEL_PENDING,
-            "PartyBFacet: Invalid state"
-        );
-        intent.statusModifyTimestamp = block.timestamp;
-        intent.status = IntentStatus.CANCELED;
-        accountLayout.lockedBalances[intent.partyA][
-            symbol.collateral
-        ] -= LibIntent.getPremiumOfOpenIntent(intentId);
+		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
+		Symbol memory symbol = SymbolStorage.layout().symbols[intent.symbolId];
+		require(intent.status == IntentStatus.CANCEL_PENDING, "PartyBFacet: Invalid state");
+		intent.statusModifyTimestamp = block.timestamp;
+		intent.status = IntentStatus.CANCELED;
+		accountLayout.lockedBalances[intent.partyA][symbol.collateral] -= LibIntent.getPremiumOfOpenIntent(intentId);
 
-        // send trading Fee back to partyA
-        uint256 fee = LibIntent.getTradingFee(intentId);
-        accountLayout.balances[intent.partyA][symbol.collateral] += fee;
+		// send trading Fee back to partyA
+		uint256 fee = LibIntent.getTradingFee(intentId);
+		accountLayout.balances[intent.partyA][symbol.collateral] += fee;
 
-        LibIntent.removeFromPartyAOpenIntents(intentId);
-        LibIntent.removeFromPartyBOpenIntents(intentId);
-    }
+		LibIntent.removeFromPartyAOpenIntents(intentId);
+		LibIntent.removeFromPartyBOpenIntents(intentId);
+	}
 
-    function acceptCancelCloseIntent(uint256 intentId) internal {
-        IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-        CloseIntent storage intent = intentLayout.closeIntents[intentId];
+	function acceptCancelCloseIntent(uint256 intentId) internal {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		CloseIntent storage intent = intentLayout.closeIntents[intentId];
 
-        require(
-            intent.status == IntentStatus.CANCEL_PENDING,
-            "LibIntent: Invalid state"
-        );
+		require(intent.status == IntentStatus.CANCEL_PENDING, "LibIntent: Invalid state");
 
-        intent.statusModifyTimestamp = block.timestamp;
-        intent.status = IntentStatus.CANCELED;
-        LibIntent.removeFromActiveCloseIntents(intentId);
-    }
+		intent.statusModifyTimestamp = block.timestamp;
+		intent.status = IntentStatus.CANCELED;
+		LibIntent.removeFromActiveCloseIntents(intentId);
+	}
 
-    function fillOpenIntent(
-        uint256 intentId,
-        uint256 quantity,
-        uint256 price
-    ) internal returns (uint256 tradeId) {
-        AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-        AppStorage.Layout storage appLayout = AppStorage.layout();
+	function fillOpenIntent(uint256 intentId, uint256 quantity, uint256 price) internal returns (uint256 tradeId) {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		AppStorage.Layout storage appLayout = AppStorage.layout();
 
-        OpenIntent storage intent = IntentStorage.layout().openIntents[
-            intentId
-        ];
+		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
 
-        require(
-            accountLayout.suspendedAddresses[intent.partyA] == false,
-            "PartyBFacet: PartyA is suspended"
-        );
-        require(
-            !accountLayout.suspendedAddresses[msg.sender],
-            "PartyBFacet: Sender is Suspended"
-        );
-        require(
-            !appLayout.partyBEmergencyStatus[intent.partyB],
-            "PartyBFacet: PartyB is in emergency mode"
-        );
-        require(
-            !appLayout.emergencyMode,
-            "PartyBFacet: System is in emergency mode"
-        );
+		require(accountLayout.suspendedAddresses[intent.partyA] == false, "PartyBFacet: PartyA is suspended");
+		require(!accountLayout.suspendedAddresses[msg.sender], "PartyBFacet: Sender is Suspended");
+		require(!appLayout.partyBEmergencyStatus[intent.partyB], "PartyBFacet: PartyB is in emergency mode");
+		require(!appLayout.emergencyMode, "PartyBFacet: System is in emergency mode");
 
-        tradeId = LibPartyB.fillOpenIntent(intentId, quantity, price);
-    }
+		tradeId = LibPartyB.fillOpenIntent(intentId, quantity, price);
+	}
 
-    function fillCloseIntent(
-        uint256 intentId,
-        uint256 quantity,
-        uint256 price
-    ) internal {
-        LibPartyB.fillCloseIntent(intentId, quantity, price);
-    }
+	function fillCloseIntent(uint256 intentId, uint256 quantity, uint256 price) internal {
+		LibPartyB.fillCloseIntent(intentId, quantity, price);
+	}
 
-    function expireTrade(
-        uint256 tradeId,
-        SettlementPriceSig memory sig
-    ) internal {
-        Trade storage trade = IntentStorage.layout().trades[tradeId];
-        Symbol storage symbol = SymbolStorage.layout().symbols[trade.symbolId];
-        LibMuon.verifySettlementPriceSig(sig);
+	function expireTrade(uint256 tradeId, SettlementPriceSig memory sig) internal {
+		Trade storage trade = IntentStorage.layout().trades[tradeId];
+		Symbol storage symbol = SymbolStorage.layout().symbols[trade.symbolId];
+		LibMuon.verifySettlementPriceSig(sig);
 
-        require(
-            !AppStorage.layout().liquidationStatus[trade.partyB][
-                symbol.collateral
-            ],
-            "PartyBFacet: PartyB is liquidated"
-        );
-        require(
-            sig.symbolId == trade.symbolId,
-            "PartyBFacet: Invalid symbolId"
-        );
-        require(
-            trade.status == TradeStatus.OPENED,
-            "PartyBFacet: Invalid trade state"
-        );
-        require(
-            block.timestamp > trade.expirationTimestamp,
-            "PartyBFacet: Trade isn't expired"
-        );
-        if (symbol.optionType == OptionType.PUT) {
-            require(
-                sig.settlementPrice >= trade.strikePrice,
-                "PartyBFacet: Invalid price"
-            );
-        } else {
-            require(
-                sig.settlementPrice <= trade.strikePrice,
-                "PartyBFacet: Invalid price"
-            );
-        }
-        trade.settledPrice = sig.settlementPrice;
+		require(
+			AppStorage.layout().liquidationDetails[trade.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
+			"PartyBFacet: PartyB is liquidated"
+		);
+		require(sig.symbolId == trade.symbolId, "PartyBFacet: Invalid symbolId");
+		require(trade.status == TradeStatus.OPENED, "PartyBFacet: Invalid trade state");
+		require(block.timestamp > trade.expirationTimestamp, "PartyBFacet: Trade isn't expired");
+		if (symbol.optionType == OptionType.PUT) {
+			require(sig.settlementPrice >= trade.strikePrice, "PartyBFacet: Invalid price");
+		} else {
+			require(sig.settlementPrice <= trade.strikePrice, "PartyBFacet: Invalid price");
+		}
+		trade.settledPrice = sig.settlementPrice;
 
-        LibIntent.closeTrade(
-            tradeId,
-            TradeStatus.EXPIRED,
-            IntentStatus.CANCELED
-        );
-    }
+		LibIntent.closeTrade(tradeId, TradeStatus.EXPIRED, IntentStatus.CANCELED);
+	}
 
-    function exerciseTrade(
-        uint256 tradeId,
-        SettlementPriceSig memory sig
-    ) internal {
-        AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-        Trade storage trade = IntentStorage.layout().trades[tradeId];
-        Symbol storage symbol = SymbolStorage.layout().symbols[trade.symbolId];
-        LibMuon.verifySettlementPriceSig(sig);
+	function exerciseTrade(uint256 tradeId, SettlementPriceSig memory sig) internal {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		Trade storage trade = IntentStorage.layout().trades[tradeId];
+		Symbol storage symbol = SymbolStorage.layout().symbols[trade.symbolId];
+		LibMuon.verifySettlementPriceSig(sig);
 
-        require(
-            sig.symbolId == trade.symbolId,
-            "PartyBFacet: Invalid symbolId"
-        );
-        require(
-            trade.status == TradeStatus.OPENED,
-            "PartyBFacet: Invalid trade state"
-        );
-        require(
-            block.timestamp > trade.expirationTimestamp,
-            "PartyBFacet: Trade isn't expired"
-        );
-        require(
-            !AppStorage.layout().liquidationStatus[trade.partyB][
-                symbol.collateral
-            ],
-            "PartyBFacet: PartyB is liquidated"
-        );
+		require(sig.symbolId == trade.symbolId, "PartyBFacet: Invalid symbolId");
+		require(trade.status == TradeStatus.OPENED, "PartyBFacet: Invalid trade state");
+		require(block.timestamp > trade.expirationTimestamp, "PartyBFacet: Trade isn't expired");
+		require(
+			AppStorage.layout().liquidationDetails[trade.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
+			"PartyBFacet: PartyB is liquidated"
+		);
 
-        uint256 pnl;
-        if (symbol.optionType == OptionType.PUT) {
-            require(
-                sig.settlementPrice < trade.strikePrice,
-                "PartyBFacet: Invalid price"
-            );
-            pnl =
-                ((trade.quantity - trade.closedAmountBeforeExpiration) *
-                    (trade.strikePrice - sig.settlementPrice)) /
-                1e18;
-        } else {
-            require(
-                sig.settlementPrice > trade.strikePrice,
-                "PartyBFacet: Invalid price"
-            );
-            pnl =
-                ((trade.quantity - trade.closedAmountBeforeExpiration) *
-                    (sig.settlementPrice - trade.strikePrice)) /
-                1e18;
-        }
-        uint256 exerciseFee;
-        {
-            uint256 cap = (trade.exerciseFee.cap * pnl) / 1e18;
-            uint256 fee = (trade.exerciseFee.rate *
-                sig.settlementPrice *
-                (trade.quantity - trade.closedAmountBeforeExpiration)) / 1e36;
-            exerciseFee = cap < fee ? cap : fee;
-        }
-        uint256 amountToTransfer = pnl - exerciseFee;
-        if (!symbol.isStableCoin) {
-            amountToTransfer = (amountToTransfer * 1e18) / sig.settlementPrice;
-        }
+		uint256 pnl;
+		if (symbol.optionType == OptionType.PUT) {
+			require(sig.settlementPrice < trade.strikePrice, "PartyBFacet: Invalid price");
+			pnl = ((trade.quantity - trade.closedAmountBeforeExpiration) * (trade.strikePrice - sig.settlementPrice)) / 1e18;
+		} else {
+			require(sig.settlementPrice > trade.strikePrice, "PartyBFacet: Invalid price");
+			pnl = ((trade.quantity - trade.closedAmountBeforeExpiration) * (sig.settlementPrice - trade.strikePrice)) / 1e18;
+		}
+		uint256 exerciseFee;
+		{
+			uint256 cap = (trade.exerciseFee.cap * pnl) / 1e18;
+			uint256 fee = (trade.exerciseFee.rate * sig.settlementPrice * (trade.quantity - trade.closedAmountBeforeExpiration)) / 1e36;
+			exerciseFee = cap < fee ? cap : fee;
+		}
+		uint256 amountToTransfer = pnl - exerciseFee;
+		if (!symbol.isStableCoin) {
+			amountToTransfer = (amountToTransfer * 1e18) / sig.settlementPrice;
+		}
 
-        accountLayout.balances[trade.partyA][
-            symbol.collateral
-        ] += amountToTransfer;
-        accountLayout.balances[trade.partyB][
-            symbol.collateral
-        ] -= amountToTransfer;
+		accountLayout.balances[trade.partyA][symbol.collateral] += amountToTransfer;
+		accountLayout.balances[trade.partyB][symbol.collateral] -= amountToTransfer;
 
-        LibIntent.closeTrade(
-            tradeId,
-            TradeStatus.EXERCISED,
-            IntentStatus.CANCELED
-        );
-    }
+		LibIntent.closeTrade(tradeId, TradeStatus.EXERCISED, IntentStatus.CANCELED);
+	}
 }
