@@ -80,7 +80,6 @@ struct CloseIntent {
     uint256 deadline;
 }
 
-
 library IntentStorage {
     bytes32 internal constant INTENT_STORAGE_SLOT =
         keccak256("diamond.standard.storage.intent");
@@ -97,6 +96,7 @@ library IntentStorage {
         mapping(uint256 => Trade) trades;
         mapping(address => uint256[]) tradesOf;
         mapping(address => uint256[]) activeTradesOf;
+        mapping(address => mapping(address => uint256[])) activeTradesOfPartyB; // partyBAddress => collateral => trades
         mapping(uint256 => uint256) partyATradesIndex;
         mapping(uint256 => uint256) partyBTradesIndex;
         uint256 lastTradeId;

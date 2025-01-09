@@ -131,17 +131,17 @@ library LibIntent {
     function addToActiveTrades(uint256 tradeId) internal {
         IntentStorage.Layout storage intentLayout = IntentStorage.layout();
         Trade storage trade = intentLayout.trades[tradeId];
-
+        Symbol memory symbol = SymbolStorage.layout().symbols[trade.symbolId];
         intentLayout.tradesOf[trade.partyA].push(trade.id);
         intentLayout.tradesOf[trade.partyB].push(trade.id);
         intentLayout.activeTradesOf[trade.partyA].push(trade.id);
-        intentLayout.activeTradesOf[trade.partyB].push(trade.id);
+        intentLayout.activeTradesOfPartyB[trade.partyB][symbol.collateral].push(trade.id);
 
         intentLayout.partyATradesIndex[trade.id] =
             intentLayout.activeTradesOf[trade.partyA].length -
             1;
         intentLayout.partyBTradesIndex[trade.id] =
-            intentLayout.activeTradesOf[trade.partyB].length -
+            intentLayout.activeTradesOfPartyB[trade.partyB][symbol.collateral].length -
             1;
     }
 
@@ -152,6 +152,8 @@ library LibIntent {
     function removeFromActiveTrades(uint256 tradeId) internal {
         IntentStorage.Layout storage intentLayout = IntentStorage.layout();
         Trade storage trade = intentLayout.trades[tradeId];
+        Symbol memory symbol = SymbolStorage.layout().symbols[trade.symbolId];
+
         uint256 indexOfPartyATrade = intentLayout.partyATradesIndex[trade.id];
         uint256 indexOfPartyBTrade = intentLayout.partyBTradesIndex[trade.id];
         uint256 lastIndex = intentLayout.activeTradesOf[trade.partyA].length -
@@ -164,14 +166,14 @@ library LibIntent {
         ] = indexOfPartyATrade;
         intentLayout.activeTradesOf[trade.partyA].pop();
 
-        lastIndex = intentLayout.activeTradesOf[trade.partyB].length - 1;
-        intentLayout.activeTradesOf[trade.partyB][
+        lastIndex = intentLayout.activeTradesOfPartyB[trade.partyB][symbol.collateral].length - 1;
+        intentLayout.activeTradesOfPartyB[trade.partyB][symbol.collateral][
             indexOfPartyBTrade
-        ] = intentLayout.activeTradesOf[trade.partyB][lastIndex];
+        ] = intentLayout.activeTradesOfPartyB[trade.partyB][symbol.collateral][lastIndex];
         intentLayout.partyBTradesIndex[
-            intentLayout.activeTradesOf[trade.partyB][lastIndex]
+            intentLayout.activeTradesOfPartyB[trade.partyB][symbol.collateral][lastIndex]
         ] = indexOfPartyBTrade;
-        intentLayout.activeTradesOf[trade.partyB].pop();
+        intentLayout.activeTradesOfPartyB[trade.partyB][symbol.collateral].pop();
 
         intentLayout.partyATradesIndex[trade.id] = 0;
         intentLayout.partyBTradesIndex[trade.id] = 0;
