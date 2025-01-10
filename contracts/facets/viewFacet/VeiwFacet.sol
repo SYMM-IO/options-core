@@ -11,10 +11,21 @@ contract ViewFacet/* is IViewFacet */{
 	 * @notice Returns the balance for a specified user and collateral type.
 	 * @param user The address of the user.
      * @param collateral The address of the collateral type.
-	 * @return The balance of the user.
+	 * @return balance The balance of the user and specic collateral type.
 	 */
 	function balanceOf(address user, address collateral) external view returns (uint256) {
 		return AccountStorage.layout().balances[user][collateral];
+	}
+
+
+	/**
+	 * @notice Returns the locked balance for a specific user and collateral type.
+	 * @param user The address of the user.
+	 * @param collateral The address of the collateral type.
+	 * @return lockedBalances The locked balance of the user and specic collateral type.
+	 */
+	function lockedBalancesOf(address user, address collateral) external view returns(uint256){
+		return AccountStorage.layout().lockedBalances[partyA][collateral];
 	}
 
     /**
@@ -50,5 +61,23 @@ contract ViewFacet/* is IViewFacet */{
 			intentLayout.tradesOf[partyA]
 			// intentLayout.closeIntentIdsOf TODO 3: consider adding this if it's necessary
 		);
+	}
+
+	/**
+	 * @notice Returns the Withdraw object. You can read Withdraw object attributes at AccountFact:Withdraw
+	 * @param id The id of the Withdraw object.
+	 * @return Withdraw The Withdraw object associated with the given `id`.
+	 */
+	function getWithdraw(uint256 id) external view returns(Withdraw memory){
+		return accountLayout.withdraws[id];
+	}
+
+	/**
+	 @notice Checks whether the user is suspned or not.
+	 @param user The address of the user.
+	 @return isSuspended A boolean value(true/false) to show that the `user` is suspended or not.
+	 */
+	function isSuspended(address user) external view returns(bool){
+		return accountLayout.suspendedAddresses[user];
 	}
 }
