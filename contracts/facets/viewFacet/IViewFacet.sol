@@ -23,5 +23,18 @@ interface IViewFacet{
 
 	function isSuspended(address user) external view returns(bool);
 	
+
+	///////////////////////////////////////////
+
+	// Symbols
+	function getSymbol(uint256 symbolId) external view returns (Symbol memory);
+
+	function getSymbols(uint256 start, uint256 size) external view returns (Symbol[] memory);
+
+	function symbolsByOpenIntentId(uint256[] memory openIntentIds) external view returns (Symbol[] memory);
+
+	function symbolNameByTradeId(uint256[] memory tradeIds) external view returns (string[] memory);
+
+	function symbolNameById(uint256[] memory symbolIds) external view returns (string[] memory);
 	// Intents
 }

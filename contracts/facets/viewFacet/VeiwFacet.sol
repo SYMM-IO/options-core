@@ -5,6 +5,7 @@
 
 import "../../storages/AccountStorage.sol";
 import "../../storages/IntentStorage.sol";
+import "../../storages/SymbolStorage.sol";
 
 contract ViewFacet/* is IViewFacet */{
     /**
@@ -69,7 +70,7 @@ contract ViewFacet/* is IViewFacet */{
 	 * @return Withdraw The Withdraw object associated with the given `id`.
 	 */
 	function getWithdraw(uint256 id) external view returns(Withdraw memory){
-		return accountLayout.withdraws[id];
+		return AccountStorage.layout().withdraws[id];
 	}
 
 	/**
@@ -78,6 +79,72 @@ contract ViewFacet/* is IViewFacet */{
 	 @return isSuspended A boolean value(true/false) to show that the `user` is suspended or not.
 	 */
 	function isSuspended(address user) external view returns(bool){
-		return accountLayout.suspendedAddresses[user];
+		return AccountStorage.layout().suspendedAddresses[user];
+	}
+
+	/**
+	 * @notice Returns the details of a symbol by its ID.
+	 * @param symbolId The ID of the symbol.
+	 * @return symbol The details of the symbol.
+	 */
+	function getSymbol(uint256 symbolId) external view returns (Symbol memory) {
+		return SymbolStorage.layout().symbols[symbolId];
+	}
+
+	/**
+	 * @notice Returns an array of symbols starting from a specific index.
+	 * @param start The starting index.
+	 * @param size The size of the array.
+	 * @return symbols An array of symbols.
+	 */
+	function getSymbols(uint256 start, uint256 size) external view returns (Symbol[] memory) {
+		SymbolStorage.Layout storage symbolLayout = SymbolStorage.layout();
+		if (symbolLayout.lastId < start + size) {
+			size = symbolLayout.lastId - start;
+		}
+		Symbol[] memory symbols = new Symbol[](size);
+		for (uint256 i = start; i < start + size; i++) {
+			symbols[i - start] = symbolLayout.symbols[i + 1];
+		}
+		return symbols;
+	}
+
+	/**
+	 * @notice Returns an array of symbols associated with an array of openIntent IDs.
+	 * @param quoteIds An array of openIntent IDs.
+	 * @return symbols An array of symbols.
+	 */
+	function symbolsByOpenIntentId(uint256[] memory openIntentIds) external view returns (Symbol[] memory) {
+		Symbol[] memory symbols = new Symbol[](quoteIds.length);
+		for (uint256 i = 0; i < quoteIds.length; i++) {
+			symbols[i] = SymbolStorage.layout().symbols[IntentStorage.layout().openIntents[openIntentIds[i]].symbolId];
+		}
+		return symbols;
+	}
+
+	/**
+	 * @notice Returns an array of symbol names associated with an array of trade IDs.
+	 * @param quoteIds An array of trade IDs.
+	 * @return symbols An array of symbol names.
+	 */
+	function symbolNameByTradeId(uint256[] memory tradeIds) external view returns (string[] memory) {
+		string[] memory symbols = new string[](quoteIds.length);
+		for (uint256 i = 0; i < quoteIds.length; i++) {
+			symbols[i] = SymbolStorage.layout().symbols[IntentStorage.layout().trades[tradeIds[i]].symbolId];
+		}
+		return symbols;
+	}
+
+	/**
+	 * @notice Returns an array of symbol names associated with an array of symbol IDs.
+	 * @param symbolIds An array of symbol IDs.
+	 * @return symbolNames An array of symbol names.
+	 */
+	function symbolNameById(uint256[] memory symbolIds) external view returns (string[] memory) {
+		string[] memory symbolNames = new string[](symbolIds.length);
+		for (uint256 i = 0; i < symbolIds.length; i++) {
+			symbolNames[i] = SymbolStorage.layout().symbols[symbolIds[i]].name;
+		}
+		return symbolNames;
 	}
 }
