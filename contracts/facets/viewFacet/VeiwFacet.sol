@@ -26,7 +26,7 @@ contract ViewFacet/* is IViewFacet */{
 	 * @return lockedBalances The locked balance of the user and specic collateral type.
 	 */
 	function lockedBalancesOf(address user, address collateral) external view returns(uint256){
-		return AccountStorage.layout().lockedBalances[partyA][collateral];
+		return AccountStorage.layout().lockedBalances[user][collateral];
 	}
 
     /**
@@ -99,8 +99,8 @@ contract ViewFacet/* is IViewFacet */{
 	 */
 	function getSymbols(uint256 start, uint256 size) external view returns (Symbol[] memory) {
 		SymbolStorage.Layout storage symbolLayout = SymbolStorage.layout();
-		if (symbolLayout.lastId < start + size) {
-			size = symbolLayout.lastId - start;
+		if (symbolLayout.lastSymbolId < start + size) {
+			size = symbolLayout.lastSymbolId - start;
 		}
 		Symbol[] memory symbols = new Symbol[](size);
 		for (uint256 i = start; i < start + size; i++) {
@@ -111,12 +111,12 @@ contract ViewFacet/* is IViewFacet */{
 
 	/**
 	 * @notice Returns an array of symbols associated with an array of openIntent IDs.
-	 * @param quoteIds An array of openIntent IDs.
+	 * @param openIntentIds An array of openIntent IDs.
 	 * @return symbols An array of symbols.
 	 */
 	function symbolsByOpenIntentId(uint256[] memory openIntentIds) external view returns (Symbol[] memory) {
-		Symbol[] memory symbols = new Symbol[](quoteIds.length);
-		for (uint256 i = 0; i < quoteIds.length; i++) {
+		Symbol[] memory symbols = new Symbol[](openIntentIds.length);
+		for (uint256 i = 0; i < openIntentIds.length; i++) {
 			symbols[i] = SymbolStorage.layout().symbols[IntentStorage.layout().openIntents[openIntentIds[i]].symbolId];
 		}
 		return symbols;
@@ -124,13 +124,13 @@ contract ViewFacet/* is IViewFacet */{
 
 	/**
 	 * @notice Returns an array of symbol names associated with an array of trade IDs.
-	 * @param quoteIds An array of trade IDs.
+	 * @param tradeIds An array of trade IDs.
 	 * @return symbols An array of symbol names.
 	 */
 	function symbolNameByTradeId(uint256[] memory tradeIds) external view returns (string[] memory) {
-		string[] memory symbols = new string[](quoteIds.length);
-		for (uint256 i = 0; i < quoteIds.length; i++) {
-			symbols[i] = SymbolStorage.layout().symbols[IntentStorage.layout().trades[tradeIds[i]].symbolId];
+		string[] memory symbols = new string[](tradeIds.length);
+		for (uint256 i = 0; i < tradeIds.length; i++) {
+			symbols[i] = SymbolStorage.layout().symbols[IntentStorage.layout().trades[tradeIds[i]].symbolId].name;
 		}
 		return symbols;
 	}
@@ -147,4 +147,83 @@ contract ViewFacet/* is IViewFacet */{
 		}
 		return symbolNames;
 	}
+
+	/**
+	 * @notice Returns the details of a openIntent by its ID.
+	 * @param openIntentId The ID of the openIntent.
+	 * @return openIntent The details of the openIntent.
+	 */
+	function getOpenIntent(uint256 openIntentId) external view returns (OpenIntent memory) {
+		return IntentStorage.layout().openIntents[openIntentId];
+	}
+
+	/**
+	 * @notice Returns an array of openIntents associated with a parent openIntent ID.
+	 * @param openIntentId The parent openIntent ID.
+	 * @param size The size of the array.
+	 * @return openIntents An array of openIntents.
+	 */
+	function getOpenIntentsByParent(uint256 openIntentId, uint256 size) external view returns (OpenIntent[] memory) {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		OpenIntent[] memory openIntents = new OpenIntent[](size);
+		OpenIntent memory openIntent = intentLayout.openIntents[openIntentId];
+		openIntents[0] = openIntent;
+		for (uint256 i = 1; i < size; i++) {
+			if (openIntent.parentId == 0) {
+				break;
+			}
+			openIntent = intentLayout.openIntents[openIntent.parentId];
+			openIntents[i] = openIntent;
+		}
+		return openIntents;
+	}
+
+	/**
+	 * @notice Returns an array of openIntent IDs associated with a party A address.
+	 * @param partyA The address of party A.
+	 * @param start The starting index.
+	 * @param size The size of the array.
+	 * @return openIntentIds An array of openIntent IDs.
+	 */
+	function openIntentIdsOf(address partyA, uint256 start, uint256 size) external view returns (uint256[] memory) {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		if (intentLayout.openIntentsOf[partyA].length < start + size) {
+			size = intentLayout.openIntentsOf[partyA].length - start;
+		}
+		uint256[] memory openIntentIds = new uint256[](size);
+		for (uint256 i = start; i < start + size; i++) {
+			openIntentIds[i - start] = intentLayout.openIntentIdsOf[partyA][i];
+		}
+		return openIntentIds;
+	}
+
+	/**
+	 * @notice Returns an array of openIntent associated with a party A address.
+	 * @param partyA The address of party A.
+	 * @param start The starting index.
+	 * @param size The size of the array.
+	 * @return openIntents An array of openIntents.
+	 */
+	function getOpenIntents(address partyA, uint256 start, uint256 size) external view returns (OpenIntent[] memory) {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		if (intentLayout.openIntentsOf[partyA].length < start + size) {
+			size = intentLayout.openIntentsOf[partyA].length - start;
+		}
+		OpenIntent[] memory openIntents = new OpenIntent[](size);
+		for (uint256 i = start; i < start + size; i++) {
+			openIntents[i - start] = intentLayout.openIntents[intentLayout.openIntentsOf[partyA][i]];
+		}
+		return openIntents;
+	}
+
+	/**
+	 * @notice Returns the length of the openIntents array associated with a user.
+	 * @param user The address of the user.
+	 * @return length The length of the openIntents array.
+	 */
+	function openIntentsLength(address user) external view returns (uint256) {
+		return IntentStorage.layout().openIntentsOf[user].length;
+	}
+
+
 }
