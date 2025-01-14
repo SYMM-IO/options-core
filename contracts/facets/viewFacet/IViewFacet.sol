@@ -46,6 +46,8 @@ interface IViewFacet{
 	function symbolNameByTradeId(uint256[] memory tradeIds) external view returns (string[] memory);
 
 	function symbolNameById(uint256[] memory symbolIds) external view returns (string[] memory);
+
+	function getOracle(uint256 oracleId) external view returns (Oracle memory);
 	
 	// Intents
 	function getOpenIntent(uint256 openIntentId) external view returns (OpenIntent memory);

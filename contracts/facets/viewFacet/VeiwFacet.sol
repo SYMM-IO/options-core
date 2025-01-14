@@ -150,6 +150,15 @@ contract ViewFacet is IViewFacet {
 	}
 
 	/**
+	 * @notice Returns the details of a oracle by its ID.
+	 * @param oracleId The ID of the oracle.
+	 * @return oracle The details of the oracle.
+	 */
+	function getOracle(uint256 oracleId) external view returns (Oracle memory) {
+		return SymbolStorage.layout().oracles[oracleId];
+	}
+
+	/**
 	 * @notice Returns the details of a openIntent by its ID.
 	 * @param openIntentId The ID of the openIntent.
 	 * @return openIntent The details of the openIntent.
