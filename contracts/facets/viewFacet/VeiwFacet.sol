@@ -7,6 +7,7 @@ pragma solidity >=0.8.18;
 import "../../storages/AccountStorage.sol";
 import "../../storages/IntentStorage.sol";
 import "../../storages/SymbolStorage.sol";
+import "../../storages/AppStorage.sol";
 import "./IViewFacet.sol";
 
 contract ViewFacet is IViewFacet {
@@ -346,12 +347,12 @@ contract ViewFacet is IViewFacet {
 	 */
 	function getTradesOf(address user, uint256 start, uint256 size) external view returns (Trade[] memory){
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-		if (intentLayout.tradesOf[partyA].length < start + size) {
-			size = intentLayout.tradesOf[partyA].length - start;
+		if (intentLayout.tradesOf[user].length < start + size) {
+			size = intentLayout.tradesOf[user].length - start;
 		}
 		Trade[] memory trades = new uint256[](size);
 		for (uint256 i = start; i < start + size; i++) {
-			trades[i - start] = intentLayout.trades[intentLayout.tradesOf[partyA][i]];
+			trades[i - start] = intentLayout.trades[intentLayout.tradesOf[user][i]];
 		}
 		return trades;
 	}
@@ -438,7 +439,7 @@ contract ViewFacet is IViewFacet {
 		}
 		Trade[] memory activeTrades = new uint256[](size);
 		for (uint256 i = start; i < start + size; i++) {
-			activeTrades[i - start] = intentLayout.trades[intentLayout.activeTradesOfPartyB[partyA][collateral][i]];
+			activeTrades[i - start] = intentLayout.trades[intentLayout.activeTradesOfPartyB[partyB][collateral][i]];
 		}
 		return activeTrades;
 	}
@@ -508,4 +509,24 @@ contract ViewFacet is IViewFacet {
 		}
 		return closeIntents;
 	}
+
+	/**
+	 * @notice Checks if a user has a specific role.
+	 * @param user The address of the user.
+	 * @param role The role to check.
+	 * @return True if the user has the role, false otherwise.
+	 */
+	function hasRole(address user, bytes32 role) external view returns (bool) {
+		return AppStorage.layout().hasRole[user][role];
+	}
+
+	/**
+	 * @notice Returns the hash of a role string.
+	 * @param str The role string.
+	 * @return The hash of the role string.
+	 */
+	function getRoleHash(string memory str) external pure returns (bytes32) {
+		return keccak256(abi.encodePacked(str));
+	}
+
 }
