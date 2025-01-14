@@ -192,7 +192,7 @@ contract ViewFacet/* is IViewFacet */{
 		}
 		uint256[] memory openIntentIds = new uint256[](size);
 		for (uint256 i = start; i < start + size; i++) {
-			openIntentIds[i - start] = intentLayout.openIntentIdsOf[partyA][i];
+			openIntentIds[i - start] = intentLayout.openIntentsOf[partyA][i];
 		}
 		return openIntentIds;
 	}
@@ -204,7 +204,7 @@ contract ViewFacet/* is IViewFacet */{
 	 * @param size The size of the array.
 	 * @return openIntents An array of openIntents.
 	 */
-	function getOpenIntents(address partyA, uint256 start, uint256 size) external view returns (OpenIntent[] memory) {
+	function getOpenIntentsOf(address partyA, uint256 start, uint256 size) external view returns (OpenIntent[] memory) {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		if (intentLayout.openIntentsOf[partyA].length < start + size) {
 			size = intentLayout.openIntentsOf[partyA].length - start;
@@ -225,5 +225,229 @@ contract ViewFacet/* is IViewFacet */{
 		return IntentStorage.layout().openIntentsOf[user].length;
 	}
 
+	/**
+	 * @notice Returns an array of active openIntent IDs associated with a party A address.
+	 * @param partyA The address of party A.
+	 * @param start The starting index.
+	 * @param size The size of the array.
+	 * @return activeOpenIntentIds An array of openIntent IDs that are active.
+	 */
+	function activeOpenIntentIdsOf(address partyA, uint256 start, uint256 size) external view returns (uint256[] memory) {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		if (intentLayout.activeOpenIntentsOf[partyA].length < start + size) {
+			size = intentLayout.activeOpenIntentsOf[partyA].length - start;
+		}
+		uint256[] memory activeOpenIntentIds = new uint256[](size);
+		for (uint256 i = start; i < start + size; i++) {
+			activeOpenIntentIds[i - start] = intentLayout.activeOpenIntentsOf[partyA][i];
+		}
+		return activeOpenIntentIds;
+	}
 
+	/**
+	 * @notice Returns an array of active openIntent associated with a party A address.
+	 * @param partyA The address of party A.
+	 * @param start The starting index.
+	 * @param size The size of the array.
+	 * @return activeOpenIntents An array of active openIntents.
+	 */
+	function getActiveOpenIntentsOf(address partyA, uint256 start, uint256 size) external view returns (OpenIntent[] memory) {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		if (intentLayout.activeOpenIntentsOf[partyA].length < start + size) {
+			size = intentLayout.activeOpenIntentsOf[partyA].length - start;
+		}
+		OpenIntent[] memory activeOpenIntents = new OpenIntent[](size);
+		for (uint256 i = start; i < start + size; i++) {
+			activeOpenIntents[i - start] = intentLayout.openIntents[intentLayout.activeOpenIntentsOf[partyA][i]];
+		}
+		return activeOpenIntents;
+	}
+
+	/**
+	 * @notice Returns the length of the active openIntents array associated with a user.
+	 * @param user The address of the user.
+	 * @return length The length of the active openIntents array.
+	 */
+	function activeOpenIntentsLength(address user) external view returns (uint256) {
+		return IntentStorage.layout().activeOpenIntentsOf[user].length;
+	}
+
+	/**
+	 * @notice Retrieves a filtered list of openIntents based on a bitmap. The method returns openIntents only if sufficient gas remains.
+	 * @param bitmap A structured data type representing a bitmap, used to indicate which openIntents to retrieve based on their positions. The bitmap consists of multiple elements, each with an offset and a 256-bit integer representing selectable openIntents.
+	 * @param gasNeededForReturn The minimum gas required to complete the function execution and return the data. This ensures the function doesn't start a retrieval that it can't complete.
+	 * @return openIntents An array of `OpenIntent` structures, each corresponding to a openIntent identified by the bitmap.
+	 */
+	function getOpenIntentssWithBitmap(Bitmap calldata bitmap, uint256 gasNeededForReturn) external view returns (OpenIntent[] memory openIntents) {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+
+		openIntents = new OpenIntent[](bitmap.size);
+		uint256 openIntentIndex = 0;
+
+		for (uint256 i = 0; i < bitmap.elements.length; ++i) {
+			uint256 bits = bitmap.elements[i].bitmap;
+			uint256 offset = bitmap.elements[i].offset;
+			while (bits > 0 && gasleft() > gasNeededForReturn) {
+				if ((bits & 1) > 0) {
+					openIntents[openIntentIndex] = intentLayout.openIntents[offset];
+					++openIntentIndex;
+				}
+				++offset;
+				bits >>= 1;
+			}
+		}
+	}
+
+	/**
+	 * @notice Returns the details of a trade by its ID.
+	 * @param tradeId The ID of the trade.
+	 * @return trade The details of the trade.
+	 */
+	function getTrade(uint256 tradeId) external view returns (Trade memory) {
+		return IntentStorage.layout().trades[tradeId];
+	}
+
+	/**
+	 * @notice Returns an array of trade IDs associated with a user address.
+	 * @param user The address of user.
+	 * @param start The starting index.
+	 * @param size The size of the array.
+	 * @return tradeIds An array of trade IDs.
+	 */
+	function tradeIdsOf(address user, uint256 start, uint256 size) external view returns (uint256[] memory) {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		if (intentLayout.tradesOf[user].length < start + size) {
+			size = intentLayout.tradesOf[user].length - start;
+		}
+		uint256[] memory tradeIds = new uint256[](size);
+		for (uint256 i = start; i < start + size; i++) {
+			tradeIds[i - start] = intentLayout.tradesOf[user][i];
+		}
+		return tradeIds;
+	}
+
+	/**
+	 * @notice Returns an array of trade IDs associated with a user address.
+	 * @param user The address of party A.
+	 * @param start The starting index.
+	 * @param size The size of the array.
+	 * @return trades An array of trades.
+	 */
+	function getTradesOf(address user, uint256 start, uint256 size) external view returns (Trade[] memory){
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		if (intentLayout.tradesOf[partyA].length < start + size) {
+			size = intentLayout.tradesOf[partyA].length - start;
+		}
+		Trade[] memory trades = new uint256[](size);
+		for (uint256 i = start; i < start + size; i++) {
+			trades[i - start] = intentLayout.trades[intentLayout.tradesOf[partyA][i]];
+		}
+		return trades;
+	}
+
+	/**
+	 * @notice Returns the length of the trade array associated with a user.
+	 * @param user The address of the user.
+	 * @return length The length of the trade array.
+	 */
+	function tradesOfLength(address user) external view returns (uint256) {
+		return IntentStorage.layout().tradesOf[user].length;
+	}
+
+	/**
+	 * @notice Returns an array of active trade IDs associated with a party A address.
+	 * @param partyA The address of party A.
+	 * @param start The starting index.
+	 * @param size The size of the array.
+	 * @return activeTradeIds An array of trade IDs that are active.
+	 */
+	function activePartyATradeIdsOf(address partyA, uint256 start, uint256 size) external view returns (uint256[] memory) {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		if (intentLayout.activeTradesOf[partyA].length < start + size) {
+			size = intentLayout.activeTradesOf[partyA].length - start;
+		}
+		uint256[] memory activeTradeIds = new uint256[](size);
+		for (uint256 i = start; i < start + size; i++) {
+			activeTradeIds[i - start] = intentLayout.activeTradesOf[partyA][i];
+		}
+		return activeTradeIds;
+	}
+
+	/**
+	 * @notice Returns an array of active trade IDs associated with a party B address and specific collateral.
+	 * @param partyA The address of party B.
+	 * @param collateral The address of collateral.
+	 * @param start The starting index.
+	 * @param size The size of the array.
+	 * @return activeTradeIds An array of trade IDs that are active.
+	 */
+	function activePartyBTradeIdsOf(address partyB, address collateral, uint256 start, uint256 size) external view returns (uint256[] memory) {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		if (intentLayout.activeTradesOfPartyB[partyB][collateral].length < start + size) {
+			size = intentLayout.activeTradesOf[partyB][collateral].length - start;
+		}
+		uint256[] memory activeTradeIds = new uint256[](size);
+		for (uint256 i = start; i < start + size; i++) {
+			activeTradeIds[i - start] = intentLayout.activeTradesOf[partyB][collateral][i];
+		}
+		return activeTradeIds;
+	}
+
+	/**
+	 * @notice Returns an array of active trades associated with a party A address.
+	 * @param partyA The address of party A.
+	 * @param start The starting index.
+	 * @param size The size of the array.
+	 * @return activeTradeIds An array of trades that are active.
+	 */
+	function getActivePartyATradesOf(address partyA, uint256 start, uint256 size) external view returns (Trade[] memory) {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		if (intentLayout.activeTradesOf[partyA].length < start + size) {
+			size = intentLayout.activeTradesOf[partyA].length - start;
+		}
+		Trade[] memory activeTrades = new uint256[](size);
+		for (uint256 i = start; i < start + size; i++) {
+			activeTrades[i - start] = intentLayout.trades[intentLayout.activeTradesOf[partyA][i]];
+		}
+		return activeTrades;
+	}
+
+	/**
+	 * @notice Returns an array of active trades associated with a party B address and specific collateral.
+	 * @param partyB The address of party B.
+	 * @param collateral The address of collateral.
+	 * @param start The starting index.
+	 * @param size The size of the array.
+	 * @return activeTradeIds An array of trades that are active.
+	 */
+	function getActivePartyBTradesOf(address partyB, address collateral, uint256 start, uint256 size) external view returns (Trade[] memory) {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		if (intentLayout.activeTradesOfPartyB[partyB][collateral].length < start + size) {
+			size = intentLayout.activeTradesOfPartyB[partyB].length - start;
+		}
+		Trade[] memory activeTrades = new uint256[](size);
+		for (uint256 i = start; i < start + size; i++) {
+			activeTrades[i - start] = intentLayout.trades[intentLayout.activeTradesOfPartyB[partyA][collateral][i]];
+		}
+		return activeTrades;
+	}
+
+	/**
+	 * @notice Returns the length of the active trades array associated with a party A.
+	 * @param partyA The address of the party A.
+	 * @return length The length of the active trades array.
+	 */
+	function activePartyATradesLength(address partyA) external view returns (uint256) {
+		return IntentStorage.layout().activeTradesOf[partyA].length;
+	}
+
+	/**
+	 * @notice Returns the length of the active trades array associated with a party B and specific collateral.
+	 * @param partyB The address of the party B.
+	 * @param collateral The address of collateral.
+	 * @return length The length of the active trades array.
+	 */
+	function activePartyBTradesLength(address partyB, address collateral) external view returns (uint256) {
+		return IntentStorage.layout().activeTradesOfPartyB[partyB][collateral].length;
+	}
 }
