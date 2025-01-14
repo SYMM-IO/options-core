@@ -6,8 +6,9 @@
 import "../../storages/AccountStorage.sol";
 import "../../storages/IntentStorage.sol";
 import "../../storages/SymbolStorage.sol";
+import "./IViewFacet.sol";
 
-contract ViewFacet/* is IViewFacet */{
+contract ViewFacet is IViewFacet {
     /**
 	 * @notice Returns the balance for a specified user and collateral type.
 	 * @param user The address of the user.
@@ -375,7 +376,7 @@ contract ViewFacet/* is IViewFacet */{
 
 	/**
 	 * @notice Returns an array of active trade IDs associated with a party B address and specific collateral.
-	 * @param partyA The address of party B.
+	 * @param partyB The address of party B.
 	 * @param collateral The address of collateral.
 	 * @param start The starting index.
 	 * @param size The size of the array.
@@ -449,5 +450,52 @@ contract ViewFacet/* is IViewFacet */{
 	 */
 	function activePartyBTradesLength(address partyB, address collateral) external view returns (uint256) {
 		return IntentStorage.layout().activeTradesOfPartyB[partyB][collateral].length;
+	}
+
+	/**
+	 * @notice Returns the details of a closeIntent by its ID.
+	 * @param closeIntentId The ID of the closeIntent.
+	 * @return closeIntent The details of the closeIntent.
+	 */
+	function getCloseIntent(uint256 closeIntentId) external view returns (CloseIntent memory) {
+		return IntentStorage.layout().closeIntents[closeIntentId];
+	}
+
+	/**
+	 * @notice Returns an array of active closeIntent IDs associated with a party A address.
+	 * @param tradeId The address of party A.
+	 * @param start The starting index.
+	 * @param size The size of the array.
+	 * @return closeIntentIds An array of closeIntent IDs that are active.
+	 */
+	function closeIntentIdsOf(uint256 tradeId, uint256 start, uint256 size) external view returns (uint256[] memory) {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		if (intentLayout.closeIntentIdsOf[tradeId].length < start + size) {
+			size = intentLayout.closeIntentIdsOf[tradeId].length - start;
+		}
+		uint256[] memory closeIntentIds = new uint256[](size);
+		for (uint256 i = start; i < start + size; i++) {
+			closeIntentIds[i - start] = intentLayout.closeIntentIdsOf[tradeId][i];
+		}
+		return closeIntentIds;
+	}
+
+	/**
+	 * @notice Returns an array of active closeIntents associated with a trade id.
+	 * @param tradeId The id of the trade.
+	 * @param start The starting index.
+	 * @param size The size of the array.
+	 * @return closeIntents An array of closeIntents.
+	 */
+	function getCloseIntentsOf(uint256 tradeId, uint256 start, uint256 size) external view returns (CloseIntent[] memory) {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		if (intentLayout.closeIntentIdsOf[tradeId].length < start + size) {
+			size = intentLayout.closeIntentIdsOf[tradeId].length - start;
+		}
+		CloseIntent[] memory closeIntents = new uint256[](size);
+		for (uint256 i = start; i < start + size; i++) {
+			closeIntents[i - start] = intentLayout.closeIntents[intentLayout.closeIntentIdsOf[tradeId][i]];
+		}
+		return closeIntents;
 	}
 }
