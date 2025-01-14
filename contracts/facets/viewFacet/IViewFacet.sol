@@ -6,6 +6,16 @@ pragma solidity  >= 0.8.18;
 
 interface IViewFacet{
 
+	struct Bitmap {
+		uint256 size;
+		BitmapElement[] elements;
+	}
+
+	struct BitmapElement {
+		uint256 offset;
+		uint256 bitmap;
+	}
+
     // Account
     function balanceOf(address user, address collateral) external view returns (uint256);
 
@@ -76,4 +86,9 @@ interface IViewFacet{
 
 	function activePartyBTradesLength(address partyB, address collateral) external view returns (uint256);
 
+	function getCloseIntent(uint256 closeIntentId) external view returns (CloseIntent memory);
+
+	function closeIntentIdsOf(uint256 tradeId, uint256 start, uint256 size) external view returns (uint256[] memory);
+
+	function getCloseIntentsOf(uint256 tradeId, uint256 start, uint256 size) external view returns (CloseIntent[] memory);
 }
