@@ -97,4 +97,9 @@ interface IViewFacet{
 	function closeIntentIdsOf(uint256 tradeId, uint256 start, uint256 size) external view returns (uint256[] memory);
 
 	function getCloseIntentsOf(uint256 tradeId, uint256 start, uint256 size) external view returns (CloseIntent[] memory);
+
+	//Role
+	function hasRole(address user, bytes32 role) external view returns (bool);
+
+	function getRoleHash(string memory str) external pure returns (bytes32);
 }
