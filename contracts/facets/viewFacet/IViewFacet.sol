@@ -36,5 +36,44 @@ interface IViewFacet{
 	function symbolNameByTradeId(uint256[] memory tradeIds) external view returns (string[] memory);
 
 	function symbolNameById(uint256[] memory symbolIds) external view returns (string[] memory);
+	
 	// Intents
+	function getOpenIntent(uint256 openIntentId) external view returns (OpenIntent memory);
+
+	function getOpenIntentsByParent(uint256 openIntentId, uint256 size) external view returns (OpenIntent[] memory);
+
+	function openIntentIdsOf(address partyA, uint256 start, uint256 size) external view returns (uint256[] memory);
+
+	function getOpenIntentsOf(address partyA, uint256 start, uint256 size) external view returns (OpenIntent[] memory);
+
+	function openIntentsLength(address user) external view returns (uint256);
+
+	function activeOpenIntentIdsOf(address partyA, uint256 start, uint256 size) external view returns (uint256[] memory);
+
+	function getActiveOpenIntentsOf(address partyA, uint256 start, uint256 size) external view returns (OpenIntent[] memory);
+
+	function activeOpenIntentsLength(address user) external view returns (uint256);
+
+	function getOpenIntentssWithBitmap(Bitmap calldata bitmap, uint256 gasNeededForReturn) external view returns (OpenIntent[] memory openIntents);
+
+	function getTrade(uint256 tradeId) external view returns (Trade memory);
+
+	function tradeIdsOf(address user, uint256 start, uint256 size) external view returns (uint256[] memory);
+
+	function getTradesOf(address user, uint256 start, uint256 size) external view returns (Trade[] memory);
+
+	function tradesOfLength(address user) external view returns (uint256);
+
+	function activePartyATradeIdsOf(address partyA, uint256 start, uint256 size) external view returns (uint256[] memory);
+
+	function activePartyBTradeIdsOf(address partyB, address collateral, uint256 start, uint256 size) external view returns (uint256[] memory);
+
+	function getActivePartyATradesOf(address partyA, uint256 start, uint256 size) external view returns (Trade[] memory);
+
+	function getActivePartyBTradesOf(address partyB, address collateral, uint256 start, uint256 size) external view returns (Trade[] memory);
+
+	function activePartyATradesLength(address partyA) external view returns (uint256);
+
+	function activePartyBTradesLength(address partyB, address collateral) external view returns (uint256);
+
 }
