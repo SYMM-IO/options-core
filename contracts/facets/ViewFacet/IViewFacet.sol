@@ -8,8 +8,7 @@ import "../../storages/AccountStorage.sol";
 import "../../storages/IntentStorage.sol";
 import "../../storages/SymbolStorage.sol";
 
-interface IViewFacet{
-
+interface IViewFacet {
 	struct Bitmap {
 		uint256 size;
 		BitmapElement[] elements;
@@ -20,23 +19,19 @@ interface IViewFacet{
 		uint256 bitmap;
 	}
 
-    // Account
-    function balanceOf(address user, address collateral) external view returns (uint256);
+	// Account
+	function balanceOf(address user, address collateral) external view returns (uint256);
 
-	function lockedBalancesOf(address user, address collateral) external view returns(uint256);
+	function lockedBalancesOf(address user, address collateral) external view returns (uint256);
 
-    function partyAStats(
+	function partyAStats(
 		address partyA,
 		address collateral
-	)
-		external
-		view
-		returns (bool, uint256, uint256, uint256[] memory, uint256[] memory, uint256[] memory);
+	) external view returns (bool, uint256, uint256, uint256[] memory, uint256[] memory, uint256[] memory);
 
-	function getWithdraw(uint256 id) external view returns(Withdraw memory);
+	function getWithdraw(uint256 id) external view returns (Withdraw memory);
 
-	function isSuspended(address user) external view returns(bool);
-	
+	function isSuspended(address user) external view returns (bool);
 
 	///////////////////////////////////////////
 
@@ -52,7 +47,7 @@ interface IViewFacet{
 	function symbolNameById(uint256[] memory symbolIds) external view returns (string[] memory);
 
 	function getOracle(uint256 oracleId) external view returns (Oracle memory);
-	
+
 	// Intents
 	function getOpenIntent(uint256 openIntentId) external view returns (OpenIntent memory);
 
