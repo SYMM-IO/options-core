@@ -20,4 +20,5 @@ interface IPartyAEvents is IPartiesEvents {
 		IntentStatus status
 	);
 	event CancelCloseIntent(address partyA, address partyB, uint256 intentId);
+	event TransferTradeByPartyA(address sender, address receiver, uint256 tradeId);
 }

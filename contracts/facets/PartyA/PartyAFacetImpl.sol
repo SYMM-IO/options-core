@@ -146,4 +146,26 @@ library PartyAFacetImpl {
 		intentLayout.closeIntentIdsOf[trade.id].push(intentId);
 		trade.closePendingAmount += quantity;
 	}
+
+	function transferTrade(address receiver, uint256 tradeId) internal {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		AppStorage.Layout storage appLayout = AppStorage.layout();
+		Trade storage trade = intentLayout.trades[tradeId];
+		Symbol memory symbol = SymbolStorage.layout().symbols[trade.symbolId];
+
+		require(trade.partyB != receiver, "PartyAFacet: Receiver is partyB of trade");
+		require(receiver != address(0), "PartyAFacet: Zero address");
+		require(trade.status == TradeStatus.OPENED, "PartyAFacet: Invalid state");
+		require(
+			appLayout.liquidationDetails[trade.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
+			"PartyAFacet: PartyB is liquidated"
+		);
+		require(intentLayout.activeTradesOf[receiver].length < appLayout.maxTradePerPartyA, "PartyAFacet: Too many active trades for receiver");
+		require(!AccountStorage.layout().suspendedAddresses[trade.partyA], "PartyAFacet: Sender is Suspended");
+		require(!AccountStorage.layout().suspendedAddresses[receiver], "PartyAFacet: Receiver is Suspended");
+
+		LibIntent.removeFromActiveTrades(trade.id);
+		trade.partyA = receiver;
+		LibIntent.addToActiveTrades(trade.id);
+	}
 }

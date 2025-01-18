@@ -11,16 +11,15 @@ import "../../storages/AppStorage.sol";
 import "./IViewFacet.sol";
 
 contract ViewFacet is IViewFacet {
-    /**
+	/**
 	 * @notice Returns the balance for a specified user and collateral type.
 	 * @param user The address of the user.
-     * @param collateral The address of the collateral type.
+	 * @param collateral The address of the collateral type.
 	 * @return balance The balance of the user and specic collateral type.
 	 */
 	function balanceOf(address user, address collateral) external view returns (uint256) {
 		return AccountStorage.layout().balances[user][collateral];
 	}
-
 
 	/**
 	 * @notice Returns the locked balance for a specific user and collateral type.
@@ -28,11 +27,11 @@ contract ViewFacet is IViewFacet {
 	 * @param collateral The address of the collateral type.
 	 * @return lockedBalances The locked balance of the user and specic collateral type.
 	 */
-	function lockedBalancesOf(address user, address collateral) external view returns(uint256){
+	function lockedBalancesOf(address user, address collateral) external view returns (uint256) {
 		return AccountStorage.layout().lockedBalances[user][collateral];
 	}
 
-    /**
+	/**
 	 * @notice Returns various values related to Party A.
 	 * @param partyA The address of Party A.
 	 // TODO 1, return liquidationStatus The liquidation status of Party A.
@@ -46,11 +45,7 @@ contract ViewFacet is IViewFacet {
 	function partyAStats(
 		address partyA,
 		address collateral
-	)
-		external
-		view
-		returns (bool, uint256, uint256, uint256[] memory, uint256[] memory, uint256[] memory)
-	{
+	) external view returns (bool, uint256, uint256, uint256[] memory, uint256[] memory, uint256[] memory) {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		// MAStorage.Layout storage maLayout = MAStorage.layout();  #TODO 1: consider adding this after liquidation dev.
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
@@ -60,7 +55,7 @@ contract ViewFacet is IViewFacet {
 			accountLayout.balances[partyA][collateral],
 			accountLayout.lockedBalances[partyA][collateral],
 			accountLayout.withdrawIds[partyA],
-			//TODO 2: consider adding AppStorage:partyAReimbursement after it's used 
+			//TODO 2: consider adding AppStorage:partyAReimbursement after it's used
 			intentLayout.openIntentsOf[partyA],
 			intentLayout.tradesOf[partyA]
 			// intentLayout.closeIntentIdsOf TODO 3: consider adding this if it's necessary
@@ -72,7 +67,7 @@ contract ViewFacet is IViewFacet {
 	 * @param id The id of the Withdraw object.
 	 * @return Withdraw The Withdraw object associated with the given `id`.
 	 */
-	function getWithdraw(uint256 id) external view returns(Withdraw memory){
+	function getWithdraw(uint256 id) external view returns (Withdraw memory) {
 		return AccountStorage.layout().withdraws[id];
 	}
 
@@ -81,7 +76,7 @@ contract ViewFacet is IViewFacet {
 	 @param user The address of the user.
 	 @return isSuspended A boolean value(true/false) to show that the `user` is suspended or not.
 	 */
-	function isSuspended(address user) external view returns(bool){
+	function isSuspended(address user) external view returns (bool) {
 		return AccountStorage.layout().suspendedAddresses[user];
 	}
 
@@ -345,12 +340,12 @@ contract ViewFacet is IViewFacet {
 	 * @param size The size of the array.
 	 * @return trades An array of trades.
 	 */
-	function getTradesOf(address user, uint256 start, uint256 size) external view returns (Trade[] memory){
+	function getTradesOf(address user, uint256 start, uint256 size) external view returns (Trade[] memory) {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		if (intentLayout.tradesOf[user].length < start + size) {
 			size = intentLayout.tradesOf[user].length - start;
 		}
-		Trade[] memory trades = new uint256[](size);
+		Trade[] memory trades = new Trade[](size);
 		for (uint256 i = start; i < start + size; i++) {
 			trades[i - start] = intentLayout.trades[intentLayout.tradesOf[user][i]];
 		}
@@ -396,11 +391,11 @@ contract ViewFacet is IViewFacet {
 	function activePartyBTradeIdsOf(address partyB, address collateral, uint256 start, uint256 size) external view returns (uint256[] memory) {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		if (intentLayout.activeTradesOfPartyB[partyB][collateral].length < start + size) {
-			size = intentLayout.activeTradesOf[partyB][collateral].length - start;
+			size = intentLayout.activeTradesOfPartyB[partyB][collateral].length - start;
 		}
 		uint256[] memory activeTradeIds = new uint256[](size);
 		for (uint256 i = start; i < start + size; i++) {
-			activeTradeIds[i - start] = intentLayout.activeTradesOf[partyB][collateral][i];
+			activeTradeIds[i - start] = intentLayout.activeTradesOfPartyB[partyB][collateral][i];
 		}
 		return activeTradeIds;
 	}
@@ -417,7 +412,7 @@ contract ViewFacet is IViewFacet {
 		if (intentLayout.activeTradesOf[partyA].length < start + size) {
 			size = intentLayout.activeTradesOf[partyA].length - start;
 		}
-		Trade[] memory activeTrades = new uint256[](size);
+		Trade[] memory activeTrades = new Trade[](size);
 		for (uint256 i = start; i < start + size; i++) {
 			activeTrades[i - start] = intentLayout.trades[intentLayout.activeTradesOf[partyA][i]];
 		}
@@ -435,9 +430,9 @@ contract ViewFacet is IViewFacet {
 	function getActivePartyBTradesOf(address partyB, address collateral, uint256 start, uint256 size) external view returns (Trade[] memory) {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		if (intentLayout.activeTradesOfPartyB[partyB][collateral].length < start + size) {
-			size = intentLayout.activeTradesOfPartyB[partyB].length - start;
+			size = intentLayout.activeTradesOfPartyB[partyB][collateral].length - start;
 		}
-		Trade[] memory activeTrades = new uint256[](size);
+		Trade[] memory activeTrades = new Trade[](size);
 		for (uint256 i = start; i < start + size; i++) {
 			activeTrades[i - start] = intentLayout.trades[intentLayout.activeTradesOfPartyB[partyB][collateral][i]];
 		}
@@ -503,7 +498,7 @@ contract ViewFacet is IViewFacet {
 		if (intentLayout.closeIntentIdsOf[tradeId].length < start + size) {
 			size = intentLayout.closeIntentIdsOf[tradeId].length - start;
 		}
-		CloseIntent[] memory closeIntents = new uint256[](size);
+		CloseIntent[] memory closeIntents = new CloseIntent[](size);
 		for (uint256 i = start; i < start + size; i++) {
 			closeIntents[i - start] = intentLayout.closeIntents[intentLayout.closeIntentIdsOf[tradeId][i]];
 		}
@@ -528,5 +523,4 @@ contract ViewFacet is IViewFacet {
 	function getRoleHash(string memory str) external pure returns (bytes32) {
 		return keccak256(abi.encodePacked(str));
 	}
-
 }

@@ -25,4 +25,6 @@ interface IPartyAFacet is IPartyAEvents {
 	function cancelCloseIntent(uint256[] memory intentIds) external;
 
 	function sendCloseIntent(uint256 tradeId, uint256 price, uint256 quantity, uint256 deadline) external;
+
+	function transferTrade(address receiver, uint256 tradeId) external;
 }

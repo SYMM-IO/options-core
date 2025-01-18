@@ -141,4 +141,9 @@ contract PartyAFacet is Accessibility, Pausable, IPartyAFacet {
 		Trade storage trade = intentLayout.trades[tradeId];
 		emit SendCloseIntent(trade.partyA, trade.partyB, tradeId, closeIntentId, price, quantity, deadline, IntentStatus.PENDING);
 	}
+
+	function transferTrade(address receiver, uint256 tradeId) external whenNotPartyAActionsPaused onlyPartyAOfTrade(tradeId) {
+		PartyAFacetImpl.transferTrade(receiver, tradeId);
+		emit TransferTradeByPartyA(msg.sender, receiver, tradeId);
+	}
 }
