@@ -10,11 +10,11 @@ import "../../storages/AppStorage.sol";
 interface ILiquidationFacet is ILiquidationEvents {
 	function flagLiquidation(address partyB, address collateral) external;
 
+	function unflagLiquidation(address partyB, address collateral) external;
+
 	function liquidate(address partyB, address collateral, LiquidationSig memory liquidationSig) external;
 
 	function setSymbolsPrice(address partyB, address collateral, LiquidationSig memory liquidationSig) external;
 
-	function liquidateTrades(address partyB, uint256[] memory tradeIds) external;
-
-	function settleLiquidation(address partyB, address[] memory partyAs) external;
+	function liquidateTrades(address partyB, address collateral, uint256[] memory tradeIds) external;
 }

@@ -15,6 +15,11 @@ contract LiquidationFacet is Pausable, Accessibility, ILiquidationFacet {
 		LiquidationFacetImpl.flagLiquidation(partyB, collateral);
 		emit FlagLiquidation(msg.sender, partyB, collateral);
 	}
+
+	function unflagLiquidation(address partyB, address collateral) external whenNotLiquidationPaused onlyRole(LibAccessibility.LIQUIDATOR_ROLE) {
+		LiquidationFacetImpl.unflagLiquidation(partyB, collateral);
+		emit UnflagLiquidation(msg.sender, partyB, collateral);
+	}
 	/**
 	 * @notice Liquidates Party B based on the provided signature.
 	 * @param partyB The address of Party B to be liquidated.
@@ -57,21 +62,16 @@ contract LiquidationFacet is Pausable, Accessibility, ILiquidationFacet {
 	 * @param partyB The address of Party B whose trades will be liquidated.
 	 * @param tradeIds An array of trade IDs representing the Trades to be liquidated.
 	 */
-	function liquidateTrades(address partyB, uint256[] memory tradeIds) external whenNotLiquidationPaused onlyRole(LibAccessibility.LIQUIDATOR_ROLE) {
-		(uint256[] memory liquidatedAmounts, bytes memory liquidationId) = LiquidationFacetImpl.liquidateTrades(partyB, tradeIds);
-		emit LiquidateTrades(msg.sender, partyB, tradeIds, liquidatedAmounts, liquidationId);
-	}
-
-	/**
-	 * @notice Settles liquidation for Party B with specified Party As.
-	 * @param partyB The address of Party B to settle liquidation for.
-	 * @param partyAs An array of addresses representing Party As involved in the settlement.
-	 */
-	function settleLiquidation(address partyB, address[] memory partyAs) external whenNotLiquidationPaused {
-		(int256[] memory settleAmounts, bytes memory liquidationId) = LiquidationFacetImpl.settleLiquidation(partyB, partyAs);
-		emit SettleLiquidation(partyB, partyAs, settleAmounts, liquidationId);
-		// if (AppStorage.layout().liquidationStatus[partyB] == false) {
-		//     emit FullyLiquidated(partyB, liquidationId);
-		// }
+	function liquidateTrades(
+		address partyB,
+		address collateral,
+		uint256[] memory tradeIds
+	) external whenNotLiquidationPaused onlyRole(LibAccessibility.LIQUIDATOR_ROLE) {
+		(uint256[] memory liquidatedAmounts, int256[] memory pnls, bytes memory liquidationId) = LiquidationFacetImpl.liquidateTrades(
+			partyB,
+			collateral,
+			tradeIds
+		);
+		emit LiquidateTrades(msg.sender, partyB, tradeIds, liquidatedAmounts, pnls, liquidationId);
 	}
 }
