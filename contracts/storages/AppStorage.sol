@@ -14,9 +14,9 @@ struct LiquidationDetail {
 	LiquidationStatus status;
 	int256 upnl;
 	uint256 flagTimestamp;
-	uint256 involvedPartyACounts;
 	uint256 liquidationTimestamp;
-	address[] liquidators;
+	uint256 lossFactor;
+	address flagger;
 }
 struct LiquidationSig {
 	bytes reqId; // Unique identifier for the liquidation request
@@ -98,9 +98,6 @@ library AppStorage {
 		///////////////////////////////////
 		mapping(address => mapping(address => LiquidationDetail)) liquidationDetails; // partyBAddress => collateral => detail
 		mapping(address => mapping(uint256 => Price)) symbolsPrices;
-		mapping(address => mapping(address => uint256)) partyAReimbursement;
-		// partyA => partyB => SettlementState
-		mapping(address => mapping(address => SettlementState)) settlementStates;
 	}
 
 	function layout() internal pure returns (Layout storage l) {
