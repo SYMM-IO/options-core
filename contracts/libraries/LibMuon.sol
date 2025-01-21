@@ -67,10 +67,9 @@ library LibMuon {
 		verifyTSSAndGateway(hash, sig.sigs, sig.gatewaySignature, oracle.muonConfig.muonPublicKey, oracle.muonConfig.validGateway);
 	}
 
-	function verifyLiquidationSig(LiquidationSig memory liquidationSig, address partyB, address collateral) internal view {
+	function verifyLiquidationSig(LiquidationSig memory liquidationSig, address partyB) internal view {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		Oracle storage oracle = SymbolStorage.layout().oracles[appLayout.partyBConfigs[partyB].oracleId];
-		require(liquidationSig.prices.length == liquidationSig.symbolIds.length, "LibMuon: Invalid length");
 		bytes32 hash = keccak256(
 			abi.encodePacked(
 				oracle.muonConfig.muonAppId,
@@ -79,7 +78,8 @@ library LibMuon {
 				address(this),
 				"verifyLiquidationSig",
 				partyB,
-				collateral,
+				liquidationSig.collateral,
+				liquidationSig.collateralPrice,
 				liquidationSig.upnl,
 				liquidationSig.symbolIds,
 				liquidationSig.prices,

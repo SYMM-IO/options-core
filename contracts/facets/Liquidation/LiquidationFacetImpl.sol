@@ -14,12 +14,10 @@ import "../../storages/SymbolStorage.sol";
 library LiquidationFacetImpl {
 	function flagLiquidation(address partyB, address collateral) internal {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
-
 		require(
 			appLayout.liquidationDetails[partyB][collateral].status == LiquidationStatus.SOLVENT,
 			"LiquidationFacet: PartyB is in the liquidation process"
 		);
-
 		appLayout.liquidationDetails[partyB][collateral] = LiquidationDetail({
 			liquidationId: "",
 			status: LiquidationStatus.FLAGGED,
@@ -27,56 +25,65 @@ library LiquidationFacetImpl {
 			flagTimestamp: block.timestamp,
 			liquidationTimestamp: 0,
 			lossFactor: 0,
+			collateralPrice: 0,
 			flagger: msg.sender
 		});
 	}
 
-	function unflagLiquidation(address partyB, address collateral) internal {
+	function unflagLiquidation(address partyB, address collateral, bool checkFlagger) internal {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		require(appLayout.liquidationDetails[partyB][collateral].status == LiquidationStatus.FLAGGED, "LiquidationFacet: PartyB should be flagged");
-		// check cooldowns
-		require(msg.sender == appLayout.liquidationDetails[partyB][collateral].flagger, "LiquidationFacet: ");
+		if (checkFlagger) {
+			require(msg.sender == appLayout.liquidationDetails[partyB][collateral].flagger, "LiquidationFacet: Sender should be the flagger");
+		}
 		appLayout.liquidationDetails[partyB][collateral].status = LiquidationStatus.SOLVENT;
 		appLayout.liquidationDetails[partyB][collateral].flagger = address(0);
 	}
 
-	function liquidate(address partyB, address collateral, LiquidationSig memory liquidationSig) internal {
+	function liquidate(address partyB, LiquidationSig memory liquidationSig) internal {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
-		LibMuon.verifyLiquidationSig(liquidationSig, partyB, collateral);
+		LibMuon.verifyLiquidationSig(liquidationSig, partyB);
 		require(block.timestamp <= liquidationSig.timestamp + appLayout.liquidationSigValidTime, "LiquidationFacet: Expired signature");
 		require(
-			liquidationSig.timestamp > appLayout.liquidationDetails[partyB][collateral].flagTimestamp,
+			liquidationSig.timestamp > appLayout.liquidationDetails[partyB][liquidationSig.collateral].flagTimestamp,
 			"LiquidationFacet: Signature should be retrived after flagging"
 		);
 		require(
-			appLayout.liquidationDetails[partyB][collateral].status == LiquidationStatus.FLAGGED,
+			appLayout.liquidationDetails[partyB][liquidationSig.collateral].status == LiquidationStatus.FLAGGED,
 			"LiquidationFacet: PartyB is already liquidated"
 		);
 		require(liquidationSig.upnl < 0, "LiquidationFacet: Invalid upnl");
-		int256 requiredCollateral = (-liquidationSig.upnl * int256(appLayout.partyBConfigs[partyB].lossCoverage)) / 1e18;
-		require(requiredCollateral > int256(accountLayout.balances[partyB][collateral]), "LiquidationFacet: PartyB is solvent");
-		int256 loss = requiredCollateral - int256(accountLayout.balances[partyB][collateral]);
-		appLayout.liquidationDetails[partyB][collateral].status = LiquidationStatus.IN_PROGRESS;
-		appLayout.liquidationDetails[partyB][collateral].liquidationId = liquidationSig.liquidationId;
-		appLayout.liquidationDetails[partyB][collateral].upnl = liquidationSig.upnl;
-		appLayout.liquidationDetails[partyB][collateral].lossFactor = uint256((loss * 1e18) / requiredCollateral);
-		appLayout.liquidationDetails[partyB][collateral].liquidationTimestamp = liquidationSig.timestamp;
+		int256 requiredCollateral = (-liquidationSig.upnl * int256(appLayout.partyBConfigs[partyB].lossCoverage)) /
+			int256(liquidationSig.collateralPrice);
+		require(requiredCollateral > int256(accountLayout.balances[partyB][liquidationSig.collateral]), "LiquidationFacet: PartyB is solvent");
+		int256 loss = requiredCollateral - int256(accountLayout.balances[partyB][liquidationSig.collateral]);
+		appLayout.liquidationDetails[partyB][liquidationSig.collateral].status = LiquidationStatus.IN_PROGRESS;
+		appLayout.liquidationDetails[partyB][liquidationSig.collateral].liquidationId = liquidationSig.liquidationId;
+		appLayout.liquidationDetails[partyB][liquidationSig.collateral].upnl = liquidationSig.upnl;
+		appLayout.liquidationDetails[partyB][liquidationSig.collateral].lossFactor = uint256((loss * 1e18) / requiredCollateral);
+		appLayout.liquidationDetails[partyB][liquidationSig.collateral].liquidationTimestamp = liquidationSig.timestamp;
+		appLayout.liquidationDetails[partyB][liquidationSig.collateral].collateralPrice = liquidationSig.collateralPrice;
 	}
 
-	function setSymbolsPrice(address partyB, address collateral, LiquidationSig memory liquidationSig) internal {
+	function setSymbolsPrice(address partyB, LiquidationSig memory liquidationSig) internal {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
-		LibMuon.verifyLiquidationSig(liquidationSig, partyB, collateral);
-		require(appLayout.liquidationDetails[partyB][collateral].status == LiquidationStatus.IN_PROGRESS, "LiquidationFacet: PartyB is solvent");
+		LibMuon.verifyLiquidationSig(liquidationSig, partyB);
 		require(
-			keccak256(appLayout.liquidationDetails[partyB][collateral].liquidationId) == keccak256(liquidationSig.liquidationId),
+			appLayout.liquidationDetails[partyB][liquidationSig.collateral].status == LiquidationStatus.IN_PROGRESS,
+			"LiquidationFacet: PartyB is solvent"
+		);
+		require(
+			keccak256(appLayout.liquidationDetails[partyB][liquidationSig.collateral].liquidationId) == keccak256(liquidationSig.liquidationId),
 			"LiquidationFacet: Invalid liquidationId"
 		);
 		for (uint256 index = 0; index < liquidationSig.symbolIds.length; index++) {
+			Symbol memory symbol = SymbolStorage.layout().symbols[liquidationSig.symbolIds[index]];
+			require(symbol.collateral == liquidationSig.collateral, "LiquidationFacet: Invalid symbol");
 			appLayout.symbolsPrices[partyB][liquidationSig.symbolIds[index]] = Price(
 				liquidationSig.prices[index],
-				appLayout.liquidationDetails[partyB][collateral].liquidationTimestamp
+				appLayout.liquidationDetails[partyB][liquidationSig.collateral].liquidationTimestamp
 			);
 		}
 	}
@@ -111,11 +118,10 @@ library LiquidationFacetImpl {
 			);
 			pnls[index] = int256(profit);
 			if (profit > 0) {
-				// TODO: this should be double checked to see what is the profit ($ or eth collateral)
-				AccountStorage.layout().balances[partyB][collateral] -= (profit * appLayout.liquidationDetails[partyB][collateral].lossFactor) / 1e18;
-				AccountStorage.layout().balances[trade.partyA][collateral] +=
-					(profit * appLayout.liquidationDetails[partyB][collateral].lossFactor) /
-					1e18;
+				uint256 balanceToTransfer = (profit * appLayout.liquidationDetails[partyB][collateral].lossFactor) /
+					appLayout.liquidationDetails[partyB][collateral].collateralPrice;
+				AccountStorage.layout().balances[partyB][collateral] -= balanceToTransfer;
+				AccountStorage.layout().balances[trade.partyA][collateral] += balanceToTransfer;
 			}
 			trade.settledPrice = appLayout.symbolsPrices[partyB][trade.symbolId].price;
 			LibIntent.closeTrade(trade.id, TradeStatus.LIQUIDATED, IntentStatus.CANCELED);
