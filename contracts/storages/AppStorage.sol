@@ -16,6 +16,7 @@ struct LiquidationDetail {
 	uint256 flagTimestamp;
 	uint256 liquidationTimestamp;
 	uint256 lossFactor;
+	uint256 collateralPrice;
 	address flagger;
 }
 struct LiquidationSig {
@@ -23,6 +24,8 @@ struct LiquidationSig {
 	uint256 timestamp; // Timestamp when the liquidation signature was created
 	bytes liquidationId; // Unique identifier for the liquidation event
 	int256 upnl; // User's unrealized profit and loss at the time of insolvency
+	address collateral; // The address of collateral
+	uint256 collateralPrice; // The price of collateral
 	uint256[] symbolIds; // List of symbol IDs involved in the liquidation
 	uint256[] prices; // Corresponding prices of the symbols involved in the liquidation
 	bytes gatewaySignature; // Signature from the gateway for verification

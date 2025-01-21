@@ -11,32 +11,54 @@ import "./LiquidationFacetImpl.sol";
 import "../../storages/AccountStorage.sol";
 
 contract LiquidationFacet is Pausable, Accessibility, ILiquidationFacet {
+	/**
+	 * @notice Flags Party B to be liquidated.
+	 * @param partyB The address of Party B to be liquidated.
+	 * @param collateral The address of collateral
+	 */
 	function flagLiquidation(address partyB, address collateral) external whenNotLiquidationPaused onlyRole(LibAccessibility.LIQUIDATOR_ROLE) {
 		LiquidationFacetImpl.flagLiquidation(partyB, collateral);
 		emit FlagLiquidation(msg.sender, partyB, collateral);
 	}
 
+	/**
+	 * @notice Unflags Party B for liquidation.
+	 * @param partyB The address of Party B to be liquidated.
+	 * @param collateral The address of collateral
+	 */
 	function unflagLiquidation(address partyB, address collateral) external whenNotLiquidationPaused onlyRole(LibAccessibility.LIQUIDATOR_ROLE) {
-		LiquidationFacetImpl.unflagLiquidation(partyB, collateral);
+		LiquidationFacetImpl.unflagLiquidation(partyB, collateral, true);
 		emit UnflagLiquidation(msg.sender, partyB, collateral);
 	}
+
+	/**
+	 * @notice Unflags Party B for liquidation.
+	 * @param partyB The address of Party B to be liquidated.
+	 * @param collateral The address of collateral
+	 */
+	function forceUnflagLiquidation(
+		address partyB,
+		address collateral
+	) external whenNotLiquidationPaused onlyRole(LibAccessibility.LIQUIDATOR_OBSERVER_ROLE) {
+		LiquidationFacetImpl.unflagLiquidation(partyB, collateral, false);
+		emit UnflagLiquidation(msg.sender, partyB, collateral);
+	}
+
 	/**
 	 * @notice Liquidates Party B based on the provided signature.
 	 * @param partyB The address of Party B to be liquidated.
-	 * @param collateral The address of collateral
 	 * @param liquidationSig The Muon signature.
 	 */
 	function liquidate(
 		address partyB,
-		address collateral,
 		LiquidationSig memory liquidationSig
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.LIQUIDATOR_ROLE) {
-		LiquidationFacetImpl.liquidate(partyB, collateral, liquidationSig);
+		LiquidationFacetImpl.liquidate(partyB, liquidationSig);
 		emit Liquidate(
 			msg.sender,
 			partyB,
-			collateral,
-			AccountStorage.layout().balances[partyB][collateral],
+			liquidationSig.collateral,
+			AccountStorage.layout().balances[partyB][liquidationSig.collateral],
 			liquidationSig.upnl,
 			liquidationSig.liquidationId
 		);
@@ -50,10 +72,9 @@ contract LiquidationFacet is Pausable, Accessibility, ILiquidationFacet {
 	 */
 	function setSymbolsPrice(
 		address partyB,
-		address collateral,
 		LiquidationSig memory liquidationSig
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.LIQUIDATOR_ROLE) {
-		LiquidationFacetImpl.setSymbolsPrice(partyB, collateral, liquidationSig);
+		LiquidationFacetImpl.setSymbolsPrice(partyB, liquidationSig);
 		emit SetSymbolsPrices(msg.sender, partyB, liquidationSig.symbolIds, liquidationSig.prices, liquidationSig.liquidationId);
 	}
 
