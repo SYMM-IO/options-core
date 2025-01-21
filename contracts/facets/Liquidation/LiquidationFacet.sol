@@ -60,6 +60,7 @@ contract LiquidationFacet is Pausable, Accessibility, ILiquidationFacet {
 			liquidationSig.collateral,
 			AccountStorage.layout().balances[partyB][liquidationSig.collateral],
 			liquidationSig.upnl,
+			liquidationSig.collateralPrice,
 			liquidationSig.liquidationId
 		);
 	}
@@ -88,11 +89,11 @@ contract LiquidationFacet is Pausable, Accessibility, ILiquidationFacet {
 		address collateral,
 		uint256[] memory tradeIds
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.LIQUIDATOR_ROLE) {
-		(uint256[] memory liquidatedAmounts, int256[] memory pnls, bytes memory liquidationId) = LiquidationFacetImpl.liquidateTrades(
-			partyB,
-			collateral,
-			tradeIds
-		);
+		(uint256[] memory liquidatedAmounts, int256[] memory pnls, bytes memory liquidationId, bool isFullyLiquidated) = LiquidationFacetImpl
+			.liquidateTrades(partyB, collateral, tradeIds);
 		emit LiquidateTrades(msg.sender, partyB, tradeIds, liquidatedAmounts, pnls, liquidationId);
+		if (isFullyLiquidated) {
+			emit FullyLiquidated(partyB, liquidationId);
+		}
 	}
 }

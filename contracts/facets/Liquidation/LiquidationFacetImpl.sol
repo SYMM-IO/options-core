@@ -18,6 +18,7 @@ library LiquidationFacetImpl {
 			appLayout.liquidationDetails[partyB][collateral].status == LiquidationStatus.SOLVENT,
 			"LiquidationFacet: PartyB is in the liquidation process"
 		);
+		require(appLayout.partyBConfigs[partyB].lossCoverage > 0, "LiquidationFacet: Loss coverage of partyB is zero");
 		appLayout.liquidationDetails[partyB][collateral] = LiquidationDetail({
 			liquidationId: "",
 			status: LiquidationStatus.FLAGGED,
@@ -79,8 +80,6 @@ library LiquidationFacetImpl {
 			"LiquidationFacet: Invalid liquidationId"
 		);
 		for (uint256 index = 0; index < liquidationSig.symbolIds.length; index++) {
-			Symbol memory symbol = SymbolStorage.layout().symbols[liquidationSig.symbolIds[index]];
-			require(symbol.collateral == liquidationSig.collateral, "LiquidationFacet: Invalid symbol");
 			appLayout.symbolsPrices[partyB][liquidationSig.symbolIds[index]] = Price(
 				liquidationSig.prices[index],
 				appLayout.liquidationDetails[partyB][liquidationSig.collateral].liquidationTimestamp
@@ -92,7 +91,7 @@ library LiquidationFacetImpl {
 		address partyB,
 		address collateral,
 		uint256[] memory tradeIds
-	) internal returns (uint256[] memory liquidatedAmounts, int256[] memory pnls, bytes memory liquidationId) {
+	) internal returns (uint256[] memory liquidatedAmounts, int256[] memory pnls, bytes memory liquidationId, bool isFullyLiquidated) {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		liquidatedAmounts = new uint256[](tradeIds.length);
@@ -127,8 +126,11 @@ library LiquidationFacetImpl {
 			LibIntent.closeTrade(trade.id, TradeStatus.LIQUIDATED, IntentStatus.CANCELED);
 			trade.closedAmountBeforeExpiration = trade.quantity;
 			LibIntent.removeFromActiveTrades(trade.id);
-			// check if full liuidated
-			if (intentLayout.activeTradesOfPartyB[partyB][collateral].length == 0) {}
+		}
+		// check if full liuidated
+		if (intentLayout.activeTradesOfPartyB[partyB][collateral].length == 0) {
+			isFullyLiquidated = true;
+			delete appLayout.liquidationDetails[partyB][collateral];
 		}
 	}
 }
