@@ -20,4 +20,20 @@ interface IInstantActionsFacet is IInstantActionsEvents {
 		SignedFillIntent calldata signedFillCloseIntent,
 		bytes calldata partyBSignature
 	) external;
+
+	function instantCancelOpenIntent(
+		SignedCancelIntent calldata signedCancelOpenIntent,
+		bytes calldata partyASignature,
+		SignedCancelIntent calldata signedAcceptCancelOpenIntent,
+		bytes calldata partyBSignature
+	) external;
+
+	function instantCancelCloseIntent(
+		SignedCancelIntent calldata signedCancelCloseIntent,
+		bytes calldata partyASignature,
+		SignedCancelIntent calldata signedAcceptCancelCloseIntent,
+		bytes calldata partyBSignature
+	) external;
+
+	// TODO: add revert backs 1. revert back close intent 2. revert back withdraw or send alot of open intent
 }

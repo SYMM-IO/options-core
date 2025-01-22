@@ -138,7 +138,7 @@ library InstantActionsFacetImpl {
 		bytes calldata partyASignature,
 		SignedFillIntent calldata signedFillCloseIntent,
 		bytes calldata partyBSignature
-	) internal {
+	) internal returns (uint256 intentId) {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
@@ -178,7 +178,7 @@ library InstantActionsFacetImpl {
 		intentLayout.isSigUsed[closeIntentHash] = true;
 		intentLayout.isSigUsed[fillCloseIntentHash] = true;
 
-		uint256 intentId = ++intentLayout.lastCloseIntentId;
+		intentId = ++intentLayout.lastCloseIntentId;
 		CloseIntent memory intent = CloseIntent({
 			id: intentId,
 			tradeId: trade.id,
@@ -213,4 +213,65 @@ library InstantActionsFacetImpl {
 			LibIntent.removeFromActiveTrades(trade.id);
 		}
 	}
+
+	function instantCancelOpenIntent(
+		SignedCancelIntent calldata signedCancelOpenIntent,
+		bytes calldata partyASignature,
+		SignedCancelIntent calldata signedAcceptCancelOpenIntent,
+		bytes calldata partyBSignature
+	) internal {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+
+		OpenIntent memory intent = intentLayout.openIntents[signedCancelOpenIntent.intentId];
+		Symbol memory symbol = SymbolStorage.layout().symbols[intent.symbolId];
+
+		bytes32 cancelIntentHash = LibIntent.hashSignedCancelOpenIntent(signedCancelOpenIntent);
+		require(
+			ISignatureVerifier(intentLayout.signatureVerifier).verifySignature(signedCancelOpenIntent.signer, cancelIntentHash, partyASignature),
+			"PartyBFacet: Invalid PartyA signature"
+		);
+		require(!intentLayout.isSigUsed[cancelIntentHash], "SignatureVerifier: PartyA signature is already used");
+
+		bytes32 acceptCancelIntentHash = LibIntent.hashSignedAcceptCancelOpenIntent(signedAcceptCancelOpenIntent);
+		require(
+			ISignatureVerifier(intentLayout.signatureVerifier).verifySignature(
+				signedAcceptCancelOpenIntent.signer,
+				acceptCancelIntentHash,
+				partyBSignature
+			),
+			"PartyBFacet: Invalid PartyB signature"
+		);
+		require(!intentLayout.isSigUsed[acceptCancelIntentHash], "SignatureVerifier: PartyB signature is already used");
+
+		require(intent.partyA == signedCancelOpenIntent.signer);
+		require(intent.partyB == signedAcceptCancelOpenIntent.signer);
+
+		require(intent.status == IntentStatus.PENDING || intent.status == IntentStatus.LOCKED, "PartyAFacet: Invalid state");
+
+		// if (block.timestamp > intent.deadline) {
+		// 	LibIntent.expireOpenIntent(intent.id);
+		// 	result = IntentStatus.EXPIRED;
+		// } else if (intent.status == IntentStatus.PENDING) {
+		// 	intent.status = IntentStatus.CANCELED;
+		// 	uint256 fee = LibIntent.getTradingFee(intent.id);
+		// 	accountLayout.balances[intent.partyA][symbol.collateral] += fee;
+
+		// 	accountLayout.lockedBalances[intent.partyA][symbol.collateral] -= LibIntent.getPremiumOfOpenIntent(intentId);
+		// 	LibIntent.removeFromPartyAOpenIntents(intentId);
+		// 	result = IntentStatus.CANCELED;
+		// } else {
+		// 	// Intent is locked
+		// 	intent.status = IntentStatus.CANCEL_PENDING;
+		// 	result = IntentStatus.CANCEL_PENDING;
+		// }
+		// intent.statusModifyTimestamp = block.timestamp;
+	}
+
+	function instantCancelCloseIntent(
+		SignedCancelIntent calldata signedCancelCloseIntent,
+		bytes calldata partyASignture,
+		SignedCancelIntent calldata signedAcceptCancelCloseIntent,
+		bytes calldata partyBSignture
+	) internal {}
 }

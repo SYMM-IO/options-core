@@ -112,6 +112,12 @@ struct SignedFillIntent {
 	uint256 salt;
 }
 
+struct SignedCancelIntent {
+	address signer;
+	uint256 intentId;
+	uint256 salt;
+}
+
 library IntentStorage {
 	bytes32 internal constant INTENT_STORAGE_SLOT = keccak256("diamond.standard.storage.intent");
 
