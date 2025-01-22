@@ -42,6 +42,34 @@ contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
 		SignedFillIntent calldata signedFillCloseIntent,
 		bytes calldata partyBSignature
 	) external whenNotPartyBActionsPaused {
-		InstantActionsFacetImpl.instantFillCloseIntent(signedCloseIntent, partyASignature, signedFillCloseIntent, partyBSignature);
+		uint256 intentId = InstantActionsFacetImpl.instantFillCloseIntent(signedCloseIntent, partyASignature, signedFillCloseIntent, partyBSignature);
+		Trade storage trade = IntentStorage.layout().trades[signedCloseIntent.tradeId];
+		// emit SendCloseIntent(
+		// 	trade.partyA,
+		// 	trade.partyB,
+		// 	trade.id,
+		// 	intentId,
+		// 	signedFillCloseIntent.price,
+		// 	signedFillCloseIntent.quantity,
+		// 	signedCloseIntent.deadline,
+		// 	IntentStatus.PENDING
+		// );
+		emit FillCloseIntent(intentId, trade.id, trade.partyA, trade.partyB, signedFillCloseIntent.quantity, signedFillCloseIntent.price);
 	}
+
+	function instantCancelOpenIntent(
+		SignedCancelIntent calldata signedCancelOpenIntent,
+		bytes calldata partyASignature,
+		SignedCancelIntent calldata signedAcceptCancelOpenIntent,
+		bytes calldata partyBSignature
+	) external whenNotPartyBActionsPaused {
+		InstantActionsFacetImpl.instantCancelOpenIntent(signedCancelOpenIntent, partyASignature, signedAcceptCancelOpenIntent, partyBSignature);
+	}
+
+	function instantCancelCloseIntent(
+		SignedCancelIntent calldata signedCancelCloseIntent,
+		bytes calldata partyASignature,
+		SignedCancelIntent calldata signedAcceptCancelCloseIntent,
+		bytes calldata partyBSignature
+	) external whenNotPartyBActionsPaused {}
 }

@@ -273,4 +273,16 @@ library LibIntent {
 
 		return keccak256(abi.encode(SIGN_PREFIX, req.partyB, req.intentHash, req.price, req.quantity, req.deadline, req.salt));
 	}
+
+	function hashSignedCancelOpenIntent(SignedCancelIntent calldata req) internal pure returns (bytes32) {
+		bytes32 SIGN_PREFIX = keccak256("SymmioCancelOpenIntent_v1");
+
+		return keccak256(abi.encode(SIGN_PREFIX, req.signer, req.intentId, req.salt));
+	}
+
+	function hashSignedAcceptCancelOpenIntent(SignedCancelIntent calldata req) internal pure returns (bytes32) {
+		bytes32 SIGN_PREFIX = keccak256("SymmioAcceptCancelOpenIntent_v1");
+
+		return keccak256(abi.encode(SIGN_PREFIX, req.signer, req.intentId, req.salt));
+	}
 }
