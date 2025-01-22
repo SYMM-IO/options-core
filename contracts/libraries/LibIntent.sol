@@ -232,4 +232,27 @@ library LibIntent {
 		trade.statusModifyTimestamp = block.timestamp;
 		removeFromActiveTrades(tradeId);
 	}
+
+	function hashSignedOpenIntentRequest(SignedOpenIntentRequest calldata req) internal pure returns (bytes32) {
+		bytes32 SIGN_PREFIX = keccak256("SymmioOpenIntent_v1");
+
+		return
+			keccak256(
+				abi.encode(
+					SIGN_PREFIX,
+					req.partyA,
+					req.partyB,
+					req.symbolId,
+					req.price,
+					req.quantity,
+					req.strikePrice,
+					req.expirationTimestamp,
+					req.exerciseFee.rate,
+					req.exerciseFee.cap,
+					req.deadline,
+					req.affiliate,
+					req.salt
+				)
+			);
+	}
 }

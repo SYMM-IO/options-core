@@ -11,6 +11,7 @@ import "../../storages/AppStorage.sol";
 import "../../storages/IntentStorage.sol";
 import "../../storages/AccountStorage.sol";
 import "../../storages/SymbolStorage.sol";
+import "../../interfaces/ISignatureVerifier.sol";
 
 library PartyBFacetImpl {
 	function lockOpenIntent(uint256 intentId) internal {
@@ -23,7 +24,7 @@ library PartyBFacetImpl {
 		require(symbol.isValid, "PartyBFacet: Symbol is not valid");
 		require(block.timestamp <= intent.expirationTimestamp, "PartyBFacet: Requested expiration has been passed");
 		require(intentId <= intentLayout.lastOpenIntentId, "PartyBFacet: Invalid intentId");
-		require(AppStorage.layout().partyBConfigs[msg.sender].oracleId == symbol.oracleId);
+		require(AppStorage.layout().partyBConfigs[msg.sender].oracleId == symbol.oracleId, "PartyBFacet: Unmatch oracle");
 
 		bool isValidPartyB;
 		if (intent.partyBsWhiteList.length == 0) {
@@ -108,6 +109,149 @@ library PartyBFacetImpl {
 
 	function fillCloseIntent(uint256 intentId, uint256 quantity, uint256 price) internal {
 		LibPartyB.fillCloseIntent(intentId, quantity, price);
+	}
+
+	function instantOpenTradeWithSig(
+		SignedOpenIntentRequest calldata req,
+		bytes calldata signature,
+		uint256 filledQuantity,
+		uint256 filledPrice
+	) internal returns (uint256 intentId, uint256 newIntentId) {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		AppStorage.Layout storage appLayout = AppStorage.layout();
+
+		Symbol memory symbol = SymbolStorage.layout().symbols[req.symbolId];
+
+		bytes32 hash = LibIntent.hashSignedOpenIntentRequest(req);
+		bool isValid = ISignatureVerifier(intentLayout.signatureVerifier).verifySignature(req.partyA, hash, signature);
+		require(isValid, "PartyBFacet: Invalid PartyA signature");
+		require(!intentLayout.isSigUsed[hash], "SignatureVerifier: Signature is already used");
+
+		require(symbol.isValid, "PartyBFacet: Symbol is not valid");
+		require(req.deadline >= block.timestamp, "PartyBFacet: Request expired");
+		require(req.expirationTimestamp >= block.timestamp, "PartyBFacet: Low expiration timestamp");
+		require(req.exerciseFee.cap <= 1e18, "PartyAFacet: High cap for exercise fee");
+		require(req.partyB == msg.sender, "PartyBFacet: partyA cannot be in partyBWhiteList");
+		require(req.partyB != req.partyA, "PartyBFacet: partyA cannot be same with partyB");
+		require(appLayout.affiliateStatus[req.affiliate] || req.affiliate == address(0), "PartyBFacet: Invalid affiliate");
+		require(appLayout.partyBConfigs[msg.sender].oracleId == symbol.oracleId, "PartyBFacet: Unmatch oracle");
+		require(accountLayout.suspendedAddresses[req.partyA] == false, "PartyBFacet: PartyA is suspended");
+		require(!accountLayout.suspendedAddresses[req.partyB], "PartyBFacet: PartyB is Suspended");
+		require(!appLayout.partyBEmergencyStatus[req.partyB], "PartyBFacet: PartyB is in emergency mode");
+		require(!appLayout.emergencyMode, "PartyBFacet: System is in emergency mode");
+		require(appLayout.liquidationDetails[req.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT, "PartyBFacet: PartyB is liquidated");
+		require(intentLayout.activeTradesOf[req.partyA].length < appLayout.maxTradePerPartyA, "PartyBFacet: Too many active trades for partyA");
+		require(req.quantity >= filledQuantity && filledQuantity > 0, "PartyBFacet: Invalid quantity");
+		require(filledPrice <= req.price, "PartyBFacet: Opened price isn't valid");
+
+		intentLayout.isSigUsed[hash] = true;
+
+		intentId = ++intentLayout.lastOpenIntentId;
+		uint256 tradeId = ++intentLayout.lastTradeId;
+
+		address[] memory partyBsWhitelist = new address[](1);
+		partyBsWhitelist[0] = req.partyB;
+		OpenIntent memory intent = OpenIntent({
+			id: intentId,
+			tradeId: tradeId,
+			partyBsWhiteList: partyBsWhitelist,
+			symbolId: req.symbolId,
+			price: req.price,
+			quantity: req.quantity,
+			strikePrice: req.strikePrice,
+			expirationTimestamp: req.expirationTimestamp,
+			partyA: req.partyA,
+			partyB: req.partyB,
+			status: IntentStatus.FILLED,
+			parentId: 0,
+			createTimestamp: block.timestamp,
+			statusModifyTimestamp: block.timestamp,
+			deadline: req.deadline,
+			tradingFee: symbol.tradingFee,
+			affiliate: req.affiliate,
+			exerciseFee: req.exerciseFee
+		});
+
+		intentLayout.openIntents[intentId] = intent;
+		intentLayout.openIntentsOf[req.partyA].push(intent.id);
+		intentLayout.openIntentsOf[req.partyB].push(intent.id);
+		{
+			uint256 fee = LibIntent.getTradingFee(intentId);
+			accountLayout.balances[req.partyA][symbol.collateral] -= fee;
+			address feeCollector = appLayout.affiliateFeeCollector[req.affiliate] == address(0)
+				? appLayout.defaultFeeCollector
+				: appLayout.affiliateFeeCollector[req.affiliate];
+			accountLayout.balances[feeCollector][symbol.collateral] += (filledQuantity * intent.price * intent.tradingFee) / 1e36;
+		}
+		// filling
+		Trade memory trade = Trade({
+			id: tradeId,
+			openIntentId: intentId,
+			activeCloseIntentIds: new uint256[](0),
+			symbolId: intent.symbolId,
+			quantity: filledQuantity,
+			strikePrice: intent.strikePrice,
+			expirationTimestamp: intent.expirationTimestamp,
+			settledPrice: 0,
+			exerciseFee: intent.exerciseFee,
+			partyA: intent.partyA,
+			partyB: intent.partyB,
+			openedPrice: filledPrice,
+			closedAmountBeforeExpiration: 0,
+			closePendingAmount: 0,
+			avgClosedPriceBeforeExpiration: 0,
+			status: TradeStatus.OPENED,
+			createTimestamp: block.timestamp,
+			statusModifyTimestamp: block.timestamp
+		});
+
+		// partially fill
+		if (intent.quantity > filledQuantity) {
+			newIntentId = ++intentLayout.lastOpenIntentId;
+			IntentStatus newStatus = IntentStatus.PENDING;
+
+			OpenIntent memory q = OpenIntent({
+				id: newIntentId,
+				tradeId: 0,
+				partyBsWhiteList: partyBsWhitelist,
+				symbolId: intent.symbolId,
+				price: intent.price,
+				quantity: intent.quantity - filledQuantity,
+				strikePrice: intent.strikePrice,
+				expirationTimestamp: intent.expirationTimestamp,
+				exerciseFee: intent.exerciseFee,
+				partyA: intent.partyA,
+				partyB: address(0),
+				status: newStatus,
+				parentId: intent.id,
+				createTimestamp: block.timestamp,
+				statusModifyTimestamp: block.timestamp,
+				deadline: intent.deadline,
+				tradingFee: intent.tradingFee,
+				affiliate: intent.affiliate
+			});
+
+			intentLayout.openIntents[newIntentId] = q;
+			intentLayout.openIntentsOf[intent.partyA].push(newIntentId);
+			LibIntent.addToPartyAOpenIntents(newIntentId);
+
+			OpenIntent storage newIntent = intentLayout.openIntents[newIntentId];
+
+			// if (newStatus == IntentStatus.CANCELED) {
+			// 	// send trading Fee back to partyA
+			// 	uint256 fee = LibIntent.getTradingFee(newIntent.id);
+			// 	accountLayout.balances[newIntent.partyA][symbol.collateral] += fee;
+			// } else {
+			accountLayout.lockedBalances[intent.partyA][symbol.collateral] += LibIntent.getPremiumOfOpenIntent(newIntent.id);
+			// }
+			intent.quantity = filledQuantity;
+		}
+
+		LibIntent.addToActiveTrades(tradeId);
+		uint256 premium = LibIntent.getPremiumOfOpenIntent(intentId);
+		accountLayout.balances[trade.partyA][symbol.collateral] -= premium;
+		accountLayout.balances[trade.partyB][symbol.collateral] += premium;
 	}
 
 	function expireTrade(uint256 tradeId, SettlementPriceSig memory sig) internal {
