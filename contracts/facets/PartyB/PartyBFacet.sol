@@ -95,53 +95,6 @@ contract PartyBFacet is Accessibility, Pausable, IPartyBFacet {
 		emit FillCloseIntent(intentId, trade.id, trade.partyA, trade.partyB, quantity, price);
 	}
 
-	function instantOpenTradeWithSig(
-		SignedOpenIntentRequest calldata req,
-		bytes calldata signature,
-		uint256 filledQuantity,
-		uint256 filledPrice
-	) external whenNotPartyBActionsPaused onlyPartyB {
-		(uint256 intentId, uint256 newIntentId) = PartyBFacetImpl.instantOpenTradeWithSig(req, signature, filledQuantity, filledPrice);
-		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
-
-		emit SendOpenIntent(
-			intent.partyA,
-			intent.id,
-			intent.partyBsWhiteList,
-			intent.symbolId,
-			intent.price,
-			intent.quantity,
-			intent.strikePrice,
-			intent.expirationTimestamp,
-			intent.exerciseFee.rate,
-			intent.exerciseFee.cap,
-			intent.tradingFee,
-			intent.deadline
-		);
-		emit FillOpenIntent(intent.id, intent.tradeId, intent.partyA, intent.partyB, filledQuantity, filledPrice);
-		if (newIntentId != 0) {
-			OpenIntent storage newIntent = IntentStorage.layout().openIntents[newIntentId];
-			if (newIntent.status == IntentStatus.PENDING) {
-				emit SendOpenIntent(
-					newIntent.partyA,
-					newIntent.id,
-					newIntent.partyBsWhiteList,
-					newIntent.symbolId,
-					newIntent.price,
-					newIntent.quantity,
-					newIntent.strikePrice,
-					newIntent.expirationTimestamp,
-					newIntent.exerciseFee.rate,
-					newIntent.exerciseFee.cap,
-					newIntent.tradingFee,
-					newIntent.deadline
-				);
-			} else if (newIntent.status == IntentStatus.CANCELED) {
-				emit AcceptCancelOpenIntent(newIntent.id);
-			}
-		}
-	}
-
 	function expireTrade(uint256 tradeId, SettlementPriceSig memory settlementPriceSig) external whenNotPartyBActionsPaused {
 		PartyBFacetImpl.expireTrade(tradeId, settlementPriceSig);
 	}

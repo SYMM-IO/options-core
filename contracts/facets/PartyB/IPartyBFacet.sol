@@ -20,13 +20,6 @@ interface IPartyBFacet is IPartyBEvents {
 
 	function fillCloseIntent(uint256 intentId, uint256 quantity, uint256 price) external;
 
-	function instantOpenTradeWithSig(
-		SignedOpenIntentRequest calldata req,
-		bytes calldata signature,
-		uint256 filledQuantity,
-		uint256 filledPrice
-	) external;
-
 	function expireTrade(uint256 tradeId, SettlementPriceSig memory settlementPriceSig) external;
 
 	function exerciseTrade(uint256 tradeId, SettlementPriceSig memory settlementPriceSig) external;

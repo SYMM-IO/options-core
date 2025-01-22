@@ -233,7 +233,7 @@ library LibIntent {
 		removeFromActiveTrades(tradeId);
 	}
 
-	function hashSignedOpenIntentRequest(SignedOpenIntentRequest calldata req) internal pure returns (bytes32) {
+	function hashSignedOpenIntent(SignedOpenIntent calldata req) internal pure returns (bytes32) {
 		bytes32 SIGN_PREFIX = keccak256("SymmioOpenIntent_v1");
 
 		return
@@ -254,5 +254,23 @@ library LibIntent {
 					req.salt
 				)
 			);
+	}
+
+	function hashSignedCloseIntent(SignedCloseIntent calldata req) internal pure returns (bytes32) {
+		bytes32 SIGN_PREFIX = keccak256("SymmioCloseIntent_v1");
+
+		return keccak256(abi.encode(SIGN_PREFIX, req.partyA, req.tradeId, req.price, req.quantity, req.deadline, req.salt));
+	}
+
+	function hashSignedFillOpenIntent(SignedFillIntent calldata req) internal pure returns (bytes32) {
+		bytes32 SIGN_PREFIX = keccak256("SymmioFillOpenIntent_v1");
+
+		return keccak256(abi.encode(SIGN_PREFIX, req.partyB, req.intentHash, req.price, req.quantity, req.deadline, req.salt));
+	}
+
+	function hashSignedFillCloseIntent(SignedFillIntent calldata req) internal pure returns (bytes32) {
+		bytes32 SIGN_PREFIX = keccak256("SymmioFillCloseIntent_v1");
+
+		return keccak256(abi.encode(SIGN_PREFIX, req.partyB, req.intentHash, req.price, req.quantity, req.deadline, req.salt));
 	}
 }
