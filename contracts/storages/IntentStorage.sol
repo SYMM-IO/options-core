@@ -80,7 +80,7 @@ struct CloseIntent {
 	uint256 deadline;
 }
 
-struct SignedOpenIntentRequest {
+struct SignedOpenIntent {
 	address partyA;
 	address partyB;
 	uint256 symbolId;
@@ -91,6 +91,24 @@ struct SignedOpenIntentRequest {
 	ExerciseFee exerciseFee;
 	uint256 deadline;
 	address affiliate;
+	uint256 salt;
+}
+
+struct SignedCloseIntent {
+	address partyA;
+	uint256 tradeId;
+	uint256 price;
+	uint256 quantity;
+	uint256 deadline;
+	uint256 salt;
+}
+
+struct SignedFillIntent {
+	address partyB;
+	bytes32 intentHash;
+	uint256 price;
+	uint256 quantity;
+	uint256 deadline;
 	uint256 salt;
 }
 
