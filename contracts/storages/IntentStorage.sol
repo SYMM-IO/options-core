@@ -80,6 +80,20 @@ struct CloseIntent {
 	uint256 deadline;
 }
 
+struct SignedOpenIntentRequest {
+	address partyA;
+	address partyB;
+	uint256 symbolId;
+	uint256 price;
+	uint256 quantity;
+	uint256 strikePrice;
+	uint256 expirationTimestamp;
+	ExerciseFee exerciseFee;
+	uint256 deadline;
+	address affiliate;
+	uint256 salt;
+}
+
 library IntentStorage {
 	bytes32 internal constant INTENT_STORAGE_SLOT = keccak256("diamond.standard.storage.intent");
 
@@ -103,6 +117,9 @@ library IntentStorage {
 		mapping(uint256 => CloseIntent) closeIntents;
 		mapping(uint256 => uint256[]) closeIntentIdsOf;
 		uint256 lastCloseIntentId;
+		/////////////////////////////////////////////////
+		mapping(bytes32 => bool) isSigUsed;
+		address signatureVerifier;
 	}
 
 	function layout() internal pure returns (Layout storage l) {
