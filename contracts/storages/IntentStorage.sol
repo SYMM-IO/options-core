@@ -115,6 +115,7 @@ struct SignedFillIntent {
 struct SignedCancelIntent {
 	address signer;
 	uint256 intentId;
+	uint256 deadline;
 	uint256 salt;
 }
 

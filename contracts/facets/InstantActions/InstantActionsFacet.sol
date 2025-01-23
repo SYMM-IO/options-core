@@ -44,16 +44,16 @@ contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
 	) external whenNotPartyBActionsPaused {
 		uint256 intentId = InstantActionsFacetImpl.instantFillCloseIntent(signedCloseIntent, partyASignature, signedFillCloseIntent, partyBSignature);
 		Trade storage trade = IntentStorage.layout().trades[signedCloseIntent.tradeId];
-		// emit SendCloseIntent(
-		// 	trade.partyA,
-		// 	trade.partyB,
-		// 	trade.id,
-		// 	intentId,
-		// 	signedFillCloseIntent.price,
-		// 	signedFillCloseIntent.quantity,
-		// 	signedCloseIntent.deadline,
-		// 	IntentStatus.PENDING
-		// );
+		emit SendCloseIntent(
+			trade.partyA,
+			trade.partyB,
+			trade.id,
+			intentId,
+			signedFillCloseIntent.price,
+			signedFillCloseIntent.quantity,
+			signedCloseIntent.deadline,
+			IntentStatus.PENDING
+		);
 		emit FillCloseIntent(intentId, trade.id, trade.partyA, trade.partyB, signedFillCloseIntent.quantity, signedFillCloseIntent.price);
 	}
 
@@ -63,7 +63,18 @@ contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
 		SignedCancelIntent calldata signedAcceptCancelOpenIntent,
 		bytes calldata partyBSignature
 	) external whenNotPartyBActionsPaused {
-		InstantActionsFacetImpl.instantCancelOpenIntent(signedCancelOpenIntent, partyASignature, signedAcceptCancelOpenIntent, partyBSignature);
+		IntentStatus result = InstantActionsFacetImpl.instantCancelOpenIntent(
+			signedCancelOpenIntent,
+			partyASignature,
+			signedAcceptCancelOpenIntent,
+			partyBSignature
+		);
+		OpenIntent memory intent = IntentStorage.layout().openIntents[signedCancelOpenIntent.intentId];
+		if (result == IntentStatus.EXPIRED) {
+			emit ExpireOpenIntent(intent.id);
+		} else if (result == IntentStatus.CANCELED) {
+			emit CancelOpenIntent(intent.partyA, intent.partyB, result, intent.id);
+		}
 	}
 
 	function instantCancelCloseIntent(
@@ -71,5 +82,19 @@ contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
 		bytes calldata partyASignature,
 		SignedCancelIntent calldata signedAcceptCancelCloseIntent,
 		bytes calldata partyBSignature
-	) external whenNotPartyBActionsPaused {}
+	) external whenNotPartyBActionsPaused {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		IntentStatus result = InstantActionsFacetImpl.instantCancelCloseIntent(
+			signedCancelCloseIntent,
+			partyASignature,
+			signedAcceptCancelCloseIntent,
+			partyBSignature
+		);
+		Trade memory trade = intentLayout.trades[intentLayout.closeIntents[signedCancelCloseIntent.intentId].tradeId];
+		if (result == IntentStatus.EXPIRED) {
+			emit ExpireCloseIntent(signedCancelCloseIntent.intentId);
+		} else if (result == IntentStatus.CANCEL_PENDING) {
+			emit CancelCloseIntent(trade.partyA, trade.partyB, signedCancelCloseIntent.intentId);
+		}
+	}
 }

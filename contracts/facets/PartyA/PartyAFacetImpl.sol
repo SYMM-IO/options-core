@@ -31,7 +31,6 @@ library PartyAFacetImpl {
 		require(symbol.isValid, "PartyAFacet: Symbol is not valid");
 		require(deadline >= block.timestamp, "PartyAFacet: Low deadline");
 		require(expirationTimestamp >= block.timestamp, "PartyAFacet: Low expiration timestamp");
-		// TODO: should be double checked
 		require(exerciseFee.cap <= 1e18, "PartyAFacet: High cap for exercise fee");
 
 		for (uint8 i = 0; i < partyBsWhiteList.length; i++) {
