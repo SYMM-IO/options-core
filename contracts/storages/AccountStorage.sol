@@ -32,6 +32,9 @@ library AccountStorage {
 		mapping(address => uint256[]) withdrawIds;
 		uint256 lastWithdrawId;
 		/////////////////////////////////////////////////////////
+		mapping(address => bool) isInstantActionModeActivated;
+		mapping(address => uint256) deactiveInstantActionModeProposalTimestamp;
+		uint256 deactiveInstantActionModeCooldown;
 	}
 
 	function layout() internal pure returns (Layout storage l) {
