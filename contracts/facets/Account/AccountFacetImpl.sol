@@ -28,6 +28,7 @@ library AccountFacetImpl {
 			accountLayout.balances[msg.sender][collateral] - accountLayout.lockedBalances[msg.sender][collateral] >= amount,
 			"AccountFacet: Insufficient balance"
 		);
+		require(!accountLayout.isInstantActionModeActivated[msg.sender], "AccountFacet: Instant action mode is activated");
 
 		accountLayout.balances[msg.sender][collateral] -= amount;
 
@@ -78,5 +79,29 @@ library AccountFacetImpl {
 
 		withdrawObject.status = WithdrawStatus.CANCELED;
 		accountLayout.balances[withdrawObject.user][withdrawObject.collateral] += withdrawObject.amount;
+	}
+
+	function activateInstantActionMode() internal {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		require(!accountLayout.isInstantActionModeActivated[msg.sender], "AccountFacet: Instant action mode is already activated");
+		accountLayout.isInstantActionModeActivated[msg.sender] = true;
+	}
+
+	function proposeToDeactivateInstantActionMode() internal {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		require(accountLayout.isInstantActionModeActivated[msg.sender], "AccountFacet: Instant action mode isn't activated");
+		accountLayout.deactiveInstantActionModeProposalTimestamp[msg.sender] = block.timestamp;
+	}
+
+	function deactivateInstantActionMode() internal {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		require(accountLayout.isInstantActionModeActivated[msg.sender], "AccountFacet: Instant action mode isn't activated");
+		require(accountLayout.deactiveInstantActionModeProposalTimestamp[msg.sender] != 0, "AccountFacet: Proposal hasn't been set");
+		require(
+			accountLayout.deactiveInstantActionModeProposalTimestamp[msg.sender] + accountLayout.deactiveInstantActionModeCooldown <= block.timestamp,
+			"AccountFacet: Cooldown not reached"
+		);
+		accountLayout.isInstantActionModeActivated[msg.sender] = false;
+		accountLayout.deactiveInstantActionModeProposalTimestamp[msg.sender] = 0;
 	}
 }
