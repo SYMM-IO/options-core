@@ -5,5 +5,6 @@
 pragma solidity >=0.8.18;
 
 import "../PartyB/IPartyBEvents.sol";
+import "../PartyA/IPartyAEvents.sol";
 
-interface IInstantActionsEvents is IPartyBEvents {}
+interface IInstantActionsEvents is IPartyBEvents, IPartyAEvents {}

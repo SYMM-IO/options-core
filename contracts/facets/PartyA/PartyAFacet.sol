@@ -95,7 +95,7 @@ contract PartyAFacet is Accessibility, Pausable, IPartyAFacet {
 	function cancelOpenIntent(uint256[] memory intentIds) external whenNotPartyAActionsPaused {
 		for (uint256 i; i < intentIds.length; i++) {
 			IntentStatus result = PartyAFacetImpl.cancelOpenIntent(intentIds[i]);
-			OpenIntent storage intent = IntentStorage.layout().openIntents[intentIds[i]];
+			OpenIntent memory intent = IntentStorage.layout().openIntents[intentIds[i]];
 
 			if (result == IntentStatus.EXPIRED) {
 				emit ExpireOpenIntent(intent.id);
