@@ -16,4 +16,10 @@ interface IAccountFacet is IAccountEvents {
 	function claimWithdraw(uint256 id) external;
 
 	function cancelWithdraw(uint256 id) external;
+
+	function activateInstantActionMode() external;
+
+	function proposeToDeactivateInstantActionMode() external;
+
+	function deactivateInstantActionMode() external;
 }

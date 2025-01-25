@@ -71,6 +71,7 @@ abstract contract Accessibility {
 		Withdraw storage withdrawObject = AccountStorage.layout().withdraws[withdrawId];
 		require(!AccountStorage.layout().suspendedAddresses[withdrawObject.user], "Accessibility: User is Suspended");
 		require(!AccountStorage.layout().suspendedAddresses[withdrawObject.to], "Accessibility: Reciever is Suspended");
+		require(!AccountStorage.layout().suspendedWithdrawal[withdrawId], "Accessibility: Withdawal is Suspended");
 		_;
 	}
 }
