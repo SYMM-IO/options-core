@@ -27,6 +27,7 @@ library AccountStorage {
 		mapping(address => mapping(address => uint256)) balances; // user => collateral => balance
 		mapping(address => mapping(address => uint256)) lockedBalances; // user => collateral => lockedBalance
 		mapping(address => bool) suspendedAddresses;
+		mapping(uint256 => bool) suspendedWithdrawal;
 		/////////////////////////////////////////////////////////
 		mapping(uint256 => Withdraw) withdraws;
 		mapping(address => uint256[]) withdrawIds;
