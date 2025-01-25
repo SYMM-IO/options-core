@@ -6,18 +6,18 @@ pragma solidity >=0.8.18;
 
 import "../../utils/Pausable.sol";
 import "../../utils/Accessibility.sol";
-import "./ILiquidationFacet.sol";
-import "./LiquidationFacetImpl.sol";
+import "./IClearingHouseFacet.sol";
+import "./ClearingHouseFacetImpl.sol";
 import "../../storages/AccountStorage.sol";
 
-contract LiquidationFacet is Pausable, Accessibility, ILiquidationFacet {
+contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 	/**
 	 * @notice Flags Party B to be liquidated.
 	 * @param partyB The address of Party B to be liquidated.
 	 * @param collateral The address of collateral
 	 */
-	function flagLiquidation(address partyB, address collateral) external whenNotLiquidationPaused onlyRole(LibAccessibility.LIQUIDATOR_ROLE) {
-		LiquidationFacetImpl.flagLiquidation(partyB, collateral);
+	function flagLiquidation(address partyB, address collateral) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
+		ClearingHouseFacetImpl.flagLiquidation(partyB, collateral);
 		emit FlagLiquidation(msg.sender, partyB, collateral);
 	}
 
@@ -26,23 +26,23 @@ contract LiquidationFacet is Pausable, Accessibility, ILiquidationFacet {
 	 * @param partyB The address of Party B to be liquidated.
 	 * @param collateral The address of collateral
 	 */
-	function unflagLiquidation(address partyB, address collateral) external whenNotLiquidationPaused onlyRole(LibAccessibility.LIQUIDATOR_ROLE) {
-		LiquidationFacetImpl.unflagLiquidation(partyB, collateral, true);
+	function unflagLiquidation(address partyB, address collateral) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
+		ClearingHouseFacetImpl.unflagLiquidation(partyB, collateral, true);
 		emit UnflagLiquidation(msg.sender, partyB, collateral);
 	}
 
-	/**
-	 * @notice Unflags Party B for liquidation.
-	 * @param partyB The address of Party B to be liquidated.
-	 * @param collateral The address of collateral
-	 */
-	function forceUnflagLiquidation(
-		address partyB,
-		address collateral
-	) external whenNotLiquidationPaused onlyRole(LibAccessibility.LIQUIDATOR_OBSERVER_ROLE) {
-		LiquidationFacetImpl.unflagLiquidation(partyB, collateral, false);
-		emit UnflagLiquidation(msg.sender, partyB, collateral);
-	}
+	// /**
+	//  * @notice Unflags Party B for liquidation.
+	//  * @param partyB The address of Party B to be liquidated.
+	//  * @param collateral The address of collateral
+	//  */
+	// function forceUnflagLiquidation(
+	// 	address partyB,
+	// 	address collateral
+	// ) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
+	// 	ClearingHouseFacetImpl.unflagLiquidation(partyB, collateral, false);
+	// 	emit UnflagLiquidation(msg.sender, partyB, collateral);
+	// }
 
 	/**
 	 * @notice Liquidates Party B based on the provided signature.
@@ -52,8 +52,8 @@ contract LiquidationFacet is Pausable, Accessibility, ILiquidationFacet {
 	function liquidate(
 		address partyB,
 		LiquidationSig memory liquidationSig
-	) external whenNotLiquidationPaused onlyRole(LibAccessibility.LIQUIDATOR_ROLE) {
-		LiquidationFacetImpl.liquidate(partyB, liquidationSig);
+	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
+		ClearingHouseFacetImpl.liquidate(partyB, liquidationSig);
 		emit Liquidate(
 			msg.sender,
 			partyB,
@@ -74,8 +74,8 @@ contract LiquidationFacet is Pausable, Accessibility, ILiquidationFacet {
 	function setSymbolsPrice(
 		address partyB,
 		LiquidationSig memory liquidationSig
-	) external whenNotLiquidationPaused onlyRole(LibAccessibility.LIQUIDATOR_ROLE) {
-		LiquidationFacetImpl.setSymbolsPrice(partyB, liquidationSig);
+	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
+		ClearingHouseFacetImpl.setSymbolsPrice(partyB, liquidationSig);
 		emit SetSymbolsPrices(msg.sender, partyB, liquidationSig.symbolIds, liquidationSig.prices, liquidationSig.liquidationId);
 	}
 
@@ -88,8 +88,8 @@ contract LiquidationFacet is Pausable, Accessibility, ILiquidationFacet {
 		address partyB,
 		address collateral,
 		uint256[] memory tradeIds
-	) external whenNotLiquidationPaused onlyRole(LibAccessibility.LIQUIDATOR_ROLE) {
-		(uint256[] memory liquidatedAmounts, int256[] memory pnls, bytes memory liquidationId, bool isFullyLiquidated) = LiquidationFacetImpl
+	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
+		(uint256[] memory liquidatedAmounts, int256[] memory pnls, bytes memory liquidationId, bool isFullyLiquidated) = ClearingHouseFacetImpl
 			.liquidateTrades(partyB, collateral, tradeIds);
 		emit LiquidateTrades(msg.sender, partyB, tradeIds, liquidatedAmounts, pnls, liquidationId);
 		if (isFullyLiquidated) {
