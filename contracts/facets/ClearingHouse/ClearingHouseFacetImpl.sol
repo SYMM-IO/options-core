@@ -11,7 +11,7 @@ import "../../storages/IntentStorage.sol";
 import "../../storages/AccountStorage.sol";
 import "../../storages/SymbolStorage.sol";
 
-library LiquidationFacetImpl {
+library ClearingHouseFacetImpl {
 	function flagLiquidation(address partyB, address collateral) internal {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		require(

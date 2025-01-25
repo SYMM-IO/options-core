@@ -27,11 +27,15 @@ library AccountStorage {
 		mapping(address => mapping(address => uint256)) balances; // user => collateral => balance
 		mapping(address => mapping(address => uint256)) lockedBalances; // user => collateral => lockedBalance
 		mapping(address => bool) suspendedAddresses;
+		mapping(uint256 => bool) suspendedWithdrawal;
 		/////////////////////////////////////////////////////////
 		mapping(uint256 => Withdraw) withdraws;
 		mapping(address => uint256[]) withdrawIds;
 		uint256 lastWithdrawId;
 		/////////////////////////////////////////////////////////
+		mapping(address => bool) isInstantActionModeActivated;
+		mapping(address => uint256) deactiveInstantActionModeProposalTimestamp;
+		uint256 deactiveInstantActionModeCooldown;
 	}
 
 	function layout() internal pure returns (Layout storage l) {

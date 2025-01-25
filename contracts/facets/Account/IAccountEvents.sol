@@ -9,4 +9,7 @@ interface IAccountEvents {
 	event InitWithdraw(address user, address to, address collateral, uint256 amount, uint256 newBalance);
 	event ClaimWithdraw(uint256 id);
 	event CancelWithdraw(uint256 id, address user, uint256 newBalance);
+	event ActivateInstantActionMode(address user, uint256 timestamp);
+	event ProposeToDeactivateInstantActionMode(address user, uint256 timestamp);
+	event DeactivateInstantActionMode(address user, uint256 timestamp);
 }

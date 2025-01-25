@@ -52,4 +52,22 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		AccountFacetImpl.cancelWithdraw(id);
 		emit CancelWithdraw(id, withdrawObject.user, AccountStorage.layout().balances[withdrawObject.user][withdrawObject.collateral]);
 	}
+
+	/// @notice Allows partyAs to activate the instant action mode
+	function activateInstantActionMode() external notPartyB {
+		AccountFacetImpl.activateInstantActionMode();
+		emit ActivateInstantActionMode(msg.sender, block.timestamp);
+	}
+
+	/// @notice Allows partyAs to propose to deactivate the instant action mode
+	function proposeToDeactivateInstantActionMode() external notPartyB {
+		AccountFacetImpl.proposeToDeactivateInstantActionMode();
+		emit ProposeToDeactivateInstantActionMode(msg.sender, block.timestamp);
+	}
+
+	/// @notice Allows PartyAs to deactivate the instant action mode after the proposal
+	function deactivateInstantActionMode() external notPartyB {
+		AccountFacetImpl.deactivateInstantActionMode();
+		emit DeactivateInstantActionMode(msg.sender, block.timestamp);
+	}
 }

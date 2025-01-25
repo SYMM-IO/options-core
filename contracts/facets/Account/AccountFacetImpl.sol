@@ -14,7 +14,7 @@ library AccountFacetImpl {
 
 	function deposit(address collateral, address user, uint256 amount) internal {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
-		require(appLayout.whiteListedCollateral[collateral], "AccountFacet: Collateral isn't white-listed");
+		require(appLayout.whiteListedCollateral[collateral], "AccountFacet: Collateral isn't white listed");
 		IERC20(collateral).safeTransferFrom(msg.sender, address(this), amount);
 		uint256 amountWith18Decimals = (amount * 1e18) / (10 ** IERC20Metadata(collateral).decimals());
 		AccountStorage.layout().balances[user][collateral] += amountWith18Decimals;
@@ -22,12 +22,13 @@ library AccountFacetImpl {
 
 	function withdraw(address collateral, uint256 amount, address to) internal returns (uint256 currentId) {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		require(AppStorage.layout().whiteListedCollateral[collateral], "AccountFacet: Collateral isn't white-listed");
+		require(AppStorage.layout().whiteListedCollateral[collateral], "AccountFacet: Collateral isn't white listed");
 		require(to != address(0), "AccountFacet: Zero address");
 		require(
 			accountLayout.balances[msg.sender][collateral] - accountLayout.lockedBalances[msg.sender][collateral] >= amount,
 			"AccountFacet: Insufficient balance"
 		);
+		require(!accountLayout.isInstantActionModeActivated[msg.sender], "AccountFacet: Instant action mode is activated");
 
 		accountLayout.balances[msg.sender][collateral] -= amount;
 
@@ -78,5 +79,29 @@ library AccountFacetImpl {
 
 		withdrawObject.status = WithdrawStatus.CANCELED;
 		accountLayout.balances[withdrawObject.user][withdrawObject.collateral] += withdrawObject.amount;
+	}
+
+	function activateInstantActionMode() internal {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		require(!accountLayout.isInstantActionModeActivated[msg.sender], "AccountFacet: Instant action mode is already activated");
+		accountLayout.isInstantActionModeActivated[msg.sender] = true;
+	}
+
+	function proposeToDeactivateInstantActionMode() internal {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		require(accountLayout.isInstantActionModeActivated[msg.sender], "AccountFacet: Instant action mode isn't activated");
+		accountLayout.deactiveInstantActionModeProposalTimestamp[msg.sender] = block.timestamp;
+	}
+
+	function deactivateInstantActionMode() internal {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		require(accountLayout.isInstantActionModeActivated[msg.sender], "AccountFacet: Instant action mode isn't activated");
+		require(accountLayout.deactiveInstantActionModeProposalTimestamp[msg.sender] != 0, "AccountFacet: Proposal hasn't been set");
+		require(
+			accountLayout.deactiveInstantActionModeProposalTimestamp[msg.sender] + accountLayout.deactiveInstantActionModeCooldown <= block.timestamp,
+			"AccountFacet: Cooldown not reached"
+		);
+		accountLayout.isInstantActionModeActivated[msg.sender] = false;
+		accountLayout.deactiveInstantActionModeProposalTimestamp[msg.sender] = 0;
 	}
 }
