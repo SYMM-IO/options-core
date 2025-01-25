@@ -9,6 +9,7 @@ import "../../storages/AppStorage.sol";
 import "../../storages/IntentStorage.sol";
 import "../../storages/AccountStorage.sol";
 import "../../storages/SymbolStorage.sol";
+import "../../interfaces/ITradeNFT.sol";
 
 library PartyAFacetImpl {
 	function sendOpenIntent(
@@ -146,25 +147,61 @@ library PartyAFacetImpl {
 		trade.closePendingAmount += quantity;
 	}
 
+	/**
+     * @dev Shared logic for both diamond-initiated and NFT-initiated trade transfers.
+     */
+    function _validateAndTransferTrade(address sender, address receiver, uint256 tradeId) internal {
+        IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+        AppStorage.Layout storage appLayout = AppStorage.layout();
+        AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+        Trade storage trade = intentLayout.trades[tradeId];
+        Symbol memory symbol = SymbolStorage.layout().symbols[trade.symbolId];
+
+        require(trade.partyA == sender, "PartyAFacet: from != partyA");
+        require(trade.partyB != receiver, "PartyAFacet: to == partyB");
+        require(receiver != address(0), "PartyAFacet: zero address");
+        require(trade.status == TradeStatus.OPENED, "PartyAFacet: Invalid trade state");
+        require(
+            appLayout.liquidationDetails[trade.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
+            "PartyAFacet: PartyB is liquidated"
+        );
+        require(intentLayout.activeTradesOf[receiver].length < appLayout.maxTradePerPartyA, "PartyAFacet: too many trades for to");
+        require(!accountLayout.suspendedAddresses[sender], "PartyAFacet: from suspended");
+        require(!accountLayout.suspendedAddresses[receiver], "PartyAFacet: to suspended");
+
+        LibIntent.removeFromActiveTrades(tradeId);
+        trade.partyA = receiver;
+        LibIntent.addToActiveTrades(tradeId);
+    }
+
 	function transferTrade(address receiver, uint256 tradeId) internal {
+		_validateAndTransferTrade(msg.sender, receiver, tradeId);
+
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-		AppStorage.Layout storage appLayout = AppStorage.layout();
-		Trade storage trade = intentLayout.trades[tradeId];
-		Symbol memory symbol = SymbolStorage.layout().symbols[trade.symbolId];
+		uint256 tokenId = intentLayout.tradeIdToTokenId[tradeId];
+        if (tokenId != 0) {
+            address tradeNftAddr = intentLayout.tradeNftAddress;
+            if (tradeNftAddr != address(0)) {
+                // We assume the diamond is approved or is an operator so it can call this function
+                ITradeNFT(tradeNftAddr).transferNFTFromFacet(msg.sender, receiver, tokenId);
+            }
+        }
 
-		require(trade.partyB != receiver, "PartyAFacet: Receiver is partyB of trade");
-		require(receiver != address(0), "PartyAFacet: Zero address");
-		require(trade.status == TradeStatus.OPENED, "PartyAFacet: Invalid state");
-		require(
-			appLayout.liquidationDetails[trade.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
-			"PartyAFacet: PartyB is liquidated"
-		);
-		require(intentLayout.activeTradesOf[receiver].length < appLayout.maxTradePerPartyA, "PartyAFacet: Too many active trades for receiver");
-		require(!AccountStorage.layout().suspendedAddresses[trade.partyA], "PartyAFacet: Sender is Suspended");
-		require(!AccountStorage.layout().suspendedAddresses[receiver], "PartyAFacet: Receiver is Suspended");
-
-		LibIntent.removeFromActiveTrades(trade.id);
-		trade.partyA = receiver;
-		LibIntent.addToActiveTrades(trade.id);
 	}
+
+    function transferTradeFromNFT(address sender, address receiver, uint256 tradeId) internal {
+        _validateAndTransferTrade(sender, receiver, tradeId);
+    }
+
+    function checkTradeExists(uint256 tradeId) internal view {
+        IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+        Trade storage trade = intentLayout.trades[tradeId];
+        require(trade.id == tradeId, "PartyAFacet: Trade does not exist");
+        require(trade.status == TradeStatus.OPENED, "PartyAFacet: Trade not OPENED");
+    }
+
+    function setTradeTokenId(uint256 tradeId, uint256 tokenId) internal {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+        intentLayout.tradeIdToTokenId[tradeId] = tokenId;
+    }
 }

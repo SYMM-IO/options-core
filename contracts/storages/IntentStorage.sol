@@ -145,6 +145,11 @@ library IntentStorage {
 		/////////////////////////////////////////////////
 		mapping(bytes32 => bool) isSigUsed;
 		address signatureVerifier;
+		/**
+		 * @notice Mapping of tradeId -> tokenId, if an NFT is minted for that trade.
+		 */
+		mapping(uint256 => uint256) tradeIdToTokenId;
+		address tradeNftAddress;
 	}
 
 	function layout() internal pure returns (Layout storage l) {
