@@ -19,4 +19,10 @@ interface IClearingHouseFacet is IClearingHouseEvents {
 	function setSymbolsPrice(address partyB, LiquidationSig memory liquidationSig) external;
 
 	function liquidateTrades(address partyB, address collateral, uint256[] memory tradeIds) external;
+
+	// TODO: revert back withdrawal
+
+	// TODO: suspend the new closed amount and revert it back
+
+	// TODO: distribute the collateral between counter parties
 }
