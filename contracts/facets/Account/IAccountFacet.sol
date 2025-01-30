@@ -11,9 +11,9 @@ interface IAccountFacet is IAccountEvents {
 
 	function depositFor(address collateral, address user, uint256 amount) external;
 
-	function withdraw(address collateral, uint256 amount, address to) external;
+	function initiateWithdraw(address collateral, uint256 amount, address to) external;
 
-	function claimWithdraw(uint256 id) external;
+	function completeWithdraw(uint256 id) external;
 
 	function cancelWithdraw(uint256 id) external;
 

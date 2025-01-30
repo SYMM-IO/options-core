@@ -68,7 +68,7 @@ contract ViewFacet is IViewFacet {
 	 * @return Withdraw The Withdraw object associated with the given `id`.
 	 */
 	function getWithdraw(uint256 id) external view returns (Withdraw memory) {
-		return AccountStorage.layout().withdraws[id];
+		return AccountStorage.layout().withdrawals[id];
 	}
 
 	/**

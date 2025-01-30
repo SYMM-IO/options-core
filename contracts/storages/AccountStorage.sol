@@ -29,12 +29,12 @@ library AccountStorage {
 		mapping(address => bool) suspendedAddresses;
 		mapping(uint256 => bool) suspendedWithdrawal;
 		/////////////////////////////////////////////////////////
-		mapping(uint256 => Withdraw) withdraws;
-		mapping(address => uint256[]) withdrawIds;
+		mapping(uint256 => Withdraw) withdrawals;
+		mapping(address => uint256[]) userWithdrawals;
 		uint256 lastWithdrawId;
 		/////////////////////////////////////////////////////////
-		mapping(address => bool) isInstantActionModeActivated;
-		mapping(address => uint256) deactiveInstantActionModeProposalTimestamp;
+		mapping(address => bool) instantActionsMode;
+		mapping(address => uint256) instantActionsModeDeactivateTime;
 		uint256 deactiveInstantActionModeCooldown;
 	}
 

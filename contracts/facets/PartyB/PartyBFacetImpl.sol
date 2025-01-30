@@ -24,7 +24,7 @@ library PartyBFacetImpl {
 		require(symbol.isValid, "PartyBFacet: Symbol is not valid");
 		require(block.timestamp <= intent.expirationTimestamp, "PartyBFacet: Requested expiration has been passed");
 		require(intentId <= intentLayout.lastOpenIntentId, "PartyBFacet: Invalid intentId");
-		require(AppStorage.layout().partyBConfigs[msg.sender].oracleId == symbol.oracleId, "PartyBFacet: Unmatch oracle");
+		require(AppStorage.layout().partyBConfigs[msg.sender].oracleId == symbol.oracleId, "PartyBFacet: Oracle not matched");
 
 		bool isValidPartyB;
 		if (intent.partyBsWhiteList.length == 0) {

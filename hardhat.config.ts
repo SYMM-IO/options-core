@@ -1,8 +1,8 @@
 import "@nomicfoundation/hardhat-chai-matchers"
 import "@nomicfoundation/hardhat-toolbox"
 import "@openzeppelin/hardhat-upgrades"
-import type {HardhatUserConfig} from "hardhat/config"
-import 'solidity-docgen'
+import type { HardhatUserConfig } from "hardhat/config"
+import "solidity-docgen"
 
 const config: HardhatUserConfig = {
 	defaultNetwork: "hardhat",
@@ -49,7 +49,7 @@ const config: HardhatUserConfig = {
 	},
 	mocha: {
 		timeout: 100000000,
-	}
+	},
 }
 
 export default config
