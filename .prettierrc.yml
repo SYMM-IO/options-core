@@ -8,14 +8,11 @@ trailingComma: all
 useTabs: true
 
 overrides:
-  - files: "*.sol"
-    options:
-      compiler: "0.8.17"
   - files: "*.ts"
     options:
       tabWidth: 2
       semi: false
-      importOrder: ["<THIRD_PARTY_MODULES>", "^[./]"]
-      importOrderParserPlugins: ["typescript"]
+      importOrder: [ "<THIRD_PARTY_MODULES>", "^[./]" ]
+      importOrderParserPlugins: [ "typescript" ]
       importOrderSeparation: true
       importOrderSortSpecifiers: false

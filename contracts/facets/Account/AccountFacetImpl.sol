@@ -14,21 +14,21 @@ library AccountFacetImpl {
 
 	function deposit(address collateral, address user, uint256 amount) internal {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
-		require(appLayout.whiteListedCollateral[collateral], "AccountFacet: Collateral isn't white listed");
+		require(appLayout.whiteListedCollateral[collateral], "AccountFacet: Collateral is not whitelisted");
 		IERC20(collateral).safeTransferFrom(msg.sender, address(this), amount);
 		uint256 amountWith18Decimals = (amount * 1e18) / (10 ** IERC20Metadata(collateral).decimals());
 		AccountStorage.layout().balances[user][collateral] += amountWith18Decimals;
 	}
 
-	function withdraw(address collateral, uint256 amount, address to) internal returns (uint256 currentId) {
+	function initiateWithdraw(address collateral, uint256 amount, address to) internal returns (uint256 currentId) {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		require(AppStorage.layout().whiteListedCollateral[collateral], "AccountFacet: Collateral isn't white listed");
+		require(AppStorage.layout().whiteListedCollateral[collateral], "AccountFacet: Collateral is not whitelisted");
 		require(to != address(0), "AccountFacet: Zero address");
 		require(
 			accountLayout.balances[msg.sender][collateral] - accountLayout.lockedBalances[msg.sender][collateral] >= amount,
 			"AccountFacet: Insufficient balance"
 		);
-		require(!accountLayout.isInstantActionModeActivated[msg.sender], "AccountFacet: Instant action mode is activated");
+		require(!accountLayout.instantActionsMode[msg.sender], "AccountFacet: Instant action mode is activated");
 
 		accountLayout.balances[msg.sender][collateral] -= amount;
 
@@ -42,66 +42,59 @@ library AccountFacetImpl {
 			timestamp: block.timestamp,
 			status: WithdrawStatus.INITIATED
 		});
-		accountLayout.withdraws[currentId] = withdrawObject;
-		accountLayout.withdrawIds[msg.sender].push(currentId);
+		accountLayout.withdrawals[currentId] = withdrawObject;
+		accountLayout.userWithdrawals[msg.sender].push(currentId); // CHECK: We don't need this mapping
 	}
 
-	function claimWithdraw(uint256 id) internal {
+	function completeWithdraw(uint256 id) internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		Withdraw storage withdrawObject = accountLayout.withdraws[id];
-		require(id <= accountLayout.lastWithdrawId, "AccountFacet: Invalid Id");
-		require(withdrawObject.status == WithdrawStatus.INITIATED, "AccountFacet: Already withdrawn");
-		if (AppStorage.layout().partyBConfigs[withdrawObject.user].isActive) {
-			require(
-				block.timestamp >= AppStorage.layout().partyBDeallocateCooldown + withdrawObject.timestamp,
-				"AccountFacet: Cooldown hasn't reached"
-			);
+		require(id <= accountLayout.lastWithdrawId, "AccountFacet: Invalid id");
+
+		Withdraw storage w = accountLayout.withdrawals[id];
+		require(w.status == WithdrawStatus.INITIATED, "AccountFacet: Invalid state");
+		if (AppStorage.layout().partyBConfigs[w.user].isActive) {
+			require(block.timestamp >= AppStorage.layout().partyBDeallocateCooldown + w.timestamp, "AccountFacet: Cooldown is not over yet");
 		} else {
-			require(
-				block.timestamp >= AppStorage.layout().partyADeallocateCooldown + withdrawObject.timestamp,
-				"AccountFacet: Cooldown hasn't reached"
-			);
+			require(block.timestamp >= AppStorage.layout().partyADeallocateCooldown + w.timestamp, "AccountFacet: Cooldown is not over yet");
 		}
 
-		require(withdrawObject.user != address(0), "AccountFacet: Zero address");
+		// require(w.user != address(0), "AccountFacet: Zero address"); // CHECK: How can this be zero?
 
-		withdrawObject.status = WithdrawStatus.COMPLETED;
-		uint256 amountInCollateralDecimals = (withdrawObject.amount * (10 ** IERC20Metadata(withdrawObject.collateral).decimals())) / 1e18;
-		IERC20(withdrawObject.collateral).safeTransfer(withdrawObject.to, amountInCollateralDecimals);
+		w.status = WithdrawStatus.COMPLETED;
+		uint256 amountInCollateralDecimals = (w.amount * (10 ** IERC20Metadata(w.collateral).decimals())) / 1e18;
+		IERC20(w.collateral).safeTransfer(w.to, amountInCollateralDecimals);
 	}
 
 	function cancelWithdraw(uint256 id) internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		Withdraw storage withdrawObject = accountLayout.withdraws[id];
 		require(id <= accountLayout.lastWithdrawId, "AccountFacet: Invalid Id");
-		require(withdrawObject.status == WithdrawStatus.INITIATED, "AccountFacet: Already withdrawn");
-		require(withdrawObject.user != address(0), "AccountFacet: Zero address");
 
-		withdrawObject.status = WithdrawStatus.CANCELED;
-		accountLayout.balances[withdrawObject.user][withdrawObject.collateral] += withdrawObject.amount;
+		Withdraw storage w = accountLayout.withdrawals[id];
+		require(w.status == WithdrawStatus.INITIATED, "AccountFacet: Invalid state");
+		require(w.user != address(0), "AccountFacet: Zero address");
+
+		w.status = WithdrawStatus.CANCELED;
+		accountLayout.balances[w.user][w.collateral] += w.amount;
 	}
 
 	function activateInstantActionMode() internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		require(!accountLayout.isInstantActionModeActivated[msg.sender], "AccountFacet: Instant action mode is already activated");
-		accountLayout.isInstantActionModeActivated[msg.sender] = true;
+		require(!accountLayout.instantActionsMode[msg.sender], "AccountFacet: Instant actions mode is already activated");
+		accountLayout.instantActionsMode[msg.sender] = true;
 	}
 
 	function proposeToDeactivateInstantActionMode() internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		require(accountLayout.isInstantActionModeActivated[msg.sender], "AccountFacet: Instant action mode isn't activated");
-		accountLayout.deactiveInstantActionModeProposalTimestamp[msg.sender] = block.timestamp;
+		require(accountLayout.instantActionsMode[msg.sender], "AccountFacet: Instant actions mode isn't activated");
+		accountLayout.instantActionsModeDeactivateTime[msg.sender] = block.timestamp + accountLayout.deactiveInstantActionModeCooldown;
 	}
 
 	function deactivateInstantActionMode() internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		require(accountLayout.isInstantActionModeActivated[msg.sender], "AccountFacet: Instant action mode isn't activated");
-		require(accountLayout.deactiveInstantActionModeProposalTimestamp[msg.sender] != 0, "AccountFacet: Proposal hasn't been set");
-		require(
-			accountLayout.deactiveInstantActionModeProposalTimestamp[msg.sender] + accountLayout.deactiveInstantActionModeCooldown <= block.timestamp,
-			"AccountFacet: Cooldown not reached"
-		);
-		accountLayout.isInstantActionModeActivated[msg.sender] = false;
-		accountLayout.deactiveInstantActionModeProposalTimestamp[msg.sender] = 0;
+		require(accountLayout.instantActionsMode[msg.sender], "AccountFacet: Instant actions mode isn't activated");
+		require(accountLayout.instantActionsModeDeactivateTime[msg.sender] != 0, "AccountFacet: Deactivation is not proposed");
+		require(accountLayout.instantActionsModeDeactivateTime[msg.sender] <= block.timestamp, "AccountFacet: Cooldown is not over yet");
+		accountLayout.instantActionsMode[msg.sender] = false;
+		accountLayout.instantActionsModeDeactivateTime[msg.sender] = 0;
 	}
 }

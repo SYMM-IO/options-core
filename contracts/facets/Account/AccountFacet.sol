@@ -30,25 +30,29 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		emit Deposit(msg.sender, user, collateral, amount, AccountStorage.layout().balances[user][collateral]);
 	}
 
-	/// @notice Allows Partys to distinct withdraw a specified amount of collateral.
+	/// @notice Allows parties to initiate a withdraw with specified amount of collateral.
 	/// @param amount The precise amount of collateral to be withdrawn, specified in 18 decimals.
 	/// @param to The address that the collateral transfers
-	function withdraw(address collateral, uint256 amount, address to) external whenNotWithdrawingPaused notSuspended(msg.sender) notSuspended(to) {
-		AccountFacetImpl.withdraw(collateral, amount, to);
-		emit InitWithdraw(msg.sender, to, collateral, amount, AccountStorage.layout().balances[msg.sender][collateral]);
+	function initiateWithdraw(
+		address collateral,
+		uint256 amount,
+		address to
+	) external whenNotWithdrawingPaused notSuspended(msg.sender) notSuspended(to) {
+		uint256 id = AccountFacetImpl.initiateWithdraw(collateral, amount, to);
+		emit InitiateWithdraw(id, msg.sender, to, collateral, amount, AccountStorage.layout().balances[msg.sender][collateral]);
 	}
 
-	/// @notice Allows Partys to claim a withdraw.
+	/// @notice Allows parties to complete a withdraw.
 	/// @param id The Id of withdraw object
-	function claimWithdraw(uint256 id) external whenNotWithdrawingPaused notSuspendedWithdrawal(id) {
-		AccountFacetImpl.claimWithdraw(id);
-		emit ClaimWithdraw(id);
+	function completeWithdraw(uint256 id) external whenNotWithdrawingPaused notSuspendedWithdrawal(id) {
+		AccountFacetImpl.completeWithdraw(id);
+		emit CompleteWithdraw(id);
 	}
 
-	/// @notice Allows Partys to cancel a withdraw.
+	/// @notice Allows parties to cancel a withdraw.
 	/// @param id The Id of withdraw object
 	function cancelWithdraw(uint256 id) external whenNotWithdrawingPaused notSuspendedWithdrawal(id) {
-		Withdraw storage withdrawObject = AccountStorage.layout().withdraws[id];
+		Withdraw storage withdrawObject = AccountStorage.layout().withdrawals[id];
 		AccountFacetImpl.cancelWithdraw(id);
 		emit CancelWithdraw(id, withdrawObject.user, AccountStorage.layout().balances[withdrawObject.user][withdrawObject.collateral]);
 	}

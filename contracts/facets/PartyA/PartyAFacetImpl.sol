@@ -32,7 +32,7 @@ library PartyAFacetImpl {
 		require(deadline >= block.timestamp, "PartyAFacet: Low deadline");
 		require(expirationTimestamp >= block.timestamp, "PartyAFacet: Low expiration timestamp");
 		require(exerciseFee.cap <= 1e18, "PartyAFacet: High cap for exercise fee");
-		require(!accountLayout.isInstantActionModeActivated[msg.sender], "PartyAFacet: Instant action mode is activated");
+		require(!accountLayout.instantActionsMode[msg.sender], "PartyAFacet: Instant action mode is activated");
 
 		for (uint8 i = 0; i < partyBsWhiteList.length; i++) {
 			require(partyBsWhiteList[i] != msg.sender, "PartyAFacet: Sender isn't allowed in partyBWhiteList");
@@ -83,7 +83,7 @@ library PartyAFacetImpl {
 
 		require(intent.status == IntentStatus.PENDING || intent.status == IntentStatus.LOCKED, "PartyAFacet: Invalid state");
 		require(intent.partyA == msg.sender, "PartyAFacet: Should be partyA of Intent");
-		require(!accountLayout.isInstantActionModeActivated[msg.sender], "PartyAFacet: Instant action mode is activated");
+		require(!accountLayout.instantActionsMode[msg.sender], "PartyAFacet: Instant action mode is activated");
 
 		if (block.timestamp > intent.deadline) {
 			LibIntent.expireOpenIntent(intentId);
@@ -108,7 +108,7 @@ library PartyAFacetImpl {
 		CloseIntent storage intent = IntentStorage.layout().closeIntents[intentId];
 		require(intent.status == IntentStatus.PENDING, "PartyAFacet: Invalid state");
 		require(IntentStorage.layout().trades[intent.tradeId].partyA == msg.sender, "PartyAFacet: Should be partyA of Intent");
-		require(!AccountStorage.layout().isInstantActionModeActivated[msg.sender], "PartyAFacet: Instant action mode is activated");
+		require(!AccountStorage.layout().instantActionsMode[msg.sender], "PartyAFacet: Instant action mode is activated");
 
 		if (block.timestamp > intent.deadline) {
 			LibIntent.expireCloseIntent(intentId);
@@ -126,7 +126,7 @@ library PartyAFacetImpl {
 
 		require(trade.status == TradeStatus.OPENED, "PartyAFacet: Invalid state");
 		require(deadline >= block.timestamp, "PartyAFacet: Low deadline");
-		require(!AccountStorage.layout().isInstantActionModeActivated[trade.partyA], "PartyAFacet: Instant action mode is activated");
+		require(!AccountStorage.layout().instantActionsMode[trade.partyA], "PartyAFacet: Instant action mode is activated");
 		require(LibIntent.getAvailableAmountToClose(trade.id) >= quantity, "PartyAFacet: Invalid quantity");
 		require(trade.activeCloseIntentIds.length < AppStorage.layout().maxCloseOrdersLength, "PartyAFacet: Too many close orders");
 
