@@ -60,7 +60,10 @@ library ClearingHouseFacetImpl {
 		require(liquidationSig.upnl < 0, "LiquidationFacet: Invalid upnl");
 		int256 requiredCollateral = (-liquidationSig.upnl * int256(appLayout.partyBConfigs[partyB].lossCoverage)) /
 			int256(liquidationSig.collateralPrice);
-		require(requiredCollateral > int256(accountLayout.balances[partyB][liquidationSig.collateral].available), "LiquidationFacet: PartyB is solvent");
+		require(
+			requiredCollateral > int256(accountLayout.balances[partyB][liquidationSig.collateral].available),
+			"LiquidationFacet: PartyB is solvent"
+		);
 		int256 loss = requiredCollateral - int256(accountLayout.balances[partyB][liquidationSig.collateral].available);
 		appLayout.liquidationDetails[partyB][liquidationSig.collateral].status = LiquidationStatus.IN_PROGRESS;
 		appLayout.liquidationDetails[partyB][liquidationSig.collateral].liquidationId = liquidationSig.liquidationId;

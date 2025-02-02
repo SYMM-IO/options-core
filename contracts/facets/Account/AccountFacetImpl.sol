@@ -80,8 +80,7 @@ library AccountFacetImpl {
 
 	function syncBalances(address collateral, address partyA, address[] calldata partyBs) internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		for (uint256 i = 0; i < partyBs.length; i++) 
-			accountLayout.balances[partyA][collateral].sync(partyBs[i], block.timestamp);
+		for (uint256 i = 0; i < partyBs.length; i++) accountLayout.balances[partyA][collateral].sync(partyBs[i], block.timestamp);
 	}
 
 	function activateInstantActionMode() internal {

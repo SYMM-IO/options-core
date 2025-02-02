@@ -50,7 +50,10 @@ library InstantActionsFacetImpl {
 		require(signedOpenIntent.exerciseFee.cap <= 1e18, "InstantActionsFacet: High cap for exercise fee");
 		require(signedOpenIntent.partyB == signedFillOpenIntent.partyB, "InstantActionsFacet: Invalid signature");
 		require(signedOpenIntent.partyB != signedOpenIntent.partyA, "InstantActionsFacet: partyA cannot be the same as partyB");
-		require(appLayout.affiliateStatus[signedOpenIntent.affiliate] || signedOpenIntent.affiliate == address(0), "InstantActionsFacet: Invalid affiliate");
+		require(
+			appLayout.affiliateStatus[signedOpenIntent.affiliate] || signedOpenIntent.affiliate == address(0),
+			"InstantActionsFacet: Invalid affiliate"
+		);
 		require(appLayout.partyBConfigs[signedFillOpenIntent.partyB].oracleId == symbol.oracleId, "InstantActionsFacet: Mismatched oracle");
 		require(accountLayout.suspendedAddresses[signedOpenIntent.partyA] == false, "InstantActionsFacet: PartyA is suspended");
 		require(!accountLayout.suspendedAddresses[signedOpenIntent.partyB], "InstantActionsFacet: PartyB is Suspended");
@@ -64,7 +67,10 @@ library InstantActionsFacetImpl {
 			intentLayout.activeTradesOf[signedOpenIntent.partyA].length < appLayout.maxTradePerPartyA,
 			"InstantActionsFacet: Too many active trades for partyA"
 		);
-		require(signedOpenIntent.quantity >= signedFillOpenIntent.quantity && signedFillOpenIntent.quantity > 0, "InstantActionsFacet: Invalid filled quantity");
+		require(
+			signedOpenIntent.quantity >= signedFillOpenIntent.quantity && signedFillOpenIntent.quantity > 0,
+			"InstantActionsFacet: Invalid filled quantity"
+		);
 		require(signedFillOpenIntent.price <= signedOpenIntent.price, "InstantActionsFacet: Invalid filled price");
 
 		intentLayout.isSigUsed[openIntentHash] = true;
