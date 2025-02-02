@@ -10,6 +10,8 @@ import "../storages/AppStorage.sol";
 import "../storages/SymbolStorage.sol";
 
 library LibIntent {
+	using StagedReleaseBalanceOps for StagedReleaseBalance;
+
 	function tradeOpenAmount(Trade storage trade) internal view returns (uint256) {
 		return trade.quantity - trade.closedAmountBeforeExpiration;
 	}
@@ -199,7 +201,11 @@ library LibIntent {
 
 		// send trading Fee back to partyA
 		uint256 fee = getTradingFee(intent.id);
-		accountLayout.balances[intent.partyA][symbol.collateral] += fee;
+		if (intent.partyBsWhiteList.length == 1) {
+			accountLayout.balances[intent.partyA][symbol.collateral].add(intent.partyBsWhiteList[0], fee, block.timestamp);
+		} else {
+			accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(fee);
+		}
 
 		removeFromPartyAOpenIntents(intent.id);
 		if (intent.status == IntentStatus.LOCKED || intent.status == IntentStatus.CANCEL_PENDING) {
@@ -219,6 +225,7 @@ library LibIntent {
 		intent.status = IntentStatus.EXPIRED;
 		removeFromActiveCloseIntents(intentId);
 	}
+
 	function closeTrade(uint256 tradeId, TradeStatus tradeStatus, IntentStatus intentStatus) internal {
 		Trade storage trade = IntentStorage.layout().trades[tradeId];
 		uint256 len = trade.activeCloseIntentIds.length;

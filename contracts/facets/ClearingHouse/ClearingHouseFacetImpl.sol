@@ -12,6 +12,8 @@ import "../../storages/AccountStorage.sol";
 import "../../storages/SymbolStorage.sol";
 
 library ClearingHouseFacetImpl {
+	using StagedReleaseBalanceOps for StagedReleaseBalance;
+
 	function flagLiquidation(address partyB, address collateral) internal {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		require(
@@ -58,8 +60,8 @@ library ClearingHouseFacetImpl {
 		require(liquidationSig.upnl < 0, "LiquidationFacet: Invalid upnl");
 		int256 requiredCollateral = (-liquidationSig.upnl * int256(appLayout.partyBConfigs[partyB].lossCoverage)) /
 			int256(liquidationSig.collateralPrice);
-		require(requiredCollateral > int256(accountLayout.balances[partyB][liquidationSig.collateral]), "LiquidationFacet: PartyB is solvent");
-		int256 loss = requiredCollateral - int256(accountLayout.balances[partyB][liquidationSig.collateral]);
+		require(requiredCollateral > int256(accountLayout.balances[partyB][liquidationSig.collateral].available), "LiquidationFacet: PartyB is solvent");
+		int256 loss = requiredCollateral - int256(accountLayout.balances[partyB][liquidationSig.collateral].available);
 		appLayout.liquidationDetails[partyB][liquidationSig.collateral].status = LiquidationStatus.IN_PROGRESS;
 		appLayout.liquidationDetails[partyB][liquidationSig.collateral].liquidationId = liquidationSig.liquidationId;
 		appLayout.liquidationDetails[partyB][liquidationSig.collateral].upnl = liquidationSig.upnl;
@@ -119,8 +121,8 @@ library ClearingHouseFacetImpl {
 			if (profit > 0) {
 				uint256 balanceToTransfer = (profit * appLayout.liquidationDetails[partyB][collateral].lossFactor) /
 					appLayout.liquidationDetails[partyB][collateral].collateralPrice;
-				AccountStorage.layout().balances[partyB][collateral] -= balanceToTransfer;
-				AccountStorage.layout().balances[trade.partyA][collateral] += balanceToTransfer;
+				AccountStorage.layout().balances[partyB][collateral].sub(balanceToTransfer);
+				AccountStorage.layout().balances[trade.partyA][collateral].instantAdd(balanceToTransfer);
 			}
 			trade.settledPrice = appLayout.symbolsPrices[partyB][trade.symbolId].price;
 			LibIntent.closeTrade(trade.id, TradeStatus.LIQUIDATED, IntentStatus.CANCELED);
