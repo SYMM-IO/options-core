@@ -57,6 +57,14 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		emit CancelWithdraw(id, withdrawObject.user, AccountStorage.layout().balances[withdrawObject.user][withdrawObject.collateral].available);
 	}
 
+	/// @notice Syncs balances between specified PartyA and PartyBs
+	/// @param partyA The PartyA address to sync balances for
+	/// @param partyBs Array of PartyB addresses to sync balances with
+	function syncBalances(address collateral, address partyA, address[] calldata partyBs) external {
+		AccountFacetImpl.syncBalances(collateral, partyA, partyBs);
+		emit SyncBalances(collateral, partyA, partyBs);
+	}
+
 	/// @notice Allows partyAs to activate the instant action mode
 	function activateInstantActionMode() external notPartyB {
 		AccountFacetImpl.activateInstantActionMode();

@@ -64,7 +64,7 @@ library InstantActionsFacetImpl {
 			intentLayout.activeTradesOf[signedOpenIntent.partyA].length < appLayout.maxTradePerPartyA,
 			"InstantActionsFacet: Too many active trades for partyA"
 		);
-		require(signedOpenIntent.quantity >= signedFillOpenIntent.quantity && signedFillOpenIntent.quantity > 0, "PartyBFacet: Invalid filled quantity");
+		require(signedOpenIntent.quantity >= signedFillOpenIntent.quantity && signedFillOpenIntent.quantity > 0, "InstantActionsFacet: Invalid filled quantity");
 		require(signedFillOpenIntent.price <= signedOpenIntent.price, "InstantActionsFacet: Invalid filled price");
 
 		intentLayout.isSigUsed[openIntentHash] = true;
@@ -173,7 +173,7 @@ library InstantActionsFacetImpl {
 		);
 		require(
 			signedFillCloseIntent.quantity > 0 && signedFillCloseIntent.quantity <= signedCloseIntent.quantity,
-			"InstantActionsFacet: Invalid filled amount"
+			"InstantActionsFacet: Invalid filled quantity"
 		);
 		require(block.timestamp < trade.expirationTimestamp, "InstantActionsFacet: Trade is expired");
 		require(signedFillCloseIntent.price >= signedCloseIntent.price, "InstantActionsFacet: Closed price isn't valid");
