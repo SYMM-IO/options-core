@@ -14,6 +14,8 @@ import "../../storages/SymbolStorage.sol";
 import "../../interfaces/ISignatureVerifier.sol";
 
 library PartyBFacetImpl {
+	using StagedReleaseBalanceOps for StagedReleaseBalance;
+
 	function lockOpenIntent(uint256 intentId) internal {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		OpenIntent storage intent = intentLayout.openIntents[intentId];
@@ -76,7 +78,11 @@ library PartyBFacetImpl {
 
 		// send trading Fee back to partyA
 		uint256 fee = LibIntent.getTradingFee(intentId);
-		accountLayout.balances[intent.partyA][symbol.collateral] += fee;
+		if (intent.partyBsWhiteList.length == 1) {
+			accountLayout.balances[intent.partyA][symbol.collateral].add(intent.partyBsWhiteList[0], fee, block.timestamp);
+		} else {
+			accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(fee);
+		}
 
 		LibIntent.removeFromPartyAOpenIntents(intentId);
 		LibIntent.removeFromPartyBOpenIntents(intentId);
@@ -166,8 +172,8 @@ library PartyBFacetImpl {
 			amountToTransfer = (amountToTransfer * 1e18) / sig.settlementPrice;
 		}
 
-		accountLayout.balances[trade.partyA][symbol.collateral] += amountToTransfer;
-		accountLayout.balances[trade.partyB][symbol.collateral] -= amountToTransfer;
+		accountLayout.balances[trade.partyA][symbol.collateral].instantAdd(amountToTransfer); //CHECK: instantAdd or add?
+		accountLayout.balances[trade.partyB][symbol.collateral].sub(amountToTransfer);
 
 		LibIntent.closeTrade(tradeId, TradeStatus.EXERCISED, IntentStatus.CANCELED);
 	}

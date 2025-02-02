@@ -18,7 +18,7 @@ contract ViewFacet is IViewFacet {
 	 * @return balance The balance of the user and specic collateral type.
 	 */
 	function balanceOf(address user, address collateral) external view returns (uint256) {
-		return AccountStorage.layout().balances[user][collateral];
+		return AccountStorage.layout().balances[user][collateral].available;
 	}
 
 	/**
@@ -52,9 +52,9 @@ contract ViewFacet is IViewFacet {
 		return (
 			// maLayout.liquidationStatus[partyA], #TODO 1
 			accountLayout.suspendedAddresses[partyA],
-			accountLayout.balances[partyA][collateral],
+			accountLayout.balances[partyA][collateral].available,
 			accountLayout.lockedBalances[partyA][collateral],
-			accountLayout.withdrawIds[partyA],
+			accountLayout.userWithdrawals[partyA],
 			//TODO 2: consider adding AppStorage:partyAReimbursement after it's used
 			intentLayout.openIntentsOf[partyA],
 			intentLayout.tradesOf[partyA]

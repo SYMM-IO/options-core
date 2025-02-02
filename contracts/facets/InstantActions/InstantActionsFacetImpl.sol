@@ -14,6 +14,8 @@ import "../../storages/SymbolStorage.sol";
 import "../../interfaces/ISignatureVerifier.sol";
 
 library InstantActionsFacetImpl {
+	using StagedReleaseBalanceOps for StagedReleaseBalance;
+
 	function instantFillOpenIntent(
 		SignedOpenIntent calldata signedOpenIntent,
 		bytes calldata partyASignature,
@@ -99,11 +101,12 @@ library InstantActionsFacetImpl {
 		intentLayout.openIntentsOf[signedOpenIntent.partyB].push(intent.id);
 		{
 			uint256 fee = LibIntent.getTradingFee(intentId);
-			accountLayout.balances[signedOpenIntent.partyA][symbol.collateral] -= fee;
-			address feeCollector = appLayout.affiliateFeeCollector[signedOpenIntent.affiliate] == address(0)
+			accountLayout.balances[signedOpenIntent.partyA][symbol.collateral].subForPartyB(signedOpenIntent.partyB, fee);
+
+			appLayout.affiliateFeeCollector[signedOpenIntent.affiliate] == address(0)
 				? appLayout.defaultFeeCollector
 				: appLayout.affiliateFeeCollector[signedOpenIntent.affiliate];
-			accountLayout.balances[feeCollector][symbol.collateral] += fee;
+			accountLayout.balances[signedOpenIntent.partyA][symbol.collateral].instantAdd(fee);
 		}
 		// filling
 		Trade memory trade = Trade({
@@ -129,8 +132,8 @@ library InstantActionsFacetImpl {
 
 		LibIntent.addToActiveTrades(tradeId);
 		uint256 premium = LibIntent.getPremiumOfOpenIntent(intentId);
-		accountLayout.balances[trade.partyA][symbol.collateral] -= premium;
-		accountLayout.balances[trade.partyB][symbol.collateral] += premium;
+		accountLayout.balances[trade.partyA][symbol.collateral].subForPartyB(trade.partyB, premium);
+		accountLayout.balances[trade.partyB][symbol.collateral].instantAdd(premium);
 	}
 
 	function instantFillCloseIntent(
@@ -195,8 +198,8 @@ library InstantActionsFacetImpl {
 		intentLayout.closeIntentIdsOf[trade.id].push(intentId);
 
 		uint256 pnl = (signedFillCloseIntent.quantity * signedFillCloseIntent.price) / 1e18;
-		accountLayout.balances[trade.partyA][symbol.collateral] += pnl;
-		accountLayout.balances[trade.partyB][symbol.collateral] -= pnl;
+		accountLayout.balances[trade.partyA][symbol.collateral].add(trade.partyB, pnl, block.timestamp);
+		accountLayout.balances[trade.partyB][symbol.collateral].sub(pnl);
 
 		trade.avgClosedPriceBeforeExpiration =
 			(trade.avgClosedPriceBeforeExpiration *
@@ -262,7 +265,7 @@ library InstantActionsFacetImpl {
 		} else {
 			intent.status = IntentStatus.CANCELED;
 			uint256 fee = LibIntent.getTradingFee(intent.id);
-			accountLayout.balances[intent.partyA][symbol.collateral] += fee;
+			accountLayout.balances[intent.partyA][symbol.collateral].add(intent.partyB, fee, block.timestamp);
 
 			accountLayout.lockedBalances[intent.partyA][symbol.collateral] -= LibIntent.getPremiumOfOpenIntent(intent.id);
 			LibIntent.removeFromPartyAOpenIntents(intent.id);

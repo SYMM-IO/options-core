@@ -9,6 +9,8 @@ import "../storages/AppStorage.sol";
 import "./LibIntent.sol";
 
 library LibPartyB {
+	using StagedReleaseBalanceOps for StagedReleaseBalance;
+
 	function fillOpenIntent(uint256 intentId, uint256 quantity, uint256 price) internal returns (uint256 newIntentId) {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
@@ -32,7 +34,7 @@ library LibPartyB {
 		address feeCollector = appLayout.affiliateFeeCollector[intent.affiliate] == address(0)
 			? appLayout.defaultFeeCollector
 			: appLayout.affiliateFeeCollector[intent.affiliate];
-		accountLayout.balances[feeCollector][symbol.collateral] += (quantity * intent.price * intent.tradingFee) / 1e36;
+		accountLayout.balances[feeCollector][symbol.collateral].instantAdd((quantity * intent.price * intent.tradingFee) / 1e36);
 
 		uint256 tradeId = ++intentLayout.lastTradeId;
 		Trade memory trade = Trade({
@@ -105,7 +107,11 @@ library LibPartyB {
 			if (newStatus == IntentStatus.CANCELED) {
 				// send trading Fee back to partyA
 				uint256 fee = LibIntent.getTradingFee(newIntent.id);
-				accountLayout.balances[newIntent.partyA][symbol.collateral] += fee;
+				if (intent.partyBsWhiteList.length == 1) {
+					accountLayout.balances[intent.partyA][symbol.collateral].add(newIntent.partyBsWhiteList[0], fee, block.timestamp);
+				} else {
+					accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(fee);
+				}
 			} else {
 				accountLayout.lockedBalances[intent.partyA][symbol.collateral] += LibIntent.getPremiumOfOpenIntent(newIntent.id);
 			}
@@ -113,8 +119,8 @@ library LibPartyB {
 		}
 		LibIntent.addToActiveTrades(tradeId);
 		uint256 premium = LibIntent.getPremiumOfOpenIntent(intentId);
-		accountLayout.balances[trade.partyA][symbol.collateral] -= premium;
-		accountLayout.balances[trade.partyB][symbol.collateral] += premium;
+		accountLayout.balances[trade.partyA][symbol.collateral].subForPartyB(trade.partyB, premium);
+		accountLayout.balances[trade.partyB][symbol.collateral].instantAdd(premium);
 	}
 
 	function fillCloseIntent(uint256 intentId, uint256 quantity, uint256 price) internal {
@@ -137,8 +143,8 @@ library LibPartyB {
 		require(price >= intent.price, "LibPartyB: Closed price isn't valid");
 
 		uint256 pnl = (quantity * price) / 1e18;
-		accountLayout.balances[trade.partyA][symbol.collateral] += pnl;
-		accountLayout.balances[trade.partyB][symbol.collateral] -= pnl;
+		accountLayout.balances[trade.partyA][symbol.collateral].instantAdd(pnl);
+		accountLayout.balances[trade.partyB][symbol.collateral].sub(pnl);
 
 		trade.avgClosedPriceBeforeExpiration =
 			(trade.avgClosedPriceBeforeExpiration * trade.closedAmountBeforeExpiration + quantity * price) /
