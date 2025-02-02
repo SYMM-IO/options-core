@@ -31,41 +31,41 @@ library InstantActionsFacetImpl {
 		bytes32 openIntentHash = LibIntent.hashSignedOpenIntent(signedOpenIntent);
 		require(
 			ISignatureVerifier(intentLayout.signatureVerifier).verifySignature(signedOpenIntent.partyA, openIntentHash, partyASignature),
-			"PartyBFacet: Invalid PartyA signature"
+			"InstantActionsFacet: Invalid PartyA signature"
 		);
-		require(!intentLayout.isSigUsed[openIntentHash], "SignatureVerifier: PartyA signature is already used");
+		require(!intentLayout.isSigUsed[openIntentHash], "InstantActionsFacet: PartyA signature is already used");
 
 		bytes32 fillOpenIntentHash = LibIntent.hashSignedFillOpenIntent(signedFillOpenIntent);
 		require(
 			ISignatureVerifier(intentLayout.signatureVerifier).verifySignature(signedFillOpenIntent.partyB, fillOpenIntentHash, partyBSignature),
-			"PartyBFacet: Invalid PartyB signature"
+			"InstantActionsFacet: Invalid PartyB signature"
 		);
-		require(!intentLayout.isSigUsed[fillOpenIntentHash], "SignatureVerifier: PartyB signature is already used");
+		require(!intentLayout.isSigUsed[fillOpenIntentHash], "InstantActionsFacet: PartyB signature is already used");
 
-		require(openIntentHash == signedFillOpenIntent.intentHash, "PartyBFacet: PartyB signature isn't related to the partyA signature");
-		require(symbol.isValid, "PartyBFacet: Symbol is not valid");
-		require(signedOpenIntent.deadline >= block.timestamp, "PartyBFacet: PartyA request is expired");
-		require(signedFillOpenIntent.deadline >= block.timestamp, "PartyBFacet: PartyB request is expired");
-		require(signedOpenIntent.expirationTimestamp >= block.timestamp, "PartyBFacet: Low expiration timestamp");
-		require(signedOpenIntent.exerciseFee.cap <= 1e18, "PartyAFacet: High cap for exercise fee");
-		require(signedOpenIntent.partyB == signedFillOpenIntent.partyB, "PartyBFacet: Invalid sig");
-		require(signedOpenIntent.partyB != signedOpenIntent.partyA, "PartyBFacet: partyA cannot be same with partyB");
-		require(appLayout.affiliateStatus[signedOpenIntent.affiliate] || signedOpenIntent.affiliate == address(0), "PartyBFacet: Invalid affiliate");
-		require(appLayout.partyBConfigs[signedFillOpenIntent.partyB].oracleId == symbol.oracleId, "PartyBFacet: Unmatch oracle");
-		require(accountLayout.suspendedAddresses[signedOpenIntent.partyA] == false, "PartyBFacet: PartyA is suspended");
-		require(!accountLayout.suspendedAddresses[signedOpenIntent.partyB], "PartyBFacet: PartyB is Suspended");
-		require(!appLayout.partyBEmergencyStatus[signedOpenIntent.partyB], "PartyBFacet: PartyB is in emergency mode");
-		require(!appLayout.emergencyMode, "PartyBFacet: System is in emergency mode");
+		require(openIntentHash == signedFillOpenIntent.intentHash, "InstantActionsFacet: PartyB signature isn't related to the partyA signature");
+		require(symbol.isValid, "InstantActionsFacet: Symbol is not valid");
+		require(signedOpenIntent.deadline >= block.timestamp, "InstantActionsFacet: PartyA request is expired");
+		require(signedFillOpenIntent.deadline >= block.timestamp, "InstantActionsFacet: PartyB request is expired");
+		require(signedOpenIntent.expirationTimestamp >= block.timestamp, "InstantActionsFacet: Low expiration timestamp");
+		require(signedOpenIntent.exerciseFee.cap <= 1e18, "InstantActionsFacet: High cap for exercise fee");
+		require(signedOpenIntent.partyB == signedFillOpenIntent.partyB, "InstantActionsFacet: Invalid signature");
+		require(signedOpenIntent.partyB != signedOpenIntent.partyA, "InstantActionsFacet: partyA cannot be the same as partyB");
+		require(appLayout.affiliateStatus[signedOpenIntent.affiliate] || signedOpenIntent.affiliate == address(0), "InstantActionsFacet: Invalid affiliate");
+		require(appLayout.partyBConfigs[signedFillOpenIntent.partyB].oracleId == symbol.oracleId, "InstantActionsFacet: Mismatched oracle");
+		require(accountLayout.suspendedAddresses[signedOpenIntent.partyA] == false, "InstantActionsFacet: PartyA is suspended");
+		require(!accountLayout.suspendedAddresses[signedOpenIntent.partyB], "InstantActionsFacet: PartyB is Suspended");
+		require(!appLayout.partyBEmergencyStatus[signedOpenIntent.partyB], "InstantActionsFacet: PartyB is in emergency mode");
+		require(!appLayout.emergencyMode, "InstantActionsFacet: System is in emergency mode");
 		require(
 			appLayout.liquidationDetails[signedOpenIntent.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
-			"PartyBFacet: PartyB is liquidated"
+			"InstantActionsFacet: PartyB is liquidated"
 		);
 		require(
 			intentLayout.activeTradesOf[signedOpenIntent.partyA].length < appLayout.maxTradePerPartyA,
-			"PartyBFacet: Too many active trades for partyA"
+			"InstantActionsFacet: Too many active trades for partyA"
 		);
-		require(signedOpenIntent.quantity >= signedFillOpenIntent.quantity && signedFillOpenIntent.quantity > 0, "PartyBFacet: Invalid quantity");
-		require(signedFillOpenIntent.price <= signedOpenIntent.price, "PartyBFacet: Opened price isn't valid");
+		require(signedOpenIntent.quantity >= signedFillOpenIntent.quantity && signedFillOpenIntent.quantity > 0, "PartyBFacet: Invalid filled quantity");
+		require(signedFillOpenIntent.price <= signedOpenIntent.price, "InstantActionsFacet: Invalid filled price");
 
 		intentLayout.isSigUsed[openIntentHash] = true;
 		intentLayout.isSigUsed[fillOpenIntentHash] = true;
@@ -103,10 +103,10 @@ library InstantActionsFacetImpl {
 			uint256 fee = LibIntent.getTradingFee(intentId);
 			accountLayout.balances[signedOpenIntent.partyA][symbol.collateral].subForPartyB(signedOpenIntent.partyB, fee);
 
-			appLayout.affiliateFeeCollector[signedOpenIntent.affiliate] == address(0)
+			address feeCollector = appLayout.affiliateFeeCollector[signedOpenIntent.affiliate] == address(0)
 				? appLayout.defaultFeeCollector
 				: appLayout.affiliateFeeCollector[signedOpenIntent.affiliate];
-			accountLayout.balances[signedOpenIntent.partyA][symbol.collateral].instantAdd(fee);
+			accountLayout.balances[feeCollector][symbol.collateral].instantAdd(fee);
 		}
 		// filling
 		Trade memory trade = Trade({
@@ -151,32 +151,32 @@ library InstantActionsFacetImpl {
 		bytes32 closeIntentHash = LibIntent.hashSignedCloseIntent(signedCloseIntent);
 		require(
 			ISignatureVerifier(intentLayout.signatureVerifier).verifySignature(signedCloseIntent.partyA, closeIntentHash, partyASignature),
-			"PartyBFacet: Invalid PartyA signature"
+			"InstantActionsFacet: Invalid PartyA signature"
 		);
-		require(!intentLayout.isSigUsed[closeIntentHash], "SignatureVerifier: PartyA signature is already used");
+		require(!intentLayout.isSigUsed[closeIntentHash], "InstantActionsFacet: PartyA signature is already used");
 
 		bytes32 fillCloseIntentHash = LibIntent.hashSignedFillCloseIntent(signedFillCloseIntent);
 		require(
 			ISignatureVerifier(intentLayout.signatureVerifier).verifySignature(signedFillCloseIntent.partyB, fillCloseIntentHash, partyBSignature),
-			"PartyBFacet: Invalid PartyB signature"
+			"InstantActionsFacet: Invalid PartyB signature"
 		);
-		require(!intentLayout.isSigUsed[fillCloseIntentHash], "SignatureVerifier: PartyB signature is already used");
-		require(closeIntentHash == signedFillCloseIntent.intentHash, "PartyBFacet: PartyB signature isn't related to the partyA signature");
-		require(signedCloseIntent.deadline >= block.timestamp, "PartyBFacet: PartyA request is expired");
-		require(signedFillCloseIntent.deadline >= block.timestamp, "PartyBFacet: PartyB request is expired");
-		require(trade.status == TradeStatus.OPENED, "PartyBFacet: Invalid state");
-		require(LibIntent.getAvailableAmountToClose(trade.id) >= signedCloseIntent.quantity, "PartyBFacet: Invalid quantity");
+		require(!intentLayout.isSigUsed[fillCloseIntentHash], "InstantActionsFacet: PartyB signature is already used");
+		require(closeIntentHash == signedFillCloseIntent.intentHash, "InstantActionsFacet: PartyB signature isn't related to the partyA signature");
+		require(signedCloseIntent.deadline >= block.timestamp, "InstantActionsFacet: PartyA request is expired");
+		require(signedFillCloseIntent.deadline >= block.timestamp, "InstantActionsFacet: PartyB request is expired");
+		require(trade.status == TradeStatus.OPENED, "InstantActionsFacet: Invalid state");
+		require(LibIntent.getAvailableAmountToClose(trade.id) >= signedCloseIntent.quantity, "InstantActionsFacet: Invalid quantity");
 
 		require(
 			AppStorage.layout().liquidationDetails[trade.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
-			"PartyBFacet: PartyB is liquidated"
+			"InstantActionsFacet: PartyB is liquidated"
 		);
 		require(
 			signedFillCloseIntent.quantity > 0 && signedFillCloseIntent.quantity <= signedCloseIntent.quantity,
-			"PartyBFacet: Invalid filled amount"
+			"InstantActionsFacet: Invalid filled amount"
 		);
-		require(block.timestamp < trade.expirationTimestamp, "LibPartyB: Trade is expired");
-		require(signedFillCloseIntent.price >= signedCloseIntent.price, "LibPartyB: Closed price isn't valid");
+		require(block.timestamp < trade.expirationTimestamp, "InstantActionsFacet: Trade is expired");
+		require(signedFillCloseIntent.price >= signedCloseIntent.price, "InstantActionsFacet: Closed price isn't valid");
 
 		intentLayout.isSigUsed[closeIntentHash] = true;
 		intentLayout.isSigUsed[fillCloseIntentHash] = true;
@@ -232,9 +232,9 @@ library InstantActionsFacetImpl {
 		bytes32 cancelIntentHash = LibIntent.hashSignedCancelOpenIntent(signedCancelOpenIntent);
 		require(
 			ISignatureVerifier(intentLayout.signatureVerifier).verifySignature(signedCancelOpenIntent.signer, cancelIntentHash, partyASignature),
-			"PartyBFacet: Invalid PartyA signature"
+			"InstantActionsFacet: Invalid PartyA signature"
 		);
-		require(!intentLayout.isSigUsed[cancelIntentHash], "PartyBFacet: PartyA signature is already used");
+		require(!intentLayout.isSigUsed[cancelIntentHash], "InstantActionsFacet: PartyA signature is already used");
 		intentLayout.isSigUsed[cancelIntentHash] = true;
 
 		// ignore the partyB signature if the status is PENDING
@@ -246,17 +246,17 @@ library InstantActionsFacetImpl {
 					acceptCancelIntentHash,
 					partyBSignature
 				),
-				"PartyBFacet: Invalid PartyB signature"
+				"InstantActionsFacet: Invalid PartyB signature"
 			);
-			require(!intentLayout.isSigUsed[acceptCancelIntentHash], "PartyBFacet: PartyB signature is already used");
+			require(!intentLayout.isSigUsed[acceptCancelIntentHash], "InstantActionsFacet: PartyB signature is already used");
 			intentLayout.isSigUsed[acceptCancelIntentHash] = true;
-			require(intent.status == IntentStatus.PENDING || intent.status == IntentStatus.LOCKED, "PartyAFacet: Invalid state");
+			require(intent.status == IntentStatus.PENDING || intent.status == IntentStatus.LOCKED, "InstantActionsFacet: Invalid state");
 			require(intent.partyB == signedAcceptCancelOpenIntent.signer);
-			require(signedCancelOpenIntent.intentId == signedAcceptCancelOpenIntent.intentId, "PartyBFacet: Signatures don't match");
-			require(signedAcceptCancelOpenIntent.deadline >= block.timestamp, "PartyBFacet: PartyB request is expired");
+			require(signedCancelOpenIntent.intentId == signedAcceptCancelOpenIntent.intentId, "InstantActionsFacet: Signatures don't match");
+			require(signedAcceptCancelOpenIntent.deadline >= block.timestamp, "InstantActionsFacet: PartyB request is expired");
 			LibIntent.removeFromPartyBOpenIntents(intent.id);
 		}
-		require(signedCancelOpenIntent.deadline >= block.timestamp, "PartyBFacet: PartyA request is expired");
+		require(signedCancelOpenIntent.deadline >= block.timestamp, "InstantActionsFacet: PartyA request is expired");
 		require(intent.partyA == signedCancelOpenIntent.signer);
 
 		if (block.timestamp > intent.deadline) {
@@ -288,9 +288,9 @@ library InstantActionsFacetImpl {
 		bytes32 cancelIntentHash = LibIntent.hashSignedCancelCloseIntent(signedCancelCloseIntent);
 		require(
 			ISignatureVerifier(intentLayout.signatureVerifier).verifySignature(signedCancelCloseIntent.signer, cancelIntentHash, partyASignature),
-			"PartyBFacet: Invalid PartyA signature"
+			"InstantActionsFacet: Invalid PartyA signature"
 		);
-		require(!intentLayout.isSigUsed[cancelIntentHash], "PartyBFacet: PartyA signature is already used");
+		require(!intentLayout.isSigUsed[cancelIntentHash], "InstantActionsFacet: PartyA signature is already used");
 		bytes32 acceptCancelIntentHash = LibIntent.hashSignedAcceptCancelCloseIntent(signedAcceptCancelCloseIntent);
 		require(
 			ISignatureVerifier(intentLayout.signatureVerifier).verifySignature(
@@ -298,15 +298,15 @@ library InstantActionsFacetImpl {
 				acceptCancelIntentHash,
 				partyBSignature
 			),
-			"PartyBFacet: Invalid PartyB signature"
+			"InstantActionsFacet: Invalid PartyB signature"
 		);
-		require(!intentLayout.isSigUsed[acceptCancelIntentHash], "PartyBFacet: PartyB signature is already used");
+		require(!intentLayout.isSigUsed[acceptCancelIntentHash], "InstantActionsFacet: PartyB signature is already used");
 
-		require(intent.status == IntentStatus.PENDING, "PartyAFacet: Invalid state");
+		require(intent.status == IntentStatus.PENDING, "InstantActionsFacet: Invalid state");
 		require(trade.partyB == signedAcceptCancelCloseIntent.signer);
-		require(signedCancelCloseIntent.intentId == signedAcceptCancelCloseIntent.intentId, "PartyBFacet: Signatures don't match");
-		require(signedAcceptCancelCloseIntent.deadline >= block.timestamp, "PartyBFacet: PartyB request is expired");
-		require(signedCancelCloseIntent.deadline >= block.timestamp, "PartyBFacet: PartyA request is expired");
+		require(signedCancelCloseIntent.intentId == signedAcceptCancelCloseIntent.intentId, "InstantActionsFacet: Signatures don't match");
+		require(signedAcceptCancelCloseIntent.deadline >= block.timestamp, "InstantActionsFacet: PartyB request is expired");
+		require(signedCancelCloseIntent.deadline >= block.timestamp, "InstantActionsFacet: PartyA request is expired");
 		require(trade.partyA == signedCancelCloseIntent.signer);
 
 		intentLayout.isSigUsed[cancelIntentHash] = true;
@@ -320,7 +320,6 @@ library InstantActionsFacetImpl {
 			intent.status = IntentStatus.CANCELED;
 			LibIntent.removeFromActiveCloseIntents(intent.id);
 			result = IntentStatus.CANCELED;
-			intent.statusModifyTimestamp = block.timestamp;
 		}
 	}
 }
