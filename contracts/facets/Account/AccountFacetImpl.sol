@@ -78,6 +78,12 @@ library AccountFacetImpl {
 		accountLayout.balances[w.user][w.collateral].instantAdd(w.amount);
 	}
 
+	function syncBalances(address collateral, address partyA, address[] calldata partyBs) internal {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		for (uint256 i = 0; i < partyBs.length; i++) 
+			accountLayout.balances[partyA][collateral].sync(partyBs[i], block.timestamp);
+	}
+
 	function activateInstantActionMode() internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		require(!accountLayout.instantActionsMode[msg.sender], "AccountFacet: Instant actions mode is already activated");
