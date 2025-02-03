@@ -79,22 +79,32 @@ library StagedReleaseBalanceOps {
 		uint256 totalBalance = self.available + entry.pending + entry.queued;
 		require(totalBalance >= value, "StagedReleaseBalance: Insufficient balance");
 
-		if (self.available >= value) {
-			self.available -= value;
+		uint256 remaining = value;
+
+		// First use queued funds
+		if (entry.queued >= remaining) {
+			entry.queued -= remaining;
 			return self;
 		}
 
-		uint256 remaining = value - self.available;
-		self.available = 0;
+		if (entry.queued > 0) {
+			remaining -= entry.queued;
+			entry.queued = 0;
+		}
 
+		// Then use pending funds
 		if (entry.pending >= remaining) {
 			entry.pending -= remaining;
 			return self;
 		}
 
-		remaining -= entry.pending;
-		entry.pending = 0;
-		entry.queued -= remaining;
+		if (entry.pending > 0) {
+			remaining -= entry.pending;
+			entry.pending = 0;
+		}
+
+		// Finally use available funds
+		self.available -= remaining;
 		return self;
 	}
 
