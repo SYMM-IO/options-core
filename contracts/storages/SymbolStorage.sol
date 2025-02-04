@@ -4,17 +4,6 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-struct PublicKey {
-	uint256 x;
-	uint8 parity;
-}
-
-struct MuonConfig {
-	uint256 muonAppId;
-	PublicKey muonPublicKey;
-	address validGateway;
-}
-
 enum OptionType {
 	PUT,
 	CALL
@@ -23,7 +12,7 @@ enum OptionType {
 struct Oracle {
 	uint256 id;
 	string name;
-	MuonConfig muonConfig;
+	address contractAddress;
 }
 
 struct Symbol {
