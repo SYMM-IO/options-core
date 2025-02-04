@@ -51,8 +51,7 @@ library StagedReleaseBalanceOps {
 		}
 
 		if (entry.releaseInterval == 0) {
-			instantAdd(self, value);
-			return self;
+			return instantAdd(self, value);
 		}
 
 		entry.queued += value;
@@ -72,7 +71,7 @@ library StagedReleaseBalanceOps {
 			entry.releaseInterval = AccountStorage.layout().partyBReleaseIntervals[partyB];
 			entry.pending = 0;
 			entry.queued = 0;
-			entry.lastTransitionTimestamp = (timestamp / entry.releaseInterval) * entry.releaseInterval;
+			entry.lastTransitionTimestamp = entry.releaseInterval == 0 ? timestamp : (timestamp / entry.releaseInterval) * entry.releaseInterval;
 
 			// Add to tracking arrays
 			self.partyBIndexes[partyB] = self.partyBAddresses.length;
@@ -100,6 +99,9 @@ library StagedReleaseBalanceOps {
 		require(partyB != address(0), "StagedReleaseBalance: Invalid partyB address");
 		sync(self, partyB, block.timestamp);
 		StagedReleaseEntry storage entry = self.partyBStages[partyB];
+		if (entry.releaseInterval == 0) {
+			return sub(self, value);
+		}
 
 		uint256 totalBalance = self.available + entry.pending + entry.queued;
 		require(totalBalance >= value, "StagedReleaseBalance: Insufficient balance");
@@ -143,8 +145,7 @@ library StagedReleaseBalanceOps {
 	// @dev Moves funds through stages based on timestamp checkpoints
 	function sync(StagedReleaseBalance storage self, address partyB, uint256 timestamp) internal returns (StagedReleaseBalance storage) {
 		StagedReleaseEntry storage entry = self.partyBStages[partyB];
-
-		require(entry.releaseInterval > 0, "StagedReleaseBalance: Can't sync zero release interval");
+		if (entry.releaseInterval == 0) return self;
 		require(timestamp >= entry.lastTransitionTimestamp, "StagedReleaseBalance: Invalid sync timestamp");
 
 		uint256 thisTransitionTimestamp = entry.lastTransitionTimestamp + entry.releaseInterval;
@@ -214,9 +215,9 @@ library StagedReleaseBalanceOps {
 			entry.queued == 0 && entry.pending == 0,
 			"StagedReleaseBalance: There should be no pending/queued balance when updating release interval"
 		);
-		require(newReleaseInterval > 0, "StagedReleaseBalance: newReleaseInterval must be greater than 0");
 
 		entry.releaseInterval = newReleaseInterval;
+		entry.lastTransitionTimestamp = entry.releaseInterval == 0 ? timestamp : (timestamp / entry.releaseInterval) * entry.releaseInterval;
 		return self;
 	}
 }
