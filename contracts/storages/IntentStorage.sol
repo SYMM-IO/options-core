@@ -127,6 +127,7 @@ library IntentStorage {
 		mapping(uint256 => OpenIntent) openIntents;
 		mapping(address => uint256[]) openIntentsOf;
 		mapping(address => uint256[]) activeOpenIntentsOf;
+		mapping(address => uint256) activeOpenIntentsCount;
 		mapping(uint256 => uint256) partyAOpenIntentsIndex;
 		mapping(uint256 => uint256) partyBOpenIntentsIndex;
 		uint256 lastOpenIntentId;

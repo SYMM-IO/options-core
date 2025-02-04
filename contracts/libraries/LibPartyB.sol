@@ -119,6 +119,7 @@ library LibPartyB {
 		}
 		LibIntent.addToActiveTrades(tradeId);
 		uint256 premium = LibIntent.getPremiumOfOpenIntent(intentId);
+		accountLayout.balances[trade.partyA][symbol.collateral].syncAll(block.timestamp);
 		accountLayout.balances[trade.partyA][symbol.collateral].subForPartyB(trade.partyB, premium);
 		accountLayout.balances[trade.partyB][symbol.collateral].instantAdd(premium);
 	}

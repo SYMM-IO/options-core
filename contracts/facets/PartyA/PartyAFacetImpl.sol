@@ -83,6 +83,7 @@ library PartyAFacetImpl {
 		accountLayout.lockedBalances[msg.sender][symbol.collateral] += LibIntent.getPremiumOfOpenIntent(intentId);
 
 		uint256 fee = LibIntent.getTradingFee(intentId);
+		accountLayout.balances[msg.sender][symbol.collateral].syncAll(block.timestamp);
 		if (partyBsWhiteList.length == 1) {
 			accountLayout.balances[msg.sender][symbol.collateral].subForPartyB(partyBsWhiteList[0], fee);
 		} else {

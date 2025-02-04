@@ -43,9 +43,14 @@ library LibIntent {
 	function addToPartyAOpenIntents(uint256 intentId) internal {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		OpenIntent storage intent = intentLayout.openIntents[intentId];
+		Symbol storage symbol = SymbolStorage.layout().symbols[intent.symbolId];
 
 		intentLayout.activeOpenIntentsOf[intent.partyA].push(intent.id);
+		intentLayout.activeOpenIntentsCount[intent.partyA] += 1;
 		intentLayout.partyAOpenIntentsIndex[intent.id] = intentLayout.activeOpenIntentsOf[intent.partyA].length - 1;
+		if (intentLayout.activeOpenIntentsCount[intent.partyA] == 1) {
+			AccountStorage.layout().balances[intent.partyA][symbol.collateral].addPartyB(intent.partyB, block.timestamp);
+		}
 	}
 
 	/**
@@ -67,6 +72,8 @@ library LibIntent {
 	function removeFromPartyAOpenIntents(uint256 intentId) internal {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		OpenIntent storage intent = intentLayout.openIntents[intentId];
+		Symbol storage symbol = SymbolStorage.layout().symbols[intent.symbolId];
+
 		uint256 indexOfIntent = intentLayout.partyAOpenIntentsIndex[intent.id];
 		uint256 lastIndex = intentLayout.activeOpenIntentsOf[intent.partyA].length - 1;
 		intentLayout.activeOpenIntentsOf[intent.partyA][indexOfIntent] = intentLayout.activeOpenIntentsOf[intent.partyA][lastIndex];
@@ -74,6 +81,11 @@ library LibIntent {
 		intentLayout.activeOpenIntentsOf[intent.partyA].pop();
 
 		intentLayout.partyAOpenIntentsIndex[intent.id] = 0;
+
+		intentLayout.activeOpenIntentsCount[intent.partyA] -= 1;
+		if (intentLayout.activeOpenIntentsCount[intent.partyA] == 0) {
+			AccountStorage.layout().balances[intent.partyA][symbol.collateral].clearPartyBSlot(intent.partyB);
+		}
 	}
 
 	/**
