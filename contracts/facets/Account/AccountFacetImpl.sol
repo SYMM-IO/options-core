@@ -103,4 +103,42 @@ library AccountFacetImpl {
 		accountLayout.instantActionsMode[msg.sender] = false;
 		accountLayout.instantActionsModeDeactivateTime[msg.sender] = 0;
 	}
+
+	function bindToPartyB(address partyB) internal {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		require(AppStorage.layout().partyBConfigs[partyB].isActive, "ControlFacet: PartyB is not active");
+		require(accountLayout.boundPartyB[msg.sender] == address(0), "ControlFacet: Already bound");
+
+		accountLayout.boundPartyB[msg.sender] = partyB;
+	}
+
+	function initiateUnbindingFromPartyB() internal {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		address currentPartyB = accountLayout.boundPartyB[msg.sender];
+		require(currentPartyB != address(0), "ControlFacet: Not bound to any PartyB");
+		require(accountLayout.unbindingRequestTime[msg.sender] == 0, "ControlFacet: Unbinding already initiated");
+
+		accountLayout.unbindingRequestTime[msg.sender] = block.timestamp;
+	}
+
+	function completeUnbindingFromPartyB() internal {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		address currentPartyB = accountLayout.boundPartyB[msg.sender];
+		require(currentPartyB != address(0), "ControlFacet: Not bound to any PartyB");
+		require(accountLayout.unbindingRequestTime[msg.sender] != 0, "ControlFacet: Unbinding not initiated");
+		require(
+			block.timestamp >= accountLayout.unbindingRequestTime[msg.sender] + accountLayout.unbindingCooldown,
+			"ControlFacet: Unbinding cooldown not reached"
+		);
+
+		delete accountLayout.boundPartyB[msg.sender];
+		delete accountLayout.unbindingRequestTime[msg.sender];
+	}
+
+	function cancelUnbindingFromPartyB() internal {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		require(accountLayout.unbindingRequestTime[msg.sender] != 0, "ControlFacet: No pending unbinding");
+
+		delete accountLayout.unbindingRequestTime[msg.sender];
+	}
 }

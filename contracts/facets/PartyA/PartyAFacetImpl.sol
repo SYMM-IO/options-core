@@ -37,6 +37,10 @@ library PartyAFacetImpl {
 		require(!accountLayout.instantActionsMode[msg.sender], "PartyAFacet: Instant action mode is activated");
 		require(appLayout.affiliateStatus[affiliate] || affiliate == address(0), "PartyAFacet: Invalid affiliate");
 
+		if (accountLayout.boundPartyB[msg.sender] != address(0)) {
+			require(partyBsWhiteList.length == 1 && partyBsWhiteList[0] == accountLayout.boundPartyB[msg.sender], "PartyAFacet: User is bound to another PartyB");
+		}
+
 		for (uint8 i = 0; i < partyBsWhiteList.length; i++) {
 			require(partyBsWhiteList[i] != msg.sender, "PartyAFacet: Sender isn't allowed in partyBWhiteList");
 		}
