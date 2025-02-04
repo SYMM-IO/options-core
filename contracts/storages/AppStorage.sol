@@ -4,6 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
+import "../interfaces/IMuonOracle.sol";
 struct SettlementState {
 	int256 amount;
 	bool pending;
@@ -29,7 +30,7 @@ struct LiquidationSig {
 	uint256[] symbolIds; // List of symbol IDs involved in the liquidation
 	uint256[] prices; // Corresponding prices of the symbols involved in the liquidation
 	bytes gatewaySignature; // Signature from the gateway for verification
-	SchnorrSign sigs; // Schnorr signature for additional verification
+	IMuonOracle.SchnorrSign sigs; // Schnorr signature for additional verification
 }
 
 struct SettlementPriceSig {
@@ -39,13 +40,7 @@ struct SettlementPriceSig {
 	uint256 settlementPrice;
 	uint256 settlementTimestamp;
 	bytes gatewaySignature;
-	SchnorrSign sigs;
-}
-
-struct SchnorrSign {
-	uint256 signature;
-	address owner;
-	address nonce;
+	IMuonOracle.SchnorrSign sigs;
 }
 
 struct Price {

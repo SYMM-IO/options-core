@@ -6,7 +6,6 @@ pragma solidity >=0.8.18;
 
 import "../../libraries/LibIntent.sol";
 import "../../libraries/LibPartyB.sol";
-import "../../libraries/LibMuon.sol";
 import "../../storages/AppStorage.sol";
 import "../../storages/IntentStorage.sol";
 import "../../storages/AccountStorage.sol";
