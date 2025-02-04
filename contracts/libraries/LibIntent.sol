@@ -10,6 +10,8 @@ import "../storages/AppStorage.sol";
 import "../storages/SymbolStorage.sol";
 
 library LibIntent {
+	using StagedReleaseBalanceOps for StagedReleaseBalance;
+
 	function tradeOpenAmount(Trade storage trade) internal view returns (uint256) {
 		return trade.quantity - trade.closedAmountBeforeExpiration;
 	}
@@ -41,9 +43,14 @@ library LibIntent {
 	function addToPartyAOpenIntents(uint256 intentId) internal {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		OpenIntent storage intent = intentLayout.openIntents[intentId];
+		Symbol storage symbol = SymbolStorage.layout().symbols[intent.symbolId];
 
 		intentLayout.activeOpenIntentsOf[intent.partyA].push(intent.id);
+		intentLayout.activeOpenIntentsCount[intent.partyA] += 1;
 		intentLayout.partyAOpenIntentsIndex[intent.id] = intentLayout.activeOpenIntentsOf[intent.partyA].length - 1;
+		if (intentLayout.activeOpenIntentsCount[intent.partyA] == 1) {
+			AccountStorage.layout().balances[intent.partyA][symbol.collateral].addPartyB(intent.partyB, block.timestamp);
+		}
 	}
 
 	/**
@@ -65,6 +72,8 @@ library LibIntent {
 	function removeFromPartyAOpenIntents(uint256 intentId) internal {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		OpenIntent storage intent = intentLayout.openIntents[intentId];
+		Symbol storage symbol = SymbolStorage.layout().symbols[intent.symbolId];
+
 		uint256 indexOfIntent = intentLayout.partyAOpenIntentsIndex[intent.id];
 		uint256 lastIndex = intentLayout.activeOpenIntentsOf[intent.partyA].length - 1;
 		intentLayout.activeOpenIntentsOf[intent.partyA][indexOfIntent] = intentLayout.activeOpenIntentsOf[intent.partyA][lastIndex];
@@ -72,6 +81,11 @@ library LibIntent {
 		intentLayout.activeOpenIntentsOf[intent.partyA].pop();
 
 		intentLayout.partyAOpenIntentsIndex[intent.id] = 0;
+
+		intentLayout.activeOpenIntentsCount[intent.partyA] -= 1;
+		if (intentLayout.activeOpenIntentsCount[intent.partyA] == 0) {
+			AccountStorage.layout().balances[intent.partyA][symbol.collateral].clearPartyBSlot(intent.partyB);
+		}
 	}
 
 	/**
@@ -199,7 +213,11 @@ library LibIntent {
 
 		// send trading Fee back to partyA
 		uint256 fee = getTradingFee(intent.id);
-		accountLayout.balances[intent.partyA][symbol.collateral] += fee;
+		if (intent.partyBsWhiteList.length == 1) {
+			accountLayout.balances[intent.partyA][symbol.collateral].add(intent.partyBsWhiteList[0], fee, block.timestamp);
+		} else {
+			accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(fee);
+		}
 
 		removeFromPartyAOpenIntents(intent.id);
 		if (intent.status == IntentStatus.LOCKED || intent.status == IntentStatus.CANCEL_PENDING) {
@@ -219,6 +237,7 @@ library LibIntent {
 		intent.status = IntentStatus.EXPIRED;
 		removeFromActiveCloseIntents(intentId);
 	}
+
 	function closeTrade(uint256 tradeId, TradeStatus tradeStatus, IntentStatus intentStatus) internal {
 		Trade storage trade = IntentStorage.layout().trades[tradeId];
 		uint256 len = trade.activeCloseIntentIds.length;

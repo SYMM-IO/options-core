@@ -11,6 +11,8 @@ import "../../storages/AccountStorage.sol";
 import "../../storages/SymbolStorage.sol";
 
 library PartyAFacetImpl {
+	using StagedReleaseBalanceOps for StagedReleaseBalance;
+
 	function sendOpenIntent(
 		address[] calldata partyBsWhiteList,
 		uint256 symbolId,
@@ -33,16 +35,24 @@ library PartyAFacetImpl {
 		require(expirationTimestamp >= block.timestamp, "PartyAFacet: Low expiration timestamp");
 		require(exerciseFee.cap <= 1e18, "PartyAFacet: High cap for exercise fee");
 		require(!accountLayout.instantActionsMode[msg.sender], "PartyAFacet: Instant action mode is activated");
+		require(appLayout.affiliateStatus[affiliate] || affiliate == address(0), "PartyAFacet: Invalid affiliate");
 
 		for (uint8 i = 0; i < partyBsWhiteList.length; i++) {
 			require(partyBsWhiteList[i] != msg.sender, "PartyAFacet: Sender isn't allowed in partyBWhiteList");
 		}
 
-		require(
-			uint256(accountLayout.balances[msg.sender][symbol.collateral]) >= (quantity * price * (1e18 + symbol.tradingFee)) / 1e36,
-			"PartyAFacet: insufficient available balance"
-		);
-		require(appLayout.affiliateStatus[affiliate] || affiliate == address(0), "PartyAFacet: Invalid affiliate");
+		if (partyBsWhiteList.length == 1) {
+			require(
+				uint256(accountLayout.balances[msg.sender][symbol.collateral].partyBBalance(partyBsWhiteList[0])) >=
+					(quantity * price * (1e18 + symbol.tradingFee)) / 1e36,
+				"PartyAFacet: insufficient available balance"
+			);
+		} else {
+			require(
+				uint256(accountLayout.balances[msg.sender][symbol.collateral].available) >= (quantity * price * (1e18 + symbol.tradingFee)) / 1e36,
+				"PartyAFacet: insufficient available balance"
+			);
+		}
 
 		intentId = ++intentLayout.lastOpenIntentId;
 		OpenIntent memory intent = OpenIntent({
@@ -73,7 +83,12 @@ library PartyAFacetImpl {
 		accountLayout.lockedBalances[msg.sender][symbol.collateral] += LibIntent.getPremiumOfOpenIntent(intentId);
 
 		uint256 fee = LibIntent.getTradingFee(intentId);
-		accountLayout.balances[msg.sender][symbol.collateral] -= fee;
+		accountLayout.balances[msg.sender][symbol.collateral].syncAll(block.timestamp);
+		if (partyBsWhiteList.length == 1) {
+			accountLayout.balances[msg.sender][symbol.collateral].subForPartyB(partyBsWhiteList[0], fee);
+		} else {
+			accountLayout.balances[msg.sender][symbol.collateral].sub(fee);
+		}
 	}
 
 	function cancelOpenIntent(uint256 intentId) internal returns (IntentStatus result) {
@@ -91,8 +106,11 @@ library PartyAFacetImpl {
 		} else if (intent.status == IntentStatus.PENDING) {
 			intent.status = IntentStatus.CANCELED;
 			uint256 fee = LibIntent.getTradingFee(intent.id);
-			accountLayout.balances[intent.partyA][symbol.collateral] += fee;
-
+			if (intent.partyBsWhiteList.length == 1) {
+				accountLayout.balances[intent.partyA][symbol.collateral].add(intent.partyBsWhiteList[0], fee, block.timestamp);
+			} else {
+				accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(fee);
+			}
 			accountLayout.lockedBalances[intent.partyA][symbol.collateral] -= LibIntent.getPremiumOfOpenIntent(intentId);
 			LibIntent.removeFromPartyAOpenIntents(intentId);
 			result = IntentStatus.CANCELED;

@@ -58,7 +58,7 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 			msg.sender,
 			partyB,
 			liquidationSig.collateral,
-			AccountStorage.layout().balances[partyB][liquidationSig.collateral],
+			AccountStorage.layout().balances[partyB][liquidationSig.collateral].available,
 			liquidationSig.upnl,
 			liquidationSig.collateralPrice,
 			liquidationSig.liquidationId

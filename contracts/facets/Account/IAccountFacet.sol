@@ -19,6 +19,8 @@ interface IAccountFacet is IAccountEvents {
 
 	function activateInstantActionMode() external;
 
+	function syncBalances(address collateral, address partyA, address[] calldata partyBs) external;
+
 	function proposeToDeactivateInstantActionMode() external;
 
 	function deactivateInstantActionMode() external;
