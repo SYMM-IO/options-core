@@ -44,7 +44,7 @@ library StagedReleaseBalanceOps {
 	) internal returns (StagedReleaseBalance storage) {
 		StagedReleaseEntry storage entry = self.partyBStages[partyB];
 
-		if (entry.releaseInterval == 0) {
+		if (self.partyBAddresses[self.partyBIndexes[partyB]] != partyB) {
 			addPartyB(self, partyB, timestamp);
 		} else {
 			sync(self, partyB, timestamp);
@@ -64,7 +64,7 @@ library StagedReleaseBalanceOps {
 	function addPartyB(StagedReleaseBalance storage self, address partyB, uint256 timestamp) internal returns (StagedReleaseBalance storage) {
 		StagedReleaseEntry storage entry = self.partyBStages[partyB];
 
-		if (entry.releaseInterval == 0) {
+		if (self.partyBAddresses[self.partyBIndexes[partyB]] != partyB) {
 			require(
 				self.partyBAddresses.length < AccountStorage.layout().maxConnectedPartyBs,
 				"StagedReleaseBalance: Max partyB connections reached"
