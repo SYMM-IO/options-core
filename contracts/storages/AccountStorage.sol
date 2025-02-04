@@ -28,8 +28,13 @@ library AccountStorage {
 	struct Layout {
 		mapping(address => mapping(address => StagedReleaseBalance)) balances; // user => collateral => balance
 		mapping(address => mapping(address => uint256)) lockedBalances; // user => collateral => lockedBalance
-		mapping(address =>  uint256) partyBReleaseIntervals; 
+		mapping(address => uint256) partyBReleaseIntervals;
 		uint256 maxConnectedPartyBs;
+		/////////////////////////////////////////////////////////
+		mapping(address => address) boundPartyB; // partyA => Address of partyB
+		mapping(address => uint256) unbindingRequestTime; // partyA => time when unbinding was requested
+		uint256 unbindingCooldown;
+		/////////////////////////////////////////////////////////
 		mapping(address => bool) suspendedAddresses;
 		mapping(uint256 => bool) suspendedWithdrawal;
 		/////////////////////////////////////////////////////////

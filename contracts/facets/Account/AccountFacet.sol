@@ -82,4 +82,42 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		AccountFacetImpl.deactivateInstantActionMode();
 		emit DeactivateInstantActionMode(msg.sender, block.timestamp);
 	}
+
+	/**
+	 * @notice Allows PartyA to bind to a PartyB
+	 * @param partyB The address of PartyB to bind to
+	 */
+	function bindToPartyB(address partyB) external notPartyB whenNotPartyAActionsPaused {
+		AccountFacetImpl.bindToPartyB(partyB);
+		emit BindToPartyB(msg.sender, partyB);
+	}
+
+	/**
+	 * @notice Initiates the process of unbinding from PartyB
+	 * Must wait for cooldown period before finalizing
+	 */
+	function initiateUnbindingFromPartyB() external notPartyB whenNotPartyAActionsPaused {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		AccountFacetImpl.initiateUnbindingFromPartyB();
+		emit InitiateUnbindingFromPartyB(msg.sender, accountLayout.boundPartyB[msg.sender], block.timestamp);
+	}
+
+	/**
+	 * @notice Completes the unbinding after cooldown period
+	 */
+	function completeUnbindingFromPartyB() external notPartyB whenNotPartyAActionsPaused {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		address previousPartyB = accountLayout.boundPartyB[msg.sender];
+		AccountFacetImpl.completeUnbindingFromPartyB();
+		emit CompleteUnbindingFromPartyB(msg.sender, previousPartyB);
+	}
+
+	/**
+	 * @notice Cancels a pending unbinding request
+	 */
+	function cancelUnbindingFromPartyB() external notPartyB whenNotPartyAActionsPaused {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		AccountFacetImpl.cancelUnbindingFromPartyB();
+		emit CancelUnbindingFromPartyB(msg.sender, accountLayout.boundPartyB[msg.sender]);
+	}
 }
