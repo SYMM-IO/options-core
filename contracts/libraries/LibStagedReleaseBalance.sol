@@ -27,6 +27,8 @@ struct StagedReleaseEntry {
 struct StagedReleaseBalance {
 	uint256 available; // Immediately accessible funds
 	mapping(address => StagedReleaseEntry) partyBStages; // Stage entries per partyB
+	mapping(address => uint256) partyBIndexes; // Index of partyB in the addresses array
+	address[] partyBAddresses; // List of all partyB addresses
 }
 
 // @title StagedReleaseBalanceOps
@@ -43,17 +45,40 @@ library StagedReleaseBalanceOps {
 		StagedReleaseEntry storage entry = self.partyBStages[partyB];
 
 		if (entry.releaseInterval == 0) {
-			entry.releaseInterval = AccountStorage.layout().defaultReleaseInterval;
-			entry.pending = 0;
-			entry.queued = 0;
-			entry.lastTransitionTimestamp = (timestamp / entry.releaseInterval) * entry.releaseInterval;
+			addPartyB(self, partyB, timestamp);
 		} else {
 			sync(self, partyB, timestamp);
 		}
 
-		require(entry.releaseInterval > 0, "StagedReleaseBalance: Use instant add for zero release interval");
+		if (entry.releaseInterval == 0) {
+			instantAdd(self, value);
+			return self;
+		}
 
 		entry.queued += value;
+		return self;
+	}
+
+	// @notice Adds a partyB to the staged release entries without adding funds
+	// @dev Initializes entry with default release interval if not already present
+	function addPartyB(StagedReleaseBalance storage self, address partyB, uint256 timestamp) internal returns (StagedReleaseBalance storage) {
+		StagedReleaseEntry storage entry = self.partyBStages[partyB];
+
+		if (entry.releaseInterval == 0) {
+			require(
+				self.partyBAddresses.length < AccountStorage.layout().maxConnectedPartyBs,
+				"StagedReleaseBalance: Max partyB connections reached"
+			);
+			entry.releaseInterval = AccountStorage.layout().partyBReleaseIntervals[partyB];
+			entry.pending = 0;
+			entry.queued = 0;
+			entry.lastTransitionTimestamp = (timestamp / entry.releaseInterval) * entry.releaseInterval;
+
+			// Add to tracking arrays
+			self.partyBIndexes[partyB] = self.partyBAddresses.length;
+			self.partyBAddresses.push(partyB);
+		}
+
 		return self;
 	}
 
@@ -141,6 +166,37 @@ library StagedReleaseBalanceOps {
 		}
 
 		entry.lastTransitionTimestamp = (timestamp / entry.releaseInterval) * entry.releaseInterval;
+		return self;
+	}
+
+	// @notice Syncs all partyB balances
+	function syncAll(StagedReleaseBalance storage self, uint256 timestamp) internal returns (StagedReleaseBalance storage) {
+		for (uint256 i = 0; i < self.partyBAddresses.length; i++) {
+			sync(self, self.partyBAddresses[i], timestamp);
+		}
+		return self;
+	}
+
+	// @notice Removes a partyB from tracking when they have no balance
+	function clearPartyBSlot(StagedReleaseBalance storage self, address partyB) internal returns (StagedReleaseBalance storage) {
+		require(partyB != address(0), "StagedReleaseBalance: Invalid partyB address");
+		require(partyBBalance(self, partyB) == 0, "StagedReleaseBalance: Cannot clear slot with non-zero balance");
+
+		uint256 index = self.partyBIndexes[partyB];
+		uint256 lastIndex = self.partyBAddresses.length - 1;
+
+		// If this isn't the last element, move the last element to this position
+		if (index != lastIndex) {
+			address lastPartyB = self.partyBAddresses[lastIndex];
+			self.partyBAddresses[index] = lastPartyB;
+			self.partyBIndexes[lastPartyB] = index;
+		}
+
+		// Remove last element
+		self.partyBAddresses.pop();
+		delete self.partyBIndexes[partyB];
+		delete self.partyBStages[partyB];
+
 		return self;
 	}
 

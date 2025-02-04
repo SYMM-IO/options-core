@@ -107,6 +107,7 @@ library InstantActionsFacetImpl {
 		intentLayout.openIntentsOf[signedOpenIntent.partyB].push(intent.id);
 		{
 			uint256 fee = LibIntent.getTradingFee(intentId);
+			accountLayout.balances[signedOpenIntent.partyA][symbol.collateral].syncAll(block.timestamp);
 			accountLayout.balances[signedOpenIntent.partyA][symbol.collateral].subForPartyB(signedOpenIntent.partyB, fee);
 
 			address feeCollector = appLayout.affiliateFeeCollector[signedOpenIntent.affiliate] == address(0)
@@ -138,6 +139,7 @@ library InstantActionsFacetImpl {
 
 		LibIntent.addToActiveTrades(tradeId);
 		uint256 premium = LibIntent.getPremiumOfOpenIntent(intentId);
+		accountLayout.balances[trade.partyA][symbol.collateral].syncAll(block.timestamp);
 		accountLayout.balances[trade.partyA][symbol.collateral].subForPartyB(trade.partyB, premium);
 		accountLayout.balances[trade.partyB][symbol.collateral].instantAdd(premium);
 	}
