@@ -11,13 +11,14 @@ import "../../storages/AppStorage.sol";
 
 library AccountFacetImpl {
 	using SafeERC20 for IERC20;
+	using StagedReleaseBalanceOps for StagedReleaseBalance;
 
 	function deposit(address collateral, address user, uint256 amount) internal {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		require(appLayout.whiteListedCollateral[collateral], "AccountFacet: Collateral is not whitelisted");
 		IERC20(collateral).safeTransferFrom(msg.sender, address(this), amount);
 		uint256 amountWith18Decimals = (amount * 1e18) / (10 ** IERC20Metadata(collateral).decimals());
-		AccountStorage.layout().balances[user][collateral] += amountWith18Decimals;
+		AccountStorage.layout().balances[user][collateral].instantAdd(amountWith18Decimals);
 	}
 
 	function initiateWithdraw(address collateral, uint256 amount, address to) internal returns (uint256 currentId) {
@@ -25,12 +26,12 @@ library AccountFacetImpl {
 		require(AppStorage.layout().whiteListedCollateral[collateral], "AccountFacet: Collateral is not whitelisted");
 		require(to != address(0), "AccountFacet: Zero address");
 		require(
-			accountLayout.balances[msg.sender][collateral] - accountLayout.lockedBalances[msg.sender][collateral] >= amount,
+			accountLayout.balances[msg.sender][collateral].available - accountLayout.lockedBalances[msg.sender][collateral] >= amount,
 			"AccountFacet: Insufficient balance"
 		);
 		require(!accountLayout.instantActionsMode[msg.sender], "AccountFacet: Instant action mode is activated");
 
-		accountLayout.balances[msg.sender][collateral] -= amount;
+		accountLayout.balances[msg.sender][collateral].sub(amount);
 
 		currentId = ++accountLayout.lastWithdrawId;
 		Withdraw memory withdrawObject = Withdraw({
@@ -74,7 +75,12 @@ library AccountFacetImpl {
 		require(w.user != address(0), "AccountFacet: Zero address");
 
 		w.status = WithdrawStatus.CANCELED;
-		accountLayout.balances[w.user][w.collateral] += w.amount;
+		accountLayout.balances[w.user][w.collateral].instantAdd(w.amount);
+	}
+
+	function syncBalances(address collateral, address partyA, address[] calldata partyBs) internal {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		for (uint256 i = 0; i < partyBs.length; i++) accountLayout.balances[partyA][collateral].sync(partyBs[i], block.timestamp);
 	}
 
 	function activateInstantActionMode() internal {

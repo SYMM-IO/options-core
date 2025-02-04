@@ -12,4 +12,5 @@ interface IAccountEvents {
 	event ActivateInstantActionMode(address user, uint256 timestamp);
 	event ProposeToDeactivateInstantActionMode(address user, uint256 timestamp);
 	event DeactivateInstantActionMode(address user, uint256 timestamp);
+	event SyncBalances(address collateral, address partyA, address[] partyBs);
 }

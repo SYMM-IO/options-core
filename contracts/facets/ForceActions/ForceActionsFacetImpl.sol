@@ -9,6 +9,8 @@ import "../../storages/AppStorage.sol";
 import "../../libraries/LibIntent.sol";
 
 library ForceActionsFacetImpl {
+	using StagedReleaseBalanceOps for StagedReleaseBalance;
+
 	function forceCancelOpenIntent(uint256 intentId) internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		AppStorage.Layout storage appLayout = AppStorage.layout();
@@ -23,7 +25,11 @@ library ForceActionsFacetImpl {
 
 		// send trading Fee back to partyA
 		uint256 fee = LibIntent.getTradingFee(intent.id);
-		accountLayout.balances[intent.partyA][symbol.collateral] += fee;
+		if (intent.partyBsWhiteList.length == 1) {
+			accountLayout.balances[intent.partyA][symbol.collateral].add(intent.partyBsWhiteList[0], fee, block.timestamp);
+		} else {
+			accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(fee);
+		}
 
 		LibIntent.removeFromPartyAOpenIntents(intent.id);
 		LibIntent.removeFromPartyBOpenIntents(intent.id);
