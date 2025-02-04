@@ -63,20 +63,15 @@ library StagedReleaseBalanceOps {
 	function addPartyB(StagedReleaseBalance storage self, address partyB, uint256 timestamp) internal returns (StagedReleaseBalance storage) {
 		StagedReleaseEntry storage entry = self.partyBStages[partyB];
 
-		if (self.partyBAddresses.length == 0 || self.partyBAddresses[self.partyBIndexes[partyB]] != partyB) {
-			require(
-				self.partyBAddresses.length < AccountStorage.layout().maxConnectedPartyBs,
-				"StagedReleaseBalance: Max partyB connections reached"
-			);
-			entry.releaseInterval = AccountStorage.layout().partyBReleaseIntervals[partyB];
-			entry.pending = 0;
-			entry.queued = 0;
-			entry.lastTransitionTimestamp = entry.releaseInterval == 0 ? timestamp : (timestamp / entry.releaseInterval) * entry.releaseInterval;
+		require(self.partyBAddresses.length < AccountStorage.layout().maxConnectedPartyBs, "StagedReleaseBalance: Max partyB connections reached");
+		entry.releaseInterval = AccountStorage.layout().partyBReleaseIntervals[partyB];
+		entry.pending = 0;
+		entry.queued = 0;
+		entry.lastTransitionTimestamp = entry.releaseInterval == 0 ? timestamp : (timestamp / entry.releaseInterval) * entry.releaseInterval;
 
-			// Add to tracking arrays
-			self.partyBIndexes[partyB] = self.partyBAddresses.length;
-			self.partyBAddresses.push(partyB);
-		}
+		// Add to tracking arrays
+		self.partyBIndexes[partyB] = self.partyBAddresses.length;
+		self.partyBAddresses.push(partyB);
 
 		return self;
 	}
@@ -145,6 +140,13 @@ library StagedReleaseBalanceOps {
 	// @dev Moves funds through stages based on timestamp checkpoints
 	function sync(StagedReleaseBalance storage self, address partyB, uint256 timestamp) internal returns (StagedReleaseBalance storage) {
 		StagedReleaseEntry storage entry = self.partyBStages[partyB];
+		if (entry.releaseInterval != AccountStorage.layout().partyBReleaseIntervals[partyB]) { // release interval changed
+			entry.releaseInterval = AccountStorage.layout().partyBReleaseIntervals[partyB];
+			entry.lastTransitionTimestamp = entry.releaseInterval == 0 ? timestamp : (timestamp / entry.releaseInterval) * entry.releaseInterval;
+			entry.queued += entry.pending;
+			entry.pending = 0;
+			return self;
+		}
 		if (entry.releaseInterval == 0) return self;
 		require(timestamp >= entry.lastTransitionTimestamp, "StagedReleaseBalance: Invalid sync timestamp");
 
@@ -198,26 +200,6 @@ library StagedReleaseBalanceOps {
 		delete self.partyBIndexes[partyB];
 		delete self.partyBStages[partyB];
 
-		return self;
-	}
-
-	// @notice Updates the release interval
-	// @dev Only allowed when no funds are in transition
-	function setReleaseInterval(
-		StagedReleaseBalance storage self,
-		address partyB,
-		uint256 newReleaseInterval,
-		uint256 timestamp
-	) internal returns (StagedReleaseBalance storage) {
-		sync(self, partyB, timestamp);
-		StagedReleaseEntry storage entry = self.partyBStages[partyB];
-		require(
-			entry.queued == 0 && entry.pending == 0,
-			"StagedReleaseBalance: There should be no pending/queued balance when updating release interval"
-		);
-
-		entry.releaseInterval = newReleaseInterval;
-		entry.lastTransitionTimestamp = entry.releaseInterval == 0 ? timestamp : (timestamp / entry.releaseInterval) * entry.releaseInterval;
 		return self;
 	}
 }
