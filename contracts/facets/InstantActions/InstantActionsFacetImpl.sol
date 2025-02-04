@@ -72,6 +72,13 @@ library InstantActionsFacetImpl {
 		);
 		require(signedFillOpenIntent.price <= signedOpenIntent.price, "InstantActionsFacet: Invalid filled price");
 
+		if (accountLayout.boundPartyB[signedOpenIntent.partyA] != address(0)) {
+			require(
+				signedFillOpenIntent.partyB == accountLayout.boundPartyB[signedOpenIntent.partyA],
+				"InstantActionsFacet: User is bound to another PartyB"
+			);
+		}
+
 		intentLayout.isSigUsed[openIntentHash] = true;
 		intentLayout.isSigUsed[fillOpenIntentHash] = true;
 
