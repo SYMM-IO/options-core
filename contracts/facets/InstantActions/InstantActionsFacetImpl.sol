@@ -13,7 +13,7 @@ import "../../storages/SymbolStorage.sol";
 import "../../interfaces/ISignatureVerifier.sol";
 
 library InstantActionsFacetImpl {
-	using StagedReleaseBalanceOps for StagedReleaseBalance;
+	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 
 	function instantFillOpenIntent(
 		SignedOpenIntent calldata signedOpenIntent,
@@ -212,7 +212,7 @@ library InstantActionsFacetImpl {
 		intentLayout.closeIntentIdsOf[trade.id].push(intentId);
 
 		uint256 pnl = (signedFillCloseIntent.quantity * signedFillCloseIntent.price) / 1e18;
-		accountLayout.balances[trade.partyA][symbol.collateral].add(trade.partyB, pnl, block.timestamp);
+		accountLayout.balances[trade.partyA][symbol.collateral].scheduledAdd(trade.partyB, pnl, block.timestamp);
 		accountLayout.balances[trade.partyB][symbol.collateral].sub(pnl);
 
 		trade.avgClosedPriceBeforeExpiration =
@@ -279,7 +279,7 @@ library InstantActionsFacetImpl {
 		} else {
 			intent.status = IntentStatus.CANCELED;
 			uint256 fee = LibIntent.getTradingFee(intent.id);
-			accountLayout.balances[intent.partyA][symbol.collateral].add(intent.partyB, fee, block.timestamp);
+			accountLayout.balances[intent.partyA][symbol.collateral].scheduledAdd(intent.partyB, fee, block.timestamp);
 
 			accountLayout.lockedBalances[intent.partyA][symbol.collateral] -= LibIntent.getPremiumOfOpenIntent(intent.id);
 			LibIntent.removeFromPartyAOpenIntents(intent.id);
