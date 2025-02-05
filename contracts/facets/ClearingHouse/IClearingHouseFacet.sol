@@ -8,23 +8,23 @@ import "./IClearingHouseEvents.sol";
 import "../../storages/AppStorage.sol";
 
 interface IClearingHouseFacet is IClearingHouseEvents {
+	function suspendPartyA(address partyA, address collateral) external;
+
+	function blockPartyABalance(address partyA, address collateral) external;
+
+	function cancelPartyBWithdrawal(uint256 withdrawId) external;
+
 	function flagLiquidation(address partyB, address collateral) external;
 
 	function unflagLiquidation(address partyB, address collateral) external;
 
 	function liquidate(address partyB, address collateral) external;
 
-	// function setSymbolsPrice(address partyB, LiquidationSig memory liquidationSig) external;
-
-	function liquidateTrades(uint256[] memory tradeIds, uint256[] memory closedPrices) external;
-
 	function expireTrades(uint256[] memory tradeIds) external;
 
 	function exerciseTrades(uint256[] memory tradeIds, uint256[] memory prices) external;
 
-	function suspendPartyA(address partyA, address collateral) external;
+	function liquidateTrades(uint256[] memory tradeIds, uint256[] memory closedPrices) external;
 
-	function blockPartyABalance(address partyA, address collateral) external;
-
-	function cancelPartyBWithdrawal(uint256 withdrawId) external;
+	function settleBalances(address partyA, address collateral) external;
 }
