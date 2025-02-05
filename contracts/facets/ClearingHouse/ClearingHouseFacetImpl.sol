@@ -12,7 +12,7 @@ import "../../storages/AccountStorage.sol";
 import "../../storages/SymbolStorage.sol";
 
 library ClearingHouseFacetImpl {
-	using StagedReleaseBalanceOps for StagedReleaseBalance;
+	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 
 	function flagLiquidation(address partyB, address collateral) internal {
 		AppStorage.Layout storage appLayout = AppStorage.layout();

@@ -10,7 +10,7 @@ import "../storages/AppStorage.sol";
 import "../storages/SymbolStorage.sol";
 
 library LibIntent {
-	using StagedReleaseBalanceOps for StagedReleaseBalance;
+	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 
 	function tradeOpenAmount(Trade storage trade) internal view returns (uint256) {
 		return trade.quantity - trade.closedAmountBeforeExpiration;
@@ -84,7 +84,7 @@ library LibIntent {
 
 		intentLayout.activeOpenIntentsCount[intent.partyA] -= 1;
 		if (intentLayout.activeOpenIntentsCount[intent.partyA] == 0) {
-			AccountStorage.layout().balances[intent.partyA][symbol.collateral].clearPartyBSlot(intent.partyB);
+			AccountStorage.layout().balances[intent.partyA][symbol.collateral].removePartyB(intent.partyB);
 		}
 	}
 
@@ -214,7 +214,7 @@ library LibIntent {
 		// send trading Fee back to partyA
 		uint256 fee = getTradingFee(intent.id);
 		if (intent.partyBsWhiteList.length == 1) {
-			accountLayout.balances[intent.partyA][symbol.collateral].add(intent.partyBsWhiteList[0], fee, block.timestamp);
+			accountLayout.balances[intent.partyA][symbol.collateral].scheduledAdd(intent.partyBsWhiteList[0], fee, block.timestamp);
 		} else {
 			accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(fee);
 		}

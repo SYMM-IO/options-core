@@ -11,7 +11,7 @@ import "../../storages/AppStorage.sol";
 
 library AccountFacetImpl {
 	using SafeERC20 for IERC20;
-	using StagedReleaseBalanceOps for StagedReleaseBalance;
+	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 
 	function deposit(address collateral, address user, uint256 amount) internal {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
