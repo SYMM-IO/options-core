@@ -11,7 +11,7 @@ import "../../storages/AccountStorage.sol";
 import "../../storages/SymbolStorage.sol";
 
 library PartyAFacetImpl {
-	using StagedReleaseBalanceOps for StagedReleaseBalance;
+	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 
 	function sendOpenIntent(
 		address[] calldata partyBsWhiteList,
@@ -111,7 +111,7 @@ library PartyAFacetImpl {
 			intent.status = IntentStatus.CANCELED;
 			uint256 fee = LibIntent.getTradingFee(intent.id);
 			if (intent.partyBsWhiteList.length == 1) {
-				accountLayout.balances[intent.partyA][symbol.collateral].add(intent.partyBsWhiteList[0], fee, block.timestamp);
+				accountLayout.balances[intent.partyA][symbol.collateral].scheduledAdd(intent.partyBsWhiteList[0], fee, block.timestamp);
 			} else {
 				accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(fee);
 			}

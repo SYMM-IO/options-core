@@ -4,7 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "../libraries/LibStagedReleaseBalance.sol";
+import "../libraries/LibScheduledReleaseBalance.sol";
 
 struct Withdraw {
 	uint256 id;
@@ -26,7 +26,7 @@ library AccountStorage {
 	bytes32 internal constant ACCOUNT_STORAGE_SLOT = keccak256("diamond.standard.storage.account");
 
 	struct Layout {
-		mapping(address => mapping(address => StagedReleaseBalance)) balances; // user => collateral => balance
+		mapping(address => mapping(address => ScheduledReleaseBalance)) balances; // user => collateral => balance
 		mapping(address => mapping(address => uint256)) lockedBalances; // user => collateral => lockedBalance
 		mapping(address => uint256) partyBReleaseIntervals;
 		uint256 maxConnectedPartyBs;
