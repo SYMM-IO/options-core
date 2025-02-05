@@ -14,7 +14,7 @@ import "../../storages/SymbolStorage.sol";
 import "../../interfaces/ISignatureVerifier.sol";
 
 library PartyBFacetImpl {
-	using StagedReleaseBalanceOps for StagedReleaseBalance;
+	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 
 	function lockOpenIntent(uint256 intentId) internal {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
@@ -79,7 +79,7 @@ library PartyBFacetImpl {
 		// send trading Fee back to partyA
 		uint256 fee = LibIntent.getTradingFee(intentId);
 		if (intent.partyBsWhiteList.length == 1) {
-			accountLayout.balances[intent.partyA][symbol.collateral].add(intent.partyBsWhiteList[0], fee, block.timestamp);
+			accountLayout.balances[intent.partyA][symbol.collateral].scheduledAdd(intent.partyBsWhiteList[0], fee, block.timestamp);
 		} else {
 			accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(fee);
 		}
