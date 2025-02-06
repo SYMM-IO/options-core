@@ -22,6 +22,7 @@ library PartyAFacetImpl {
 		uint256 expirationTimestamp,
 		ExerciseFee memory exerciseFee,
 		uint256 deadline,
+		address feeToken,
 		address affiliate
 	) internal returns (uint256 intentId) {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
@@ -38,7 +39,10 @@ library PartyAFacetImpl {
 		require(appLayout.affiliateStatus[affiliate] || affiliate == address(0), "PartyAFacet: Invalid affiliate");
 
 		if (accountLayout.boundPartyB[msg.sender] != address(0)) {
-			require(partyBsWhiteList.length == 1 && partyBsWhiteList[0] == accountLayout.boundPartyB[msg.sender], "PartyAFacet: User is bound to another PartyB");
+			require(
+				partyBsWhiteList.length == 1 && partyBsWhiteList[0] == accountLayout.boundPartyB[msg.sender],
+				"PartyAFacet: User is bound to another PartyB"
+			);
 		}
 
 		for (uint8 i = 0; i < partyBsWhiteList.length; i++) {
@@ -47,14 +51,22 @@ library PartyAFacetImpl {
 
 		if (partyBsWhiteList.length == 1) {
 			require(
-				uint256(accountLayout.balances[msg.sender][symbol.collateral].partyBBalance(partyBsWhiteList[0])) >=
-					(quantity * price * (1e18 + symbol.tradingFee)) / 1e36,
+				uint256(accountLayout.balances[msg.sender][symbol.collateral].partyBBalance(partyBsWhiteList[0])) >= (quantity * price) / 1e18,
 				"PartyAFacet: insufficient available balance"
+			);
+			require(
+				uint256(accountLayout.balances[msg.sender][feeToken].partyBBalance(partyBsWhiteList[0])) >=
+					(quantity * price * symbol.tradingFee) / 1e36,
+				"PartyAFacet: insufficient available balance for trading fee"
 			);
 		} else {
 			require(
-				uint256(accountLayout.balances[msg.sender][symbol.collateral].available) >= (quantity * price * (1e18 + symbol.tradingFee)) / 1e36,
+				uint256(accountLayout.balances[msg.sender][symbol.collateral].available) >= (quantity * price) / 1e18,
 				"PartyAFacet: insufficient available balance"
+			);
+			require(
+				uint256(accountLayout.balances[msg.sender][feeToken].available) >= (quantity * price * symbol.tradingFee) / 1e36,
+				"PartyAFacet: insufficient available balance for trading fee"
 			);
 		}
 
@@ -76,7 +88,7 @@ library PartyAFacetImpl {
 			createTimestamp: block.timestamp,
 			statusModifyTimestamp: block.timestamp,
 			deadline: deadline,
-			tradingFee: symbol.tradingFee,
+			tradingFee: TradingFee(feeToken, IPriceOracle(AppStorage.layout().priceOracleAddress).getPrice(feeToken), symbol.tradingFee),
 			affiliate: affiliate
 		});
 
@@ -87,11 +99,11 @@ library PartyAFacetImpl {
 		accountLayout.lockedBalances[msg.sender][symbol.collateral] += LibIntent.getPremiumOfOpenIntent(intentId);
 
 		uint256 fee = LibIntent.getTradingFee(intentId);
-		accountLayout.balances[msg.sender][symbol.collateral].syncAll(block.timestamp);
+		accountLayout.balances[msg.sender][feeToken].syncAll(block.timestamp);
 		if (partyBsWhiteList.length == 1) {
-			accountLayout.balances[msg.sender][symbol.collateral].subForPartyB(partyBsWhiteList[0], fee);
+			accountLayout.balances[msg.sender][feeToken].subForPartyB(partyBsWhiteList[0], fee);
 		} else {
-			accountLayout.balances[msg.sender][symbol.collateral].sub(fee);
+			accountLayout.balances[msg.sender][feeToken].sub(fee);
 		}
 	}
 
@@ -111,9 +123,9 @@ library PartyAFacetImpl {
 			intent.status = IntentStatus.CANCELED;
 			uint256 fee = LibIntent.getTradingFee(intent.id);
 			if (intent.partyBsWhiteList.length == 1) {
-				accountLayout.balances[intent.partyA][symbol.collateral].scheduledAdd(intent.partyBsWhiteList[0], fee, block.timestamp);
+				accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].scheduledAdd(intent.partyBsWhiteList[0], fee, block.timestamp);
 			} else {
-				accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(fee);
+				accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].instantAdd(fee);
 			}
 			accountLayout.lockedBalances[intent.partyA][symbol.collateral] -= LibIntent.getPremiumOfOpenIntent(intentId);
 			LibIntent.removeFromPartyAOpenIntents(intentId);

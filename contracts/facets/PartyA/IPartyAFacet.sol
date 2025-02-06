@@ -15,6 +15,7 @@ interface IPartyAFacet is IPartyAEvents {
 		uint256 expirationTimestamp,
 		ExerciseFee memory exerciseFee,
 		uint256 deadline,
+		address feeToken,
 		address affiliate
 	) external returns (uint256);
 

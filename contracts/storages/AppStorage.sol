@@ -68,6 +68,7 @@ library AppStorage {
 		uint256 balanceLimitPerUser;
 		uint256 maxCloseOrdersLength;
 		uint256 maxTradePerPartyA;
+		address priceOracleAddress;
 		///////////////////////////////////
 		bool globalPaused;
 		bool depositingPaused;

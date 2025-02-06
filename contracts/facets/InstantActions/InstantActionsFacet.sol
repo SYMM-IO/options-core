@@ -28,8 +28,7 @@ contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
 			intent.quantity,
 			intent.strikePrice,
 			intent.expirationTimestamp,
-			intent.exerciseFee.rate,
-			intent.exerciseFee.cap,
+			intent.exerciseFee,
 			intent.tradingFee,
 			intent.deadline
 		);
