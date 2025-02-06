@@ -11,6 +11,7 @@ import "./ClearingHouseFacetImpl.sol";
 import "../../storages/AccountStorage.sol";
 
 contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
+	function suspendPartyA(address partyA, address collateral) external {}
 	/**
 	 * @notice Flags Party B to be liquidated.
 	 * @param partyB The address of Party B to be liquidated.
