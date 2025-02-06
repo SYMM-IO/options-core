@@ -79,9 +79,9 @@ library PartyBFacetImpl {
 		// send trading Fee back to partyA
 		uint256 fee = LibIntent.getTradingFee(intentId);
 		if (intent.partyBsWhiteList.length == 1) {
-			accountLayout.balances[intent.partyA][symbol.collateral].scheduledAdd(intent.partyBsWhiteList[0], fee, block.timestamp);
+			accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].scheduledAdd(intent.partyBsWhiteList[0], fee, block.timestamp);
 		} else {
-			accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(fee);
+			accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].instantAdd(fee);
 		}
 
 		LibIntent.removeFromPartyAOpenIntents(intentId);

@@ -8,6 +8,7 @@ import "../storages/IntentStorage.sol";
 import "../storages/AccountStorage.sol";
 import "../storages/AppStorage.sol";
 import "../storages/SymbolStorage.sol";
+import "../interfaces/IPriceOracle.sol";
 
 library LibIntent {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
@@ -155,7 +156,7 @@ library LibIntent {
 	 */
 	function getTradingFee(uint256 intentId) internal view returns (uint256 fee) {
 		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
-		fee = (intent.quantity * intent.price * intent.tradingFee) / 1e36;
+		fee = (intent.quantity * intent.price * intent.tradingFee.fee) / (intent.tradingFee.tokenPrice * 1e18);
 	}
 
 	/**
@@ -214,9 +215,9 @@ library LibIntent {
 		// send trading Fee back to partyA
 		uint256 fee = getTradingFee(intent.id);
 		if (intent.partyBsWhiteList.length == 1) {
-			accountLayout.balances[intent.partyA][symbol.collateral].scheduledAdd(intent.partyBsWhiteList[0], fee, block.timestamp);
+			accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].scheduledAdd(intent.partyBsWhiteList[0], fee, block.timestamp);
 		} else {
-			accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(fee);
+			accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].instantAdd(fee);
 		}
 
 		removeFromPartyAOpenIntents(intent.id);
@@ -269,6 +270,7 @@ library LibIntent {
 					req.exerciseFee.rate,
 					req.exerciseFee.cap,
 					req.deadline,
+					req.feeToken,
 					req.affiliate,
 					req.salt
 				)

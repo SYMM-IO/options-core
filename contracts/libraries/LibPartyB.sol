@@ -34,7 +34,9 @@ library LibPartyB {
 		address feeCollector = appLayout.affiliateFeeCollector[intent.affiliate] == address(0)
 			? appLayout.defaultFeeCollector
 			: appLayout.affiliateFeeCollector[intent.affiliate];
-		accountLayout.balances[feeCollector][symbol.collateral].instantAdd((quantity * intent.price * intent.tradingFee) / 1e36);
+		accountLayout.balances[feeCollector][intent.tradingFee.feeToken].instantAdd(
+			(quantity * price * intent.tradingFee.fee) / (intent.tradingFee.tokenPrice * 1e18)
+		);
 
 		uint256 tradeId = ++intentLayout.lastTradeId;
 		Trade memory trade = Trade({

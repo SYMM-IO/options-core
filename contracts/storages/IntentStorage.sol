@@ -26,6 +26,12 @@ struct ExerciseFee {
 	uint256 cap;
 }
 
+struct TradingFee {
+	address feeToken;
+	uint256 tokenPrice;
+	uint256 fee;
+}
+
 struct Trade {
 	uint256 id;
 	uint256 openIntentId;
@@ -64,7 +70,7 @@ struct OpenIntent {
 	uint256 createTimestamp;
 	uint256 statusModifyTimestamp;
 	uint256 deadline;
-	uint256 tradingFee;
+	TradingFee tradingFee;
 	address affiliate;
 }
 
@@ -91,6 +97,7 @@ struct SignedOpenIntent {
 	ExerciseFee exerciseFee;
 	uint256 deadline;
 	address affiliate;
+	address feeToken;
 	uint256 salt;
 }
 
