@@ -2,7 +2,6 @@
 	"name": "options-core",
 	"version": "1.0.0",
 	"description": "",
-	"main": "index.js",
 	"author": {
 		"name": "MoonKnight/Naveedinno",
 		"url": "https://github.com/SYMM-IO/options-core"
@@ -15,6 +14,7 @@
 		"@ethersproject/providers": "^5.7.2",
 		"@nomicfoundation/hardhat-chai-matchers": "^2.0.7",
 		"@nomicfoundation/hardhat-ethers": "^3.0.6",
+		"@nomicfoundation/hardhat-ignition-ethers": "^0.15.9",
 		"@nomicfoundation/hardhat-network-helpers": "^1.0.11",
 		"@nomicfoundation/hardhat-toolbox": "^5.0.0",
 		"@nomicfoundation/hardhat-verify": "^2.0.8",
