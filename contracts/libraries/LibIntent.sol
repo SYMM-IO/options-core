@@ -295,26 +295,38 @@ library LibIntent {
 		return keccak256(abi.encode(SIGN_PREFIX, req.partyB, req.intentHash, req.price, req.quantity, req.deadline, req.salt));
 	}
 
-	function hashSignedCancelOpenIntent(SignedCancelIntent calldata req) internal pure returns (bytes32) {
+	function hashSignedCancelOpenIntent(SignedSimpleActionIntent calldata req) internal pure returns (bytes32) {
 		bytes32 SIGN_PREFIX = keccak256("SymmioCancelOpenIntent_v1");
 
 		return keccak256(abi.encode(SIGN_PREFIX, req.signer, req.intentId, req.deadline, req.salt));
 	}
 
-	function hashSignedAcceptCancelOpenIntent(SignedCancelIntent calldata req) internal pure returns (bytes32) {
+	function hashSignedAcceptCancelOpenIntent(SignedSimpleActionIntent calldata req) internal pure returns (bytes32) {
 		bytes32 SIGN_PREFIX = keccak256("SymmioAcceptCancelOpenIntent_v1");
 
 		return keccak256(abi.encode(SIGN_PREFIX, req.signer, req.intentId, req.deadline, req.salt));
 	}
 
-	function hashSignedCancelCloseIntent(SignedCancelIntent calldata req) internal pure returns (bytes32) {
+	function hashSignedCancelCloseIntent(SignedSimpleActionIntent calldata req) internal pure returns (bytes32) {
 		bytes32 SIGN_PREFIX = keccak256("SymmioCancelCloseIntent_v1");
 
 		return keccak256(abi.encode(SIGN_PREFIX, req.signer, req.intentId, req.deadline, req.salt));
 	}
 
-	function hashSignedAcceptCancelCloseIntent(SignedCancelIntent calldata req) internal pure returns (bytes32) {
+	function hashSignedAcceptCancelCloseIntent(SignedSimpleActionIntent calldata req) internal pure returns (bytes32) {
 		bytes32 SIGN_PREFIX = keccak256("SymmioAcceptCancelCloseIntent_v1");
+
+		return keccak256(abi.encode(SIGN_PREFIX, req.signer, req.intentId, req.deadline, req.salt));
+	}
+
+	function hashSignedLockIntent(SignedSimpleActionIntent calldata req) internal pure returns (bytes32) {
+		bytes32 SIGN_PREFIX = keccak256("SymmioLockIntent_v1");
+
+		return keccak256(abi.encode(SIGN_PREFIX, req.signer, req.intentId, req.deadline, req.salt));
+	}
+
+	function hashSignedUnlockIntent(SignedSimpleActionIntent calldata req) internal pure returns (bytes32) {
+		bytes32 SIGN_PREFIX = keccak256("SymmioUnlockIntent_v1");
 
 		return keccak256(abi.encode(SIGN_PREFIX, req.signer, req.intentId, req.deadline, req.salt));
 	}

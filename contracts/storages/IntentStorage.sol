@@ -119,7 +119,7 @@ struct SignedFillIntent {
 	uint256 salt;
 }
 
-struct SignedCancelIntent {
+struct SignedSimpleActionIntent {
 	address signer;
 	uint256 intentId;
 	uint256 deadline;

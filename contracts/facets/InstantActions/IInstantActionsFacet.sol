@@ -22,18 +22,20 @@ interface IInstantActionsFacet is IInstantActionsEvents {
 	) external;
 
 	function instantCancelOpenIntent(
-		SignedCancelIntent calldata signedCancelOpenIntent,
+		SignedSimpleActionIntent calldata signedCancelOpenIntent,
 		bytes calldata partyASignature,
-		SignedCancelIntent calldata signedAcceptCancelOpenIntent,
+		SignedSimpleActionIntent calldata signedAcceptCancelOpenIntent,
 		bytes calldata partyBSignature
 	) external;
 
 	function instantCancelCloseIntent(
-		SignedCancelIntent calldata signedCancelCloseIntent,
+		SignedSimpleActionIntent calldata signedCancelCloseIntent,
 		bytes calldata partyASignature,
-		SignedCancelIntent calldata signedAcceptCancelCloseIntent,
+		SignedSimpleActionIntent calldata signedAcceptCancelCloseIntent,
 		bytes calldata partyBSignature
 	) external;
 
-	// TODO: add revert backs 1. revert back close intent 2. revert back withdraw or send alot of open intent
+	function instantLock(SignedSimpleActionIntent calldata signedLockIntent, bytes calldata partyBSignature) external;
+
+	function instantUnlock(SignedSimpleActionIntent calldata signedUnlockIntent, bytes calldata partyBSignature) external;
 }

@@ -7,6 +7,7 @@ pragma solidity >=0.8.18;
 import "./PartyBFacetImpl.sol";
 import "../../utils/Accessibility.sol";
 import "../../utils/Pausable.sol";
+import "../../libraries/LibPartyB.sol";
 import "./IPartyBFacet.sol";
 
 contract PartyBFacet is Accessibility, Pausable, IPartyBFacet {
@@ -15,7 +16,7 @@ contract PartyBFacet is Accessibility, Pausable, IPartyBFacet {
 	 * @param intentId The ID of the open intent to be locked.
 	 */
 	function lockOpenIntent(uint256 intentId) external whenNotPartyBActionsPaused onlyPartyB {
-		PartyBFacetImpl.lockOpenIntent(intentId);
+		LibPartyB.lockOpenIntent(intentId, msg.sender);
 		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
 		emit LockOpenIntent(intent.partyB, intentId);
 	}
@@ -25,7 +26,7 @@ contract PartyBFacet is Accessibility, Pausable, IPartyBFacet {
 	 * @param intentId The ID of the open intent to be unlocked.
 	 */
 	function unlockOpenIntent(uint256 intentId) external whenNotPartyBActionsPaused onlyPartyBOfOpenIntent(intentId) {
-		IntentStatus res = PartyBFacetImpl.unlockOpenIntent(intentId);
+		IntentStatus res = LibPartyB.unlockOpenIntent(intentId);
 		if (res == IntentStatus.EXPIRED) {
 			emit ExpireOpenIntent(intentId);
 		} else if (res == IntentStatus.PENDING) {
