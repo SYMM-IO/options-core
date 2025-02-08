@@ -16,56 +16,6 @@ import "../../interfaces/ISignatureVerifier.sol";
 library PartyBFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 
-	function lockOpenIntent(uint256 intentId) internal {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-		OpenIntent storage intent = intentLayout.openIntents[intentId];
-		Symbol storage symbol = SymbolStorage.layout().symbols[intent.symbolId];
-
-		require(intent.status == IntentStatus.PENDING, "PartyBFacet: Invalid state");
-		require(block.timestamp <= intent.deadline, "PartyBFacet: Intent is expired");
-		require(symbol.isValid, "PartyBFacet: Symbol is not valid");
-		require(block.timestamp <= intent.expirationTimestamp, "PartyBFacet: Requested expiration has been passed");
-		require(intentId <= intentLayout.lastOpenIntentId, "PartyBFacet: Invalid intentId");
-		require(AppStorage.layout().partyBConfigs[msg.sender].oracleId == symbol.oracleId, "PartyBFacet: Oracle not matched");
-
-		bool isValidPartyB;
-		if (intent.partyBsWhiteList.length == 0) {
-			require(msg.sender != intent.partyA, "PartyBFacet: PartyA can't be partyB too");
-			isValidPartyB = true;
-		} else {
-			for (uint8 index = 0; index < intent.partyBsWhiteList.length; index++) {
-				if (msg.sender == intent.partyBsWhiteList[index]) {
-					isValidPartyB = true;
-					break;
-				}
-			}
-		}
-		require(isValidPartyB, "PartyBFacet: Sender isn't whitelisted");
-		intent.statusModifyTimestamp = block.timestamp;
-		intent.status = IntentStatus.LOCKED;
-		intent.partyB = msg.sender;
-		LibIntent.addToPartyBOpenIntents(intentId);
-		intentLayout.openIntentsOf[intent.partyB].push(intent.id);
-	}
-
-	function unlockOpenIntent(uint256 intentId) internal returns (IntentStatus) {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-		OpenIntent storage intent = intentLayout.openIntents[intentId];
-
-		require(intent.status == IntentStatus.LOCKED, "PartyBFacet: Invalid state");
-
-		if (block.timestamp > intent.deadline) {
-			LibIntent.expireOpenIntent(intentId);
-			return IntentStatus.EXPIRED;
-		} else {
-			intent.statusModifyTimestamp = block.timestamp;
-			intent.status = IntentStatus.PENDING;
-			LibIntent.removeFromPartyBOpenIntents(intentId);
-			intent.partyB = address(0);
-			return IntentStatus.PENDING;
-		}
-	}
-
 	function acceptCancelOpenIntent(uint256 intentId) internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 

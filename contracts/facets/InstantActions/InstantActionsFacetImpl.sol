@@ -15,6 +15,35 @@ import "../../interfaces/ISignatureVerifier.sol";
 library InstantActionsFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 
+	function instantLock(SignedSimpleActionIntent calldata signedLockIntent, bytes calldata partyBSignature) internal {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		OpenIntent storage intent = intentLayout.openIntents[signedLockIntent.intentId];
+		bytes32 lockIntentHash = LibIntent.hashSignedLockIntent(signedLockIntent);
+		require(
+			ISignatureVerifier(intentLayout.signatureVerifier).verifySignature(signedLockIntent.signer, lockIntentHash, partyBSignature),
+			"InstantActionsFacet: Invalid PartyB signature"
+		);
+		require(!intentLayout.isSigUsed[lockIntentHash], "InstantActionsFacet: PartyB signature is already used");
+		intentLayout.isSigUsed[lockIntentHash] = true;
+
+		LibPartyB.lockOpenIntent(intent.id, signedLockIntent.signer);
+	}
+
+	function instantUnlock(SignedSimpleActionIntent calldata signedUnlockIntent, bytes calldata partyBSignature) internal returns (IntentStatus) {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		OpenIntent storage intent = intentLayout.openIntents[signedUnlockIntent.intentId];
+		bytes32 unlockIntentHash = LibIntent.hashSignedUnlockIntent(signedUnlockIntent);
+		require(
+			ISignatureVerifier(intentLayout.signatureVerifier).verifySignature(signedUnlockIntent.signer, unlockIntentHash, partyBSignature),
+			"InstantActionsFacet: Invalid PartyB signature"
+		);
+		require(!intentLayout.isSigUsed[unlockIntentHash], "InstantActionsFacet: PartyB signature is already used");
+		intentLayout.isSigUsed[unlockIntentHash] = true;
+		require(intent.partyB == signedUnlockIntent.signer, "InstantActionsFacet: Signer isn't the partyB of intent");
+
+		return LibPartyB.unlockOpenIntent(intent.id);
+	}
+
 	function instantFillOpenIntent(
 		SignedOpenIntent calldata signedOpenIntent,
 		bytes calldata partyASignature,
@@ -103,7 +132,11 @@ library InstantActionsFacetImpl {
 			createTimestamp: block.timestamp,
 			statusModifyTimestamp: block.timestamp,
 			deadline: signedOpenIntent.deadline,
-			tradingFee: TradingFee(signedOpenIntent.feeToken, IPriceOracle(AppStorage.layout().priceOracleAddress).getPrice(signedOpenIntent.feeToken), symbol.tradingFee),
+			tradingFee: TradingFee(
+				signedOpenIntent.feeToken,
+				IPriceOracle(AppStorage.layout().priceOracleAddress).getPrice(signedOpenIntent.feeToken),
+				symbol.tradingFee
+			),
 			affiliate: signedOpenIntent.affiliate,
 			exerciseFee: signedOpenIntent.exerciseFee
 		});
@@ -232,9 +265,9 @@ library InstantActionsFacetImpl {
 	}
 
 	function instantCancelOpenIntent(
-		SignedCancelIntent calldata signedCancelOpenIntent,
+		SignedSimpleActionIntent calldata signedCancelOpenIntent,
 		bytes calldata partyASignature,
-		SignedCancelIntent calldata signedAcceptCancelOpenIntent,
+		SignedSimpleActionIntent calldata signedAcceptCancelOpenIntent,
 		bytes calldata partyBSignature
 	) internal returns (IntentStatus result) {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
@@ -289,9 +322,9 @@ library InstantActionsFacetImpl {
 	}
 
 	function instantCancelCloseIntent(
-		SignedCancelIntent calldata signedCancelCloseIntent,
+		SignedSimpleActionIntent calldata signedCancelCloseIntent,
 		bytes calldata partyASignature,
-		SignedCancelIntent calldata signedAcceptCancelCloseIntent,
+		SignedSimpleActionIntent calldata signedAcceptCancelCloseIntent,
 		bytes calldata partyBSignature
 	) internal returns (IntentStatus result) {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();

@@ -10,6 +10,21 @@ import "../../utils/Pausable.sol";
 import "./IInstantActionsFacet.sol";
 
 contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
+	function instantLock(SignedSimpleActionIntent calldata signedLockIntent, bytes calldata partyBSignature) external whenNotPartyBActionsPaused {
+		InstantActionsFacetImpl.instantLock(signedLockIntent, partyBSignature);
+		OpenIntent storage intent = IntentStorage.layout().openIntents[signedLockIntent.intentId];
+		emit LockOpenIntent(intent.partyB, signedLockIntent.intentId);
+	}
+
+	function instantUnlock(SignedSimpleActionIntent calldata signedUnlockIntent, bytes calldata partyBSignature) external whenNotPartyBActionsPaused {
+		IntentStatus res = InstantActionsFacetImpl.instantUnlock(signedUnlockIntent, partyBSignature);
+		if (res == IntentStatus.EXPIRED) {
+			emit ExpireOpenIntent(signedUnlockIntent.intentId);
+		} else if (res == IntentStatus.PENDING) {
+			emit UnlockOpenIntent(signedUnlockIntent.signer, signedUnlockIntent.intentId);
+		}
+	}
+
 	function instantFillOpenIntent(
 		SignedOpenIntent calldata signedOpenIntent,
 		bytes calldata partyASignature,
@@ -57,9 +72,9 @@ contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
 	}
 
 	function instantCancelOpenIntent(
-		SignedCancelIntent calldata signedCancelOpenIntent,
+		SignedSimpleActionIntent calldata signedCancelOpenIntent,
 		bytes calldata partyASignature,
-		SignedCancelIntent calldata signedAcceptCancelOpenIntent,
+		SignedSimpleActionIntent calldata signedAcceptCancelOpenIntent,
 		bytes calldata partyBSignature
 	) external whenNotPartyBActionsPaused {
 		IntentStatus result = InstantActionsFacetImpl.instantCancelOpenIntent(
@@ -77,9 +92,9 @@ contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
 	}
 
 	function instantCancelCloseIntent(
-		SignedCancelIntent calldata signedCancelCloseIntent,
+		SignedSimpleActionIntent calldata signedCancelCloseIntent,
 		bytes calldata partyASignature,
-		SignedCancelIntent calldata signedAcceptCancelCloseIntent,
+		SignedSimpleActionIntent calldata signedAcceptCancelCloseIntent,
 		bytes calldata partyBSignature
 	) external whenNotPartyBActionsPaused {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
