@@ -1,8 +1,18 @@
 import "@nomicfoundation/hardhat-chai-matchers"
 import "@nomicfoundation/hardhat-toolbox"
 import "@openzeppelin/hardhat-upgrades"
+import { config as dotenvConfig } from "dotenv"
 import type { HardhatUserConfig } from "hardhat/config"
 import "solidity-docgen"
+
+import "./tasks"
+import { resolve } from "path"
+
+const dotenvConfigPath: string = process.env.DOTENV_CONFIG_PATH || "./.env"
+dotenvConfig({ path: resolve(__dirname, dotenvConfigPath) })
+
+const privateKey: string | undefined = process.env.PRIVATE_KEY
+if (!privateKey) throw new Error("Please set your PRIVATE_KEY in .env file")
 
 const config: HardhatUserConfig = {
 	defaultNetwork: "hardhat",
@@ -14,9 +24,6 @@ const config: HardhatUserConfig = {
 	},
 	networks: {
 		hardhat: {
-			// forking: {
-			//   url: "",
-			// },
 			allowUnlimitedContractSize: false,
 		},
 	},
@@ -44,7 +51,7 @@ const config: HardhatUserConfig = {
 		},
 	},
 	typechain: {
-		outDir: "src/types",
+		outDir: "types",
 		target: "ethers-v6",
 	},
 	mocha: {
