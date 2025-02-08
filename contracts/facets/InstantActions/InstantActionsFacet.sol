@@ -10,13 +10,19 @@ import "../../utils/Pausable.sol";
 import "./IInstantActionsFacet.sol";
 
 contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
-	function instantLock(SignedSimpleActionIntent calldata signedLockIntent, bytes calldata partyBSignature) external whenNotPartyBActionsPaused {
+	function instantLock(
+		SignedSimpleActionIntent calldata signedLockIntent,
+		bytes calldata partyBSignature
+	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
 		InstantActionsFacetImpl.instantLock(signedLockIntent, partyBSignature);
 		OpenIntent storage intent = IntentStorage.layout().openIntents[signedLockIntent.intentId];
 		emit LockOpenIntent(intent.partyB, signedLockIntent.intentId);
 	}
 
-	function instantUnlock(SignedSimpleActionIntent calldata signedUnlockIntent, bytes calldata partyBSignature) external whenNotPartyBActionsPaused {
+	function instantUnlock(
+		SignedSimpleActionIntent calldata signedUnlockIntent,
+		bytes calldata partyBSignature
+	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
 		IntentStatus res = InstantActionsFacetImpl.instantUnlock(signedUnlockIntent, partyBSignature);
 		if (res == IntentStatus.EXPIRED) {
 			emit ExpireOpenIntent(signedUnlockIntent.intentId);
@@ -30,7 +36,7 @@ contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
 		bytes calldata partyASignature,
 		SignedFillIntent calldata signedFillOpenIntent,
 		bytes calldata partyBSignature
-	) external whenNotPartyBActionsPaused {
+	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
 		uint256 intentId = InstantActionsFacetImpl.instantFillOpenIntent(signedOpenIntent, partyASignature, signedFillOpenIntent, partyBSignature);
 		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
 
@@ -55,7 +61,7 @@ contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
 		bytes calldata partyASignature,
 		SignedFillIntent calldata signedFillCloseIntent,
 		bytes calldata partyBSignature
-	) external whenNotPartyBActionsPaused {
+	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
 		uint256 intentId = InstantActionsFacetImpl.instantFillCloseIntent(signedCloseIntent, partyASignature, signedFillCloseIntent, partyBSignature);
 		Trade storage trade = IntentStorage.layout().trades[signedCloseIntent.tradeId];
 		emit SendCloseIntent(
@@ -76,7 +82,7 @@ contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
 		bytes calldata partyASignature,
 		SignedSimpleActionIntent calldata signedAcceptCancelOpenIntent,
 		bytes calldata partyBSignature
-	) external whenNotPartyBActionsPaused {
+	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
 		IntentStatus result = InstantActionsFacetImpl.instantCancelOpenIntent(
 			signedCancelOpenIntent,
 			partyASignature,
@@ -96,7 +102,7 @@ contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
 		bytes calldata partyASignature,
 		SignedSimpleActionIntent calldata signedAcceptCancelCloseIntent,
 		bytes calldata partyBSignature
-	) external whenNotPartyBActionsPaused {
+	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		IntentStatus result = InstantActionsFacetImpl.instantCancelCloseIntent(
 			signedCancelCloseIntent,

@@ -36,6 +36,12 @@ abstract contract Pausable {
 		_;
 	}
 
+	modifier whenNotThirdPartyActionsPaused() {
+		require(!AppStorage.layout().globalPaused, "Pausable: Global paused");
+		require(!AppStorage.layout().thirdPartyActionsPaused, "Pausable: Third party actions paused");
+		_;
+	}
+
 	modifier whenNotLiquidationPaused() {
 		require(!AppStorage.layout().globalPaused, "Pausable: Global paused");
 		require(!AppStorage.layout().liquidatingPaused, "Pausable: Liquidating paused");

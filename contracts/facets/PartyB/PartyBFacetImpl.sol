@@ -84,6 +84,12 @@ library PartyBFacetImpl {
 		} else {
 			require(sig.settlementPrice <= trade.strikePrice, "PartyBFacet: Invalid price");
 		}
+		if (msg.sender != trade.partyB) {
+			require(
+				trade.expirationTimestamp + AppStorage.layout().ownerExclusiveWindow <= block.timestamp,
+				"PartyBFacet: Third parties shoud wait for owner exclusive window"
+			);
+		}
 		trade.settledPrice = sig.settlementPrice;
 
 		LibIntent.closeTrade(tradeId, TradeStatus.EXPIRED, IntentStatus.CANCELED);
@@ -102,6 +108,12 @@ library PartyBFacetImpl {
 			AppStorage.layout().liquidationDetails[trade.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
 			"PartyBFacet: PartyB is liquidated"
 		);
+		if (msg.sender != trade.partyB) {
+			require(
+				trade.expirationTimestamp + AppStorage.layout().ownerExclusiveWindow <= block.timestamp,
+				"PartyBFacet: Third parties shoud wait for owner exclusive window"
+			);
+		}
 
 		uint256 pnl;
 		if (symbol.optionType == OptionType.PUT) {
