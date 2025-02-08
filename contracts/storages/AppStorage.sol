@@ -76,6 +76,7 @@ library AppStorage {
 		bool partyBActionsPaused;
 		bool partyAActionsPaused;
 		bool liquidatingPaused;
+		bool thirdPartyActionsPaused;
 		///////////////////////////////////
 		bool emergencyMode;
 		mapping(address => bool) partyBEmergencyStatus;
@@ -83,6 +84,7 @@ library AppStorage {
 		uint256 partyBDeallocateCooldown;
 		uint256 forceCancelOpenIntentTimeout;
 		uint256 forceCancelCloseIntentTimeout;
+		uint256 ownerExclusiveWindow;
 		///////////////////////////////////
 		address defaultFeeCollector;
 		mapping(address => bool) affiliateStatus;

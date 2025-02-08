@@ -95,11 +95,17 @@ contract PartyBFacet is Accessibility, Pausable, IPartyBFacet {
 		emit FillCloseIntent(intentId, trade.id, trade.partyA, trade.partyB, quantity, price);
 	}
 
-	function expireTrade(uint256 tradeId, SettlementPriceSig memory settlementPriceSig) external whenNotPartyBActionsPaused {
+	function expireTrade(
+		uint256 tradeId,
+		SettlementPriceSig memory settlementPriceSig
+	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
 		PartyBFacetImpl.expireTrade(tradeId, settlementPriceSig);
 	}
 
-	function exerciseTrade(uint256 tradeId, SettlementPriceSig memory settlementPriceSig) external whenNotPartyBActionsPaused {
+	function exerciseTrade(
+		uint256 tradeId,
+		SettlementPriceSig memory settlementPriceSig
+	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
 		PartyBFacetImpl.exerciseTrade(tradeId, settlementPriceSig);
 	}
 }
