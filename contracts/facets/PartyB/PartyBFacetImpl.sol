@@ -22,6 +22,10 @@ library PartyBFacetImpl {
 		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
 		Symbol memory symbol = SymbolStorage.layout().symbols[intent.symbolId];
 		require(intent.status == IntentStatus.CANCEL_PENDING, "PartyBFacet: Invalid state");
+		require(
+			AppStorage.layout().liquidationDetails[intent.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
+			"AccountFacet: PartyB is in the liquidation process"
+		);
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = IntentStatus.CANCELED;
 		accountLayout.lockedBalances[intent.partyA][symbol.collateral] -= LibIntent.getPremiumOfOpenIntent(intentId);
@@ -41,8 +45,14 @@ library PartyBFacetImpl {
 	function acceptCancelCloseIntent(uint256 intentId) internal {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		CloseIntent storage intent = intentLayout.closeIntents[intentId];
+		Trade storage trade = IntentStorage.layout().trades[intent.tradeId];
 
 		require(intent.status == IntentStatus.CANCEL_PENDING, "LibIntent: Invalid state");
+		require(
+			AppStorage.layout().liquidationDetails[trade.partyB][SymbolStorage.layout().symbols[trade.symbolId].collateral].status ==
+				LiquidationStatus.SOLVENT,
+			"AccountFacet: PartyB is in the liquidation process"
+		);
 
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = IntentStatus.CANCELED;

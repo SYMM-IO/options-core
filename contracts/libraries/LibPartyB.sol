@@ -177,16 +177,16 @@ library LibPartyB {
 		OpenIntent storage intent = intentLayout.openIntents[intentId];
 		Symbol storage symbol = SymbolStorage.layout().symbols[intent.symbolId];
 
-		require(intent.status == IntentStatus.PENDING, "PartyBFacet: Invalid state");
-		require(block.timestamp <= intent.deadline, "PartyBFacet: Intent is expired");
-		require(symbol.isValid, "PartyBFacet: Symbol is not valid");
-		require(block.timestamp <= intent.expirationTimestamp, "PartyBFacet: Requested expiration has been passed");
-		require(intentId <= intentLayout.lastOpenIntentId, "PartyBFacet: Invalid intentId");
-		require(AppStorage.layout().partyBConfigs[partyB].oracleId == symbol.oracleId, "PartyBFacet: Oracle not matched");
+		require(intent.status == IntentStatus.PENDING, "LibPartyB: Invalid state");
+		require(block.timestamp <= intent.deadline, "LibPartyB: Intent is expired");
+		require(symbol.isValid, "LibPartyB: Symbol is not valid");
+		require(block.timestamp <= intent.expirationTimestamp, "LibPartyB: Requested expiration has been passed");
+		require(intentId <= intentLayout.lastOpenIntentId, "LibPartyB: Invalid intentId");
+		require(AppStorage.layout().partyBConfigs[partyB].oracleId == symbol.oracleId, "LibPartyB: Oracle not matched");
 
 		bool isValidPartyB;
 		if (intent.partyBsWhiteList.length == 0) {
-			require(partyB != intent.partyA, "PartyBFacet: PartyA can't be partyB too");
+			require(partyB != intent.partyA, "LibPartyB: PartyA can't be partyB too");
 			isValidPartyB = true;
 		} else {
 			for (uint8 index = 0; index < intent.partyBsWhiteList.length; index++) {
@@ -196,7 +196,11 @@ library LibPartyB {
 				}
 			}
 		}
-		require(isValidPartyB, "PartyBFacet: Sender isn't whitelisted");
+		require(isValidPartyB, "LibPartyB: Sender isn't whitelisted");
+		require(
+			AppStorage.layout().liquidationDetails[partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
+			"LibPartyB: PartyB is in the liquidation process"
+		);
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = IntentStatus.LOCKED;
 		intent.partyB = partyB;
@@ -208,7 +212,12 @@ library LibPartyB {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		OpenIntent storage intent = intentLayout.openIntents[intentId];
 
-		require(intent.status == IntentStatus.LOCKED, "PartyBFacet: Invalid state");
+		require(intent.status == IntentStatus.LOCKED, "LibPartyB: Invalid state");
+		require(
+			AppStorage.layout().liquidationDetails[intent.partyB][SymbolStorage.layout().symbols[intent.symbolId].collateral].status ==
+				LiquidationStatus.SOLVENT,
+			"LibPartyB: PartyB is in the liquidation process"
+		);
 
 		if (block.timestamp > intent.deadline) {
 			LibIntent.expireOpenIntent(intentId);
