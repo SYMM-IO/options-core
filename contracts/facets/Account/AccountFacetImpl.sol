@@ -25,12 +25,16 @@ library AccountFacetImpl {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		require(AppStorage.layout().whiteListedCollateral[collateral], "AccountFacet: Collateral is not whitelisted");
 		require(to != address(0), "AccountFacet: Zero address");
+		accountLayout.balances[msg.sender][collateral].syncAll(block.timestamp);
 		require(
 			accountLayout.balances[msg.sender][collateral].available - accountLayout.lockedBalances[msg.sender][collateral] >= amount,
 			"AccountFacet: Insufficient balance"
 		);
 		require(!accountLayout.instantActionsMode[msg.sender], "AccountFacet: Instant action mode is activated");
-
+		require(
+			AppStorage.layout().liquidationDetails[msg.sender][collateral].status == LiquidationStatus.SOLVENT,
+			"AccountFacet: PartyB is in the liquidation process"
+		);
 		accountLayout.balances[msg.sender][collateral].sub(amount);
 
 		currentId = ++accountLayout.lastWithdrawId;
@@ -52,6 +56,10 @@ library AccountFacetImpl {
 		require(id <= accountLayout.lastWithdrawId, "AccountFacet: Invalid id");
 
 		Withdraw storage w = accountLayout.withdrawals[id];
+		require(
+			AppStorage.layout().liquidationDetails[w.user][w.collateral].status == LiquidationStatus.SOLVENT,
+			"AccountFacet: PartyB is in the liquidation process"
+		);
 		require(w.status == WithdrawStatus.INITIATED, "AccountFacet: Invalid state");
 		if (AppStorage.layout().partyBConfigs[w.user].isActive) {
 			require(block.timestamp >= AppStorage.layout().partyBDeallocateCooldown + w.timestamp, "AccountFacet: Cooldown is not over yet");

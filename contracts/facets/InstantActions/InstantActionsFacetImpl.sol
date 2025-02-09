@@ -295,6 +295,10 @@ library InstantActionsFacetImpl {
 				),
 				"InstantActionsFacet: Invalid PartyB signature"
 			);
+			require(
+				AppStorage.layout().liquidationDetails[intent.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
+				"InstantActionsFacet: PartyB is in the liquidation process"
+			);
 			require(!intentLayout.isSigUsed[acceptCancelIntentHash], "InstantActionsFacet: PartyB signature is already used");
 			intentLayout.isSigUsed[acceptCancelIntentHash] = true;
 			require(intent.status == IntentStatus.PENDING || intent.status == IntentStatus.LOCKED, "InstantActionsFacet: Invalid state");
@@ -355,6 +359,11 @@ library InstantActionsFacetImpl {
 		require(signedAcceptCancelCloseIntent.deadline >= block.timestamp, "InstantActionsFacet: PartyB request is expired");
 		require(signedCancelCloseIntent.deadline >= block.timestamp, "InstantActionsFacet: PartyA request is expired");
 		require(trade.partyA == signedCancelCloseIntent.signer);
+		require(
+			AppStorage.layout().liquidationDetails[trade.partyB][SymbolStorage.layout().symbols[trade.symbolId].collateral].status ==
+				LiquidationStatus.SOLVENT,
+			"InstantActionsFacet: PartyB is in the liquidation process"
+		);
 
 		intentLayout.isSigUsed[cancelIntentHash] = true;
 		intentLayout.isSigUsed[acceptCancelIntentHash] = true;

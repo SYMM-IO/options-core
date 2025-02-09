@@ -11,14 +11,13 @@ struct SettlementState {
 }
 
 struct LiquidationDetail {
-	bytes liquidationId;
 	LiquidationStatus status;
 	int256 upnl;
 	uint256 flagTimestamp;
 	uint256 liquidationTimestamp;
-	uint256 lossFactor;
 	uint256 collateralPrice;
 	address flagger;
+	uint256 collectedCollateral;
 }
 struct LiquidationSig {
 	bytes reqId; // Unique identifier for the liquidation request
