@@ -33,19 +33,29 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 
 	/**
 	 * @notice Liquidates Party B based on the provided signature.
+	 * @param liquidationId The Id of liquidation
 	 * @param partyB The address of Party B to be liquidated.
 	 * @param collateral The address of collatarl.
 	 * @param upnl The upnl of partyB at the moment of liquidation
 	 * @param collateralPrice The price of collateral
 	 */
 	function liquidate(
+		bytes memory liquidationId,
 		address partyB,
 		address collateral,
 		int256 upnl,
 		uint256 collateralPrice
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-		ClearingHouseFacetImpl.liquidate(partyB, collateral, upnl, collateralPrice);
-		emit Liquidate(msg.sender, partyB, collateral, AccountStorage.layout().balances[partyB][collateral].available, upnl, collateralPrice);
+		ClearingHouseFacetImpl.liquidate(liquidationId, partyB, collateral, upnl, collateralPrice);
+		emit Liquidate(
+			liquidationId,
+			msg.sender,
+			partyB,
+			collateral,
+			AccountStorage.layout().balances[partyB][collateral].available,
+			upnl,
+			collateralPrice
+		);
 	}
 
 	function confiscatePartyA(
@@ -75,5 +85,11 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 		ClearingHouseFacetImpl.closeTrades(tradeIds, prices);
 	}
 
-	function distributeCollateral(address[] memory partyAs) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {}
+	function distributeCollateral(
+		address partyB,
+		address collateral,
+		address[] memory partyAs
+	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
+		ClearingHouseFacetImpl.distributeCollateral(partyB, collateral, partyAs);
+	}
 }
