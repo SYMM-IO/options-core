@@ -12,7 +12,7 @@ interface IClearingHouseFacet is IClearingHouseEvents {
 
 	function unflagLiquidation(address partyB, address collateral) external;
 
-	function liquidate(address partyB, address collateral, int256 upnl, uint256 collateralPrice) external;
+	function liquidate(bytes memory liquidationId, address partyB, address collateral, int256 upnl, uint256 collateralPrice) external;
 
 	function confiscatePartyA(address partyB, address partyA, address collateral, uint256 amount) external;
 
@@ -22,5 +22,5 @@ interface IClearingHouseFacet is IClearingHouseEvents {
 
 	function closeTrades(uint256[] memory tradeIds, uint256[] memory prices) external;
 
-	function distributeCollateral(address[] memory partyAs) external;
+	function distributeCollateral(address partyB, address collateral, address[] memory partyAs) external;
 }
