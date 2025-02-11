@@ -55,6 +55,7 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 		uint256 amount
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
 		ClearingHouseFacetImpl.confiscatePartyA(partyB, partyA, collateral, amount);
+		emit ConfiscatePartyA(partyB, partyA, collateral, amount);
 	}
 
 	function confiscatePartyBWithdrawal(
@@ -62,24 +63,17 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 		uint256 withdrawId
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
 		ClearingHouseFacetImpl.confiscatePartyBWithdrawal(partyB, withdrawId);
+		emit ConfiscatePartyBWithdrawal(partyB, withdrawId);
 	}
 
 	function unfreezePartyAs(address partyB, address collateral) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {}
 
-	function expireTrades(
+	function closeTrades(
 		uint256[] memory tradeIds,
 		uint256[] memory prices
-	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {}
-
-	function exerciseTrades(
-		uint256[] memory tradeIds,
-		uint256[] memory prices
-	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {}
-
-	function liquidateTrades(
-		uint256[] memory tradeIds,
-		uint256[] memory closedPrices
-	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {}
+	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
+		ClearingHouseFacetImpl.closeTrades(tradeIds, prices);
+	}
 
 	function distributeCollateral(address[] memory partyAs) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {}
 }

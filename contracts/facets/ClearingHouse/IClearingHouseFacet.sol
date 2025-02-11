@@ -20,11 +20,7 @@ interface IClearingHouseFacet is IClearingHouseEvents {
 
 	function unfreezePartyAs(address partyB, address collateral) external;
 
-	function expireTrades(uint256[] memory tradeIds, uint256[] memory prices) external;
-
-	function exerciseTrades(uint256[] memory tradeIds, uint256[] memory prices) external;
-
-	function liquidateTrades(uint256[] memory tradeIds, uint256[] memory closedPrices) external;
+	function closeTrades(uint256[] memory tradeIds, uint256[] memory prices) external;
 
 	function distributeCollateral(address[] memory partyAs) external;
 }
