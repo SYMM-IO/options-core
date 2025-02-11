@@ -67,7 +67,69 @@ library ClearingHouseFacetImpl {
 		AppStorage.layout().liquidationDetails[partyB][collateral].collectedCollateral += amount;
 	}
 
-	function confiscatePartyBWithdrawal(address partyB, uint256 withdrawId) internal {}
+	function confiscatePartyBWithdrawal(address partyB, uint256 withdrawId) internal {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		require(withdrawId <= accountLayout.lastWithdrawId, "LiquidationFacet: Invalid Id");
+		Withdraw storage w = accountLayout.withdrawals[withdrawId];
+
+		require(
+			AppStorage.layout().liquidationDetails[partyB][w.collateral].status == LiquidationStatus.IN_PROGRESS,
+			"LiquidationFacet: PartyB is already liquidated"
+		);
+
+		require(w.status == WithdrawStatus.INITIATED, "LiquidationFacet: Invalid state");
+		require(w.user == partyB, "LiquidationFacet: Invalid user for withdraw Id");
+
+		w.status = WithdrawStatus.CANCELED;
+		AppStorage.layout().liquidationDetails[partyB][w.collateral].collectedCollateral += w.amount;
+	}
+
+	function closeTrades(uint256[] memory tradeIds, uint256[] memory prices) internal {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		require(tradeIds.length == prices.length, "LiquidationFacet: Invalid length");
+		for (uint256 i = 0; i < tradeIds.length; i++) {
+			Trade storage trade = IntentStorage.layout().trades[tradeIds[i]];
+			Symbol storage symbol = SymbolStorage.layout().symbols[trade.symbolId];
+			uint256 price = prices[i];
+			require(trade.status == TradeStatus.OPENED, "LiquidationFacet: Invalid trade state");
+			require(block.timestamp > trade.expirationTimestamp, "LiquidationFacet: Trade isn't expired");
+			require(
+				AppStorage.layout().liquidationDetails[trade.partyB][symbol.collateral].status == LiquidationStatus.IN_PROGRESS,
+				"LiquidationFacet: PartyB is liquidated"
+			);
+			trade.settledPrice = price;
+
+			uint256 pnl;
+			if (symbol.optionType == OptionType.PUT) {
+				if (price < trade.strikePrice) {
+					pnl = ((trade.quantity - trade.closedAmountBeforeExpiration) * (trade.strikePrice - price)) / 1e18;
+				}
+			} else {
+				if (price > trade.strikePrice) {
+					pnl = ((trade.quantity - trade.closedAmountBeforeExpiration) * (price - trade.strikePrice)) / 1e18;
+				}
+			}
+			if (pnl > 0) {
+				uint256 exerciseFee;
+				{
+					uint256 cap = (trade.exerciseFee.cap * pnl) / 1e18;
+					uint256 fee = (trade.exerciseFee.rate * price * (trade.quantity - trade.closedAmountBeforeExpiration)) / 1e36;
+					exerciseFee = cap < fee ? cap : fee;
+				}
+				uint256 amountToTransfer = pnl - exerciseFee;
+				if (!symbol.isStableCoin) {
+					amountToTransfer = (amountToTransfer * 1e18) / price;
+				}
+
+				accountLayout.balances[trade.partyA][symbol.collateral].instantAdd(amountToTransfer); //CHECK: instantAdd or add?
+				accountLayout.balances[trade.partyB][symbol.collateral].sub(amountToTransfer);
+
+				LibIntent.closeTrade(trade.id, TradeStatus.EXERCISED, IntentStatus.CANCELED);
+			} else {
+				LibIntent.closeTrade(trade.id, TradeStatus.EXPIRED, IntentStatus.CANCELED);
+			}
+		}
+	}
 
 	// function setSymbolsPrice(address partyB, LiquidationSig memory liquidationSig) internal {
 	// 	AppStorage.Layout storage appLayout = AppStorage.layout();

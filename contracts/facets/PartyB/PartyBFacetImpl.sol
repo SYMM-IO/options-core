@@ -144,6 +144,8 @@ library PartyBFacetImpl {
 			amountToTransfer = (amountToTransfer * 1e18) / sig.settlementPrice;
 		}
 
+		trade.settledPrice = sig.settlementPrice;
+
 		accountLayout.balances[trade.partyA][symbol.collateral].instantAdd(amountToTransfer); //CHECK: instantAdd or add?
 		accountLayout.balances[trade.partyB][symbol.collateral].sub(amountToTransfer);
 
