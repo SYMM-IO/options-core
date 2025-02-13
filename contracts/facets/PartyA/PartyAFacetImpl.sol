@@ -152,59 +152,39 @@ library PartyAFacetImpl {
 	}
 
 	/**
-     * @dev Shared logic for both diamond-initiated and NFT-initiated trade transfers.
-     */
-    function _validateAndTransferTrade(address sender, address receiver, uint256 tradeId) internal {
-        IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-        AppStorage.Layout storage appLayout = AppStorage.layout();
-        AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-        Trade storage trade = intentLayout.trades[tradeId];
-        Symbol memory symbol = SymbolStorage.layout().symbols[trade.symbolId];
-
-        require(trade.partyA == sender, "PartyAFacet: from != partyA");
-        require(trade.partyB != receiver, "PartyAFacet: to == partyB");
-        require(receiver != address(0), "PartyAFacet: zero address");
-        require(trade.status == TradeStatus.OPENED, "PartyAFacet: Invalid trade state");
-        require(
-            appLayout.liquidationDetails[trade.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
-            "PartyAFacet: PartyB is liquidated"
-        );
-        require(intentLayout.activeTradesOf[receiver].length < appLayout.maxTradePerPartyA, "PartyAFacet: too many trades for to");
-        require(!accountLayout.suspendedAddresses[sender], "PartyAFacet: from suspended");
-        require(!accountLayout.suspendedAddresses[receiver], "PartyAFacet: to suspended");
-
-        LibIntent.removeFromActiveTrades(tradeId);
-        trade.partyA = receiver;
-        LibIntent.addToActiveTrades(tradeId);
-    }
-
-	function transferTrade(address receiver, uint256 tradeId) internal {
-		_validateAndTransferTrade(msg.sender, receiver, tradeId);
-
+	 * @dev Shared logic for both diamond-initiated and NFT-initiated trade transfers.
+	 */
+	function validateAndTransferTrade(address sender, address receiver, uint256 tradeId) internal {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-		uint256 tokenId = intentLayout.tradeIdToTokenId[tradeId];
-        if (tokenId != 0) {
-            address tradeNftAddr = intentLayout.tradeNftAddress;
-            if (tradeNftAddr != address(0)) {
-                // We assume the diamond is approved or is an operator so it can call this function
-                ITradeNFT(tradeNftAddr).transferNFTFromFacet(msg.sender, receiver, tokenId);
-            }
-        }
+		AppStorage.Layout storage appLayout = AppStorage.layout();
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		Trade storage trade = intentLayout.trades[tradeId];
+		Symbol memory symbol = SymbolStorage.layout().symbols[trade.symbolId];
+
+		require(trade.partyA == sender, "PartyAFacet: from != partyA");
+		require(trade.partyB != receiver, "PartyAFacet: to == partyB");
+		require(receiver != address(0), "PartyAFacet: zero address");
+		require(trade.status == TradeStatus.OPENED, "PartyAFacet: Invalid trade state");
+		require(
+			appLayout.liquidationDetails[trade.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
+			"PartyAFacet: PartyB is liquidated"
+		);
+		require(intentLayout.activeTradesOf[receiver].length < appLayout.maxTradePerPartyA, "PartyAFacet: too many trades for to");
+		require(!accountLayout.suspendedAddresses[sender], "PartyAFacet: from suspended");
+		require(!accountLayout.suspendedAddresses[receiver], "PartyAFacet: to suspended");
+
+		LibIntent.removeFromActiveTrades(tradeId);
+		trade.partyA = receiver;
+		LibIntent.addToActiveTrades(tradeId);
 	}
 
-    function transferTradeFromNFT(address sender, address receiver, uint256 tradeId) internal {
-        _validateAndTransferTrade(sender, receiver, tradeId);
-    }
+	function transferTrade(address receiver, uint256 tradeId) internal {
+		validateAndTransferTrade(msg.sender, receiver, tradeId);
+		ITradeNFT(AppStorage.layout().tradeNftAddress).transferNFTInitiatedInSymmio(msg.sender, receiver, tradeId);
+	}
 
-    function checkTradeExists(uint256 tradeId) internal view {
-        IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-        Trade storage trade = intentLayout.trades[tradeId];
-        require(trade.id == tradeId, "PartyAFacet: Trade does not exist");
-        require(trade.status == TradeStatus.OPENED, "PartyAFacet: Trade not OPENED");
-    }
-
-    function setTradeTokenId(uint256 tradeId, uint256 tokenId) internal {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-        intentLayout.tradeIdToTokenId[tradeId] = tokenId;
-    }
+	function transferTradeFromNFT(address sender, address receiver, uint256 tradeId) internal {
+		require(msg.sender == AppStorage.layout().tradeNftAddress, "PartyAFacet: Sender should be the NFT contract");
+		validateAndTransferTrade(sender, receiver, tradeId);
+	}
 }

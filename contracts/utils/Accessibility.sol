@@ -37,12 +37,6 @@ abstract contract Accessibility {
 		_;
 	}
 
-	modifier onlyNFTContract() {
-        IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-        require(msg.sender == intentLayout.tradeNftAddress, "PartyAFacet: caller not TradeNFT");
-        _;
-    }
-
 	modifier onlyPartyBOfOpenIntent(uint256 intentId) {
 		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
 		require(intent.partyB == msg.sender, "Accessibility: Should be partyB of Intent");
