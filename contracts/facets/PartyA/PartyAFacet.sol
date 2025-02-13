@@ -143,8 +143,21 @@ contract PartyAFacet is Accessibility, Pausable, IPartyAFacet {
 		emit SendCloseIntent(trade.partyA, trade.partyB, tradeId, closeIntentId, price, quantity, deadline, IntentStatus.PENDING);
 	}
 
+	/**
+	 * @notice Standard trade transfer (initiated by the partyA).
+	 *         If an NFT is mapped to this trade, it will also call the NFT contract to transfer it.
+	 */
 	function transferTrade(address receiver, uint256 tradeId) external whenNotPartyAActionsPaused onlyPartyAOfTrade(tradeId) {
 		PartyAFacetImpl.transferTrade(receiver, tradeId);
 		emit TransferTradeByPartyA(msg.sender, receiver, tradeId);
+	}
+
+	/**
+	 * @notice Called by the NFT contract whenever an NFT is transferred from->to,
+	 *         so the trade ownership is also updated here.
+	 */
+	function transferTradeFromNFT(address sender, address receiver, uint256 tradeId) external whenNotPartyAActionsPaused {
+		PartyAFacetImpl.transferTradeFromNFT(sender, receiver, tradeId);
+		emit TransferTradeByPartyA(sender, receiver, tradeId);
 	}
 }

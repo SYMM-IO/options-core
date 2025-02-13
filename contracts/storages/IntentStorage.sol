@@ -152,7 +152,7 @@ library IntentStorage {
 		uint256 lastCloseIntentId;
 		/////////////////////////////////////////////////
 		mapping(bytes32 => bool) isSigUsed;
-		address signatureVerifier;
+		address signatureVerifier;		
 	}
 
 	function layout() internal pure returns (Layout storage l) {

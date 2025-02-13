@@ -9,6 +9,7 @@ import "../../storages/AppStorage.sol";
 import "../../storages/IntentStorage.sol";
 import "../../storages/AccountStorage.sol";
 import "../../storages/SymbolStorage.sol";
+import "../../interfaces/ITradeNFT.sol";
 
 library PartyAFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
@@ -184,22 +185,27 @@ library PartyAFacetImpl {
 		trade.closePendingAmount += quantity;
 	}
 
-	function transferTrade(address receiver, uint256 tradeId) internal {
+	/**
+	 * @dev Shared logic for both diamond-initiated and NFT-initiated trade transfers.
+	 */
+	function validateAndTransferTrade(address sender, address receiver, uint256 tradeId) internal {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		AppStorage.Layout storage appLayout = AppStorage.layout();
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		Trade storage trade = intentLayout.trades[tradeId];
 		Symbol memory symbol = SymbolStorage.layout().symbols[trade.symbolId];
 
-		require(trade.partyB != receiver, "PartyAFacet: Receiver is partyB of trade");
-		require(receiver != address(0), "PartyAFacet: Zero address");
-		require(trade.status == TradeStatus.OPENED, "PartyAFacet: Invalid state");
+		require(trade.partyA == sender, "PartyAFacet: from != partyA");
+		require(trade.partyB != receiver, "PartyAFacet: to == partyB");
+		require(receiver != address(0), "PartyAFacet: zero address");
+		require(trade.status == TradeStatus.OPENED, "PartyAFacet: Invalid trade state");
 		require(
 			appLayout.liquidationDetails[trade.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
 			"PartyAFacet: PartyB is liquidated"
 		);
-		require(intentLayout.activeTradesOf[receiver].length < appLayout.maxTradePerPartyA, "PartyAFacet: Too many active trades for receiver");
-		require(!AccountStorage.layout().suspendedAddresses[trade.partyA], "PartyAFacet: Sender is Suspended");
-		require(!AccountStorage.layout().suspendedAddresses[receiver], "PartyAFacet: Receiver is Suspended");
+		require(intentLayout.activeTradesOf[receiver].length < appLayout.maxTradePerPartyA, "PartyAFacet: too many trades for to");
+		require(!accountLayout.suspendedAddresses[sender], "PartyAFacet: from suspended");
+		require(!accountLayout.suspendedAddresses[receiver], "PartyAFacet: to suspended");
 
 		// remove from active trades
 		uint256 indexOfPartyATrade = intentLayout.partyATradesIndex[trade.id];
@@ -214,5 +220,15 @@ library PartyAFacetImpl {
 		intentLayout.tradesOf[trade.partyA].push(trade.id);
 		intentLayout.activeTradesOf[trade.partyA].push(trade.id);
 		intentLayout.partyATradesIndex[trade.id] = intentLayout.activeTradesOf[trade.partyA].length - 1;
+	}
+
+	function transferTrade(address receiver, uint256 tradeId) internal {
+		validateAndTransferTrade(msg.sender, receiver, tradeId);
+		ITradeNFT(AppStorage.layout().tradeNftAddress).transferNFTInitiatedInSymmio(msg.sender, receiver, tradeId);
+	}
+
+	function transferTradeFromNFT(address sender, address receiver, uint256 tradeId) internal {
+		require(msg.sender == AppStorage.layout().tradeNftAddress, "PartyAFacet: Sender should be the NFT contract");
+		validateAndTransferTrade(sender, receiver, tradeId);
 	}
 }

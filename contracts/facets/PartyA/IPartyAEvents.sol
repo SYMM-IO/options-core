@@ -21,4 +21,5 @@ interface IPartyAEvents is IPartiesEvents {
 	);
 	event CancelCloseIntent(address partyA, address partyB, uint256 intentId);
 	event TransferTradeByPartyA(address sender, address receiver, uint256 tradeId);
+	event MintMappingForTrade(uint256 tradeId, uint256 tokenId);
 }

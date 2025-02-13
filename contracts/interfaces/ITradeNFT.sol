@@ -4,6 +4,6 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-interface ISignatureVerifier {
-	function verifySignature(address signer, bytes32 hash, bytes calldata signature) external view returns (bool);
+interface ITradeNFT {
+	function transferNFTInitiatedInSymmio(address from, address to, uint256 tokenId) external;
 }
