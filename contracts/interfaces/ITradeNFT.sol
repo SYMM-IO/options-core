@@ -5,6 +5,5 @@
 pragma solidity >=0.8.18;
 
 interface ITradeNFT {
-    function transferNFTFromFacet(address from, address to, uint256 tokenId) external;
-    function getTokenIdByTradeId(uint256 tradeId) external view returns (uint256);
+	function transferNFTInitiatedInSymmio(address from, address to, uint256 tokenId) external;
 }

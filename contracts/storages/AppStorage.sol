@@ -96,6 +96,8 @@ library AppStorage {
 		mapping(address => PartyBConfig) partyBConfigs;
 		address[] partyBList;
 		///////////////////////////////////
+		address tradeNftAddress;
+		///////////////////////////////////
 		uint256 settlementPriceSigValidTime;
 		uint256 liquidationSigValidTime;
 		///////////////////////////////////

@@ -4,86 +4,70 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity ^0.8.18;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-
-interface IPartyAFacet {
-    function checkTradeExists(uint256 tradeId) external view;
-    function setTradeTokenId(uint256 tradeId, uint256 tokenId) external;
-    function transferTradeFromNFT(address from, address to, uint256 tradeId) external;
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
+interface ISymmio {
+	function transferTradeFromNFT(address from, address to, uint256 tradeId) external;
 }
 
-contract TradeNFT is ERC721, Ownable {
-    address public partyAFacet;
-    mapping(uint256 => uint256) private tokenToTradeId;
+contract TradeNFT is ERC721Enumerable, Ownable {
+	using Counters for Counters.Counter;
 
-    uint256 private _nextTokenId;
+	Counters.Counter private _tokenIdCounter;
+	ISymmio public symmio;
+	bool private transferInitiatedInSymmio;
 
-    bool private inFacetTransfer;
+	event PositionNFTMinted(address indexed owner, uint256 indexed tokenId);
+	event PositionNFTTransferred(uint256 indexed tokenId, address from, address to);
 
-    constructor(address _partyAFacet) ERC721("Trade Ownership NFT", "TRNFT") {
-        require(_partyAFacet != address(0), "TradeNFT: partyAFacet is zero");
-        partyAFacet = _partyAFacet;
-    }
+	constructor(address symmio_) ERC721("Trade Ownership NFT", "TRNFT") {
+		require(symmio_ != address(0), "TradeNFT: partyAFacet is zero");
+		symmio = ISymmio(symmio_);
+		_tokenIdCounter.increment();
+	}
 
-    function setPartyAFacet(address _partyAFacet) external onlyOwner {
-        require(_partyAFacet != address(0), "TradeNFT: zero address");
-        partyAFacet = _partyAFacet;
-    }
+	/**
+	 * @notice Mint an NFT representing a tradeId.
+	 *         We first verify the trade is valid by calling PartyAFacet.checkTradeExists(tradeId).
+	 */
+	function mintNFTForTrade(address to) external returns (uint256 tokenId) {
+		require(msg.sender == address(symmio), "TradeNFT: Only Symmio contract can mint NFT");
+		tokenId = _tokenIdCounter.current();
+		_tokenIdCounter.increment();
 
-    /**
-     * @notice Mint an NFT representing a tradeId. 
-     *         We first verify the trade is valid by calling PartyAFacet.checkTradeExists(tradeId).
-     */
-    function mintNFTForTrade(address to, uint256 tradeId) external onlyOwner returns (uint256 tokenId) {
-        IPartyAFacet(partyAFacet).checkTradeExists(tradeId);
+		_mint(to, tokenId);
 
-        tokenId = ++_nextTokenId;
-        tokenToTradeId[tokenId] = tradeId;
-        _safeMint(to, tokenId);
+		emit PositionNFTMinted(to, tokenId);
+		return tokenId;
+	}
 
-        IPartyAFacet(partyAFacet).setTradeTokenId(tradeId, tokenId);
-    }
+	/**
+	 * @notice The diamond/facet calls this function to forcibly transfer an NFT from -> to,
+	 *         for the scenario where PartyA initiated a trade transfer in the diamond.
+	 */
+	function transferNFTInitiatedInSymmio(address from, address to, uint256 tokenId) external {
+		require(msg.sender == address(symmio), "TradeNFT: only facet can call");
 
-    /**
-     * @notice The diamond/facet calls this function to forcibly transfer an NFT from -> to, 
-     *         for the scenario where PartyA initiated a trade transfer in the diamond.
-     */
-    function transferNFTFromFacet(address from, address to, uint256 tokenId) external {
-        require(msg.sender == partyAFacet, "TradeNFT: only facet can call");
-        require(ownerOf(tokenId) == from, "TradeNFT: from is not token owner");
-        require(!inFacetTransfer, "TradeNFT: re-entrant call?");
+		transferInitiatedInSymmio = true;
+		_transfer(from, to, tokenId);
+		transferInitiatedInSymmio = false;
+	}
 
-        inFacetTransfer = true;
-        _transfer(from, to, tokenId);
-        inFacetTransfer = false;
-    }
+	/**
+	 * @notice If a user calls `transferFrom` or `safeTransferFrom` directly on the NFT,
+	 *         we use `_beforeTokenTransfer` to call the diamond for trade ownership update
+	 */
+	function _beforeTokenTransfer(address from, address to, uint256 tokenId, uint256 batchSize) internal override {
+		super._beforeTokenTransfer(from, to, tokenId, batchSize);
 
-    /**
-     * @notice Provide a way for the diamond or users to see which trade is mapped to a tokenId
-     */
-    function getTradeIdByToken(uint256 tokenId) external view returns (uint256) {
-        return tokenToTradeId[tokenId];
-    }
+		if (from != address(0) && to != address(0) && !transferInitiatedInSymmio) {
+			symmio.transferTradeFromNFT(from, to, tokenId);
+			emit PositionNFTTransferred(tokenId, from, to);
+		}
+	}
 
-    /**
-     * @notice If a user calls `transferFrom` or `safeTransferFrom` directly on the NFT, 
-     *         we use `_beforeTokenTransfer` to call the diamond for trade ownership update
-     */
-    function _beforeTokenTransfer(address from, address to, uint256 tokenId, uint256 batchSize)
-        internal
-        override
-    {
-        super._beforeTokenTransfer(from, to, tokenId, batchSize);
-        if (from == address(0) || to == address(0)) {
-            return;
-        }
-
-        if (inFacetTransfer) {
-            return;
-        }
-
-        uint256 tradeId = tokenToTradeId[tokenId];
-        IPartyAFacet(partyAFacet).transferTradeFromNFT(from, to, tradeId);
-    }
+	function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721Enumerable) returns (bool) {
+		return interfaceId == type(IERC721).interfaceId || interfaceId == type(ERC721Enumerable).interfaceId || super.supportsInterface(interfaceId);
+	}
 }

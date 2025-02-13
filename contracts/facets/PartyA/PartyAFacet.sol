@@ -143,36 +143,20 @@ contract PartyAFacet is Accessibility, Pausable, IPartyAFacet {
 	}
 
 	/**
-     * @notice Standard trade transfer (initiated by the partyA).
-     *         If an NFT is mapped to this trade, it will also call the NFT contract to transfer it.
-     */
+	 * @notice Standard trade transfer (initiated by the partyA).
+	 *         If an NFT is mapped to this trade, it will also call the NFT contract to transfer it.
+	 */
 	function transferTrade(address receiver, uint256 tradeId) external whenNotPartyAActionsPaused onlyPartyAOfTrade(tradeId) {
 		PartyAFacetImpl.transferTrade(receiver, tradeId);
 		emit TransferTradeByPartyA(msg.sender, receiver, tradeId);
 	}
 
 	/**
-     * @notice A function called by the NFT contract before minting to confirm the trade is valid.
-     */
-    function checkTradeExists(uint256 tradeId) external view {
-        PartyAFacetImpl.checkTradeExists(tradeId);
-    }
-
-	/**
-     * @notice Called by the NFT contract AFTER it mints the NFT
-     */
-    function setTradeTokenId(uint256 tradeId, uint256 tokenId) external onlyNFTContract {
-        PartyAFacetImpl.setTradeTokenId(tradeId, tokenId);
-        emit MintMappingForTrade(tradeId, tokenId);
-    }
-
-	/**
-     * @notice Called by the NFT contract whenever an NFT is transferred from->to, 
-     *         so the trade ownership is also updated here.
-     */
-    function transferTradeFromNFT(address sender, address receiver, uint256 tradeId) external onlyNFTContract {
-        PartyAFacetImpl._validateAndTransferTrade(sender, receiver, tradeId);
-
-        emit TransferTradeByPartyA(sender, receiver, tradeId);
-    }
+	 * @notice Called by the NFT contract whenever an NFT is transferred from->to,
+	 *         so the trade ownership is also updated here.
+	 */
+	function transferTradeFromNFT(address sender, address receiver, uint256 tradeId) external whenNotPartyAActionsPaused {
+		PartyAFacetImpl.transferTradeFromNFT(sender, receiver, tradeId);
+		emit TransferTradeByPartyA(sender, receiver, tradeId);
+	}
 }
