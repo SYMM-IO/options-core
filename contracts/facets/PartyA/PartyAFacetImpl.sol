@@ -173,9 +173,19 @@ library PartyAFacetImpl {
 		require(!accountLayout.suspendedAddresses[sender], "PartyAFacet: from suspended");
 		require(!accountLayout.suspendedAddresses[receiver], "PartyAFacet: to suspended");
 
-		LibIntent.removeFromActiveTrades(tradeId);
+		// remove from active trades
+		uint256 indexOfPartyATrade = intentLayout.partyATradesIndex[trade.id];
+		uint256 lastIndex = intentLayout.activeTradesOf[trade.partyA].length - 1;
+		intentLayout.activeTradesOf[trade.partyA][indexOfPartyATrade] = intentLayout.activeTradesOf[trade.partyA][lastIndex];
+		intentLayout.partyATradesIndex[intentLayout.activeTradesOf[trade.partyA][lastIndex]] = indexOfPartyATrade;
+		intentLayout.activeTradesOf[trade.partyA].pop();
+
 		trade.partyA = receiver;
-		LibIntent.addToActiveTrades(tradeId);
+
+		// add to active trades
+		intentLayout.tradesOf[trade.partyA].push(trade.id);
+		intentLayout.activeTradesOf[trade.partyA].push(trade.id);
+		intentLayout.partyATradesIndex[trade.id] = intentLayout.activeTradesOf[trade.partyA].length - 1;
 	}
 
 	function transferTrade(address receiver, uint256 tradeId) internal {
