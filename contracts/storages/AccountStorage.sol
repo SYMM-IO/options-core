@@ -22,6 +22,23 @@ enum WithdrawStatus {
 	COMPLETED
 }
 
+struct BridgeTransaction {
+	uint256 id;
+	uint256 amount;
+	address collateral;
+	address sender;
+	address receiver;
+	address bridge;
+	uint256 timestamp;
+	BridgeTransactionStatus status;
+}
+
+enum BridgeTransactionStatus {
+	RECEIVED,
+	SUSPENDED,
+	WITHDRAWN
+}
+
 library AccountStorage {
 	bytes32 internal constant ACCOUNT_STORAGE_SLOT = keccak256("diamond.standard.storage.account");
 
@@ -45,6 +62,12 @@ library AccountStorage {
 		mapping(address => bool) instantActionsMode;
 		mapping(address => uint256) instantActionsModeDeactivateTime;
 		uint256 deactiveInstantActionModeCooldown;
+		/////////////////////////////////////////////////////////
+		mapping(address => bool) bridges;
+		mapping(uint256 => BridgeTransaction) bridgeTransactions;
+		mapping(address => uint256[]) bridgeTransactionIds;
+		uint256 lastBridgeId;
+		address invalidBridgedAmountsPool;
 	}
 
 	function layout() internal pure returns (Layout storage l) {

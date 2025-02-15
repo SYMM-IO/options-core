@@ -12,6 +12,18 @@ abstract contract Pausable {
 		_;
 	}
 
+	modifier whenNotBridgePaused() {
+		require(!AppStorage.layout().globalPaused, "Pausable: Global paused");
+		require(!AppStorage.layout().bridgePaused, "Pausable: Bridge paused");
+		_;
+	}
+
+	modifier whenNotBridgeWithdrawPaused() {
+		require(!AppStorage.layout().globalPaused, "Pausable: Global paused");
+		require(!AppStorage.layout().bridgeWithdrawPaused, "Pausable: Bridge withdraw paused");
+		_;
+	}
+
 	modifier whenNotDepositingPaused() {
 		require(!AppStorage.layout().globalPaused, "Pausable: Global paused");
 		require(!AppStorage.layout().depositingPaused, "Pausable: Depositing paused");
