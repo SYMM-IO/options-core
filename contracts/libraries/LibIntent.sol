@@ -217,7 +217,7 @@ library LibIntent {
 		if (intent.partyBsWhiteList.length == 1) {
 			accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].scheduledAdd(intent.partyBsWhiteList[0], fee, block.timestamp);
 		} else {
-			accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].instantAdd(fee);
+			accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].instantAdd(intent.tradingFee.feeToken, fee);
 		}
 
 		removeFromPartyAOpenIntents(intent.id);

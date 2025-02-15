@@ -28,7 +28,7 @@ library ForceActionsFacetImpl {
 		if (intent.partyBsWhiteList.length == 1) {
 			accountLayout.balances[intent.partyA][symbol.collateral].scheduledAdd(intent.partyBsWhiteList[0], fee, block.timestamp);
 		} else {
-			accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(fee);
+			accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(symbol.collateral, fee);
 		}
 
 		LibIntent.removeFromPartyAOpenIntents(intent.id);

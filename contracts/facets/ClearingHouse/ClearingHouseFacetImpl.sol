@@ -50,7 +50,7 @@ library ClearingHouseFacetImpl {
 		);
 		require(upnl < 0, "LiquidationFacet: Invalid upnl");
 		int256 requiredCollateral = (-upnl * int256(appLayout.partyBConfigs[partyB].lossCoverage)) / int256(collateralPrice);
-		require(requiredCollateral > int256(accountLayout.balances[partyB][collateral].available), "LiquidationFacet: PartyB is solvent");
+		require(int256(accountLayout.balances[partyB][collateral].available) < requiredCollateral, "LiquidationFacet: PartyB is solvent");
 		appLayout.liquidationDetails[partyB][collateral].liquidationId = liquidationId;
 		appLayout.liquidationDetails[partyB][collateral].status = LiquidationStatus.IN_PROGRESS;
 		appLayout.liquidationDetails[partyB][collateral].upnl = upnl;
@@ -88,6 +88,8 @@ library ClearingHouseFacetImpl {
 	}
 
 	function closeTrades(uint256[] memory tradeIds, uint256[] memory prices) internal {
+		// TODO: add ability to change the close price
+
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		require(tradeIds.length == prices.length, "LiquidationFacet: Invalid length");
 		for (uint256 i = 0; i < tradeIds.length; i++) {
@@ -120,13 +122,12 @@ library ClearingHouseFacetImpl {
 					exerciseFee = cap < fee ? cap : fee;
 				}
 				uint256 amountToTransfer = pnl - exerciseFee;
-				if (!symbol.isStableCoin) {
-					amountToTransfer = (amountToTransfer * 1e18) / appLayout.liquidationDetails[trade.partyB][symbol.collateral].collateralPrice;
-				}
+				amountToTransfer = (amountToTransfer * 1e18) / appLayout.liquidationDetails[trade.partyB][symbol.collateral].collateralPrice;
 
 				appLayout.debtsToPartyAs[trade.partyB][symbol.collateral][trade.partyA] += amountToTransfer;
 				appLayout.liquidationDetails[trade.partyB][symbol.collateral].requiredCollateral += amountToTransfer;
 
+				// TODO: fix statuses
 				LibIntent.closeTrade(trade.id, TradeStatus.EXERCISED, IntentStatus.CANCELED);
 			} else {
 				LibIntent.closeTrade(trade.id, TradeStatus.EXPIRED, IntentStatus.CANCELED);
@@ -146,80 +147,15 @@ library ClearingHouseFacetImpl {
 				appLayout.liquidationDetails[partyB][collateral].requiredCollateral,
 			"LiquidationFacet: not enough collateral to pay debts"
 		);
+		// TODO: handle connected partyAs and emit finish liquidation
 		for (uint256 i = 0; i < partyAs.length; i++) {
 			address partyA = partyAs[i];
 			uint256 amountToTransfer = appLayout.debtsToPartyAs[partyB][collateral][partyA];
 			if (amountToTransfer == 0) {
 				break;
 			}
-			accountLayout.balances[partyA][collateral].scheduledAdd(partyB, amountToTransfer, block.timestamp);
+			accountLayout.balances[partyA][collateral].instantAdd(collateral, amountToTransfer);
 			appLayout.debtsToPartyAs[partyB][collateral][partyA] = 0;
 		}
 	}
-
-	// function setSymbolsPrice(address partyB, LiquidationSig memory liquidationSig) internal {
-	// 	AppStorage.Layout storage appLayout = AppStorage.layout();
-	// 	LibMuon.verifyLiquidationSig(liquidationSig, partyB);
-	// 	require(
-	// 		appLayout.liquidationDetails[partyB][liquidationSig.collateral].status == LiquidationStatus.IN_PROGRESS,
-	// 		"LiquidationFacet: PartyB is solvent"
-	// 	);
-	// 	require(
-	// 		keccak256(appLayout.liquidationDetails[partyB][liquidationSig.collateral].liquidationId) == keccak256(liquidationSig.liquidationId),
-	// 		"LiquidationFacet: Invalid liquidationId"
-	// 	);
-	// 	for (uint256 index = 0; index < liquidationSig.symbolIds.length; index++) {
-	// 		appLayout.symbolsPrices[partyB][liquidationSig.symbolIds[index]] = Price(
-	// 			liquidationSig.prices[index],
-	// 			appLayout.liquidationDetails[partyB][liquidationSig.collateral].liquidationTimestamp
-	// 		);
-	// 	}
-	// }
-
-	// function liquidateTrades(
-	// 	address partyB,
-	// 	address collateral,
-	// 	uint256[] memory tradeIds
-	// ) internal returns (uint256[] memory liquidatedAmounts, int256[] memory pnls, bytes memory liquidationId, bool isFullyLiquidated) {
-	// 	AppStorage.Layout storage appLayout = AppStorage.layout();
-	// 	IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-	// 	liquidatedAmounts = new uint256[](tradeIds.length);
-	// 	pnls = new int256[](tradeIds.length);
-	// 	liquidationId = appLayout.liquidationDetails[partyB][collateral].liquidationId;
-	// 	require(appLayout.liquidationDetails[partyB][collateral].status == LiquidationStatus.IN_PROGRESS, "LiquidationFacet: PartyB is solvent");
-
-	// 	for (uint256 index = 0; index < tradeIds.length; index++) {
-	// 		Trade storage trade = intentLayout.trades[tradeIds[index]];
-	// 		require(trade.status == TradeStatus.OPENED, "LiquidationFacet: Invalid state");
-	// 		require(trade.partyB == partyB, "LiquidationFacet: Invalid party");
-	// 		require(
-	// 			appLayout.symbolsPrices[partyB][trade.symbolId].timestamp == appLayout.liquidationDetails[partyB][collateral].liquidationTimestamp,
-	// 			"LiquidationFacet: Price should be set"
-	// 		);
-	// 		liquidatedAmounts[index] = LibIntent.tradeOpenAmount(trade);
-	// 		trade.status = TradeStatus.LIQUIDATED;
-	// 		trade.statusModifyTimestamp = block.timestamp;
-	// 		uint256 profit = LibIntent.getValueOfTradeForPartyA(
-	// 			appLayout.symbolsPrices[partyB][trade.symbolId].price,
-	// 			LibIntent.tradeOpenAmount(trade),
-	// 			trade
-	// 		);
-	// 		pnls[index] = int256(profit);
-	// 		if (profit > 0) {
-	// 			uint256 balanceToTransfer = (profit * appLayout.liquidationDetails[partyB][collateral].lossFactor) /
-	// 				appLayout.liquidationDetails[partyB][collateral].collateralPrice;
-	// 			AccountStorage.layout().balances[partyB][collateral].sub(balanceToTransfer);
-	// 			AccountStorage.layout().balances[trade.partyA][collateral].instantAdd(balanceToTransfer);
-	// 		}
-	// 		trade.settledPrice = appLayout.symbolsPrices[partyB][trade.symbolId].price;
-	// 		LibIntent.closeTrade(trade.id, TradeStatus.LIQUIDATED, IntentStatus.CANCELED);
-	// 		trade.closedAmountBeforeExpiration = trade.quantity;
-	// 		LibIntent.removeFromActiveTrades(trade.id);
-	// 	}
-	// 	// check if full liuidated
-	// 	if (intentLayout.activeTradesOfPartyB[partyB][collateral].length == 0) {
-	// 		isFullyLiquidated = true;
-	// 		delete appLayout.liquidationDetails[partyB][collateral];
-	// 	}
-	// }
 }

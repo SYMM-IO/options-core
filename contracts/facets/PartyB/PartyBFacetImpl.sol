@@ -35,7 +35,7 @@ library PartyBFacetImpl {
 		if (intent.partyBsWhiteList.length == 1) {
 			accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].scheduledAdd(intent.partyBsWhiteList[0], fee, block.timestamp);
 		} else {
-			accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].instantAdd(fee);
+			accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].instantAdd(intent.tradingFee.feeToken, fee);
 		}
 
 		LibIntent.removeFromPartyAOpenIntents(intentId);
@@ -146,7 +146,7 @@ library PartyBFacetImpl {
 
 		trade.settledPrice = sig.settlementPrice;
 
-		accountLayout.balances[trade.partyA][symbol.collateral].instantAdd(amountToTransfer); //CHECK: instantAdd or add?
+		accountLayout.balances[trade.partyA][symbol.collateral].instantAdd(symbol.collateral, amountToTransfer); //TODO: instantAdd or add?
 		accountLayout.balances[trade.partyB][symbol.collateral].sub(amountToTransfer);
 
 		LibIntent.closeTrade(tradeId, TradeStatus.EXERCISED, IntentStatus.CANCELED);

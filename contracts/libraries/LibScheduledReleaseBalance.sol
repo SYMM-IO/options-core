@@ -6,6 +6,7 @@
 pragma solidity >=0.8.18;
 
 import "../storages/AccountStorage.sol";
+import "../storages/AppStorage.sol";
 
 // ScheduledReleaseEntry implements a two-stage fund release system:
 // - Funds start in 'scheduled' stage
@@ -26,6 +27,7 @@ struct ScheduledReleaseEntry {
 // @notice Combines immediate and scheduled release funds per partyB
 struct ScheduledReleaseBalance {
 	uint256 available; // Immediately accessible funds
+	address collateral; // Address of the collateral asset
 	mapping(address => ScheduledReleaseEntry) partyBSchedules; // Scheduled entries per partyB
 	mapping(address => uint256) partyBIndexes; // Index of partyB in the addresses array
 	address[] partyBAddresses; // List of all partyB addresses
@@ -51,7 +53,7 @@ library ScheduledReleaseBalanceOps {
 		}
 
 		if (entry.releaseInterval == 0) {
-			return instantAdd(self, value);
+			return instantAdd(self, self.collateral, value);
 		}
 
 		entry.scheduled += value;
@@ -77,7 +79,13 @@ library ScheduledReleaseBalanceOps {
 	}
 
 	// @notice Adds funds directly to available balance
-	function instantAdd(ScheduledReleaseBalance storage self, uint256 value) internal returns (ScheduledReleaseBalance storage) {
+	function instantAdd(ScheduledReleaseBalance storage self, address collateral, uint256 value) internal returns (ScheduledReleaseBalance storage) {
+		// Initialize collateral if it's the first usage
+		if (self.collateral == address(0)) {
+			self.collateral = collateral;
+		} else {
+			require(self.collateral == collateral, "ScheduledReleaseBalance: Collateral mismatch");
+		}
 		self.available += value;
 		return self;
 	}
@@ -150,7 +158,9 @@ library ScheduledReleaseBalanceOps {
 		}
 		if (entry.releaseInterval == 0) return self;
 		require(timestamp >= entry.lastTransitionTimestamp, "StagedReleaseBalance: Invalid sync timestamp");
-
+		if (AppStorage.layout().liquidationDetails[partyB][self.collateral].status != LiquidationStatus.SOLVENT) {
+			return self;
+		}
 		uint256 thisTransitionTimestamp = entry.lastTransitionTimestamp + entry.releaseInterval;
 		uint256 nextTransitionTimestamp = entry.lastTransitionTimestamp + (entry.releaseInterval * 2);
 
