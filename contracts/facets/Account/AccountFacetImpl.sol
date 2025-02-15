@@ -18,7 +18,7 @@ library AccountFacetImpl {
 		require(appLayout.whiteListedCollateral[collateral], "AccountFacet: Collateral is not whitelisted");
 		IERC20(collateral).safeTransferFrom(msg.sender, address(this), amount);
 		uint256 amountWith18Decimals = (amount * 1e18) / (10 ** IERC20Metadata(collateral).decimals());
-		AccountStorage.layout().balances[user][collateral].instantAdd(amountWith18Decimals);
+		AccountStorage.layout().balances[user][collateral].instantAdd(collateral, amountWith18Decimals);
 	}
 
 	function initiateWithdraw(address collateral, uint256 amount, address to) internal returns (uint256 currentId) {
@@ -83,7 +83,7 @@ library AccountFacetImpl {
 		require(w.user != address(0), "AccountFacet: Zero address");
 
 		w.status = WithdrawStatus.CANCELED;
-		accountLayout.balances[w.user][w.collateral].instantAdd(w.amount);
+		accountLayout.balances[w.user][w.collateral].instantAdd(w.collateral, w.amount);
 	}
 
 	function syncBalances(address collateral, address partyA, address[] calldata partyBs) internal {

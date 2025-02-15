@@ -152,7 +152,7 @@ library InstantActionsFacetImpl {
 			address feeCollector = appLayout.affiliateFeeCollector[signedOpenIntent.affiliate] == address(0)
 				? appLayout.defaultFeeCollector
 				: appLayout.affiliateFeeCollector[signedOpenIntent.affiliate];
-			accountLayout.balances[feeCollector][intent.tradingFee.feeToken].instantAdd(fee);
+			accountLayout.balances[feeCollector][intent.tradingFee.feeToken].instantAdd(intent.tradingFee.feeToken, fee);
 		}
 		// filling
 		Trade memory trade = Trade({
@@ -180,7 +180,7 @@ library InstantActionsFacetImpl {
 		uint256 premium = LibIntent.getPremiumOfOpenIntent(intentId);
 		accountLayout.balances[trade.partyA][symbol.collateral].syncAll(block.timestamp);
 		accountLayout.balances[trade.partyA][symbol.collateral].subForPartyB(trade.partyB, premium);
-		accountLayout.balances[trade.partyB][symbol.collateral].instantAdd(premium);
+		accountLayout.balances[trade.partyB][symbol.collateral].instantAdd(symbol.collateral, premium);
 	}
 
 	function instantFillCloseIntent(

@@ -126,7 +126,7 @@ library PartyAFacetImpl {
 			if (intent.partyBsWhiteList.length == 1) {
 				accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].scheduledAdd(intent.partyBsWhiteList[0], fee, block.timestamp);
 			} else {
-				accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].instantAdd(fee);
+				accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].instantAdd(intent.tradingFee.feeToken, fee);
 			}
 			accountLayout.lockedBalances[intent.partyA][symbol.collateral] -= LibIntent.getPremiumOfOpenIntent(intentId);
 			LibIntent.removeFromPartyAOpenIntents(intentId);
