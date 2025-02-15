@@ -17,7 +17,7 @@ interface IClearingHouseEvents {
 	);
 	event ConfiscatePartyA(address partyB, address partyA, address collateral, uint256 amount);
 	event ConfiscatePartyBWithdrawal(address partyB, uint256 withdrawId);
-	// event SetSymbolsPrices(address liquidator, address partyB, uint256[] symbolIds, uint256[] prices, bytes liquidationId);
-	// event LiquidateTrades(address liquidator, address partyB, uint256[] tradeIds, uint256[] liquidatedAmounts, int256[] pnls, bytes liquidationId);
-	// event FullyLiquidated(address partyB, bytes liquidationId);
+	event CloseTradesForLiquidation(uint256[] tradeIds, uint256[] prices);
+	event DistributeCollateral(bytes liquidationId, address partyB, address collateral, address[] partyAs, uint256[] amounts);
+	event FullyLiquidated(address partyB, bytes liquidationId);
 }
