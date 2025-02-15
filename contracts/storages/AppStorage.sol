@@ -78,6 +78,7 @@ library AppStorage {
 		bool partyAActionsPaused;
 		bool liquidatingPaused;
 		bool thirdPartyActionsPaused;
+		bool internalTransferPaused;
 		///////////////////////////////////
 		bool emergencyMode;
 		mapping(address => bool) partyBEmergencyStatus;

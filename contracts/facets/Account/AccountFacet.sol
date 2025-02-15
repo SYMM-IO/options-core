@@ -12,13 +12,28 @@ import "../../storages/AppStorage.sol";
 
 contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	/// @notice Allows either PartyA or PartyB to deposit collateral.
+	/// @param collateral The address of the collateral token to deposit.
 	/// @param amount The amount of collateral to be deposited, specified in collateral decimals.
 	function deposit(address collateral, uint256 amount) external whenNotDepositingPaused notSuspended(msg.sender) {
 		AccountFacetImpl.deposit(collateral, msg.sender, amount);
 		emit Deposit(msg.sender, msg.sender, collateral, amount, AccountStorage.layout().balances[msg.sender][collateral].available);
 	}
 
-	/// @notice Allows either Party A or Party B to deposit collateral on behalf of another user.
+	/// @notice Transfers the sender's deposited balance to the user allocated balance.
+	/// @param collateral The address of the collateral token to internal transfer.
+	/// @param user The address of the recipient user.
+	/// @param amount The amount to transfer.
+	function internalTransfer(
+		address collateral,
+		address user,
+		uint256 amount
+	) external whenNotInternalTransferPaused userNotPartyB(user) notSuspended(msg.sender) notSuspended(user) {
+		AccountFacetImpl.internalTransfer(collateral, user, amount);
+		emit InternalTransfer(msg.sender, user, AccountStorage.layout().balances[collateral][user].available, collateral, amount);
+	}
+
+	/// @notice Allows either PartyA or PartyB to deposit collateral on behalf of another user.
+	/// @param collateral The address of the collateral token.
 	/// @param user The recipient address for the deposit.
 	/// @param amount The amount of collateral to be deposited, specified in collateral decimals.
 	function depositFor(
@@ -30,9 +45,10 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		emit Deposit(msg.sender, user, collateral, amount, AccountStorage.layout().balances[user][collateral].available);
 	}
 
-	/// @notice Allows parties to initiate a withdraw with specified amount of collateral.
+	/// @notice Allows parties to initiate a withdrawal of collateral.
+	/// @param collateral The address of the collateral token to withdraw.
 	/// @param amount The precise amount of collateral to be withdrawn, specified in 18 decimals.
-	/// @param to The address that the collateral transfers
+	/// @param to The address that will receive the collateral.
 	function initiateWithdraw(
 		address collateral,
 		uint256 amount,
@@ -42,69 +58,64 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		emit InitiateWithdraw(id, msg.sender, to, collateral, amount, AccountStorage.layout().balances[msg.sender][collateral].available);
 	}
 
-	/// @notice Allows parties to complete a withdraw.
-	/// @param id The Id of withdraw object
+	/// @notice Allows parties to complete a withdrawal.
+	/// @param id The identifier of the withdrawal request.
 	function completeWithdraw(uint256 id) external whenNotWithdrawingPaused notSuspendedWithdrawal(id) {
 		AccountFacetImpl.completeWithdraw(id);
 		emit CompleteWithdraw(id);
 	}
 
-	/// @notice Allows parties to cancel a withdraw.
-	/// @param id The Id of withdraw object
+	/// @notice Allows parties to cancel a withdrawal.
+	/// @param id The identifier of the withdrawal request.
 	function cancelWithdraw(uint256 id) external whenNotWithdrawingPaused notSuspendedWithdrawal(id) {
 		Withdraw storage withdrawObject = AccountStorage.layout().withdrawals[id];
 		AccountFacetImpl.cancelWithdraw(id);
 		emit CancelWithdraw(id, withdrawObject.user, AccountStorage.layout().balances[withdrawObject.user][withdrawObject.collateral].available);
 	}
 
-	/// @notice Syncs balances between specified PartyA and PartyBs
-	/// @param partyA The PartyA address to sync balances for
-	/// @param partyBs Array of PartyB addresses to sync balances with
+	/// @notice Synchronizes balances between the specified PartyA and PartyB addresses.
+	/// @param collateral The address of the collateral token.
+	/// @param partyA The PartyA address whose balance will be synchronized.
+	/// @param partyBs Array of PartyB addresses with which to synchronize balances.
 	function syncBalances(address collateral, address partyA, address[] calldata partyBs) external {
 		AccountFacetImpl.syncBalances(collateral, partyA, partyBs);
 		emit SyncBalances(collateral, partyA, partyBs);
 	}
 
-	/// @notice Allows partyAs to activate the instant action mode
+	/// @notice Allows PartyAs to activate the instant action mode.
 	function activateInstantActionMode() external notPartyB {
 		AccountFacetImpl.activateInstantActionMode();
 		emit ActivateInstantActionMode(msg.sender, block.timestamp);
 	}
 
-	/// @notice Allows partyAs to propose to deactivate the instant action mode
+	/// @notice Allows PartyAs to propose deactivation of the instant action mode.
 	function proposeToDeactivateInstantActionMode() external notPartyB {
 		AccountFacetImpl.proposeToDeactivateInstantActionMode();
 		emit ProposeToDeactivateInstantActionMode(msg.sender, block.timestamp);
 	}
 
-	/// @notice Allows PartyAs to deactivate the instant action mode after the proposal
+	/// @notice Allows PartyAs to deactivate the instant action mode after a proposal.
 	function deactivateInstantActionMode() external notPartyB {
 		AccountFacetImpl.deactivateInstantActionMode();
 		emit DeactivateInstantActionMode(msg.sender, block.timestamp);
 	}
 
-	/**
-	 * @notice Allows PartyA to bind to a PartyB
-	 * @param partyB The address of PartyB to bind to
-	 */
+	/// @notice Allows PartyA to bind to a PartyB.
+	/// @param partyB The address of the PartyB to bind to.
 	function bindToPartyB(address partyB) external notPartyB whenNotPartyAActionsPaused {
 		AccountFacetImpl.bindToPartyB(partyB);
 		emit BindToPartyB(msg.sender, partyB);
 	}
 
-	/**
-	 * @notice Initiates the process of unbinding from PartyB
-	 * Must wait for cooldown period before finalizing
-	 */
+	/// @notice Initiates the process of unbinding from PartyB.
+	/// Must wait for a cooldown period before finalizing.
 	function initiateUnbindingFromPartyB() external notPartyB whenNotPartyAActionsPaused {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		AccountFacetImpl.initiateUnbindingFromPartyB();
 		emit InitiateUnbindingFromPartyB(msg.sender, accountLayout.boundPartyB[msg.sender], block.timestamp);
 	}
 
-	/**
-	 * @notice Completes the unbinding after cooldown period
-	 */
+	/// @notice Completes the unbinding from PartyB after the cooldown period.
 	function completeUnbindingFromPartyB() external notPartyB whenNotPartyAActionsPaused {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		address previousPartyB = accountLayout.boundPartyB[msg.sender];
@@ -112,9 +123,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		emit CompleteUnbindingFromPartyB(msg.sender, previousPartyB);
 	}
 
-	/**
-	 * @notice Cancels a pending unbinding request
-	 */
+	/// @notice Cancels a pending unbinding request from PartyB.
 	function cancelUnbindingFromPartyB() external notPartyB whenNotPartyAActionsPaused {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		AccountFacetImpl.cancelUnbindingFromPartyB();
