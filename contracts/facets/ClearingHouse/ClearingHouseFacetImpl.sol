@@ -65,7 +65,12 @@ library ClearingHouseFacetImpl {
 			AppStorage.layout().liquidationDetails[partyB][collateral].status == LiquidationStatus.IN_PROGRESS,
 			"LiquidationFacet: PartyB is already liquidated"
 		);
-		// TODO: shouldn't be synced
+		require(
+			accountLayout.balances[partyA][collateral].partyBSchedules[partyB].scheduled +
+				accountLayout.balances[partyA][collateral].partyBSchedules[partyB].transitioning <
+				amount,
+			"LiquidationFacet: The amount is so high"
+		);
 		accountLayout.balances[partyA][collateral].subForPartyB(partyB, amount);
 		AppStorage.layout().liquidationDetails[partyB][collateral].collectedCollateral += amount;
 	}
@@ -88,8 +93,6 @@ library ClearingHouseFacetImpl {
 	}
 
 	function closeTrades(uint256[] memory tradeIds, uint256[] memory prices) internal {
-		// TODO: add ability to change the close price
-
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		require(tradeIds.length == prices.length, "LiquidationFacet: Invalid length");
 		for (uint256 i = 0; i < tradeIds.length; i++) {
@@ -97,7 +100,6 @@ library ClearingHouseFacetImpl {
 			Symbol storage symbol = SymbolStorage.layout().symbols[trade.symbolId];
 			uint256 price = prices[i];
 			require(trade.status == TradeStatus.OPENED, "LiquidationFacet: Invalid trade state");
-			require(block.timestamp > trade.expirationTimestamp, "LiquidationFacet: Trade isn't expired");
 			require(
 				appLayout.liquidationDetails[trade.partyB][symbol.collateral].status == LiquidationStatus.IN_PROGRESS,
 				"LiquidationFacet: PartyB is liquidated"
@@ -123,14 +125,15 @@ library ClearingHouseFacetImpl {
 				}
 				uint256 amountToTransfer = pnl - exerciseFee;
 				amountToTransfer = (amountToTransfer * 1e18) / appLayout.liquidationDetails[trade.partyB][symbol.collateral].collateralPrice;
-
+				if (appLayout.debtsToPartyAs[trade.partyB][symbol.collateral][trade.partyA] == 0) {
+					appLayout.connectedPartyAs[trade.partyB][symbol.collateral] += 1;
+				}
 				appLayout.debtsToPartyAs[trade.partyB][symbol.collateral][trade.partyA] += amountToTransfer;
 				appLayout.liquidationDetails[trade.partyB][symbol.collateral].requiredCollateral += amountToTransfer;
 
-				// TODO: fix statuses
-				LibIntent.closeTrade(trade.id, TradeStatus.EXERCISED, IntentStatus.CANCELED);
+				LibIntent.closeTrade(trade.id, TradeStatus.LIQUIDATED, IntentStatus.CANCELED);
 			} else {
-				LibIntent.closeTrade(trade.id, TradeStatus.EXPIRED, IntentStatus.CANCELED);
+				LibIntent.closeTrade(trade.id, TradeStatus.LIQUIDATED, IntentStatus.CANCELED);
 			}
 		}
 	}
@@ -147,15 +150,19 @@ library ClearingHouseFacetImpl {
 				appLayout.liquidationDetails[partyB][collateral].requiredCollateral,
 			"LiquidationFacet: not enough collateral to pay debts"
 		);
-		// TODO: handle connected partyAs and emit finish liquidation
+
 		for (uint256 i = 0; i < partyAs.length; i++) {
 			address partyA = partyAs[i];
 			uint256 amountToTransfer = appLayout.debtsToPartyAs[partyB][collateral][partyA];
 			if (amountToTransfer == 0) {
 				break;
 			}
+			appLayout.connectedPartyAs[partyB][collateral] -= 1;
 			accountLayout.balances[partyA][collateral].instantAdd(collateral, amountToTransfer);
 			appLayout.debtsToPartyAs[partyB][collateral][partyA] = 0;
+		}
+		if (appLayout.connectedPartyAs[partyB][collateral] == 0) {
+			// TODO: finish liquidation
 		}
 	}
 }
