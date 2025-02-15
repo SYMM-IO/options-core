@@ -32,4 +32,6 @@ interface IAccountFacet is IAccountEvents {
 	function completeUnbindingFromPartyB() external;
 
 	function cancelUnbindingFromPartyB() external;
+
+	function internalTransfer(address collateral, address user, uint256 amount) external;
 }

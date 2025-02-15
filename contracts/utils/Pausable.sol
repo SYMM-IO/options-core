@@ -18,6 +18,12 @@ abstract contract Pausable {
 		_;
 	}
 
+	modifier whenNotInternalTransferPaused() {
+		require(!AppStorage.layout().globalPaused, "Pausable: Global paused");
+		require(!AppStorage.layout().internalTransferPaused, "Pausable: Internal transfer paused");
+		_;
+	}
+
 	modifier whenNotWithdrawingPaused() {
 		require(!AppStorage.layout().globalPaused, "Pausable: Depositing paused");
 		require(!AppStorage.layout().withdrawingPaused, "Pausable: Withdrawing paused");
