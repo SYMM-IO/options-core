@@ -123,6 +123,7 @@ library ClearingHouseFacetImpl {
 					uint256 fee = (trade.exerciseFee.rate * price * (trade.quantity - trade.closedAmountBeforeExpiration)) / 1e36;
 					exerciseFee = cap < fee ? cap : fee;
 				}
+				// TODO: handle loss factor
 				uint256 amountToTransfer = pnl - exerciseFee;
 				amountToTransfer = (amountToTransfer * 1e18) / appLayout.liquidationDetails[trade.partyB][symbol.collateral].collateralPrice;
 				if (appLayout.debtsToPartyAs[trade.partyB][symbol.collateral][trade.partyA] == 0) {
@@ -138,7 +139,13 @@ library ClearingHouseFacetImpl {
 		}
 	}
 
-	function distributeCollateral(address partyB, address collateral, address[] memory partyAs) internal {
+	// TODO: fix deadlock when the required collateral isn't equal with collected collateral
+
+	function distributeCollateral(
+		address partyB,
+		address collateral,
+		address[] memory partyAs
+	) internal returns (bool isLiquidationFinished, bytes memory liquidationId, uint256[] memory amounts) {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
@@ -150,19 +157,22 @@ library ClearingHouseFacetImpl {
 				appLayout.liquidationDetails[partyB][collateral].requiredCollateral,
 			"LiquidationFacet: not enough collateral to pay debts"
 		);
-
+		liquidationId = appLayout.liquidationDetails[partyB][collateral].liquidationId;
+		amounts = new uint256[](partyAs.length);
 		for (uint256 i = 0; i < partyAs.length; i++) {
 			address partyA = partyAs[i];
 			uint256 amountToTransfer = appLayout.debtsToPartyAs[partyB][collateral][partyA];
 			if (amountToTransfer == 0) {
 				break;
 			}
+			amounts[i] = amountToTransfer;
 			appLayout.connectedPartyAs[partyB][collateral] -= 1;
 			accountLayout.balances[partyA][collateral].instantAdd(collateral, amountToTransfer);
 			appLayout.debtsToPartyAs[partyB][collateral][partyA] = 0;
 		}
 		if (appLayout.connectedPartyAs[partyB][collateral] == 0) {
-			// TODO: finish liquidation
+			isLiquidationFinished = true;
+			delete appLayout.liquidationDetails[partyB][collateral];
 		}
 	}
 }
