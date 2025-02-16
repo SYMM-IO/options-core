@@ -1,6 +1,6 @@
 import { ethers, run } from "hardhat"
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers"
-import { Diamond } from "../src/types"
+import { Diamond, FakeStablecoin } from "../types"
 
 export class RunContext {
 	signers!: {
@@ -9,10 +9,10 @@ export class RunContext {
 		user2?: SignerWithAddress
 	}
 	diamond!: Diamond
+	stableCoin!: FakeStablecoin
 }
 
 export async function initializeTestFixture(): Promise<RunContext> {
-	// TODO :::
 	
 	let context = new RunContext()
 	const signers: SignerWithAddress[] = await ethers.getSigners()
@@ -22,7 +22,13 @@ export async function initializeTestFixture(): Promise<RunContext> {
 		user2: signers[2],
 	}
 
+	// TODO ::: deploy and call initialize methods here
+
+
 	context.diamond = await run("deploy:diamond")
+	context.stableCoin = await run("deploy:stablecoin")
+
+	// TODO ::: set collateral, etc.
 
 	return context
 }
