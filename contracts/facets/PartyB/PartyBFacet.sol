@@ -84,6 +84,12 @@ contract PartyBFacet is Accessibility, Pausable, IPartyBFacet {
 		}
 	}
 
+	/**
+	 * @notice Closes a trade for the specified close intent.
+	 * @param intentId The ID of the close intent for which the trade is opened.
+	 * @param quantity PartyB has the option to close the position with either the full amount requested by the user or a specific fraction of it
+	 * @param price The closed price for the trade.
+	 */
 	function fillCloseIntent(
 		uint256 intentId,
 		uint256 quantity,
@@ -95,17 +101,29 @@ contract PartyBFacet is Accessibility, Pausable, IPartyBFacet {
 		emit FillCloseIntent(intentId, trade.id, trade.partyA, trade.partyB, quantity, price);
 	}
 
+	/**
+	 * @notice Expires a trade.
+	 * @param tradeId The ID of the trade.
+	 * @param settlementPriceSig The muon sig about price of the symbol at the time of expiration
+	 */
 	function expireTrade(
 		uint256 tradeId,
 		SettlementPriceSig memory settlementPriceSig
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
 		PartyBFacetImpl.expireTrade(tradeId, settlementPriceSig);
+		emit ExpireTrade(msg.sender, tradeId, settlementPriceSig.settlementPrice);
 	}
 
+	/**
+	 * @notice Exercises a trade.
+	 * @param tradeId The ID of the trade.
+	 * @param settlementPriceSig The muon sig about price of the symbol at the time of expiration
+	 */
 	function exerciseTrade(
 		uint256 tradeId,
 		SettlementPriceSig memory settlementPriceSig
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
 		PartyBFacetImpl.exerciseTrade(tradeId, settlementPriceSig);
+		emit ExerciseTrade(msg.sender, tradeId, settlementPriceSig.settlementPrice);
 	}
 }

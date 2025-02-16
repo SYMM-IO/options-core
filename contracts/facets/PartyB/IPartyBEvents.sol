@@ -14,4 +14,6 @@ interface IPartyBEvents is IPartiesEvents {
 	event UnlockOpenIntent(address partyB, uint256 intentId);
 	event FillOpenIntent(uint256 intentId, uint256 tradeId, address partyA, address partyB, uint256 quantity, uint256 price);
 	event FillCloseIntent(uint256 intentId, uint256 tradeId, address partyA, address partyB, uint256 quantity, uint256 price);
+	event ExpireTrade(address operator, uint256 tradeId, uint256 settlementPrice);
+	event ExerciseTrade(address operator, uint256 tradeId, uint256 settlementPrice);
 }
