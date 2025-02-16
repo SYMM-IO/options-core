@@ -9,8 +9,7 @@ import { generateGasReport } from "./utils/gas"
 
 task("deploy:diamond", "Deploys the Diamond contract")
 	.addParam("logData", "Write the deployed addresses to a data file", true, types.boolean)
-	.addParam("reportGas", "Report gas consumption and costs", true, types.boolean)
-	.setAction(async ({logData, reportGas}, {ethers}) => {
+	.setAction(async ({logData}, {ethers}) => {
 		const signers: SignerWithAddress[] = await ethers.getSigners()
 		const owner: SignerWithAddress = signers[0]
 		let totalGasUsed = BigInt(0)
@@ -31,14 +30,6 @@ task("deploy:diamond", "Deploys the Diamond contract")
 		receipt = (await diamond.deploymentTransaction()!.wait())!
 		totalGasUsed = totalGasUsed + BigInt(receipt.gasUsed.toString())
 		console.log("Diamond deployed:", await diamond.getAddress())
-
-		// Deploy DiamondInit
-		// const DiamondInit = await ethers.getContractFactory("DiamondInit")
-		// const diamondInit = await DiamondInit.deploy()
-		// await diamondInit.waitForDeployment()
-		// receipt = (await diamondInit.deploymentTransaction()!.wait())!
-		// totalGasUsed = totalGasUsed + BigInt(receipt.gasUsed.toString())
-		// console.log("DiamondInit deployed:", await diamondInit.getAddress())
 
 		// Deploy Facets
 		const cut: Array<{
@@ -76,19 +67,11 @@ task("deploy:diamond", "Deploys the Diamond contract")
 		const diamondCut = await ethers.getContractAt("IDiamondCut", await diamond.getAddress())
 
 		// Call Initializer
-		const call = diamondInit.interface.encodeFunctionData("init")
-		const tx = await diamondCut.diamondCut(cut, await diamondInit.getAddress(), call)
-		receipt = (await tx.wait())!
 		totalGasUsed = totalGasUsed + BigInt(receipt.gasUsed.toString())
 
-		if (!receipt.status) {
-			throw Error(`Diamond upgrade failed: ${tx.hash}`)
-		}
+
 		console.log("Completed Diamond Cut")
 
-		if (reportGas) {
-			await generateGasReport(ethers.provider as any, totalGasUsed)
-		}
 
 		// Write addresses to JSON file for etherscan verification
 		if (logData) {
@@ -102,11 +85,6 @@ task("deploy:diamond", "Deploys the Diamond contract")
 					name: "Diamond",
 					address: await diamond.getAddress(),
 					constructorArguments: [owner.address, await diamondCutFacet.getAddress()],
-				},
-				{
-					name: "DiamondInit",
-					address: await diamondInit.getAddress(),
-					constructorArguments: [],
 				},
 				...deployedFacets.map(facet => ({
 					name: facet.name,
