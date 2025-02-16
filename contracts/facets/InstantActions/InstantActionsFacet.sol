@@ -10,6 +10,9 @@ import "../../utils/Pausable.sol";
 import "./IInstantActionsFacet.sol";
 
 contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
+	/// @notice Any party can lock an open intent on behalf of partyB if it has the suitable signature from the partyB
+	/// @param signedLockIntent The pure data of intent that is going to be locked
+	/// @param partyBSignature The signature of partyB
 	function instantLock(
 		SignedSimpleActionIntent calldata signedLockIntent,
 		bytes calldata partyBSignature
@@ -19,6 +22,9 @@ contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
 		emit LockOpenIntent(intent.partyB, signedLockIntent.intentId);
 	}
 
+	/// @notice Any party can unlock an open intent on behalf of partyB if it has the suitable signature from the partyB
+	/// @param signedUnlockIntent The pure data of intent that is going to be unlocked
+	/// @param partyBSignature The signature of partyB
 	function instantUnlock(
 		SignedSimpleActionIntent calldata signedUnlockIntent,
 		bytes calldata partyBSignature
@@ -31,6 +37,11 @@ contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
 		}
 	}
 
+	/// @notice Any party can fill an open intent on behalf of partyB if it has the suitable signature from the partyB and partyA
+	/// @param signedOpenIntent The pure data of intent that partyA wants to broadcast
+	/// @param partyASignature The signature of partyA
+	/// @param signedFillOpenIntent The pure data of signature that partyB wants to fill the open order
+	/// @param partyBSignature The signature of partyB
 	function instantFillOpenIntent(
 		SignedOpenIntent calldata signedOpenIntent,
 		bytes calldata partyASignature,
@@ -56,6 +67,11 @@ contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
 		emit FillOpenIntent(intent.id, intent.tradeId, intent.partyA, intent.partyB, signedFillOpenIntent.quantity, signedFillOpenIntent.price);
 	}
 
+	/// @notice Any party can close a trade on behalf of partyB if it has the suitable signature from the partyB and partyA
+	/// @param signedCloseIntent The pure data of close intent that partyA wants to broadcast
+	/// @param partyASignature The signature of partyA
+	/// @param signedFillCloseIntent The pure data of signature that partyB wants to fill the close order
+	/// @param partyBSignature The signature of partyB
 	function instantFillCloseIntent(
 		SignedCloseIntent calldata signedCloseIntent,
 		bytes calldata partyASignature,
@@ -77,6 +93,11 @@ contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
 		emit FillCloseIntent(intentId, trade.id, trade.partyA, trade.partyB, signedFillCloseIntent.quantity, signedFillCloseIntent.price);
 	}
 
+	/// @notice Any party can cancel an open intent on behalf of parties if it has the suitable signature from the partyB and partyA
+	/// @param signedCancelOpenIntent The pure data of open intent that partyA wants to cancel
+	/// @param partyASignature The signature of partyA
+	/// @param signedAcceptCancelOpenIntent The pure data of signature that partyB wants to accept the cancel open intent
+	/// @param partyBSignature The signature of partyB
 	function instantCancelOpenIntent(
 		SignedSimpleActionIntent calldata signedCancelOpenIntent,
 		bytes calldata partyASignature,
@@ -97,6 +118,11 @@ contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
 		}
 	}
 
+	/// @notice Any party can cancel a close intent on behalf of parties if it has the suitable signature from the partyB and partyA
+	/// @param signedCancelCloseIntent The pure data of close intent that partyA wants to cancel
+	/// @param partyASignature The signature of partyA
+	/// @param signedAcceptCancelCloseIntent The pure data of signature that partyB wants to accept the cancel close intent
+	/// @param partyBSignature The signature of partyB
 	function instantCancelCloseIntent(
 		SignedSimpleActionIntent calldata signedCancelCloseIntent,
 		bytes calldata partyASignature,
