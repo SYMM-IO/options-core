@@ -21,11 +21,19 @@ library AccountFacetImpl {
 		AccountStorage.layout().balances[user][collateral].instantAdd(collateral, amountWith18Decimals);
 	}
 
+	function securedDepositFor(address collateral, address user, uint256 amount) internal {
+		require(AppStorage.layout().whiteListedCollateral[collateral], "AccountFacet: Collateral is not whitelisted");
+		AccountStorage.layout().balances[user][collateral].instantAdd(collateral, amount);
+	}
+
 	function internalTransfer(address collateral, address user, uint256 amount) internal {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		require(appLayout.whiteListedCollateral[collateral], "AccountFacet: Collateral is not whitelisted");
-		require(accountLayout.balances[msg.sender][collateral].available - accountLayout.lockedBalances[msg.sender][collateral] >= amount, "AccountFacet: Insufficient balance");
+		require(
+			accountLayout.balances[msg.sender][collateral].available - accountLayout.lockedBalances[msg.sender][collateral] >= amount,
+			"AccountFacet: Insufficient balance"
+		);
 		accountLayout.balances[msg.sender][collateral].sub(amount);
 		accountLayout.balances[user][collateral].instantAdd(collateral, amount);
 	}

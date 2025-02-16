@@ -27,9 +27,22 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		address collateral,
 		address user,
 		uint256 amount
-	) external whenNotInternalTransferPaused userNotPartyB(user) notSuspended(msg.sender) notSuspended(user) {
+	) external whenNotInternalTransferPaused notSuspended(msg.sender) notSuspended(user) {
 		AccountFacetImpl.internalTransfer(collateral, user, amount);
 		emit InternalTransfer(msg.sender, user, AccountStorage.layout().balances[collateral][user].available, collateral, amount);
+	}
+
+	/// @notice Allows specific roles to deposit collateral on behalf of another user out of this contract.
+	/// @param collateral The address of the collateral token.
+	/// @param user The recipient address for the deposit.
+	/// @param amount The amount of collateral to be deposited, specified in collateral decimals.
+	function securedDepositFor(
+		address collateral,
+		address user,
+		uint256 amount
+	) external whenNotDepositingPaused onlyRole(LibAccessibility.SECURED_DEPOSITOR_ROLE) {
+		AccountFacetImpl.securedDepositFor(collateral, user, amount);
+		emit Deposit(msg.sender, user, collateral, amount, AccountStorage.layout().balances[user][collateral].available);
 	}
 
 	/// @notice Allows either PartyA or PartyB to deposit collateral on behalf of another user.
