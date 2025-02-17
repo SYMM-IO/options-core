@@ -4,8 +4,9 @@ export const FacetNames = [
 	"ForceActionsFacet",
 	"InstantActionsFacet",
 	"PartyAFacet",
-	"PartyBFacet", 
-	"ViewFacet", 
+	"PartyBFacet",
+	"ViewFacet",
+	"ControlFacet",
 ]
 
 export const DEPLOYMENT_LOG_FILE = "deployed.json"
