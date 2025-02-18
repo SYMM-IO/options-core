@@ -523,4 +523,8 @@ contract ViewFacet is IViewFacet {
 	function getRoleHash(string memory str) external pure returns (bytes32) {
 		return keccak256(abi.encodePacked(str));
 	}
+
+	function getLastWithdrawId() external view returns (uint256) {
+		return AccountStorage.layout().lastWithdrawId;
+	}
 }

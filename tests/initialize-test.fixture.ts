@@ -1,34 +1,29 @@
-import { ethers, run } from "hardhat"
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers"
+import { run } from "hardhat"
 import { Diamond, FakeStablecoin } from "../types"
-
-export class RunContext {
-	signers!: {
-		admin?: SignerWithAddress
-		user?: SignerWithAddress
-		user2?: SignerWithAddress
-	}
-	diamond!: Diamond
-	stableCoin!: FakeStablecoin
-}
+import { createRunContext, RunContext } from "./run-context"
+import { ethers, toUtf8Bytes } from "ethers"
 
 export async function initializeTestFixture(): Promise<RunContext> {
-	
-	let context = new RunContext()
-	const signers: SignerWithAddress[] = await ethers.getSigners()
-	context.signers = {
-		admin: signers[0],
-		user: signers[1],
-		user2: signers[2],
-	}
+	const diamond: Diamond = await run("deploy:diamond")
+	const stableCoin: FakeStablecoin = await run("deploy:stablecoin")
 
-	// TODO ::: deploy and call initialize methods here
+	let context = await createRunContext(await diamond.getAddress(), await stableCoin.getAddress())
 
+	await context.controlFacet.connect(context.signers.admin).setAdmin(context.signers.admin.getAddress())
+	await context.controlFacet
+		.connect(context.signers.admin)
+		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("PAUSER_ROLE")))
 
-	context.diamond = await run("deploy:diamond")
-	context.stableCoin = await run("deploy:stablecoin")
+		await context.controlFacet
+		.connect(context.signers.admin)
+		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("SETTER_ROLE")))
 
-	// TODO ::: set collateral, etc.
+		await context.controlFacet
+		.connect(context.signers.admin)
+		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("UNPAUSER_ROLE")))
+
+	await context.controlFacet.connect(context.signers.admin).whiteListCollateral(await context.collateral.getAddress())
+	await context.controlFacet.connect(context.signers.admin).unpauseGlobal()
 
 	return context
 }

@@ -79,4 +79,12 @@ interface IControlEvents {
 	event RoleGranted(bytes32 indexed role, address indexed user);
 	/// @notice Emitted when a role is revoked
 	event RoleRevoked(bytes32 indexed role, address indexed user);
+	event PartyBReleaseIntervalUpdated(address indexed partyB, uint256 interval);
+	event MaxConnectedPartyBsUpdated(uint256 max);
+	event UnbindingCooldownUpdated(uint256 cooldown);
+	event AddressSuspended(address indexed user, bool status);
+	event WithdrawalSuspended(uint256 indexed withdrawId, bool status);
+	event DeactiveInstantActionModeCooldownUpdated(uint256 cooldown);
+	event InstantActionsModeUpdated(address indexed user, bool status);
+	event InstantActionsModeDeactivateTimeUpdated(address indexed user, uint256 time);
 }
