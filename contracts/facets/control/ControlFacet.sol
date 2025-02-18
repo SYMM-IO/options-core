@@ -9,6 +9,7 @@ import "../../utils/Ownable.sol";
 import "../../utils/Accessibility.sol";
 import "../../storages/SymbolStorage.sol";
 import "../../storages/AppStorage.sol";
+import "../../storages/AccountStorage.sol";
 import "../../libraries/LibDiamond.sol";
 import "./IControlFacet.sol";
 
@@ -110,12 +111,12 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 
 	// pause
 	function pauseGlobal() external onlyRole(LibAccessibility.PAUSER_ROLE) {
-		AppStorage.layout().depositingPaused = true;
+		AppStorage.layout().globalPaused = true;
 		emit GlobalPaused();
 	}
 
 	function pauseDeposit() external onlyRole(LibAccessibility.PAUSER_ROLE) {
-		AppStorage.layout().globalPaused = true;
+		AppStorage.layout().depositingPaused = true;
 		emit DepositPaused();
 	}
 
@@ -141,12 +142,12 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 
 	// unpause
 	function unpauseGlobal() external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
-		AppStorage.layout().depositingPaused = false;
+		AppStorage.layout().globalPaused = false;
 		emit GlobalUnpaused();
 	}
 
 	function unpauseDeposit() external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
-		AppStorage.layout().globalPaused = false;
+		AppStorage.layout().depositingPaused = false;
 		emit DepositUnpaused();
 	}
 
@@ -188,5 +189,45 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	function deactivePartyBEmergencyStatus(address _partyB) external onlyRole(LibAccessibility.DEFAULT_ADMIN_ROLE) {
 		AppStorage.layout().partyBEmergencyStatus[_partyB] = false;
 		emit PartyBEmergencyStatusDeactivated(_partyB);
+	}
+
+	function setPartyBReleaseInterval(address _partyB, uint256 _interval) external onlyRole(LibAccessibility.SETTER_ROLE) {
+		AccountStorage.layout().partyBReleaseIntervals[_partyB] = _interval;
+		emit PartyBReleaseIntervalUpdated(_partyB, _interval);
+	}
+
+	function setMaxConnectedPartyBs(uint256 _max) external onlyRole(LibAccessibility.SETTER_ROLE) {
+		AccountStorage.layout().maxConnectedPartyBs = _max;
+		emit MaxConnectedPartyBsUpdated(_max);
+	}
+
+	function setUnbindingCooldown(uint256 _cooldown) external onlyRole(LibAccessibility.SETTER_ROLE) {
+		AccountStorage.layout().unbindingCooldown = _cooldown;
+		emit UnbindingCooldownUpdated(_cooldown);
+	}
+
+	function suspendAddress(address _user, bool _status) external onlyRole(LibAccessibility.SETTER_ROLE) {
+		AccountStorage.layout().suspendedAddresses[_user] = _status;
+		emit AddressSuspended(_user, _status);
+	}
+
+	function suspendWithdrawal(uint256 _withdrawId, bool _status) external onlyRole(LibAccessibility.SETTER_ROLE) {
+		AccountStorage.layout().suspendedWithdrawal[_withdrawId] = _status;
+		emit WithdrawalSuspended(_withdrawId, _status);
+	}
+
+	function setDeactiveInstantActionModeCooldown(uint256 _cooldown) external onlyRole(LibAccessibility.SETTER_ROLE) {
+		AccountStorage.layout().deactiveInstantActionModeCooldown = _cooldown;
+		emit DeactiveInstantActionModeCooldownUpdated(_cooldown);
+	}
+
+	function setInstantActionsMode(address _user, bool _status) external onlyRole(LibAccessibility.SETTER_ROLE) {
+		AccountStorage.layout().instantActionsMode[_user] = _status;
+		emit InstantActionsModeUpdated(_user, _status);
+	}
+
+	function setInstantActionsModeDeactivateTime(address _user, uint256 _time) external onlyRole(LibAccessibility.SETTER_ROLE) {
+		AccountStorage.layout().instantActionsModeDeactivateTime[_user] = _time;
+		emit InstantActionsModeDeactivateTimeUpdated(_user, _time);
 	}
 }

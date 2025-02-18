@@ -15,7 +15,6 @@ export class RunContext {
 		admin: SignerWithAddress
 		user: SignerWithAddress
 		user2: SignerWithAddress
-		liquidator: SignerWithAddress
 		feeCollector: SignerWithAddress
 		others: SignerWithAddress[]
 	}
@@ -34,9 +33,8 @@ export async function createRunContext(
 		admin: signers[0],
 		user: signers[1],
 		user2: signers[2],
-		liquidator: signers[3],
-		feeCollector: signers[4],
-		others: [signers[5], signers[6]],
+		feeCollector: signers[3],
+		others: [signers[4], signers[5]],
 	}
 
 	context.diamond = diamond
