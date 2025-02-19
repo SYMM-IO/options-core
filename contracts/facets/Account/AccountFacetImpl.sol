@@ -97,7 +97,7 @@ library AccountFacetImpl {
 
 		Withdraw storage w = accountLayout.withdrawals[id];
 		require(w.status == WithdrawStatus.INITIATED, "AccountFacet: Invalid state");
-		require(w.user != address(0), "AccountFacet: Zero address");
+		// require(w.user != address(0), "AccountFacet: Zero address"); // CHECK: How can this be zero?
 
 		w.status = WithdrawStatus.CANCELED;
 		accountLayout.balances[w.user][w.collateral].instantAdd(w.collateral, w.amount);

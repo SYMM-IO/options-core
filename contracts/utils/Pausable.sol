@@ -37,7 +37,7 @@ abstract contract Pausable {
 	}
 
 	modifier whenNotWithdrawingPaused() {
-		require(!AppStorage.layout().globalPaused, "Pausable: Depositing paused");
+		require(!AppStorage.layout().globalPaused, "Pausable: Global paused");
 		require(!AppStorage.layout().withdrawingPaused, "Pausable: Withdrawing paused");
 		_;
 	}
