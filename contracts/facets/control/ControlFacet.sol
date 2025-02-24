@@ -10,6 +10,7 @@ import "../../utils/Accessibility.sol";
 import "../../storages/SymbolStorage.sol";
 import "../../storages/AppStorage.sol";
 import "../../storages/AccountStorage.sol";
+import "../../storages/SymbolStorage.sol";
 import "../../libraries/LibDiamond.sol";
 import "./IControlFacet.sol";
 
@@ -229,5 +230,40 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	function setInstantActionsModeDeactivateTime(address _user, uint256 _time) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		AccountStorage.layout().instantActionsModeDeactivateTime[_user] = _time;
 		emit InstantActionsModeDeactivateTimeUpdated(_user, _time);
+	}
+
+	function addOracle(string calldata _name, address _contractAddress) external onlyRole(LibAccessibility.SETTER_ROLE) {
+		require(_contractAddress != address(0), "ControlFacet: zero address");
+		SymbolStorage.Layout storage s = SymbolStorage.layout();
+		s.lastOracleId++;
+		s.oracles[s.lastOracleId] = Oracle({ id: s.lastOracleId, name: _name, contractAddress: _contractAddress });
+		emit OracleAdded(s.lastOracleId, _name, _contractAddress);
+	}
+
+	function addSymbol(
+		string calldata _name,
+		OptionType _optionType,
+		uint256 _oracleId,
+		address _collateral,
+		bool _isStableCoin,
+		uint256 _tradingFee
+	) external onlyRole(LibAccessibility.SETTER_ROLE) {
+		require(_collateral != address(0), "ControlFacet: zero address");
+		SymbolStorage.Layout storage s = SymbolStorage.layout();
+		require(s.oracles[_oracleId].contractAddress != address(0), "ControlFacet: invalid oracle");
+		require(s.lastOracleId >= _oracleId, "ControlFacet: invalid oracle");
+		s.lastSymbolId++;
+		s.symbols[s.lastSymbolId] = Symbol({
+			symbolId: s.lastSymbolId,
+			isValid: true,
+			name: _name,
+			optionType: _optionType,
+			oracleId: _oracleId,
+			collateral: _collateral,
+			isStableCoin: _isStableCoin,
+			tradingFee: _tradingFee
+		});
+		s.lastSymbolId = s.lastSymbolId;
+		emit SymbolAdded(s.lastSymbolId, _name, _optionType, _collateral);
 	}
 }

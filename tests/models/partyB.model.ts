@@ -4,9 +4,8 @@ import { runTx } from "../../utils/tx"
 import { ethers } from "hardhat"
 import { BigNumberish } from "ethers"
 import { setBalance } from "@nomicfoundation/hardhat-network-helpers"
-import { OpenIntent, openIntentRequestBuilder } from "./builders/send-open-intent.builder"
 
-export class User {
+export class PartyB {
 	constructor(private context: RunContext, private signer: SignerWithAddress) {}
 
 	public async setBalances(collateralAmount?: BigNumberish, depositAmount?: BigNumberish) {
@@ -24,23 +23,5 @@ export class User {
 
 	public getSigner() {
 		return this.signer
-	}
-
-	public async sendOpenIntent(reques: OpenIntent = openIntentRequestBuilder().build()) {
-		await runTx(
-			this.context.partyAFacet
-				.connect(this.signer)
-				.sendOpenIntent(
-					reques.partyBsWhiteList,
-					reques.symbolId,
-					reques.price,
-					reques.quantity,
-					reques.strikePrice,
-					reques.expirationTimestamp,
-					reques.exerciseFee,
-					reques.deadline,
-					reques.affiliate,
-				),
-		)
 	}
 }
