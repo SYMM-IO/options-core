@@ -119,6 +119,15 @@ struct SignedFillIntent {
 	uint256 salt;
 }
 
+struct SignedFillIntentById {
+	address partyB;
+	uint256 intentId;
+	uint256 price;
+	uint256 quantity;
+	uint256 deadline;
+	uint256 salt;
+}
+
 struct SignedSimpleActionIntent {
 	address signer;
 	uint256 intentId;
@@ -152,7 +161,7 @@ library IntentStorage {
 		uint256 lastCloseIntentId;
 		/////////////////////////////////////////////////
 		mapping(bytes32 => bool) isSigUsed;
-		address signatureVerifier;		
+		address signatureVerifier;
 	}
 
 	function layout() internal pure returns (Layout storage l) {
