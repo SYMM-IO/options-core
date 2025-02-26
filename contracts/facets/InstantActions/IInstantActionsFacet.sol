@@ -7,14 +7,18 @@ pragma solidity >=0.8.18;
 import "./IInstantActionsEvents.sol";
 
 interface IInstantActionsFacet is IInstantActionsEvents {
-	function instantFillOpenIntent(
+	function instantFillOpenIntent(SignedFillIntentById calldata signedFillOpenIntent, bytes calldata partyBSignature) external;
+
+	function instantFillCloseIntent(SignedFillIntentById calldata signedFillCloseIntent, bytes calldata partyBSignature) external;
+
+	function instantCreateAndFillOpenIntent(
 		SignedOpenIntent calldata signedOpenIntent,
 		bytes calldata partyAAignature,
 		SignedFillIntent calldata signedFillOpenIntent,
 		bytes calldata partyBSignature
 	) external;
 
-	function instantFillCloseIntent(
+	function instantCreateAndFillCloseIntent(
 		SignedCloseIntent calldata signedCloseIntent,
 		bytes calldata partyASignature,
 		SignedFillIntent calldata signedFillCloseIntent,

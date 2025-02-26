@@ -15,6 +15,91 @@ import "../../interfaces/ISignatureVerifier.sol";
 library InstantActionsFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 
+	function instantFillOpenIntent(SignedFillIntentById calldata signedFillOpenIntent, bytes calldata partyBSignature) internal {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		AppStorage.Layout storage appLayout = AppStorage.layout();
+
+		OpenIntent storage intent = intentLayout.openIntents[signedFillOpenIntent.intentId];
+
+		bytes32 fillOpenIntentHash = LibIntent.hashSignedFillOpenIntentById(signedFillOpenIntent);
+		require(
+			ISignatureVerifier(intentLayout.signatureVerifier).verifySignature(signedFillOpenIntent.partyB, fillOpenIntentHash, partyBSignature),
+			"InstantActionsFacet: Invalid PartyB signature"
+		);
+		require(!intentLayout.isSigUsed[fillOpenIntentHash], "InstantActionsFacet: PartyB signature is already used");
+		intentLayout.isSigUsed[fillOpenIntentHash] = true;
+
+		require(signedFillOpenIntent.partyB == intent.partyB, "InstantActionsFacet: Signer isn't the partyB of intent");
+		require(accountLayout.suspendedAddresses[intent.partyA] == false, "InstantActionsFacet: PartyA is suspended");
+		require(!accountLayout.suspendedAddresses[signedFillOpenIntent.partyB], "InstantActionsFacet: PartyB is Suspended");
+		require(!appLayout.partyBEmergencyStatus[intent.partyB], "InstantActionsFacet: PartyB is in emergency mode");
+		require(!appLayout.emergencyMode, "InstantActionsFacet: System is in emergency mode");
+
+		LibPartyB.fillOpenIntent(intent.id, signedFillOpenIntent.quantity, signedFillOpenIntent.price);
+	}
+
+	function instantFillCloseIntent(SignedFillIntentById calldata signedFillCloseIntent, bytes calldata partyBSignature) internal {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+
+		CloseIntent storage intent = intentLayout.closeIntents[signedFillCloseIntent.intentId];
+		Trade storage trade = intentLayout.trades[intent.tradeId];
+		Symbol memory symbol = SymbolStorage.layout().symbols[trade.symbolId];
+
+		bytes32 fillCloseIntentHash = LibIntent.hashSignedFillCloseIntentById(signedFillCloseIntent);
+		require(
+			ISignatureVerifier(intentLayout.signatureVerifier).verifySignature(signedFillCloseIntent.partyB, fillCloseIntentHash, partyBSignature),
+			"InstantActionsFacet: Invalid PartyB signature"
+		);
+		require(!intentLayout.isSigUsed[fillCloseIntentHash], "InstantActionsFacet: PartyB signature is already used");
+		intentLayout.isSigUsed[fillCloseIntentHash] = true;
+
+		require(trade.partyB == signedFillCloseIntent.partyB, "InstantActionsFacet: Signer isn't the partyB of trade");
+		require(
+			AppStorage.layout().liquidationDetails[trade.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
+			"InstantActionsFacet: PartyB is liquidated"
+		);
+		require(
+			signedFillCloseIntent.quantity > 0 && signedFillCloseIntent.quantity <= intent.quantity - intent.filledAmount,
+			"InstantActionsFacet: Invalid filled amount"
+		);
+		require(intent.status == IntentStatus.PENDING || intent.status == IntentStatus.CANCEL_PENDING, "InstantActionsFacet: Invalid state");
+		require(trade.status == TradeStatus.OPENED, "InstantActionsFacet: Invalid trade state");
+		require(block.timestamp <= intent.deadline, "InstantActionsFacet: Intent is expired");
+		require(block.timestamp < trade.expirationTimestamp, "InstantActionsFacet: Trade is expired");
+		require(signedFillCloseIntent.price >= intent.price, "InstantActionsFacet: Closed price isn't valid");
+
+		uint256 pnl = (signedFillCloseIntent.quantity * signedFillCloseIntent.price) / 1e18;
+		accountLayout.balances[trade.partyA][symbol.collateral].instantAdd(symbol.collateral, pnl);
+		accountLayout.balances[trade.partyB][symbol.collateral].sub(pnl);
+
+		trade.avgClosedPriceBeforeExpiration =
+			(trade.avgClosedPriceBeforeExpiration *
+				trade.closedAmountBeforeExpiration +
+				signedFillCloseIntent.quantity *
+				signedFillCloseIntent.price) /
+			(trade.closedAmountBeforeExpiration + signedFillCloseIntent.quantity);
+
+		trade.closedAmountBeforeExpiration += signedFillCloseIntent.quantity;
+		intent.filledAmount += signedFillCloseIntent.quantity;
+
+		if (intent.filledAmount == intent.quantity) {
+			intent.statusModifyTimestamp = block.timestamp;
+			intent.status = IntentStatus.FILLED;
+			LibIntent.removeFromActiveCloseIntents(intent.id);
+			if (trade.quantity == trade.closedAmountBeforeExpiration) {
+				trade.status = TradeStatus.CLOSED;
+				trade.statusModifyTimestamp = block.timestamp;
+				LibIntent.removeFromActiveTrades(trade.id);
+			}
+		} else if (intent.status == IntentStatus.CANCEL_PENDING) {
+			intent.status = IntentStatus.CANCELED;
+			intent.statusModifyTimestamp = block.timestamp;
+			LibIntent.removeFromActiveCloseIntents(intent.id);
+		}
+	}
+
 	function instantLock(SignedSimpleActionIntent calldata signedLockIntent, bytes calldata partyBSignature) internal {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		OpenIntent storage intent = intentLayout.openIntents[signedLockIntent.intentId];
@@ -44,7 +129,7 @@ library InstantActionsFacetImpl {
 		return LibPartyB.unlockOpenIntent(intent.id);
 	}
 
-	function instantFillOpenIntent(
+	function instantCreateAndFillOpenIntent(
 		SignedOpenIntent calldata signedOpenIntent,
 		bytes calldata partyASignature,
 		SignedFillIntent calldata signedFillOpenIntent,
@@ -183,7 +268,7 @@ library InstantActionsFacetImpl {
 		accountLayout.balances[trade.partyB][symbol.collateral].instantAdd(symbol.collateral, premium);
 	}
 
-	function instantFillCloseIntent(
+	function instantCreateAndFillCloseIntent(
 		SignedCloseIntent calldata signedCloseIntent,
 		bytes calldata partyASignature,
 		SignedFillIntent calldata signedFillCloseIntent,

@@ -10,6 +10,31 @@ import "../../utils/Pausable.sol";
 import "./IInstantActionsFacet.sol";
 
 contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
+	/// @notice Any party can fill the existing open intent on behalf of partyB if it has the suitable signature from the partyB
+	/// @param signedFillOpenIntent The pure data of signature that partyB wants to fill the open order
+	/// @param partyBSignature The signature of partyB
+	function instantFillOpenIntent(
+		SignedFillIntentById calldata signedFillOpenIntent,
+		bytes calldata partyBSignature
+	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
+		InstantActionsFacetImpl.instantFillOpenIntent(signedFillOpenIntent, partyBSignature);
+		OpenIntent storage intent = IntentStorage.layout().openIntents[signedFillOpenIntent.intentId];
+		emit FillOpenIntent(intent.id, intent.tradeId, intent.partyA, intent.partyB, signedFillOpenIntent.quantity, signedFillOpenIntent.price);
+	}
+
+	/// @notice Any party can close a trade on behalf of partyB if it has the suitable signature from the partyB
+	/// @param signedFillCloseIntent The pure data of signature that partyB wants to fill the close order
+	/// @param partyBSignature The signature of partyB
+	function instantFillCloseIntent(
+		SignedFillIntentById calldata signedFillCloseIntent,
+		bytes calldata partyBSignature
+	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
+		InstantActionsFacetImpl.instantFillCloseIntent(signedFillCloseIntent, partyBSignature);
+		CloseIntent storage intent = IntentStorage.layout().closeIntents[signedFillCloseIntent.intentId];
+		Trade storage trade = IntentStorage.layout().trades[intent.tradeId];
+		emit FillCloseIntent(intent.id, trade.id, trade.partyA, trade.partyB, signedFillCloseIntent.quantity, signedFillCloseIntent.price);
+	}
+
 	/// @notice Any party can lock an open intent on behalf of partyB if it has the suitable signature from the partyB
 	/// @param signedLockIntent The pure data of intent that is going to be locked
 	/// @param partyBSignature The signature of partyB
@@ -42,13 +67,18 @@ contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
 	/// @param partyASignature The signature of partyA
 	/// @param signedFillOpenIntent The pure data of signature that partyB wants to fill the open order
 	/// @param partyBSignature The signature of partyB
-	function instantFillOpenIntent(
+	function instantCreateAndFillOpenIntent(
 		SignedOpenIntent calldata signedOpenIntent,
 		bytes calldata partyASignature,
 		SignedFillIntent calldata signedFillOpenIntent,
 		bytes calldata partyBSignature
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		uint256 intentId = InstantActionsFacetImpl.instantFillOpenIntent(signedOpenIntent, partyASignature, signedFillOpenIntent, partyBSignature);
+		uint256 intentId = InstantActionsFacetImpl.instantCreateAndFillOpenIntent(
+			signedOpenIntent,
+			partyASignature,
+			signedFillOpenIntent,
+			partyBSignature
+		);
 		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
 
 		emit SendOpenIntent(
@@ -72,13 +102,18 @@ contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
 	/// @param partyASignature The signature of partyA
 	/// @param signedFillCloseIntent The pure data of signature that partyB wants to fill the close order
 	/// @param partyBSignature The signature of partyB
-	function instantFillCloseIntent(
+	function instantCreateAndFillCloseIntent(
 		SignedCloseIntent calldata signedCloseIntent,
 		bytes calldata partyASignature,
 		SignedFillIntent calldata signedFillCloseIntent,
 		bytes calldata partyBSignature
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		uint256 intentId = InstantActionsFacetImpl.instantFillCloseIntent(signedCloseIntent, partyASignature, signedFillCloseIntent, partyBSignature);
+		uint256 intentId = InstantActionsFacetImpl.instantCreateAndFillCloseIntent(
+			signedCloseIntent,
+			partyASignature,
+			signedFillCloseIntent,
+			partyBSignature
+		);
 		Trade storage trade = IntentStorage.layout().trades[signedCloseIntent.tradeId];
 		emit SendCloseIntent(
 			trade.partyA,
