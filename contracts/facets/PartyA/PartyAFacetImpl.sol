@@ -24,7 +24,8 @@ library PartyAFacetImpl {
 		ExerciseFee memory exerciseFee,
 		uint256 deadline,
 		address feeToken,
-		address affiliate
+		address affiliate,
+		byte32 userData
 	) internal returns (uint256 intentId) {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
@@ -90,8 +91,9 @@ library PartyAFacetImpl {
 			statusModifyTimestamp: block.timestamp,
 			deadline: deadline,
 			tradingFee: TradingFee(feeToken, IPriceOracle(AppStorage.layout().priceOracleAddress).getPrice(feeToken), symbol.tradingFee),
-			affiliate: affiliate
-			affiliateFee: AffiliateFee(feeToken, IPriceOracle(AppStorage.layout().priceOracleAddress).getPrice(feeToken), symbol.affiliateFee)
+			affiliate: affiliate,
+			affiliateFee: AffiliateFee(feeToken, IPriceOracle(AppStorage.layout().priceOracleAddress).getPrice(feeToken), symbol.affiliateFee),
+			userData: userData
 		});
 
 		intentLayout.openIntents[intentId] = intent;

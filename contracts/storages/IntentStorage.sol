@@ -79,6 +79,7 @@ struct OpenIntent {
 	TradingFee tradingFee;
 	address affiliate;
 	AffiliateFee affiliateFee;
+	byte32 userData;
 }
 
 struct CloseIntent {
