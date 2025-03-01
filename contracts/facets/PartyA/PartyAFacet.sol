@@ -59,6 +59,7 @@ contract PartyAFacet is Accessibility, Pausable, IPartyAFacet {
 			expirationTimestamp,
 			exerciseFee,
 			intent.tradingFee,
+			intent.affiliateFee,
 			deadline
 		);
 	}

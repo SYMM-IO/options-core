@@ -32,6 +32,12 @@ struct TradingFee {
 	uint256 fee;
 }
 
+struct AffiliateFee {
+	address feeToken;
+	uint256 tokenPrice;
+	uint256 fee;
+}
+
 struct Trade {
 	uint256 id;
 	uint256 openIntentId;
@@ -72,6 +78,7 @@ struct OpenIntent {
 	uint256 deadline;
 	TradingFee tradingFee;
 	address affiliate;
+	AffiliateFee affiliateFee;
 }
 
 struct CloseIntent {
