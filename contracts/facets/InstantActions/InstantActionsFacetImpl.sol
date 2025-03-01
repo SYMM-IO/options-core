@@ -228,7 +228,8 @@ library InstantActionsFacetImpl {
 				IPriceOracle(AppStorage.layout().priceOracleAddress).getPrice(signedOpenIntent.feeToken),
 				symbol.affiliateFee
 			),
-			exerciseFee: signedOpenIntent.exerciseFee
+			exerciseFee: signedOpenIntent.exerciseFee,
+			userData: signedOpenIntent.userData
 		});
 
 		intentLayout.openIntents[intentId] = intent;

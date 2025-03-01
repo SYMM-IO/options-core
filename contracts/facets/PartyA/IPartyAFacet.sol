@@ -16,7 +16,8 @@ interface IPartyAFacet is IPartyAEvents {
 		ExerciseFee memory exerciseFee,
 		uint256 deadline,
 		address feeToken,
-		address affiliate
+		address affiliate,
+		bytes32 userdata
 	) external returns (uint256);
 
 	function expireOpenIntent(uint256[] memory expiredIntentIds) external;

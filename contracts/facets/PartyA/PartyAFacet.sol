@@ -33,7 +33,8 @@ contract PartyAFacet is Accessibility, Pausable, IPartyAFacet {
 		ExerciseFee memory exerciseFee,
 		uint256 deadline,
 		address feeToken,
-		address affiliate
+		address affiliate,
+		bytes32 userData
 	) external whenNotPartyAActionsPaused notSuspended(msg.sender) returns (uint256 intentId) {
 		intentId = PartyAFacetImpl.sendOpenIntent(
 			partyBsWhiteList,
@@ -45,7 +46,8 @@ contract PartyAFacet is Accessibility, Pausable, IPartyAFacet {
 			exerciseFee,
 			deadline,
 			feeToken,
-			affiliate
+			affiliate,
+			userData
 		);
 		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
 		emit SendOpenIntent(
