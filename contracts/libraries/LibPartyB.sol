@@ -40,7 +40,7 @@ library LibPartyB {
 		);
 		accountLayout.balances[feeCollector][intent.tradingFee.feeToken].instantAdd(
 			intent.tradingFee.feeToken,
-			(quantity * price * intent.tradingFee.platformFee) / (intent.tradingFee.tokenPrice * 1e18)
+			(quantity * price * appLayout.affiliateFees[intent.affiliate][intent.symbolId]) / (intent.tradingFee.tokenPrice * 1e18)
 		);
 
 		uint256 tradeId = ++intentLayout.lastTradeId;
