@@ -527,4 +527,28 @@ contract ViewFacet is IViewFacet {
 	function getLastWithdrawId() external view returns (uint256) {
 		return AccountStorage.layout().lastWithdrawId;
 	}
+
+	function getInstantActionsModeStatus(address user) external view returns (bool) {
+		return AccountStorage.layout().instantActionsMode[user];
+	}
+
+	function getInstantActionsModeDeactivateTime(address user) external view returns (uint256) {
+		return AccountStorage.layout().instantActionsModeDeactivateTime[user];
+	}
+
+	function getDeactiveInstantActionModeCooldown() external view returns (uint256) {
+		return AccountStorage.layout().deactiveInstantActionModeCooldown;
+	}
+
+	function getBoundPartyB(address user) external view returns (address) {
+		return AccountStorage.layout().boundPartyB[user];
+	}
+
+	function getUnbindingRequestTime(address user) external view returns (uint256) {
+		return AccountStorage.layout().unbindingRequestTime[user];
+	}
+
+	function getUnbindingCooldown() external view returns (uint256) {
+		return AccountStorage.layout().unbindingCooldown;
+	}
 }

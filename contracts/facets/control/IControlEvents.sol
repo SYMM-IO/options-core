@@ -5,6 +5,7 @@
 pragma solidity >=0.8.18;
 
 import "../../storages/AppStorage.sol";
+import "../../storages/SymbolStorage.sol";
 
 interface IControlEvents {
 	/// @notice Emitted when a collateral is whitelisted
@@ -87,4 +88,6 @@ interface IControlEvents {
 	event DeactiveInstantActionModeCooldownUpdated(uint256 cooldown);
 	event InstantActionsModeUpdated(address indexed user, bool status);
 	event InstantActionsModeDeactivateTimeUpdated(address indexed user, uint256 time);
+	event OracleAdded(uint256 indexed oracleId, string name, address contractAddress);
+    event SymbolAdded(uint256 indexed symbolId, string name, OptionType optionType, address collateral);
 }

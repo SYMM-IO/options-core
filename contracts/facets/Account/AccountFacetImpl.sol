@@ -70,7 +70,7 @@ library AccountFacetImpl {
 
 	function completeWithdraw(uint256 id) internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		require(id <= accountLayout.lastWithdrawId, "AccountFacet: Invalid id");
+		require(id <= accountLayout.lastWithdrawId, "AccountFacet: Invalid Id");
 
 		Withdraw storage w = accountLayout.withdrawals[id];
 		require(

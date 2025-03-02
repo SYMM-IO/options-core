@@ -16,16 +16,15 @@ export class RunContext {
 		user: SignerWithAddress
 		user2: SignerWithAddress
 		feeCollector: SignerWithAddress
+		partyB1: SignerWithAddress
+		partyB2: SignerWithAddress
 		others: SignerWithAddress[]
 	}
 	diamond!: string
 	collateral!: FakeStablecoin
 }
 
-export async function createRunContext(
-	diamond: string,
-	collateral: string,
-): Promise<RunContext> {
+export async function createRunContext(diamond: string, collateral: string): Promise<RunContext> {
 	let context = new RunContext()
 
 	const signers: SignerWithAddress[] = await ethers.getSigners()
@@ -34,7 +33,9 @@ export async function createRunContext(
 		user: signers[1],
 		user2: signers[2],
 		feeCollector: signers[3],
-		others: [signers[4], signers[5]],
+		partyB1: signers[4],
+		partyB2: signers[5],
+		others: [signers[6], signers[7]],
 	}
 
 	context.diamond = diamond
