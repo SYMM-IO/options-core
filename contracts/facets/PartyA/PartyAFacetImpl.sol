@@ -24,7 +24,8 @@ library PartyAFacetImpl {
 		ExerciseFee memory exerciseFee,
 		uint256 deadline,
 		address feeToken,
-		address affiliate
+		address affiliate,
+		bytes32 userData
 	) internal returns (uint256 intentId) {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
@@ -90,7 +91,8 @@ library PartyAFacetImpl {
 			statusModifyTimestamp: block.timestamp,
 			deadline: deadline,
 			tradingFee: TradingFee(feeToken, IPriceOracle(AppStorage.layout().priceOracleAddress).getPrice(feeToken), symbol.tradingFee),
-			affiliate: affiliate
+			affiliate: affiliate,
+			userData: userData
 		});
 
 		intentLayout.openIntents[intentId] = intent;
@@ -99,12 +101,15 @@ library PartyAFacetImpl {
 
 		accountLayout.lockedBalances[msg.sender][symbol.collateral] += LibIntent.getPremiumOfOpenIntent(intentId);
 
-		uint256 fee = LibIntent.getTradingFee(intentId);
+		uint256 tradingFee = LibIntent.getTradingFee(intentId);
+		uint256 affiliateFee = LibIntent.getAffiliateFee(intentId);
 		accountLayout.balances[msg.sender][feeToken].syncAll(block.timestamp);
 		if (partyBsWhiteList.length == 1) {
-			accountLayout.balances[msg.sender][feeToken].subForPartyB(partyBsWhiteList[0], fee);
+			accountLayout.balances[msg.sender][feeToken].subForPartyB(partyBsWhiteList[0], tradingFee);
+			accountLayout.balances[msg.sender][feeToken].subForPartyB(partyBsWhiteList[0], affiliateFee);
 		} else {
-			accountLayout.balances[msg.sender][feeToken].sub(fee);
+			accountLayout.balances[msg.sender][feeToken].sub(tradingFee);
+			accountLayout.balances[msg.sender][feeToken].sub(affiliateFee);
 		}
 	}
 
@@ -122,11 +127,14 @@ library PartyAFacetImpl {
 			result = IntentStatus.EXPIRED;
 		} else if (intent.status == IntentStatus.PENDING) {
 			intent.status = IntentStatus.CANCELED;
-			uint256 fee = LibIntent.getTradingFee(intent.id);
+			uint256 tradingFee = LibIntent.getTradingFee(intent.id);
+			uint256 affiliateFee = LibIntent.getAffiliateFee(intentId);
 			if (intent.partyBsWhiteList.length == 1) {
-				accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].scheduledAdd(intent.partyBsWhiteList[0], fee, block.timestamp);
+				accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].scheduledAdd(intent.partyBsWhiteList[0], tradingFee, block.timestamp);
+				accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].scheduledAdd(intent.partyBsWhiteList[0], affiliateFee, block.timestamp);
 			} else {
-				accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].instantAdd(intent.tradingFee.feeToken, fee);
+				accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].instantAdd(intent.tradingFee.feeToken, tradingFee);
+				accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].instantAdd(intent.tradingFee.feeToken, affiliateFee);
 			}
 			accountLayout.lockedBalances[intent.partyA][symbol.collateral] -= LibIntent.getPremiumOfOpenIntent(intentId);
 			LibIntent.removeFromPartyAOpenIntents(intentId);

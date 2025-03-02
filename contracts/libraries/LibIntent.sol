@@ -156,7 +156,18 @@ library LibIntent {
 	 */
 	function getTradingFee(uint256 intentId) internal view returns (uint256 fee) {
 		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
-		fee = (intent.quantity * intent.price * intent.tradingFee.fee) / (intent.tradingFee.tokenPrice * 1e18);
+		fee = (intent.quantity * intent.price * intent.tradingFee.platformFee) / (intent.tradingFee.tokenPrice * 1e18);
+	}
+
+	/**
+	 * @notice Gets affiliate fee for an intent.
+	 * @param intentId The ID of the intent for which to get the affiliate fee.
+	 * @return fee The affiliate fee for the intent.
+	 */
+	function getAffiliateFee(uint256 intentId) internal view returns (uint256 fee) {
+		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
+		uint256 affiliateFee = AppStorage.layout().affiliateFees[intent.affiliate][intent.symbolId];
+		fee = (intent.quantity * intent.price * affiliateFee) / (intent.tradingFee.tokenPrice * 1e18);
 	}
 
 	/**
@@ -213,11 +224,14 @@ library LibIntent {
 		accountLayout.lockedBalances[intent.partyA][symbol.collateral] -= getPremiumOfOpenIntent(intentId);
 
 		// send trading Fee back to partyA
-		uint256 fee = getTradingFee(intent.id);
+		uint256 tradingFee = getTradingFee(intent.id);
+		uint256 affiliateFee = getAffiliateFee(intent.id);
 		if (intent.partyBsWhiteList.length == 1) {
-			accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].scheduledAdd(intent.partyBsWhiteList[0], fee, block.timestamp);
+			accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].scheduledAdd(intent.partyBsWhiteList[0], tradingFee, block.timestamp);
+			accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].scheduledAdd(intent.partyBsWhiteList[0], affiliateFee, block.timestamp);
 		} else {
-			accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].instantAdd(intent.tradingFee.feeToken, fee);
+			accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].instantAdd(intent.tradingFee.feeToken, tradingFee);
+			accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].instantAdd(intent.tradingFee.feeToken, affiliateFee);
 		}
 
 		removeFromPartyAOpenIntents(intent.id);
