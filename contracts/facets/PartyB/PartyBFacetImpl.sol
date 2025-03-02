@@ -35,10 +35,10 @@ library PartyBFacetImpl {
 		uint256 affiliateFee = LibIntent.getAffiliateFee(intentId);
 		if (intent.partyBsWhiteList.length == 1) {
 			accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].scheduledAdd(intent.partyBsWhiteList[0], tradingFee, block.timestamp);
-			accountLayout.balances[intent.partyA][intent.affiliateFee.feeToken].scheduledAdd(intent.partyBsWhiteList[0], affiliateFee, block.timestamp);
+			accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].scheduledAdd(intent.partyBsWhiteList[0], affiliateFee, block.timestamp);
 		} else {
 			accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].instantAdd(intent.tradingFee.feeToken, tradingFee);
-			accountLayout.balances[intent.partyA][intent.affiliateFee.feeToken].instantAdd(intent.affiliateFee.feeToken, affiliateFee);
+			accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].instantAdd(intent.tradingFee.feeToken, affiliateFee);
 		}
 
 		LibIntent.removeFromPartyAOpenIntents(intentId);

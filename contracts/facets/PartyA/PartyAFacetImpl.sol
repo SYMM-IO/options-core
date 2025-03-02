@@ -25,7 +25,7 @@ library PartyAFacetImpl {
 		uint256 deadline,
 		address feeToken,
 		address affiliate,
-		byte32 userData
+		bytes32 userData
 	) internal returns (uint256 intentId) {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
@@ -92,7 +92,6 @@ library PartyAFacetImpl {
 			deadline: deadline,
 			tradingFee: TradingFee(feeToken, IPriceOracle(AppStorage.layout().priceOracleAddress).getPrice(feeToken), symbol.tradingFee),
 			affiliate: affiliate,
-			affiliateFee: AffiliateFee(feeToken, IPriceOracle(AppStorage.layout().priceOracleAddress).getPrice(feeToken), symbol.affiliateFee),
 			userData: userData
 		});
 
@@ -132,10 +131,10 @@ library PartyAFacetImpl {
 			uint256 affiliateFee = LibIntent.getAffiliateFee(intentId);
 			if (intent.partyBsWhiteList.length == 1) {
 				accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].scheduledAdd(intent.partyBsWhiteList[0], tradingFee, block.timestamp);
-				accountLayout.balances[intent.partyA][intent.affiliateFee.feeToken].scheduledAdd(intent.partyBsWhiteList[0], affiliateFee, block.timestamp);
+				accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].scheduledAdd(intent.partyBsWhiteList[0], affiliateFee, block.timestamp);
 			} else {
 				accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].instantAdd(intent.tradingFee.feeToken, tradingFee);
-				accountLayout.balances[intent.partyA][intent.affiliateFee.feeToken].instantAdd(intent.affiliateFee.feeToken, affiliateFee);
+				accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].instantAdd(intent.tradingFee.feeToken, affiliateFee);
 			}
 			accountLayout.lockedBalances[intent.partyA][symbol.collateral] -= LibIntent.getPremiumOfOpenIntent(intentId);
 			LibIntent.removeFromPartyAOpenIntents(intentId);
