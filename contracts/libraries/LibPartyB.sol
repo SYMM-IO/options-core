@@ -36,7 +36,11 @@ library LibPartyB {
 			: appLayout.affiliateFeeCollector[intent.affiliate];
 		accountLayout.balances[feeCollector][intent.tradingFee.feeToken].instantAdd(
 			intent.tradingFee.feeToken,
-			(quantity * price * intent.tradingFee.fee) / (intent.tradingFee.tokenPrice * 1e18)
+			(quantity * price * intent.tradingFee.platformFee) / (intent.tradingFee.tokenPrice * 1e18)
+		);
+		accountLayout.balances[feeCollector][intent.tradingFee.feeToken].instantAdd(
+			intent.tradingFee.feeToken,
+			(quantity * price * appLayout.affiliateFees[intent.affiliate][intent.symbolId]) / (intent.tradingFee.tokenPrice * 1e18)
 		);
 
 		uint256 tradeId = ++intentLayout.lastTradeId;
@@ -98,7 +102,8 @@ library LibPartyB {
 				statusModifyTimestamp: block.timestamp,
 				deadline: intent.deadline,
 				tradingFee: intent.tradingFee,
-				affiliate: intent.affiliate
+				affiliate: intent.affiliate,
+				userData: intent.userData
 			});
 
 			intentLayout.openIntents[newIntentId] = q;
@@ -109,11 +114,14 @@ library LibPartyB {
 
 			if (newStatus == IntentStatus.CANCELED) {
 				// send trading Fee back to partyA
-				uint256 fee = LibIntent.getTradingFee(newIntent.id);
+				uint256 tradingFee = LibIntent.getTradingFee(newIntent.id);
+				uint256 affiliateFee = LibIntent.getAffiliateFee(newIntent.id);
 				if (intent.partyBsWhiteList.length == 1) {
-					accountLayout.balances[intent.partyA][symbol.collateral].scheduledAdd(newIntent.partyBsWhiteList[0], fee, block.timestamp);
+					accountLayout.balances[intent.partyA][symbol.collateral].scheduledAdd(newIntent.partyBsWhiteList[0], tradingFee, block.timestamp);
+					accountLayout.balances[intent.partyA][symbol.collateral].scheduledAdd(newIntent.partyBsWhiteList[0], affiliateFee, block.timestamp);
 				} else {
-					accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(symbol.collateral, fee);
+					accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(symbol.collateral, tradingFee);
+					accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(symbol.collateral, affiliateFee);
 				}
 			} else {
 				accountLayout.lockedBalances[intent.partyA][symbol.collateral] += LibIntent.getPremiumOfOpenIntent(newIntent.id);
