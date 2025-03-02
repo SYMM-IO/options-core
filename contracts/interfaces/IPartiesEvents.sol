@@ -18,7 +18,6 @@ interface IPartiesEvents {
 		uint256 expirationTimestamp,
 		ExerciseFee exerciseFee,
 		TradingFee tradingFee,
-		AffiliateFee affiliateFee,
 		uint256 deadline
 	);
 	event ExpireOpenIntent(uint256 intentId);

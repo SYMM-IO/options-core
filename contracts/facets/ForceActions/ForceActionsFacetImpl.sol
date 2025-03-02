@@ -25,13 +25,10 @@ library ForceActionsFacetImpl {
 
 		// send trading Fee back to partyA
 		uint256 tradingFee = LibIntent.getTradingFee(intent.id);
-		uint256 affiliateFee = LibIntent.getAffiliateFee(intent.id);
 		if (intent.partyBsWhiteList.length == 1) {
 			accountLayout.balances[intent.partyA][symbol.collateral].scheduledAdd(intent.partyBsWhiteList[0], tradingFee, block.timestamp);
-			accountLayout.balances[intent.partyA][symbol.collateral].scheduledAdd(intent.partyBsWhiteList[0], affiliateFee, block.timestamp);
 		} else {
 			accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(symbol.collateral, tradingFee);
-			accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(symbol.collateral, affiliateFee);
 		}
 
 		LibIntent.removeFromPartyAOpenIntents(intent.id);

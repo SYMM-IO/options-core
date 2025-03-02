@@ -223,11 +223,6 @@ library InstantActionsFacetImpl {
 				symbol.tradingFee
 			),
 			affiliate: signedOpenIntent.affiliate,
-			affiliateFee: AffiliateFee(
-				signedOpenIntent.feeToken,
-				IPriceOracle(AppStorage.layout().priceOracleAddress).getPrice(signedOpenIntent.feeToken),
-				symbol.affiliateFee
-			),
 			exerciseFee: signedOpenIntent.exerciseFee,
 			userData: signedOpenIntent.userData
 		});
@@ -240,13 +235,13 @@ library InstantActionsFacetImpl {
 			uint256 affiliateFee = LibIntent.getAffiliateFee(intentId);
 			accountLayout.balances[signedOpenIntent.partyA][intent.tradingFee.feeToken].syncAll(block.timestamp);
 			accountLayout.balances[signedOpenIntent.partyA][intent.tradingFee.feeToken].subForPartyB(signedOpenIntent.partyB, tradingFee);
-			accountLayout.balances[signedOpenIntent.partyA][intent.affiliateFee.feeToken].subForPartyB(signedOpenIntent.partyB, affiliateFee);
+			accountLayout.balances[signedOpenIntent.partyA][intent.tradingFee.feeToken].subForPartyB(signedOpenIntent.partyB, affiliateFee);
 
 			address feeCollector = appLayout.affiliateFeeCollector[signedOpenIntent.affiliate] == address(0)
 				? appLayout.defaultFeeCollector
 				: appLayout.affiliateFeeCollector[signedOpenIntent.affiliate];
-			accountLayout.balances[feeCollector][intent.tradingFee.feeToken].instantAdd(intent.tradingFee.feeToken, fee);
-			accountLayout.balances[feeCollector][intent.affiliateFee.feeToken].instantAdd(intent.affiliateFee.feeToken, affiliateFee);
+			accountLayout.balances[feeCollector][intent.tradingFee.feeToken].instantAdd(intent.tradingFee.feeToken, tradingFee);
+			accountLayout.balances[feeCollector][intent.tradingFee.feeToken].instantAdd(intent.tradingFee.feeToken, affiliateFee);
 		}
 		// filling
 		Trade memory trade = Trade({

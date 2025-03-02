@@ -36,11 +36,11 @@ library LibPartyB {
 			: appLayout.affiliateFeeCollector[intent.affiliate];
 		accountLayout.balances[feeCollector][intent.tradingFee.feeToken].instantAdd(
 			intent.tradingFee.feeToken,
-			(quantity * price * intent.tradingFee.fee) / (intent.tradingFee.tokenPrice * 1e18)
+			(quantity * price * intent.tradingFee.platformFee) / (intent.tradingFee.tokenPrice * 1e18)
 		);
-		accountLayout.balances[feeCollector][intent.affiliateFee.feeToken].instantAdd(
-			intent.affiliateFee.feeToken,
-			(quantity * price * intent.affiliateFee.fee) / (intent.affiliateFee.tokenPrice * 1e18)
+		accountLayout.balances[feeCollector][intent.tradingFee.feeToken].instantAdd(
+			intent.tradingFee.feeToken,
+			(quantity * price * intent.tradingFee.platformFee) / (intent.tradingFee.tokenPrice * 1e18)
 		);
 
 		uint256 tradeId = ++intentLayout.lastTradeId;
@@ -103,7 +103,7 @@ library LibPartyB {
 				deadline: intent.deadline,
 				tradingFee: intent.tradingFee,
 				affiliate: intent.affiliate,
-				affiliateFee: intent.affiliateFee,
+				userData: intent.userData
 			});
 
 			intentLayout.openIntents[newIntentId] = q;

@@ -156,7 +156,7 @@ library LibIntent {
 	 */
 	function getTradingFee(uint256 intentId) internal view returns (uint256 fee) {
 		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
-		fee = (intent.quantity * intent.price * intent.tradingFee.fee) / (intent.tradingFee.tokenPrice * 1e18);
+		fee = (intent.quantity * intent.price * intent.tradingFee.platformFee) / (intent.tradingFee.tokenPrice * 1e18);
 	}
 
 	/**
@@ -166,7 +166,8 @@ library LibIntent {
 	 */
 	function getAffiliateFee(uint256 intentId) internal view returns (uint256 fee) {
 		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
-		fee = (intent.quantity * intent.price * intent.affiliateFee.fee) / (intent.affiliateFee.tokenPrice * 1e18);
+		uint256 affiliateFee = AppStorage.layout().affiliateFees[intent.affiliate][intent.symbolId];
+		fee = (intent.quantity * intent.price * affiliateFee) / (intent.tradingFee.tokenPrice * 1e18);
 	}
 
 	/**
@@ -227,10 +228,10 @@ library LibIntent {
 		uint256 affiliateFee = getAffiliateFee(intent.id);
 		if (intent.partyBsWhiteList.length == 1) {
 			accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].scheduledAdd(intent.partyBsWhiteList[0], tradingFee, block.timestamp);
-			accountLayout.balances[intent.partyA][intent.affiliateFee.feeToken].scheduledAdd(intent.partyBsWhiteList[0], affiliateFee, block.timestamp);
+			accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].scheduledAdd(intent.partyBsWhiteList[0], affiliateFee, block.timestamp);
 		} else {
 			accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].instantAdd(intent.tradingFee.feeToken, tradingFee);
-			accountLayout.balances[intent.partyA][intent.affiliateFee.feeToken].instantAdd(intent.affiliateFee.feeToken, affiliateFee);
+			accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].instantAdd(intent.tradingFee.feeToken, affiliateFee);
 		}
 
 		removeFromPartyAOpenIntents(intent.id);

@@ -76,7 +76,6 @@ contract PartyBFacet is Accessibility, Pausable, IPartyBFacet {
 					newIntent.expirationTimestamp,
 					newIntent.exerciseFee,
 					newIntent.tradingFee,
-					newIntent.affiliateFee,
 					newIntent.deadline
 				);
 			} else if (newIntent.status == IntentStatus.CANCELED) {

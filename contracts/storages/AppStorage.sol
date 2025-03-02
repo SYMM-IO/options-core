@@ -106,6 +106,7 @@ library AppStorage {
 		mapping(address => mapping(address => LiquidationDetail)) liquidationDetails; // partyBAddress => collateral => detail
 		mapping(address => mapping(address => mapping(address => uint256))) debtsToPartyAs; // partyB => collatearl => partyA => amount
 		mapping(address => mapping(address => uint256)) connectedPartyAs; // partyB => collateral => number of connected partyAs
+        mapping(address => mapping(uint256 => uint256)) affiliateFees; // affiliate address => symbolId => fee
 	}
 
 	function layout() internal pure returns (Layout storage l) {
