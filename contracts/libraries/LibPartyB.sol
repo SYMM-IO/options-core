@@ -34,7 +34,7 @@ library LibPartyB {
 		address feeCollector = appLayout.affiliateFeeCollector[intent.affiliate] == address(0)
 			? appLayout.defaultFeeCollector
 			: appLayout.affiliateFeeCollector[intent.affiliate];
-		accountLayout.balances[feeCollector][intent.tradingFee.feeToken].instantAdd(
+		accountLayout.balances[appLayout.defaultFeeCollector][intent.tradingFee.feeToken].instantAdd(
 			intent.tradingFee.feeToken,
 			(quantity * price * intent.tradingFee.platformFee) / (intent.tradingFee.tokenPrice * 1e18)
 		);
@@ -117,11 +117,13 @@ library LibPartyB {
 				uint256 tradingFee = LibIntent.getTradingFee(newIntent.id);
 				uint256 affiliateFee = LibIntent.getAffiliateFee(newIntent.id);
 				if (intent.partyBsWhiteList.length == 1) {
-					accountLayout.balances[intent.partyA][symbol.collateral].scheduledAdd(newIntent.partyBsWhiteList[0], tradingFee, block.timestamp);
-					accountLayout.balances[intent.partyA][symbol.collateral].scheduledAdd(newIntent.partyBsWhiteList[0], affiliateFee, block.timestamp);
+					accountLayout.balances[intent.partyA][symbol.collateral].scheduledAdd(
+						newIntent.partyBsWhiteList[0],
+						tradingFee + affiliateFee,
+						block.timestamp
+					);
 				} else {
-					accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(symbol.collateral, tradingFee);
-					accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(symbol.collateral, affiliateFee);
+					accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(symbol.collateral, tradingFee + affiliateFee);
 				}
 			} else {
 				accountLayout.lockedBalances[intent.partyA][symbol.collateral] += LibIntent.getPremiumOfOpenIntent(newIntent.id);

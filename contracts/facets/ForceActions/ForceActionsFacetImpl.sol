@@ -27,11 +27,13 @@ library ForceActionsFacetImpl {
 		uint256 tradingFee = LibIntent.getTradingFee(intent.id);
 		uint256 affiliateFee = LibIntent.getAffiliateFee(intent.id);
 		if (intent.partyBsWhiteList.length == 1) {
-			accountLayout.balances[intent.partyA][symbol.collateral].scheduledAdd(intent.partyBsWhiteList[0], tradingFee, block.timestamp);
-			accountLayout.balances[intent.partyA][symbol.collateral].scheduledAdd(intent.partyBsWhiteList[0], affiliateFee, block.timestamp);
+			accountLayout.balances[intent.partyA][symbol.collateral].scheduledAdd(
+				intent.partyBsWhiteList[0],
+				tradingFee + affiliateFee,
+				block.timestamp
+			);
 		} else {
-			accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(symbol.collateral, tradingFee);
-			accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(symbol.collateral, affiliateFee);
+			accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(symbol.collateral, tradingFee + affiliateFee);
 		}
 
 		LibIntent.removeFromPartyAOpenIntents(intent.id);

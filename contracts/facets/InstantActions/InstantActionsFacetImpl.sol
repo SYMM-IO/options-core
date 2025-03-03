@@ -234,13 +234,15 @@ library InstantActionsFacetImpl {
 			uint256 tradingFee = LibIntent.getTradingFee(intentId);
 			uint256 affiliateFee = LibIntent.getAffiliateFee(intentId);
 			accountLayout.balances[signedOpenIntent.partyA][intent.tradingFee.feeToken].syncAll(block.timestamp);
-			accountLayout.balances[signedOpenIntent.partyA][intent.tradingFee.feeToken].subForPartyB(signedOpenIntent.partyB, tradingFee);
-			accountLayout.balances[signedOpenIntent.partyA][intent.tradingFee.feeToken].subForPartyB(signedOpenIntent.partyB, affiliateFee);
+			accountLayout.balances[signedOpenIntent.partyA][intent.tradingFee.feeToken].subForPartyB(
+				signedOpenIntent.partyB,
+				tradingFee + affiliateFee
+			);
 
 			address feeCollector = appLayout.affiliateFeeCollector[signedOpenIntent.affiliate] == address(0)
 				? appLayout.defaultFeeCollector
 				: appLayout.affiliateFeeCollector[signedOpenIntent.affiliate];
-			accountLayout.balances[feeCollector][intent.tradingFee.feeToken].instantAdd(intent.tradingFee.feeToken, tradingFee);
+			accountLayout.balances[appLayout.defaultFeeCollector][intent.tradingFee.feeToken].instantAdd(intent.tradingFee.feeToken, tradingFee);
 			accountLayout.balances[feeCollector][intent.tradingFee.feeToken].instantAdd(intent.tradingFee.feeToken, affiliateFee);
 		}
 		// filling
@@ -407,8 +409,7 @@ library InstantActionsFacetImpl {
 			uint256 tradingFee = LibIntent.getTradingFee(intent.id);
 			uint256 affiliateFee = LibIntent.getAffiliateFee(intent.id);
 
-			accountLayout.balances[intent.partyA][symbol.collateral].scheduledAdd(intent.partyB, tradingFee, block.timestamp);
-			accountLayout.balances[intent.partyA][symbol.collateral].scheduledAdd(intent.partyB, affiliateFee, block.timestamp);
+			accountLayout.balances[intent.partyA][symbol.collateral].scheduledAdd(intent.partyB, tradingFee + affiliateFee, block.timestamp);
 
 			accountLayout.lockedBalances[intent.partyA][symbol.collateral] -= LibIntent.getPremiumOfOpenIntent(intent.id);
 			LibIntent.removeFromPartyAOpenIntents(intent.id);
