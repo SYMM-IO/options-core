@@ -27,4 +27,7 @@ contract ForceActionsFacet is Pausable, IForceActionsFacet {
 		ForceActionsFacetImpl.forceCancelCloseIntent(intentId);
 		emit ForceCancelCloseIntent(intentId);
 	}
+
+	// TODO
+	function forceCancelInterdealerIntent(uint256 intentId) external {}
 }
