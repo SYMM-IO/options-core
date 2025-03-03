@@ -9,4 +9,5 @@ import "./ForceActionsFacetEvents.sol";
 interface IForceActionsFacet is ForceActionsFacetEvents {
 	function forceCancelOpenIntent(uint256 intentId) external;
 	function forceCancelCloseIntent(uint256 intentId) external;
+	function forceCancelInterdealerIntent(uint256 intentId) external;
 }
