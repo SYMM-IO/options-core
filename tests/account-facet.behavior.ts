@@ -235,19 +235,11 @@ export function shouldBehaveLikeAccountFacet(): void {
 		})
 
 		it("Should fail when withdrawal status be wrong", async function () {
-			// TODO ::: change HardhatRunTime timestamp to pass coolDowns
 			await context.accountFacet.connect(user.getSigner()).completeWithdraw(1)
 			await expect(context.accountFacet.connect(user.getSigner()).completeWithdraw(1)).to.be.revertedWith("AccountFacet: Invalid state")
 		})
 
-		it("Should fail when withdrawal status be wrong", async function () {
-			// TODO ::: change HardhatRunTime timestamp to pass coolDowns
-			await context.accountFacet.connect(user.getSigner()).completeWithdraw(1)
-			await expect(context.accountFacet.connect(user.getSigner()).completeWithdraw(1)).to.be.revertedWith("AccountFacet: Invalid state")
-		})
-
-		it("Should withdraw successdully", async function () {
-			// TODO ::: change HardhatRunTime timestamp to pass coolDowns
+		it("Should withdraw successfully", async function () {
 			expect(await context.accountFacet.connect(user.getSigner()).completeWithdraw(1)).to.be.not.reverted
 
 			const withdraw = await context.viewFacet.getWithdraw(1)
