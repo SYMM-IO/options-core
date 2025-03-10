@@ -199,6 +199,9 @@ library InstantActionsFacetImpl {
 		intentId = ++intentLayout.lastOpenIntentId;
 		uint256 tradeId = ++intentLayout.lastTradeId;
 
+		uint32 counter = 0; // Initialize counter
+		bytes memory userDataWithCounter = LibIntent.addCounter(signedOpenIntent.userData, counter);
+
 		address[] memory partyBsWhitelist = new address[](1);
 		partyBsWhitelist[0] = signedOpenIntent.partyB;
 		OpenIntent memory intent = OpenIntent({
@@ -224,7 +227,7 @@ library InstantActionsFacetImpl {
 			),
 			affiliate: signedOpenIntent.affiliate,
 			exerciseFee: signedOpenIntent.exerciseFee,
-			userData: signedOpenIntent.userData
+			userData: userDataWithCounter
 		});
 
 		intentLayout.openIntents[intentId] = intent;

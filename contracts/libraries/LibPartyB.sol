@@ -84,27 +84,55 @@ library LibPartyB {
 				newStatus = IntentStatus.PENDING;
 			}
 
-			OpenIntent memory q = OpenIntent({
-				id: newIntentId,
-				tradeId: 0,
-				partyBsWhiteList: intent.partyBsWhiteList,
-				symbolId: intent.symbolId,
-				price: intent.price,
-				quantity: intent.quantity - quantity,
-				strikePrice: intent.strikePrice,
-				expirationTimestamp: intent.expirationTimestamp,
-				exerciseFee: intent.exerciseFee,
-				partyA: intent.partyA,
-				partyB: address(0),
-				status: newStatus,
-				parentId: intent.id,
-				createTimestamp: block.timestamp,
-				statusModifyTimestamp: block.timestamp,
-				deadline: intent.deadline,
-				tradingFee: intent.tradingFee,
-				affiliate: intent.affiliate,
-				userData: intent.userData
-			});
+			OpenIntent memory q;
+
+			// Check if the intent has a parentId
+			if (intent.parentId != 0) {
+				bytes memory userDataWithIncrementedCounter = LibIntent.incrementCounter(intent.userData);
+				q = OpenIntent({
+					id: newIntentId,
+					tradeId: 0,
+					partyBsWhiteList: intent.partyBsWhiteList,
+					symbolId: intent.symbolId,
+					price: intent.price,
+					quantity: intent.quantity - quantity,
+					strikePrice: intent.strikePrice,
+					expirationTimestamp: intent.expirationTimestamp,
+					exerciseFee: intent.exerciseFee,
+					partyA: intent.partyA,
+					partyB: address(0),
+					status: newStatus,
+					parentId: intent.id,
+					createTimestamp: block.timestamp,
+					statusModifyTimestamp: block.timestamp,
+					deadline: intent.deadline,
+					tradingFee: intent.tradingFee,
+					affiliate: intent.affiliate,
+					userData: userDataWithIncrementedCounter
+				});
+			} else {
+				q = OpenIntent({
+					id: newIntentId,
+					tradeId: 0,
+					partyBsWhiteList: intent.partyBsWhiteList,
+					symbolId: intent.symbolId,
+					price: intent.price,
+					quantity: intent.quantity - quantity,
+					strikePrice: intent.strikePrice,
+					expirationTimestamp: intent.expirationTimestamp,
+					exerciseFee: intent.exerciseFee,
+					partyA: intent.partyA,
+					partyB: address(0),
+					status: newStatus,
+					parentId: intent.id,
+					createTimestamp: block.timestamp,
+					statusModifyTimestamp: block.timestamp,
+					deadline: intent.deadline,
+					tradingFee: intent.tradingFee,
+					affiliate: intent.affiliate,
+					userData: intent.userData
+				});
+			}
 
 			intentLayout.openIntents[newIntentId] = q;
 			intentLayout.openIntentsOf[intent.partyA].push(newIntentId);
