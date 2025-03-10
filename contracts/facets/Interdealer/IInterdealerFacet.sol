@@ -8,15 +8,15 @@ import "./IInterdealerEvents.sol";
 import "../../storages/AppStorage.sol";
 
 interface IInterdealerFacet is IInterdealerEvents {
-	function interdealerIntent(uint256 tradeId, address[] memory partyBWhitelist) external;
+	function sendTransferIntent(uint256 tradeId, address[] memory partyBWhitelist, uint256 proposedPrice, uint256 deadline) external;
 
-	function cancelInterdealerIntent(uint256 intentId) external;
+	function cancelTransferIntent(uint256 intentId) external;
 
-	function lockInterdealerIntent(uint256 intentId, uint256 tradeQuantity) external;
+	function lockTransferIntent(uint256 intentId) external;
 
-	function unlockInterdealerIntent(uint256 intentId) external;
+	function unlockTransferIntent(uint256 intentId) external;
 
-	function acceptCancelInterdealerIntent(uint256 intentId) external;
+	function acceptCancelTransferIntent(uint256 intentId) external;
 
-	function fillInterdealerIntent(uint256 intentId, uint256 price) external;
+	function FinalizeTransferIntent(uint256 intentId) external;
 }

@@ -7,13 +7,10 @@ pragma solidity >=0.8.18;
 import "../../storages/IntentStorage.sol";
 
 interface IInterdealerEvents {
-	event InterdealerIntent(uint256 tradeId, address partyB, address[] partyBWhitelist);
-	// event AcceptCancelOpenIntent(uint256 intentId);
-	// event AcceptCancelCloseIntent(uint256 intentId);
-	// event LockOpenIntent(address partyB, uint256 intentId);
-	// event UnlockOpenIntent(address partyB, uint256 intentId);
-	// event FillOpenIntent(uint256 intentId, uint256 tradeId, address partyA, address partyB, uint256 quantity, uint256 price);
-	// event FillCloseIntent(uint256 intentId, uint256 tradeId, address partyA, address partyB, uint256 quantity, uint256 price);
-	// event ExpireTrade(address operator, uint256 tradeId, uint256 settlementPrice);
-	// event ExerciseTrade(address operator, uint256 tradeId, uint256 settlementPrice);
+	event SendInterdealerIntent(uint256 tradeId, address sender, address[] partyBWhitelist, uint256 price, uint256 deadline);
+	event CancelTransferIntent(uint256 tradeId);
+	event LockTransferIntent(uint256 tradeId, address counterParty);
+	event UnlockTransferIntent(uint256 tradeId, address counterParty);
+	event AcceptCancelTransferIntent(uint256 tradeId, address counterParty);
+	event FinalizeTransferIntent(uint256 tradeId, address counterParty);
 }
