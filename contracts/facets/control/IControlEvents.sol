@@ -90,4 +90,5 @@ interface IControlEvents {
 	event InstantActionsModeDeactivateTimeUpdated(address indexed user, uint256 time);
 	event OracleAdded(uint256 indexed oracleId, string name, address contractAddress);
     event SymbolAdded(uint256 indexed symbolId, string name, OptionType optionType, address collateral);
+	event PriceOracleAddressUpdated(address indexed oracle);
 }

@@ -26,21 +26,27 @@ export class User {
 		return this.signer
 	}
 
-	public async sendOpenIntent(reques: OpenIntent = openIntentRequestBuilder().build()) {
+	public async sendOpenIntent(request: OpenIntent = openIntentRequestBuilder().build()) {
 		await runTx(
 			this.context.partyAFacet
 				.connect(this.signer)
 				.sendOpenIntent(
-					reques.partyBsWhiteList,
-					reques.symbolId,
-					reques.price,
-					reques.quantity,
-					reques.strikePrice,
-					reques.expirationTimestamp,
-					reques.exerciseFee,
-					reques.deadline,
-					reques.affiliate,
+					request.partyBsWhiteList,
+					request.symbolId,
+					request.price,
+					request.quantity,
+					request.strikePrice,
+					request.expirationTimestamp,
+					request.exerciseFee,
+					request.deadline,
+					request.feeToken,
+					request.affiliate,
+					request.userData,
 				),
 		)
+	}
+
+	public async sendCancelOpenIntent(ids: string[]) {
+		await runTx(this.context.partyAFacet.connect(this.signer).cancelOpenIntent(ids))
 	}
 }

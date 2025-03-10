@@ -6,8 +6,10 @@ import { ethers, toUtf8Bytes } from "ethers"
 export async function initializeTestFixture(): Promise<RunContext> {
 	const diamond: Diamond = await run("deploy:diamond")
 	const stableCoin: FakeStablecoin = await run("deploy:stablecoin")
+	const oracle: FakeStablecoin = await run("deploy:oracle")
 
-	let context = await createRunContext(await diamond.getAddress(), await stableCoin.getAddress())
+
+	let context = await createRunContext(await diamond.getAddress(), await stableCoin.getAddress(), await oracle.getAddress())
 
 	await context.controlFacet.connect(context.signers.admin).setAdmin(context.signers.admin.getAddress())
 	await context.controlFacet

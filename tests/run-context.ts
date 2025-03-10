@@ -1,7 +1,7 @@
 import { ethers } from "hardhat"
 
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers"
-import { AccountFacet, ControlFacet, DiamondCutFacet, DiamondLoupeFacet, FakeStablecoin, ForceActionsFacet, PartyAFacet, ViewFacet } from "../types"
+import { AccountFacet, ControlFacet, DiamondCutFacet, DiamondLoupeFacet, FakeOracle, FakeStablecoin, ForceActionsFacet, PartyAFacet, ViewFacet } from "../types"
 
 export class RunContext {
 	accountFacet!: AccountFacet
@@ -22,9 +22,10 @@ export class RunContext {
 	}
 	diamond!: string
 	collateral!: FakeStablecoin
+	oracle!:FakeOracle
 }
 
-export async function createRunContext(diamond: string, collateral: string): Promise<RunContext> {
+export async function createRunContext(diamond: string, collateral: string, oracle: string): Promise<RunContext> {
 	let context = new RunContext()
 
 	const signers: SignerWithAddress[] = await ethers.getSigners()
@@ -40,6 +41,7 @@ export async function createRunContext(diamond: string, collateral: string): Pro
 
 	context.diamond = diamond
 	context.collateral = await ethers.getContractAt("FakeStablecoin", collateral)
+	context.oracle = await ethers.getContractAt("FakeOracle", oracle)
 	context.accountFacet = await ethers.getContractAt("AccountFacet", diamond)
 	context.diamondCutFacet = await ethers.getContractAt("DiamondCutFacet", diamond)
 	context.diamondLoupeFacet = await ethers.getContractAt("DiamondLoupeFacet", diamond)
