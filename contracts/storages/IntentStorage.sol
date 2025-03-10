@@ -72,7 +72,7 @@ struct OpenIntent {
 	uint256 deadline;
 	TradingFee tradingFee;
 	address affiliate;
-	bytes32 userData;
+	bytes userData;
 }
 
 struct CloseIntent {
@@ -99,7 +99,7 @@ struct SignedOpenIntent {
 	uint256 deadline;
 	address affiliate;
 	address feeToken;
-	bytes32 userData;
+	bytes userData;
 	uint256 salt;
 }
 

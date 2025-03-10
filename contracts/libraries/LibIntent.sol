@@ -358,4 +358,45 @@ library LibIntent {
 
 		return keccak256(abi.encode(SIGN_PREFIX, req.signer, req.intentId, req.deadline, req.salt));
 	}
+
+	function addCounter(bytes memory _data, uint32 _counter) pure internal returns (bytes memory) {
+        bytes4 counterBytes = bytes4(uint32(_counter));
+
+        bytes memory dataWithCounter = abi.encodePacked(_data, counterBytes);
+
+		return dataWithCounter;
+    }
+
+    function getCounter(bytes memory dataWithCounter) pure internal returns (uint32) {
+        require(dataWithCounter.length >= 4, "Not enough bytes");
+        bytes4 counterBytes;
+        assembly {
+            counterBytes := mload(add(dataWithCounter, sub(dataWithCounter, 4)))
+        }
+        return uint32(counterBytes);
+    }
+
+    function getDataWithoutCounter(bytes memory dataWithCounter) pure internal returns (bytes memory) {
+        require(dataWithCounter.length > 4, "Not enough bytes");
+
+		uint256 dataLength = dataWithCounter.length - 4;
+        bytes memory data = new bytes(dataLength);
+
+        for (uint256 i = 0; i < dataLength; i++) {
+            data[i] = dataWithCounter[i];
+        }
+
+        return data;
+    }
+
+	function incrementCounter(bytes memory dataWithCounter) pure internal returns (bytes memory) {
+        require(dataWithCounter.length > 4, "Not enough bytes");
+
+        uint32 currentCounter = getCounter(dataWithCounter);
+        uint32 newCounter = currentCounter + 1;
+
+        bytes memory newData = getDataWithoutCounter(dataWithCounter);
+        bytes memory data = addCounter(newData, newCounter);
+		return data;
+    }
 }
