@@ -53,6 +53,7 @@ struct PartyBConfig {
 	bool isActive;
 	uint256 lossCoverage;
 	uint256 oracleId;
+	uint256 symbolType;
 }
 
 enum LiquidationStatus {

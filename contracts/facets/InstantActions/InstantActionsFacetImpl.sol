@@ -168,6 +168,7 @@ library InstantActionsFacetImpl {
 			"InstantActionsFacet: Invalid affiliate"
 		);
 		require(appLayout.partyBConfigs[signedFillOpenIntent.partyB].oracleId == symbol.oracleId, "InstantActionsFacet: Mismatched oracle");
+		require(appLayout.partyBConfigs[signedFillOpenIntent.partyB].symbolType == symbol.symbolType, "InstantActionsFacet: Mismatched symbol type");
 		require(accountLayout.suspendedAddresses[signedOpenIntent.partyA] == false, "InstantActionsFacet: PartyA is suspended");
 		require(!accountLayout.suspendedAddresses[signedOpenIntent.partyB], "InstantActionsFacet: PartyB is Suspended");
 		require(!appLayout.partyBEmergencyStatus[signedOpenIntent.partyB], "InstantActionsFacet: PartyB is in emergency mode");

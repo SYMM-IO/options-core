@@ -21,6 +21,7 @@ export function shouldBehaveLikePartyAFacet(): void {
 			isActive: true,
 			lossCoverage: 0,
 			oracleId: 0,
+			symbolType: 0
 		})
 
 		await context.controlFacet.setAffiliateStatus(context.signers.others[0], true)
@@ -30,7 +31,7 @@ export function shouldBehaveLikePartyAFacet(): void {
 	describe("sendOpenIntent", async function () {
 		beforeEach(async () => {
 			await context.controlFacet.addOracle("test orancel", context.signers.others[0])
-			await context.controlFacet.addSymbol("BTC", 0, 1, context.collateral, true, 0)
+			await context.controlFacet.addSymbol("BTC", 0, 1, context.collateral, true, 0, 0)
 		})
 		it("Should fail when partyA actions paused", async function () {
 			await context.controlFacet.pausePartyAActions()

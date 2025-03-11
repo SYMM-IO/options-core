@@ -316,6 +316,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 				isActive: true,
 				lossCoverage: 0,
 				oracleId: 0,
+				symbolType: 0,
 			})
 
 			await expect(context.accountFacet.connect(context.signers.partyB1).activateInstantActionMode()).to.be.revertedWith(
@@ -342,6 +343,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 				isActive: true,
 				lossCoverage: 0,
 				oracleId: 0,
+				symbolType: 0
 			})
 
 			await expect(context.accountFacet.connect(context.signers.partyB1).proposeToDeactivateInstantActionMode()).to.be.revertedWith(
@@ -378,6 +380,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 				isActive: true,
 				lossCoverage: 0,
 				oracleId: 0,
+				symbolType: 0
 			})
 
 			await expect(context.accountFacet.connect(context.signers.partyB1).proposeToDeactivateInstantActionMode()).to.be.revertedWith(
@@ -425,6 +428,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 				isActive: true,
 				lossCoverage: 0,
 				oracleId: 0,
+				symbolType: 0
 			})
 		})
 
@@ -460,6 +464,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 				isActive: true,
 				lossCoverage: 0,
 				oracleId: 0,
+				symbolType: 0
 			})
 			await expect(context.accountFacet.connect(user.getSigner()).bindToPartyB(context.signers.partyB2)).to.be.revertedWith(
 				"ControlFacet: Already bound",
@@ -479,6 +484,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 				isActive: true,
 				lossCoverage: 0,
 				oracleId: 0,
+				symbolType: 0
 			})
 		})
 
@@ -531,6 +537,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 				isActive: true,
 				lossCoverage: 0,
 				oracleId: 0,
+				symbolType: 0
 			})
 
 			await context.controlFacet.setUnbindingCooldown(120)
@@ -592,6 +599,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 				isActive: true,
 				lossCoverage: 0,
 				oracleId: 0,
+				symbolType: 0
 			})
 
 			await context.controlFacet.setUnbindingCooldown(120)
