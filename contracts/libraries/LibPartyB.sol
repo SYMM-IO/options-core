@@ -20,6 +20,7 @@ library LibPartyB {
 		Symbol memory symbol = SymbolStorage.layout().symbols[intent.symbolId];
 
 		require(symbol.isValid, "LibPartyB: Symbol is not valid");
+		require(appLayout.partyBConfigs[intent.partyB].symbolType == symbol.symbolType, "LibPartyB: Mismatched symbol type");
 		require(intent.status == IntentStatus.LOCKED || intent.status == IntentStatus.CANCEL_PENDING, "LibPartyB: Invalid state");
 		require(
 			appLayout.liquidationDetails[intent.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
