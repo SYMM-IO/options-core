@@ -26,8 +26,8 @@ library LibPartyB {
 			"LibPartyB: PartyB is liquidated"
 		);
 		require(block.timestamp <= intent.deadline, "LibPartyB: Intent is expired");
-		require(block.timestamp <= intent.expirationTimestamp, "LibPartyB: Requested expiration has been passed");
-		require(intentLayout.activeTradesOf[intent.partyA].length < appLayout.maxTradePerPartyA, "LibPartyB: Too many active trades for partyA");
+		rLibPartyB: Too many active trades for partyAequire(block.timestamp <= intent.expirationTimestamp, "LibPartyB: Requested expiration has been passed");
+		require(intentLayout.activeTradesOf[intent.partyA].length < appLayout.maxTradePerPartyA, "");
 		require(intent.quantity >= quantity && quantity > 0, "LibPartyB: Invalid quantity");
 		require(price <= intent.price, "LibPartyB: Opened price isn't valid");
 

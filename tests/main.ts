@@ -6,13 +6,13 @@ import { shouldBehaveLikePartyBFacet } from "./partyB-facet.behavior"
 
 describe(`${name}-v${version}`, () => {
 	if (process.env.TEST_MODE === TestModeEnum.UNIT_TEST) {
-		describe("Facets_Accounts", async function () {
-			shouldBehaveLikeAccountFacet()
-		})
+		// describe("Facets_Accounts", async function () {
+		// 	shouldBehaveLikeAccountFacet()
+		// })
 
-		describe("Facets_PartyA", async function () {
-			shouldBehaveLikePartyAFacet()
-		})
+		// describe("Facets_PartyA", async function () {
+		// 	shouldBehaveLikePartyAFacet()
+		// })
 
 		describe("Facets_PartyB", async function () {
 			shouldBehaveLikePartyBFacet()

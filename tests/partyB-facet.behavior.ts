@@ -7,6 +7,7 @@ import { openIntentRequestBuilder } from "./models/builders/send-open-intent.bui
 import { PartyB } from "./models/partyB.model"
 import { ethers, network } from "hardhat"
 import { e } from "../utils/e"
+import { ZeroAddress } from "ethers"
 
 export function shouldBehaveLikePartyBFacet(): void {
 	let context: RunContext, user: User, partyB1: PartyB, partyB2: PartyB
@@ -76,7 +77,7 @@ export function shouldBehaveLikePartyBFacet(): void {
 			await expect(context.partyBFacet.lockOpenIntent(1)).to.revertedWith("Accessibility: Should be partyB")
 		})
 
-		it("Should failed when intent status not be PENDING", async () => {
+		it("Should failed when intent status not  PENDING", async () => {
 			//TODO :::
 		})
 
@@ -150,13 +151,87 @@ export function shouldBehaveLikePartyBFacet(): void {
 
 		it("Should lock open intent successfully", async () => {
 			await expect(context.partyBFacet.connect(partyB1.getSigner()).lockOpenIntent(1)).to.not.reverted
-			
+
 			const intent = await context.viewFacet.getOpenIntent(1)
 
 			expect(intent.status).to.equal(1) // IntentStatus.LOCKED
 			expect(intent.partyB).to.equal(partyB1.getSigner())
 
-			// check intentLayout states
+			// TODO ::: check intentLayout states
+		})
+	})
+
+	describe("unlockOpenIntent", async function () {
+		beforeEach(async () => {
+			await context.partyBFacet.connect(partyB1.getSigner()).lockOpenIntent(1)
+		})
+
+		it("Should failed when Global Paused", async () => {
+			await context.controlFacet.pauseGlobal()
+			await expect(context.partyBFacet.unlockOpenIntent(1)).to.revertedWith("Pausable: Global paused")
+		})
+
+		it("Should failed when PartyB action Paused", async () => {
+			await context.controlFacet.pausePartyBActions()
+			await expect(context.partyBFacet.unlockOpenIntent(1)).to.revertedWith("Pausable: PartyB actions paused")
+		})
+
+		it("Should failed when msgSender is not PartyB", async () => {
+			await expect(context.partyBFacet.unlockOpenIntent(1)).to.revertedWith("Accessibility: Should be partyB of Intent")
+		})
+
+		it("Should failed when intent status not LOCKED", async () => {
+			await context.partyAFacet.connect(user.getSigner()).cancelOpenIntent([1])
+			await expect(context.partyBFacet.connect(partyB1.getSigner()).unlockOpenIntent(1)).to.revertedWith("LibPartyB: Invalid state")
+		})
+
+		it("Should failed when PartyB is in the liquidation process", async () => {
+			//TODO :::
+		})
+
+		it("Should change intent status to EXPIRED when deadline reached", async () => {
+			// TODO :::
+			// const newBlock = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 150
+			// await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
+			// expect(await context.partyBFacet.connect(partyB1.getSigner()).unlockOpenIntent(1)).to.not.reverted
+			// const intent = await context.viewFacet.getOpenIntent(1)
+			// expect(intent.status).to.equal(3)
+		})
+
+		it("Should change intent status to PENDING", async () => {
+			expect(await context.partyBFacet.connect(partyB1.getSigner()).unlockOpenIntent(1)).to.not.reverted
+
+			const intent = await context.viewFacet.getOpenIntent(1)
+
+			expect(intent.status).to.equal(0) //IntentStatus.PENDING
+			expect(intent.partyB).to.equal(ZeroAddress)
+		})
+	})
+
+	describe("fillOpenIntent", async function () {
+		beforeEach(async () => {
+			await context.partyBFacet.connect(partyB1.getSigner()).lockOpenIntent(1)
+		})
+
+		it("Should failed when Global Paused", async () => {
+			await context.controlFacet.pauseGlobal()
+			await expect(context.partyBFacet.connect(partyB1.getSigner()).fillOpenIntent(1, 100, 7)).to.revertedWith("Pausable: Global paused")
+		})
+
+		it("Should failed when PartyB action Paused", async () => {
+			await context.controlFacet.pausePartyBActions()
+			await expect(context.partyBFacet.connect(partyB1.getSigner()).fillOpenIntent(1, 100, 7)).to.revertedWith("Pausable: PartyB actions paused")
+		})
+
+		it("Should failed when msgSender is not PartyB", async () => {
+			await expect(context.partyBFacet.connect(partyB1.getSigner()).fillOpenIntent(1, 100, 7)).to.revertedWith(
+				"Accessibility: Should be partyB of Intent",
+			)
+		})
+
+		it("Should failed when partyA suspended", async () => {
+			await context.controlFacet.suspendAddress(user.getSigner(), true)
+			await expect(context.partyBFacet.connect(partyB1.getSigner()).fillOpenIntent(1, 100, 7)).to.revertedWith("PartyBFacet: PartyA is suspended")
 		})
 	})
 }
