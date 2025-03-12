@@ -6,7 +6,7 @@ import { BigNumberish } from "ethers"
 import { setBalance } from "@nomicfoundation/hardhat-network-helpers"
 import { OpenIntent, openIntentRequestBuilder } from "./builders/send-open-intent.builder"
 
-export class User {
+export class PartyA {
 	constructor(private context: RunContext, private signer: SignerWithAddress) {}
 
 	public async setBalances(collateralAmount?: BigNumberish, depositAmount?: BigNumberish) {
@@ -48,5 +48,13 @@ export class User {
 
 	public async sendCancelOpenIntent(ids: string[]) {
 		await runTx(this.context.partyAFacet.connect(this.signer).cancelOpenIntent(ids))
+	}
+
+	public async activateInstantActionMode() {
+		await runTx(this.context.accountFacet.connect(this.signer).activateInstantActionMode())
+	}
+
+	public async deactivateInstantActionMode() {
+		await runTx(this.context.accountFacet.connect(this.signer).deactivateInstantActionMode())
 	}
 }
