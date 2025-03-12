@@ -1,13 +1,14 @@
 import { ethers } from "hardhat"
 
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers"
-import { AccountFacet, ControlFacet, DiamondCutFacet, DiamondLoupeFacet, FakeOracle, FakeStablecoin, ForceActionsFacet, PartyAFacet, ViewFacet } from "../types"
+import { AccountFacet, ControlFacet, DiamondCutFacet, DiamondLoupeFacet, FakeOracle, FakeStablecoin, ForceActionsFacet, PartyAFacet, PartyBFacet, ViewFacet } from "../types"
 
 export class RunContext {
 	accountFacet!: AccountFacet
 	diamondCutFacet!: DiamondCutFacet
 	diamondLoupeFacet!: DiamondLoupeFacet
 	partyAFacet!: PartyAFacet
+	partyBFacet!: PartyBFacet
 	viewFacet!: ViewFacet
 	controlFacet!: ControlFacet
 	forceActionsFacet!: ForceActionsFacet
@@ -46,6 +47,7 @@ export async function createRunContext(diamond: string, collateral: string, orac
 	context.diamondCutFacet = await ethers.getContractAt("DiamondCutFacet", diamond)
 	context.diamondLoupeFacet = await ethers.getContractAt("DiamondLoupeFacet", diamond)
 	context.partyAFacet = await ethers.getContractAt("PartyAFacet", diamond)
+	context.partyBFacet = await ethers.getContractAt("PartyBFacet", diamond)
 	context.viewFacet = await ethers.getContractAt("ViewFacet", diamond)
 	context.controlFacet = await ethers.getContractAt("ControlFacet", diamond)
 	context.forceActionsFacet = await ethers.getContractAt("ForceActionsFacet", diamond)
