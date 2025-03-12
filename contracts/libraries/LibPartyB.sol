@@ -188,11 +188,11 @@ library LibPartyB {
 		OpenIntent storage intent = intentLayout.openIntents[intentId];
 		Symbol storage symbol = SymbolStorage.layout().symbols[intent.symbolId];
 
+		require(intentId <= intentLayout.lastOpenIntentId, "LibPartyB: Invalid intentId");
 		require(intent.status == IntentStatus.PENDING, "LibPartyB: Invalid state");
 		require(block.timestamp <= intent.deadline, "LibPartyB: Intent is expired");
 		require(symbol.isValid, "LibPartyB: Symbol is not valid");
 		require(block.timestamp <= intent.expirationTimestamp, "LibPartyB: Requested expiration has been passed");
-		require(intentId <= intentLayout.lastOpenIntentId, "LibPartyB: Invalid intentId");
 		require(AppStorage.layout().partyBConfigs[partyB].oracleId == symbol.oracleId, "LibPartyB: Oracle not matched");
 
 		bool isValidPartyB;

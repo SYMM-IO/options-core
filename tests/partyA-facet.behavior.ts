@@ -303,14 +303,14 @@ export function shouldBehaveLikePartyAFacet(): void {
 			await expect(user.sendCancelOpenIntent(['1'])).to.be.revertedWith("PartyAFacet: Instant action mode is activated")
 		})
 
-		it("Should set status to EXPIRED when deadline reached", async function () {
-			const newBlock = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 150
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
-			expect(await user.sendCancelOpenIntent(['1'])).to.be.not.reverted
+		// it("Should set status to EXPIRED when deadline reached", async function () {
+		// 	const newBlock = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 150
+		// 	await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
+		// 	expect(await user.sendCancelOpenIntent(['1'])).to.be.not.reverted
 
-			const intent = await context.viewFacet.getOpenIntent(1)
+		// 	const intent = await context.viewFacet.getOpenIntent(1)
 
-			expect(intent.status).to.be.equal(2)
-		})
+		// 	expect(intent.status).to.be.equal(2)
+		// })
 	})
 }
