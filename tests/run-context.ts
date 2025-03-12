@@ -14,11 +14,13 @@ export class RunContext {
 	forceActionsFacet!: ForceActionsFacet
 	signers!: {
 		admin: SignerWithAddress
-		user: SignerWithAddress
-		user2: SignerWithAddress
+		partyA1: SignerWithAddress
+		partyA2: SignerWithAddress
 		feeCollector: SignerWithAddress
 		partyB1: SignerWithAddress
 		partyB2: SignerWithAddress
+		oracle1: SignerWithAddress
+		affiliate1: SignerWithAddress
 		others: SignerWithAddress[]
 	}
 	diamond!: string
@@ -32,12 +34,14 @@ export async function createRunContext(diamond: string, collateral: string, orac
 	const signers: SignerWithAddress[] = await ethers.getSigners()
 	context.signers = {
 		admin: signers[0],
-		user: signers[1],
-		user2: signers[2],
+		partyA1: signers[1],
+		partyA2: signers[2],
 		feeCollector: signers[3],
 		partyB1: signers[4],
 		partyB2: signers[5],
-		others: [signers[6], signers[7]],
+		oracle1:signers[6],
+		affiliate1:signers[7],
+		others: [signers[8], signers[9]],
 	}
 
 	context.diamond = diamond
