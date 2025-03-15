@@ -359,27 +359,27 @@ library LibIntent {
 		return keccak256(abi.encode(SIGN_PREFIX, req.signer, req.intentId, req.deadline, req.salt));
 	}
 
-	function addCounter(bytes memory _data, uint32 _counter) pure internal returns (bytes memory) {
-        bytes4 counterBytes = bytes4(uint32(_counter));
+	function addCounter(bytes memory _data, uint256 _counter) pure internal returns (bytes memory) {
+        bytes32 counterBytes = bytes32(uint256(_counter));
 
         bytes memory dataWithCounter = abi.encodePacked(_data, counterBytes);
 
 		return dataWithCounter;
     }
 
-    function getCounter(bytes memory dataWithCounter) pure internal returns (uint32) {
-        require(dataWithCounter.length >= 4, "Not enough bytes");
-        bytes4 counterBytes;
+    function getCounter(bytes memory dataWithCounter) pure internal returns (uint256) {
+        require(dataWithCounter.length >= 32, "Not enough bytes");
+        bytes32 counterBytes;
         assembly {
-            counterBytes := mload(add(dataWithCounter, sub(dataWithCounter, 4)))
+            counterBytes := mload(add(dataWithCounter, sub(dataWithCounter, 32)))
         }
-        return uint32(counterBytes);
+        return uint256(counterBytes);
     }
 
     function getDataWithoutCounter(bytes memory dataWithCounter) pure internal returns (bytes memory) {
-        require(dataWithCounter.length > 4, "Not enough bytes");
+        require(dataWithCounter.length > 32, "Not enough bytes");
 
-		uint256 dataLength = dataWithCounter.length - 4;
+		uint256 dataLength = dataWithCounter.length - 32;
         bytes memory data = new bytes(dataLength);
 
         for (uint256 i = 0; i < dataLength; i++) {
@@ -390,10 +390,10 @@ library LibIntent {
     }
 
 	function incrementCounter(bytes memory dataWithCounter) pure internal returns (bytes memory) {
-        require(dataWithCounter.length > 4, "Not enough bytes");
+        require(dataWithCounter.length > 32, "Not enough bytes");
 
-        uint32 currentCounter = getCounter(dataWithCounter);
-        uint32 newCounter = currentCounter + 1;
+        uint256 currentCounter = getCounter(dataWithCounter);
+        uint256 newCounter = currentCounter + 1;
 
         bytes memory newData = getDataWithoutCounter(dataWithCounter);
         bytes memory data = addCounter(newData, newCounter);

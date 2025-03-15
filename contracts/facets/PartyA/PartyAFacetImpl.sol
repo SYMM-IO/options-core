@@ -72,7 +72,7 @@ library PartyAFacetImpl {
 			);
 		}
 
-		uint32 counter = 0; // Initialize counter
+		uint256 counter = 0; // Initialize counter
 		bytes memory userDataWithCounter = LibIntent.addCounter(userData, counter);
 
 		intentId = ++intentLayout.lastOpenIntentId;
