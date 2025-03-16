@@ -51,4 +51,5 @@ interface IControlFacet is IControlEvents {
 		bool _isStableCoin,
 		uint256 _tradingFee
 	) external;
+	function setMaxConnectedPartyBs(uint256 _max) external;
 }

@@ -17,8 +17,20 @@ export class PartyB {
 		if (depositAmount) await runTx(this.context.accountFacet.connect(this.signer).deposit(await this.context.collateral.getAddress(), depositAmount))
 	}
 
-	public async setNativeBalance(amount: bigint) {
+	public async setNativeBalance(amount: BigNumberish) {
 		await setBalance(this.signer.address, amount)
+	}
+
+	public async lockOpenIntent(id: BigNumberish) {
+		await runTx(this.context.partyBFacet.connect(this.signer).lockOpenIntent(id))
+	}
+
+	public async unlockOpenIntent(id: BigNumberish) {
+		await runTx(this.context.partyBFacet.connect(this.signer).unlockOpenIntent(id))
+	}
+
+	public async fillOpenIntent(id: BigNumberish, quantity: BigNumberish, price: BigNumberish) {
+		await runTx(this.context.partyBFacet.connect(this.signer).fillOpenIntent(id, quantity, price))
 	}
 
 	public getSigner() {
