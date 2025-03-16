@@ -137,6 +137,25 @@ struct SignedSimpleActionIntent {
 	uint256 salt;
 }
 
+enum TransferIntentStatus {
+	PENDING,
+	LOCKED,
+	CANCEL_PENDING,
+	CANCELED,
+	FINALIZED
+}
+
+struct TransferIntent {
+	uint256 id;
+	uint256 tradeId;
+	uint256 deadline;
+	address sender;
+	address[] whitelist;
+	address receiver;
+	uint256 proposedPrice;
+	TransferIntentStatus status;
+}
+
 library IntentStorage {
 	bytes32 internal constant INTENT_STORAGE_SLOT = keccak256("diamond.standard.storage.intent");
 
@@ -164,6 +183,9 @@ library IntentStorage {
 		/////////////////////////////////////////////////
 		mapping(bytes32 => bool) isSigUsed;
 		address signatureVerifier;
+		/////////////////////////////////////////////////
+		mapping(uint256 => TransferIntent) transferIntents;
+		uint256 lastTransferIntentId;
 	}
 
 	function layout() internal pure returns (Layout storage l) {
