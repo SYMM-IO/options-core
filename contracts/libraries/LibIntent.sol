@@ -49,9 +49,6 @@ library LibIntent {
 		intentLayout.activeOpenIntentsOf[intent.partyA].push(intent.id);
 		intentLayout.activeOpenIntentsCount[intent.partyA] += 1;
 		intentLayout.partyAOpenIntentsIndex[intent.id] = intentLayout.activeOpenIntentsOf[intent.partyA].length - 1;
-		if (intentLayout.activeOpenIntentsCount[intent.partyA] == 1) {
-			AccountStorage.layout().balances[intent.partyA][symbol.collateral].addPartyB(intent.partyB, block.timestamp);
-		}
 	}
 
 	/**
@@ -120,6 +117,8 @@ library LibIntent {
 
 		intentLayout.partyATradesIndex[trade.id] = intentLayout.activeTradesOf[trade.partyA].length - 1;
 		intentLayout.partyBTradesIndex[trade.id] = intentLayout.activeTradesOfPartyB[trade.partyB][symbol.collateral].length - 1;
+
+		AccountStorage.layout().balances[trade.partyA][symbol.collateral].addPartyB(trade.partyB, block.timestamp);
 	}
 
 	/**

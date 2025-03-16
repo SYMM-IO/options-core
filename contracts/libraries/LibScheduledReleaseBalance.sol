@@ -63,6 +63,9 @@ library ScheduledReleaseBalanceOps {
 	// @notice Adds a partyB to the scheduled release entries without adding funds
 	// @dev Initializes entry with default release interval if not already present
 	function addPartyB(ScheduledReleaseBalance storage self, address partyB, uint256 timestamp) internal returns (ScheduledReleaseBalance storage) {
+		// Check if partyB is already added
+		if (self.partyBAddresses.length > 0 && self.partyBAddresses[self.partyBIndexes[partyB]] == partyB) return self;
+
 		ScheduledReleaseEntry storage entry = self.partyBSchedules[partyB];
 
 		require(self.partyBAddresses.length < AccountStorage.layout().maxConnectedPartyBs, "StagedReleaseBalance: Max partyB connections reached");
