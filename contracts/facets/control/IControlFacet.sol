@@ -52,4 +52,5 @@ interface IControlFacet is IControlEvents {
 		uint256 _tradingFee,
 		uint256 _symbolType
 	) external;
+	function setMaxConnectedPartyBs(uint256 _max) external;
 }
