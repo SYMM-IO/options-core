@@ -266,4 +266,9 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		s.lastSymbolId = s.lastSymbolId;
 		emit SymbolAdded(s.lastSymbolId, _name, _optionType, _collateral);
 	}
+
+	function setPriceOracleAddress(address _oracle) external onlyRole(LibAccessibility.SETTER_ROLE) {
+		AppStorage.layout().priceOracleAddress = _oracle;
+		emit PriceOracleAddressUpdated(_oracle);
+	}
 }
