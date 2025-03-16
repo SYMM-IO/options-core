@@ -4,159 +4,117 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
+import "../../interfaces/ISignatureVerifier.sol";
 import "../../libraries/LibIntent.sol";
-import "../../libraries/LibPartyB.sol";
 import "../../libraries/LibMuon.sol";
+import "../../libraries/LibPartyB.sol";
+import "../../libraries/LibTransferIntent.sol";
+import "../../storages/AccountStorage.sol";
 import "../../storages/AppStorage.sol";
 import "../../storages/IntentStorage.sol";
-import "../../storages/AccountStorage.sol";
-import "../../storages/SymbolStorage.sol";
-import "../../interfaces/ISignatureVerifier.sol";
 
 library InterdealerFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
+	using TransferIntentOps for TransferIntent;
 
-	function interdealerIntent(uint256 tradeId, address[] memory partyBWhitelist) internal {
-		
+	function sendTransferIntent(
+		uint256 tradeId,
+		address[] memory partyBWhitelist,
+		uint256 proposedPrice,
+		uint256 deadline
+	) internal returns (uint256 intentId) {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+
+		intentId = ++intentLayout.lastTransferIntentId;
+		TransferIntent memory intent = TransferIntent({
+			id: intentId,
+			tradeId: tradeId,
+			deadline: deadline,
+			sender: msg.sender,
+			whitelist: partyBWhitelist,
+			receiver: address(0),
+			proposedPrice: proposedPrice,
+			status: TransferIntentStatus.PENDING
+		});
+		intentLayout.transferIntents[intentId] = intent;
+
+		accountLayout.balances[intent.sender][intent.getSymbol().collateral].sub(intent.getPremium());
 	}
-	// function acceptCancelOpenIntent(uint256 intentId) internal {
-	// 	AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
-	// 	OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
-	// 	Symbol memory symbol = SymbolStorage.layout().symbols[intent.symbolId];
-	// 	require(intent.status == IntentStatus.CANCEL_PENDING, "PartyBFacet: Invalid state");
-	// 	require(
-	// 		AppStorage.layout().liquidationDetails[intent.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
-	// 		"AccountFacet: PartyB is in the liquidation process"
-	// 	);
-	// 	intent.statusModifyTimestamp = block.timestamp;
-	// 	intent.status = IntentStatus.CANCELED;
-	// 	accountLayout.lockedBalances[intent.partyA][symbol.collateral] -= LibIntent.getPremiumOfOpenIntent(intentId);
+	function cancelTransferIntent(uint256 intentId) internal {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
-	// 	// send trading Fee back to partyA
-	// 	uint256 tradingFee = LibIntent.getTradingFee(intentId);
-	// 	uint256 affiliateFee = LibIntent.getAffiliateFee(intentId);
-	// 	if (intent.partyBsWhiteList.length == 1) {
-	// 		accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].scheduledAdd(
-	// 			intent.partyBsWhiteList[0],
-	// 			tradingFee + affiliateFee,
-	// 			block.timestamp
-	// 		);
-	// 	} else {
-	// 		accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].instantAdd(intent.tradingFee.feeToken, tradingFee + affiliateFee);
-	// 	}
+		TransferIntent storage intent = intentLayout.transferIntents[intentId];
 
-	// 	LibIntent.removeFromPartyAOpenIntents(intentId);
-	// 	LibIntent.removeFromPartyBOpenIntents(intentId);
-	// }
+		if (intent.status == TransferIntentStatus.LOCKED) {
+			intent.status = TransferIntentStatus.CANCEL_PENDING;
+		} else if (intent.status == TransferIntentStatus.PENDING) {
+			intent.status = TransferIntentStatus.CANCELED;
+			address collateral = intent.getSymbol().collateral;
+			accountLayout.balances[intent.sender][collateral].instantAdd(collateral, intent.getPremium());
+		} else {
+			revert("InterdealerFacet: Invalid state");
+		}
+	}
 
-	// function acceptCancelCloseIntent(uint256 intentId) internal {
-	// 	IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-	// 	CloseIntent storage intent = intentLayout.closeIntents[intentId];
-	// 	Trade storage trade = IntentStorage.layout().trades[intent.tradeId];
+	function lockTransferIntent(uint256 intentId) internal {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		TransferIntent storage intent = intentLayout.transferIntents[intentId];
 
-	// 	require(intent.status == IntentStatus.CANCEL_PENDING, "LibIntent: Invalid state");
-	// 	require(
-	// 		AppStorage.layout().liquidationDetails[trade.partyB][SymbolStorage.layout().symbols[trade.symbolId].collateral].status ==
-	// 			LiquidationStatus.SOLVENT,
-	// 		"AccountFacet: PartyB is in the liquidation process"
-	// 	);
+		require(intent.status == TransferIntentStatus.PENDING, "InterdealerFacet: Invalid state");
 
-	// 	intent.statusModifyTimestamp = block.timestamp;
-	// 	intent.status = IntentStatus.CANCELED;
-	// 	LibIntent.removeFromActiveCloseIntents(intentId);
-	// }
+		intent.status = TransferIntentStatus.LOCKED;
+		intent.receiver = msg.sender;
+	}
 
-	// function fillOpenIntent(uint256 intentId, uint256 quantity, uint256 price) internal returns (uint256 tradeId) {
-	// 	AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-	// 	AppStorage.Layout storage appLayout = AppStorage.layout();
+	function unlockTransferIntent(uint256 intentId) internal {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		TransferIntent storage intent = intentLayout.transferIntents[intentId];
 
-	// 	OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
+		require(intent.status == TransferIntentStatus.LOCKED, "InterdealerFacet: Invalid state");
+		require(intent.receiver == msg.sender, "InterdealerFacet: Intent is locked by another partyB");
 
-	// 	require(accountLayout.suspendedAddresses[intent.partyA] == false, "PartyBFacet: PartyA is suspended");
-	// 	require(!accountLayout.suspendedAddresses[msg.sender], "PartyBFacet: Sender is Suspended");
-	// 	require(!appLayout.partyBEmergencyStatus[intent.partyB], "PartyBFacet: PartyB is in emergency mode");
-	// 	require(!appLayout.emergencyMode, "PartyBFacet: System is in emergency mode");
+		intent.status = TransferIntentStatus.PENDING;
+		intent.receiver = address(0);
+	}
 
-	// 	tradeId = LibPartyB.fillOpenIntent(intentId, quantity, price);
-	// }
+	function acceptCancelTransferIntent(uint256 intentId) internal {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
-	// function fillCloseIntent(uint256 intentId, uint256 quantity, uint256 price) internal {
-	// 	LibPartyB.fillCloseIntent(intentId, quantity, price);
-	// }
+		TransferIntent storage intent = intentLayout.transferIntents[intentId];
 
-	// function expireTrade(uint256 tradeId, SettlementPriceSig memory sig) internal {
-	// 	Trade storage trade = IntentStorage.layout().trades[tradeId];
-	// 	Symbol storage symbol = SymbolStorage.layout().symbols[trade.symbolId];
-	// 	LibMuon.verifySettlementPriceSig(sig);
+		require(intent.status == TransferIntentStatus.CANCEL_PENDING, "InterdealerFacet: Invalid state");
+		require(intent.receiver == msg.sender, "InterdealerFacet: Intent is locked by another partyB");
 
-	// 	require(
-	// 		AppStorage.layout().liquidationDetails[trade.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
-	// 		"PartyBFacet: PartyB is liquidated"
-	// 	);
-	// 	require(sig.symbolId == trade.symbolId, "PartyBFacet: Invalid symbolId");
-	// 	require(trade.status == TradeStatus.OPENED, "PartyBFacet: Invalid trade state");
-	// 	require(block.timestamp > trade.expirationTimestamp, "PartyBFacet: Trade isn't expired");
-	// 	if (symbol.optionType == OptionType.PUT) {
-	// 		require(sig.settlementPrice >= trade.strikePrice, "PartyBFacet: Invalid price");
-	// 	} else {
-	// 		require(sig.settlementPrice <= trade.strikePrice, "PartyBFacet: Invalid price");
-	// 	}
-	// 	if (msg.sender != trade.partyB) {
-	// 		require(
-	// 			trade.expirationTimestamp + AppStorage.layout().ownerExclusiveWindow <= block.timestamp,
-	// 			"PartyBFacet: Third parties shoud wait for owner exclusive window"
-	// 		);
-	// 	}
-	// 	trade.settledPrice = sig.settlementPrice;
+		address collateral = intent.getSymbol().collateral;
+		accountLayout.balances[intent.sender][collateral].instantAdd(collateral, intent.getPremium());
 
-	// 	LibIntent.closeTrade(tradeId, TradeStatus.EXPIRED, IntentStatus.CANCELED);
-	// }
+		intent.status = TransferIntentStatus.CANCELED;
+	}
 
-	// function exerciseTrade(uint256 tradeId, SettlementPriceSig memory sig) internal {
-	// 	AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-	// 	Trade storage trade = IntentStorage.layout().trades[tradeId];
-	// 	Symbol storage symbol = SymbolStorage.layout().symbols[trade.symbolId];
-	// 	LibMuon.verifySettlementPriceSig(sig);
+	function finalizeTransferIntent(uint256 intentId, uint256 fillPrice, bytes calldata clearingHouseSignature) internal {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		TransferIntent storage intent = intentLayout.transferIntents[intentId];
 
-	// 	require(sig.symbolId == trade.symbolId, "PartyBFacet: Invalid symbolId");
-	// 	require(trade.status == TradeStatus.OPENED, "PartyBFacet: Invalid trade state");
-	// 	require(block.timestamp > trade.expirationTimestamp, "PartyBFacet: Trade isn't expired");
-	// 	require(
-	// 		AppStorage.layout().liquidationDetails[trade.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
-	// 		"PartyBFacet: PartyB is liquidated"
-	// 	);
-	// 	if (msg.sender != trade.partyB) {
-	// 		require(
-	// 			trade.expirationTimestamp + AppStorage.layout().ownerExclusiveWindow <= block.timestamp,
-	// 			"PartyBFacet: Third parties shoud wait for owner exclusive window"
-	// 		);
-	// 	}
+		require(intent.status == TransferIntentStatus.LOCKED, "InterdealerFacet: Invalid state");
+		require(intent.receiver == msg.sender, "InterdealerFacet: Intent is locked by another partyB");
 
-	// 	uint256 pnl;
-	// 	if (symbol.optionType == OptionType.PUT) {
-	// 		require(sig.settlementPrice < trade.strikePrice, "PartyBFacet: Invalid price");
-	// 		pnl = ((trade.quantity - trade.closedAmountBeforeExpiration) * (trade.strikePrice - sig.settlementPrice)) / 1e18;
-	// 	} else {
-	// 		require(sig.settlementPrice > trade.strikePrice, "PartyBFacet: Invalid price");
-	// 		pnl = ((trade.quantity - trade.closedAmountBeforeExpiration) * (sig.settlementPrice - trade.strikePrice)) / 1e18;
-	// 	}
-	// 	uint256 exerciseFee;
-	// 	{
-	// 		uint256 cap = (trade.exerciseFee.cap * pnl) / 1e18;
-	// 		uint256 fee = (trade.exerciseFee.rate * sig.settlementPrice * (trade.quantity - trade.closedAmountBeforeExpiration)) / 1e36;
-	// 		exerciseFee = cap < fee ? cap : fee;
-	// 	}
-	// 	uint256 amountToTransfer = pnl - exerciseFee;
-	// 	if (!symbol.isStableCoin) {
-	// 		amountToTransfer = (amountToTransfer * 1e18) / sig.settlementPrice;
-	// 	}
+		uint256 proposedPremium = intent.getPremium();
+		uint256 filledPremium = intent.getPremiumWithPrice(fillPrice);
 
-	// 	trade.settledPrice = sig.settlementPrice;
+		address collateral = intent.getSymbol().collateral;
+		accountLayout.balances[intent.receiver][collateral].instantAdd(collateral, filledPremium);
+		if (proposedPremium - filledPremium > 0) {
+			accountLayout.balances[intent.sender][collateral].instantAdd(collateral, proposedPremium - filledPremium);
+		}
 
-	// 	accountLayout.balances[trade.partyA][symbol.collateral].instantAdd(symbol.collateral, amountToTransfer); //TODO: instantAdd or add?
-	// 	accountLayout.balances[trade.partyB][symbol.collateral].sub(amountToTransfer);
+		intent.status = TransferIntentStatus.FINALIZED;
 
-	// 	LibIntent.closeTrade(tradeId, TradeStatus.EXERCISED, IntentStatus.CANCELED);
-	// }
+		Trade storage trade = intent.getTrade();
+		trade.partyB = intent.receiver;
+	}
 }

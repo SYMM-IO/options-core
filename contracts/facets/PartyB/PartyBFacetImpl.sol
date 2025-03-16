@@ -102,7 +102,7 @@ library PartyBFacetImpl {
 		if (msg.sender != trade.partyB) {
 			require(
 				trade.expirationTimestamp + AppStorage.layout().ownerExclusiveWindow <= block.timestamp,
-				"PartyBFacet: Third parties shoud wait for owner exclusive window"
+				"PartyBFacet: Third parties should wait for owner exclusive window"
 			);
 		}
 		trade.settledPrice = sig.settlementPrice;
