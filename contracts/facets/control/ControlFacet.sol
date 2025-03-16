@@ -246,7 +246,8 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		uint256 _oracleId,
 		address _collateral,
 		bool _isStableCoin,
-		uint256 _tradingFee
+		uint256 _tradingFee,
+		uint256 _symbolType
 	) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		require(_collateral != address(0), "ControlFacet: zero address");
 		SymbolStorage.Layout storage s = SymbolStorage.layout();
@@ -261,7 +262,8 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 			oracleId: _oracleId,
 			collateral: _collateral,
 			isStableCoin: _isStableCoin,
-			tradingFee: _tradingFee
+			tradingFee: _tradingFee,
+			symbolType: _symbolType
 		});
 		s.lastSymbolId = s.lastSymbolId;
 		emit SymbolAdded(s.lastSymbolId, _name, _optionType, _collateral);
