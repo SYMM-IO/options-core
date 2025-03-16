@@ -30,10 +30,7 @@ library AccountFacetImpl {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		require(appLayout.whiteListedCollateral[collateral], "AccountFacet: Collateral is not whitelisted");
-		require(
-			accountLayout.balances[msg.sender][collateral].available - accountLayout.lockedBalances[msg.sender][collateral] >= amount,
-			"AccountFacet: Insufficient balance"
-		);
+		require(accountLayout.balances[msg.sender][collateral].available >= amount, "AccountFacet: Insufficient balance");
 		accountLayout.balances[msg.sender][collateral].sub(amount);
 		accountLayout.balances[user][collateral].instantAdd(collateral, amount);
 	}
@@ -43,10 +40,7 @@ library AccountFacetImpl {
 		require(AppStorage.layout().whiteListedCollateral[collateral], "AccountFacet: Collateral is not whitelisted");
 		require(to != address(0), "AccountFacet: Zero address");
 		accountLayout.balances[msg.sender][collateral].syncAll(block.timestamp);
-		require(
-			accountLayout.balances[msg.sender][collateral].available - accountLayout.lockedBalances[msg.sender][collateral] >= amount,
-			"AccountFacet: Insufficient balance"
-		);
+		require(accountLayout.balances[msg.sender][collateral].available >= amount, "AccountFacet: Insufficient balance");
 		require(!accountLayout.instantActionsMode[msg.sender], "AccountFacet: Instant action mode is activated");
 		require(
 			AppStorage.layout().liquidationDetails[msg.sender][collateral].status == LiquidationStatus.SOLVENT,

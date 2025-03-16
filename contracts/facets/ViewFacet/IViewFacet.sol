@@ -22,12 +22,10 @@ interface IViewFacet {
 	// Account
 	function balanceOf(address user, address collateral) external view returns (uint256);
 
-	function lockedBalancesOf(address user, address collateral) external view returns (uint256);
-
 	function partyAStats(
 		address partyA,
 		address collateral
-	) external view returns (bool, uint256, uint256, uint256[] memory, uint256[] memory, uint256[] memory);
+	) external view returns (bool, uint256, uint256[] memory, uint256[] memory, uint256[] memory);
 
 	function getWithdraw(uint256 id) external view returns (Withdraw memory);
 

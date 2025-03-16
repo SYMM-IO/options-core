@@ -53,6 +53,8 @@ library LibPartyB {
 			quantity: quantity,
 			strikePrice: intent.strikePrice,
 			expirationTimestamp: intent.expirationTimestamp,
+			penalty: (intent.penalty * quantity) / intent.quantity,
+			penaltyParticipants: new address[](1),
 			settledPrice: 0,
 			exerciseFee: intent.exerciseFee,
 			partyA: intent.partyA,
@@ -66,14 +68,13 @@ library LibPartyB {
 			statusModifyTimestamp: block.timestamp
 		});
 
+		trade.penaltyParticipants[0] = intent.partyB;
 		intent.tradeId = tradeId;
 		intent.status = IntentStatus.FILLED;
 		intent.statusModifyTimestamp = block.timestamp;
 
 		LibIntent.removeFromPartyAOpenIntents(intentId);
 		LibIntent.removeFromPartyBOpenIntents(intentId);
-
-		accountLayout.lockedBalances[intent.partyA][symbol.collateral] -= LibIntent.getPremiumOfOpenIntent(intentId);
 
 		// partially fill
 		if (intent.quantity > quantity) {
@@ -99,6 +100,7 @@ library LibPartyB {
 					quantity: intent.quantity - quantity,
 					strikePrice: intent.strikePrice,
 					expirationTimestamp: intent.expirationTimestamp,
+					penalty: intent.penalty - trade.penalty,
 					exerciseFee: intent.exerciseFee,
 					partyA: intent.partyA,
 					partyB: address(0),
@@ -121,6 +123,7 @@ library LibPartyB {
 					quantity: intent.quantity - quantity,
 					strikePrice: intent.strikePrice,
 					expirationTimestamp: intent.expirationTimestamp,
+					penalty: intent.penalty - trade.penalty,
 					exerciseFee: intent.exerciseFee,
 					partyA: intent.partyA,
 					partyB: address(0),
@@ -155,14 +158,13 @@ library LibPartyB {
 					accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(symbol.collateral, tradingFee + affiliateFee);
 				}
 			} else {
-				accountLayout.lockedBalances[intent.partyA][symbol.collateral] += LibIntent.getPremiumOfOpenIntent(newIntent.id);
+				accountLayout.balances[intent.partyA][symbol.collateral].sub(LibIntent.getPremiumOfOpenIntent(newIntent.id));
 			}
 			intent.quantity = quantity;
 		}
 		LibIntent.addToActiveTrades(tradeId);
 		uint256 premium = LibIntent.getPremiumOfOpenIntent(intentId);
 		accountLayout.balances[trade.partyA][symbol.collateral].syncAll(block.timestamp);
-		accountLayout.balances[trade.partyA][symbol.collateral].subForPartyB(trade.partyB, premium);
 		accountLayout.balances[trade.partyB][symbol.collateral].instantAdd(symbol.collateral, premium);
 	}
 

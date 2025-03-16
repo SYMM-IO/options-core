@@ -74,6 +74,7 @@ contract PartyBFacet is Accessibility, Pausable, IPartyBFacet {
 					newIntent.quantity,
 					newIntent.strikePrice,
 					newIntent.expirationTimestamp,
+					newIntent.penalty,
 					newIntent.exerciseFee,
 					newIntent.tradingFee,
 					newIntent.deadline

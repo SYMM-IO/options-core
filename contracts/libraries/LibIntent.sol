@@ -220,7 +220,7 @@ library LibIntent {
 			"LibIntent: Invalid state"
 		);
 		intent.statusModifyTimestamp = block.timestamp;
-		accountLayout.lockedBalances[intent.partyA][symbol.collateral] -= getPremiumOfOpenIntent(intentId);
+		accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(symbol.collateral, getPremiumOfOpenIntent(intentId));
 
 		// send trading Fee back to partyA
 		uint256 tradingFee = getTradingFee(intent.id);
@@ -282,6 +282,7 @@ library LibIntent {
 					req.quantity,
 					req.strikePrice,
 					req.expirationTimestamp,
+					req.penalty,
 					req.exerciseFee.rate,
 					req.exerciseFee.cap,
 					req.deadline,
@@ -358,44 +359,44 @@ library LibIntent {
 		return keccak256(abi.encode(SIGN_PREFIX, req.signer, req.intentId, req.deadline, req.salt));
 	}
 
-	function addCounter(bytes memory _data, uint256 _counter) pure internal returns (bytes memory) {
-        bytes32 counterBytes = bytes32(uint256(_counter));
+	function addCounter(bytes memory _data, uint256 _counter) internal pure returns (bytes memory) {
+		bytes32 counterBytes = bytes32(uint256(_counter));
 
-        bytes memory dataWithCounter = abi.encodePacked(_data, counterBytes);
+		bytes memory dataWithCounter = abi.encodePacked(_data, counterBytes);
 
 		return dataWithCounter;
-    }
+	}
 
-    function getCounter(bytes memory dataWithCounter) pure internal returns (uint256) {
-        require(dataWithCounter.length >= 32, "Not enough bytes");
-        bytes32 counterBytes;
-        assembly {
-            counterBytes := mload(add(dataWithCounter, sub(dataWithCounter, 32)))
-        }
-        return uint256(counterBytes);
-    }
+	function getCounter(bytes memory dataWithCounter) internal pure returns (uint256) {
+		require(dataWithCounter.length >= 32, "Not enough bytes");
+		bytes32 counterBytes;
+		assembly {
+			counterBytes := mload(add(dataWithCounter, sub(dataWithCounter, 32)))
+		}
+		return uint256(counterBytes);
+	}
 
-    function getDataWithoutCounter(bytes memory dataWithCounter) pure internal returns (bytes memory) {
-        require(dataWithCounter.length > 32, "Not enough bytes");
+	function getDataWithoutCounter(bytes memory dataWithCounter) internal pure returns (bytes memory) {
+		require(dataWithCounter.length > 32, "Not enough bytes");
 
 		uint256 dataLength = dataWithCounter.length - 32;
-        bytes memory data = new bytes(dataLength);
+		bytes memory data = new bytes(dataLength);
 
-        for (uint256 i = 0; i < dataLength; i++) {
-            data[i] = dataWithCounter[i];
-        }
+		for (uint256 i = 0; i < dataLength; i++) {
+			data[i] = dataWithCounter[i];
+		}
 
-        return data;
-    }
-
-	function incrementCounter(bytes memory dataWithCounter) pure internal returns (bytes memory) {
-        require(dataWithCounter.length > 32, "Not enough bytes");
-
-        uint256 currentCounter = getCounter(dataWithCounter);
-        uint256 newCounter = currentCounter + 1;
-
-        bytes memory newData = getDataWithoutCounter(dataWithCounter);
-        bytes memory data = addCounter(newData, newCounter);
 		return data;
-    }
+	}
+
+	function incrementCounter(bytes memory dataWithCounter) internal pure returns (bytes memory) {
+		require(dataWithCounter.length > 32, "Not enough bytes");
+
+		uint256 currentCounter = getCounter(dataWithCounter);
+		uint256 newCounter = currentCounter + 1;
+
+		bytes memory newData = getDataWithoutCounter(dataWithCounter);
+		bytes memory data = addCounter(newData, newCounter);
+		return data;
+	}
 }
