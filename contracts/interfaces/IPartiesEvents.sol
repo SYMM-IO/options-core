@@ -16,6 +16,7 @@ interface IPartiesEvents {
 		uint256 quantity,
 		uint256 strikePrice,
 		uint256 expirationTimestamp,
+		uint256 penalty,
 		ExerciseFee exerciseFee,
 		TradingFee tradingFee,
 		uint256 deadline

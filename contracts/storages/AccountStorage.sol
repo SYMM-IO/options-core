@@ -44,7 +44,6 @@ library AccountStorage {
 
 	struct Layout {
 		mapping(address => mapping(address => ScheduledReleaseBalance)) balances; // user => collateral => balance
-		mapping(address => mapping(address => uint256)) lockedBalances; // user => collateral => lockedBalance
 		mapping(address => uint256) partyBReleaseIntervals;
 		uint256 maxConnectedPartyBs;
 		/////////////////////////////////////////////////////////

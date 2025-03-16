@@ -20,10 +20,7 @@ library BridgeFacetImpl {
 		require(bridge != msg.sender, "BridgeFacet: Bridge and sender can't be the same");
 
 		uint256 amountWith18Decimals = (amount * 1e18) / (10 ** IERC20Metadata(collateral).decimals());
-		require(
-			accountLayout.balances[msg.sender][collateral].available - accountLayout.lockedBalances[msg.sender][collateral] >= amount,
-			"BridgeFacet: Insufficient balance"
-		);
+		require(accountLayout.balances[msg.sender][collateral].available >= amount, "BridgeFacet: Insufficient balance");
 
 		currentId = ++accountLayout.lastBridgeId;
 		BridgeTransaction memory bridgeTransaction = BridgeTransaction({

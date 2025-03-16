@@ -40,6 +40,8 @@ struct Trade {
 	uint256 quantity;
 	uint256 strikePrice;
 	uint256 expirationTimestamp;
+	uint256 penalty;
+	address[] penaltyParticipants;
 	uint256 settledPrice;
 	ExerciseFee exerciseFee;
 	address partyA;
@@ -62,6 +64,7 @@ struct OpenIntent {
 	uint256 quantity;
 	uint256 strikePrice;
 	uint256 expirationTimestamp;
+	uint256 penalty;
 	ExerciseFee exerciseFee;
 	address partyA;
 	address partyB;
@@ -95,6 +98,7 @@ struct SignedOpenIntent {
 	uint256 quantity;
 	uint256 strikePrice;
 	uint256 expirationTimestamp;
+	uint256 penalty;
 	ExerciseFee exerciseFee;
 	uint256 deadline;
 	address affiliate;
