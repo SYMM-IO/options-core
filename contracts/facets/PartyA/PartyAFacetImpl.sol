@@ -21,6 +21,7 @@ library PartyAFacetImpl {
 		uint256 quantity,
 		uint256 strikePrice,
 		uint256 expirationTimestamp,
+		uint256 penalty,
 		ExerciseFee memory exerciseFee,
 		uint256 deadline,
 		address feeToken,
@@ -85,6 +86,7 @@ library PartyAFacetImpl {
 			quantity: quantity,
 			strikePrice: strikePrice,
 			expirationTimestamp: expirationTimestamp,
+			penalty: penalty,
 			exerciseFee: exerciseFee,
 			partyA: msg.sender,
 			partyB: address(0),
@@ -102,15 +104,15 @@ library PartyAFacetImpl {
 		intentLayout.openIntentsOf[msg.sender].push(intent.id);
 		LibIntent.addToPartyAOpenIntents(intent.id);
 
-		accountLayout.lockedBalances[msg.sender][symbol.collateral] += LibIntent.getPremiumOfOpenIntent(intentId);
-
 		uint256 tradingFee = LibIntent.getTradingFee(intentId);
 		uint256 affiliateFee = LibIntent.getAffiliateFee(intentId);
 		accountLayout.balances[msg.sender][feeToken].syncAll(block.timestamp);
 		if (partyBsWhiteList.length == 1) {
 			accountLayout.balances[msg.sender][feeToken].subForPartyB(partyBsWhiteList[0], tradingFee + affiliateFee);
+			accountLayout.balances[msg.sender][symbol.collateral].subForPartyB(partyBsWhiteList[0], LibIntent.getPremiumOfOpenIntent(intentId));
 		} else {
 			accountLayout.balances[msg.sender][feeToken].sub(tradingFee + affiliateFee);
+			accountLayout.balances[msg.sender][symbol.collateral].sub(LibIntent.getPremiumOfOpenIntent(intentId));
 		}
 	}
 
@@ -139,7 +141,7 @@ library PartyAFacetImpl {
 			} else {
 				accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].instantAdd(intent.tradingFee.feeToken, tradingFee + affiliateFee);
 			}
-			accountLayout.lockedBalances[intent.partyA][symbol.collateral] -= LibIntent.getPremiumOfOpenIntent(intentId);
+			accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(symbol.collateral, LibIntent.getPremiumOfOpenIntent(intentId));
 			LibIntent.removeFromPartyAOpenIntents(intentId);
 			result = IntentStatus.CANCELED;
 		} else {
