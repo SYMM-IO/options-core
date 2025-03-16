@@ -22,7 +22,7 @@ contract InterdealerFacet is Accessibility, Pausable, IInterdealerFacet {
 	}
 
 	function lockTransferIntent(uint256 intentId) external {
-		InterdealerFacetImpl.lockTransferIntent(intentId, msg.sender);
+		InterdealerFacetImpl.lockTransferIntent(intentId);
 		emit LockTransferIntent(intentId, msg.sender);
 	}
 
@@ -32,12 +32,12 @@ contract InterdealerFacet is Accessibility, Pausable, IInterdealerFacet {
 	}
 
 	function acceptCancelTransferIntent(uint256 intentId) external {
-		InterdealerFacetImpl.acceptCancelTransferIntent(intentId, msg.sender);
+		InterdealerFacetImpl.acceptCancelTransferIntent(intentId);
 		emit AcceptCancelTransferIntent(intentId, msg.sender);
 	}
 
-	function FinalizeTransferIntent(uint256 intentId) external {
-		InterdealerFacetImpl.finalizeTransferIntent(intentId, msg.sender);
-		emit FinalizeTransferIntent(intentId, msg.sender);
+	function finalizeTransferIntent(uint256 intentId, uint256 fillPrice, bytes calldata clearingHouseSignature) external {
+		InterdealerFacetImpl.finalizeTransferIntent(intentId, fillPrice, clearingHouseSignature);
+		emit FinalizeTransferIntent(intentId, fillPrice, msg.sender, clearingHouseSignature);
 	}
 }

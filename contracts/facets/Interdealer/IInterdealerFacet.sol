@@ -18,5 +18,5 @@ interface IInterdealerFacet is IInterdealerEvents {
 
 	function acceptCancelTransferIntent(uint256 intentId) external;
 
-	function FinalizeTransferIntent(uint256 intentId) external;
+	function finalizeTransferIntent(uint256 intentId, uint256 fillPrice, bytes calldata clearingHouseSignature) external;
 }
