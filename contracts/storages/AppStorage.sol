@@ -53,6 +53,7 @@ struct PartyBConfig {
 	bool isActive;
 	uint256 lossCoverage;
 	uint256 oracleId;
+	uint256 symbolType;
 }
 
 enum LiquidationStatus {
@@ -102,6 +103,8 @@ library AppStorage {
 		///////////////////////////////////
 		uint256 settlementPriceSigValidTime;
 		uint256 liquidationSigValidTime;
+		///////////////////////////////////
+		uint16 version;
 		///////////////////////////////////
 		mapping(address => mapping(address => LiquidationDetail)) liquidationDetails; // partyBAddress => collateral => detail
 		mapping(address => mapping(address => mapping(address => uint256))) debtsToPartyAs; // partyB => collatearl => partyA => amount
