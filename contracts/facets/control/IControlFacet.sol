@@ -49,7 +49,8 @@ interface IControlFacet is IControlEvents {
 		uint256 _oracleId,
 		address _collateral,
 		bool _isStableCoin,
-		uint256 _tradingFee
+		uint256 _tradingFee,
+		uint256 _symbolType
 	) external;
 	function setMaxConnectedPartyBs(uint256 _max) external;
 }

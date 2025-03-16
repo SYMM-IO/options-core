@@ -302,6 +302,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 				isActive: true,
 				lossCoverage: 0,
 				oracleId: 0,
+				symbolType: 0,
 			})
 
 			await expect(context.accountFacet.connect(context.signers.partyB1).activateInstantActionMode()).to.be.revertedWith(
@@ -328,6 +329,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 				isActive: true,
 				lossCoverage: 0,
 				oracleId: 0,
+				symbolType: 0
 			})
 
 			await expect(context.accountFacet.connect(context.signers.partyB1).proposeToDeactivateInstantActionMode()).to.be.revertedWith(
@@ -360,6 +362,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 				isActive: true,
 				lossCoverage: 0,
 				oracleId: 0,
+				symbolType: 0
 			})
 
 			await expect(context.accountFacet.connect(context.signers.partyB1).proposeToDeactivateInstantActionMode()).to.be.revertedWith(
@@ -402,6 +405,15 @@ export function shouldBehaveLikeAccountFacet(): void {
 	})
 
 	describe("bindToPartyB", async function () {
+		beforeEach(async () => {
+			await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
+				isActive: true,
+				lossCoverage: 0,
+				oracleId: 0,
+				symbolType: 0
+			})
+		})
+
 		it("Should fail when msgSender be PartyB", async function () {
 			await expect(context.accountFacet.connect(context.signers.partyB1).bindToPartyB(context.signers.partyB2)).to.be.revertedWith(
 				"Accessibility: Shouldn't be partyB",
@@ -436,6 +448,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 				isActive: true,
 				lossCoverage: 0,
 				oracleId: 0,
+				symbolType: 0
 			})
 			await expect(context.accountFacet.connect(partyA1.getSigner()).bindToPartyB(context.signers.partyB2)).to.be.revertedWith(
 				"ControlFacet: Already bound",
@@ -450,6 +463,15 @@ export function shouldBehaveLikeAccountFacet(): void {
 	})
 
 	describe("initiateUnbindingFromPartyB", async function () {
+		beforeEach(async () => {
+			await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
+				isActive: true,
+				lossCoverage: 0,
+				oracleId: 0,
+				symbolType: 0
+			})
+		})
+
 		it("Should fail when msgSender be PartyB", async function () {
 			await expect(context.accountFacet.connect(context.signers.partyB1).bindToPartyB(context.signers.partyB2)).to.be.revertedWith(
 				"Accessibility: Shouldn't be partyB",
@@ -496,6 +518,17 @@ export function shouldBehaveLikeAccountFacet(): void {
 	})
 
 	describe("completeUnbindingFromPartyB", async function () {
+		beforeEach(async () => {
+			await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
+				isActive: true,
+				lossCoverage: 0,
+				oracleId: 0,
+				symbolType: 0
+			})
+
+			await context.controlFacet.setUnbindingCooldown(120)
+		})
+
 		it("Should fail when msgSender be PartyB", async function () {
 			await expect(context.accountFacet.connect(context.signers.partyB1).completeUnbindingFromPartyB()).to.be.revertedWith(
 				"Accessibility: Shouldn't be partyB",
@@ -549,6 +582,17 @@ export function shouldBehaveLikeAccountFacet(): void {
 	})
 
 	describe("cancelUnbindingFromPartyB", async function () {
+		beforeEach(async () => {
+			await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
+				isActive: true,
+				lossCoverage: 0,
+				oracleId: 0,
+				symbolType: 0
+			})
+
+			await context.controlFacet.setUnbindingCooldown(120)
+		})
+
 		it("Should fail when msgSender be PartyB", async function () {
 			await expect(context.accountFacet.connect(context.signers.partyB1).completeUnbindingFromPartyB()).to.be.revertedWith(
 				"Accessibility: Shouldn't be partyB",

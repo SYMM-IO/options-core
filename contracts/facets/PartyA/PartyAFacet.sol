@@ -34,7 +34,7 @@ contract PartyAFacet is Accessibility, Pausable, IPartyAFacet {
 		uint256 deadline,
 		address feeToken,
 		address affiliate,
-		bytes32 userData
+		bytes memory userData
 	) external whenNotPartyAActionsPaused notSuspended(msg.sender) returns (uint256 intentId) {
 		intentId = PartyAFacetImpl.sendOpenIntent(
 			partyBsWhiteList,

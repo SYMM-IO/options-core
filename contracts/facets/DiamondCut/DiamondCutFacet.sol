@@ -8,6 +8,7 @@ pragma solidity >=0.8.18;
 
 import { IDiamondCut } from "./IDiamondCut.sol";
 import { LibDiamond } from "../../libraries/LibDiamond.sol";
+import "../../storages/AppStorage.sol";
 
 contract DiamondCutFacet is IDiamondCut {
 	/// @notice Add/replace/remove any number of functions and optionally execute a function with delegatecall
@@ -15,6 +16,10 @@ contract DiamondCutFacet is IDiamondCut {
 	/// @param _init The address of the contract or facet to execute _calldata
 	/// @param _calldata A function call, including function selector and arguments _calldata is executed with delegatecall on _init
 	function diamondCut(FacetCut[] calldata _diamondCut, address _init, bytes calldata _calldata) external override {
+		// version bump on diamondCut call
+		AppStorage.Layout storage appLayout = AppStorage.layout();
+		appLayout.version++;
+
 		LibDiamond.enforceIsContractOwner();
 		LibDiamond.diamondCut(_diamondCut, _init, _calldata);
 	}

@@ -25,7 +25,7 @@ library PartyAFacetImpl {
 		uint256 deadline,
 		address feeToken,
 		address affiliate,
-		bytes32 userData
+		bytes memory userData
 	) internal returns (uint256 intentId) {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
@@ -72,6 +72,9 @@ library PartyAFacetImpl {
 			);
 		}
 
+		uint256 counter = 0; // Initialize counter
+		bytes memory userDataWithCounter = LibIntent.addCounter(userData, counter);
+
 		intentId = ++intentLayout.lastOpenIntentId;
 		OpenIntent memory intent = OpenIntent({
 			id: intentId,
@@ -92,7 +95,7 @@ library PartyAFacetImpl {
 			deadline: deadline,
 			tradingFee: TradingFee(feeToken, IPriceOracle(AppStorage.layout().priceOracleAddress).getPrice(feeToken), symbol.tradingFee),
 			affiliate: affiliate,
-			userData: userData
+			userData: userDataWithCounter
 		});
 
 		intentLayout.openIntents[intentId] = intent;
