@@ -214,6 +214,7 @@ library InstantActionsFacetImpl {
 			quantity: signedFillOpenIntent.quantity,
 			strikePrice: signedOpenIntent.strikePrice,
 			expirationTimestamp: signedOpenIntent.expirationTimestamp,
+			penalty: signedOpenIntent.penalty,
 			partyA: signedOpenIntent.partyA,
 			partyB: signedOpenIntent.partyB,
 			status: IntentStatus.FILLED,
@@ -258,6 +259,8 @@ library InstantActionsFacetImpl {
 			quantity: signedFillOpenIntent.quantity,
 			strikePrice: intent.strikePrice,
 			expirationTimestamp: intent.expirationTimestamp,
+			penalty: (signedOpenIntent.penalty * signedFillOpenIntent.quantity) / signedOpenIntent.quantity,
+			penaltyParticipants: new address[](1),
 			settledPrice: 0,
 			exerciseFee: intent.exerciseFee,
 			partyA: intent.partyA,
@@ -271,6 +274,7 @@ library InstantActionsFacetImpl {
 			statusModifyTimestamp: block.timestamp
 		});
 
+		trade.penaltyParticipants[0] = trade.partyB;
 		LibIntent.addToActiveTrades(tradeId);
 		uint256 premium = LibIntent.getPremiumOfOpenIntent(intentId);
 		accountLayout.balances[trade.partyA][symbol.collateral].syncAll(block.timestamp);
@@ -415,7 +419,7 @@ library InstantActionsFacetImpl {
 
 			accountLayout.balances[intent.partyA][symbol.collateral].scheduledAdd(intent.partyB, tradingFee + affiliateFee, block.timestamp);
 
-			accountLayout.lockedBalances[intent.partyA][symbol.collateral] -= LibIntent.getPremiumOfOpenIntent(intent.id);
+			accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(symbol.collateral, LibIntent.getPremiumOfOpenIntent(intent.id));
 			LibIntent.removeFromPartyAOpenIntents(intent.id);
 			result = IntentStatus.CANCELED;
 			intent.statusModifyTimestamp = block.timestamp;

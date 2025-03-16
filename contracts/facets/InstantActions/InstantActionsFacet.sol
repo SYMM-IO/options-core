@@ -90,6 +90,7 @@ contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
 			intent.quantity,
 			intent.strikePrice,
 			intent.expirationTimestamp,
+			intent.penalty,
 			intent.exerciseFee,
 			intent.tradingFee,
 			intent.deadline

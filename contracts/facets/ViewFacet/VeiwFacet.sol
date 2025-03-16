@@ -22,22 +22,11 @@ contract ViewFacet is IViewFacet {
 	}
 
 	/**
-	 * @notice Returns the locked balance for a specific user and collateral type.
-	 * @param user The address of the user.
-	 * @param collateral The address of the collateral type.
-	 * @return lockedBalances The locked balance of the user and specic collateral type.
-	 */
-	function lockedBalancesOf(address user, address collateral) external view returns (uint256) {
-		return AccountStorage.layout().lockedBalances[user][collateral];
-	}
-
-	/**
 	 * @notice Returns various values related to Party A.
 	 * @param partyA The address of Party A.
 	 // TODO 1, return liquidationStatus The liquidation status of Party A.
 	 * @return suspendedAddresses returns a true/false representing whether the given address is suspended or not.
 	 * @return balance The balance of Party A.
-	 * @return lockedBalance The locked balance of Party A and specific collateral.
 	 * @return withdrawIds The list of withdrawIds of Party A.
 	 * @return openIntentsOf The list of openIntents of Party A.
 	 * @return tradesOf The list of trades of Party A.
@@ -45,7 +34,7 @@ contract ViewFacet is IViewFacet {
 	function partyAStats(
 		address partyA,
 		address collateral
-	) external view returns (bool, uint256, uint256, uint256[] memory, uint256[] memory, uint256[] memory) {
+	) external view returns (bool, uint256, uint256[] memory, uint256[] memory, uint256[] memory) {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		// MAStorage.Layout storage maLayout = MAStorage.layout();  #TODO 1: consider adding this after liquidation dev.
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
@@ -53,7 +42,6 @@ contract ViewFacet is IViewFacet {
 			// maLayout.liquidationStatus[partyA], #TODO 1
 			accountLayout.suspendedAddresses[partyA],
 			accountLayout.balances[partyA][collateral].available,
-			accountLayout.lockedBalances[partyA][collateral],
 			accountLayout.userWithdrawals[partyA],
 			//TODO 2: consider adding AppStorage:partyAReimbursement after it's used
 			intentLayout.openIntentsOf[partyA],

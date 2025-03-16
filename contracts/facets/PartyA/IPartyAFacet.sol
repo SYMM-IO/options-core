@@ -13,6 +13,7 @@ interface IPartyAFacet is IPartyAEvents {
 		uint256 quantity,
 		uint256 strikePrice,
 		uint256 expirationTimestamp,
+		uint256 penalty,
 		ExerciseFee memory exerciseFee,
 		uint256 deadline,
 		address feeToken,
