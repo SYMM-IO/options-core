@@ -14,16 +14,33 @@ export function shouldBehaveLikePartyAFacet(): void {
 
 	beforeEach(async function () {
 		context = await loadFixture(initializeTestFixture)
-		partyA1 = new PartyA(context, context.signers.partyA1)
+		user = new User(context, context.signers.user)
+		partyB = new PartyB(context, context.signers.user2)
+		await user.setBalances("500")
+
+		await context.controlFacet.setPartyBConfig(partyB.getSigner(), {
+			isActive: true,
+			lossCoverage: 0,
+			oracleId: 0,
+			symbolType: 0
+		})
+
+		await context.controlFacet.setAffiliateStatus(context.signers.others[0], true)
+     	partyA1 = new PartyA(context, context.signers.partyA1)
 		partyA2 = new PartyA(context, context.signers.partyA2)
 		partyB1 = new PartyB(context, context.signers.partyB1)
 		partyB2 = new PartyB(context, context.signers.partyB2)
+
 
 		await partyB1.setBalances(e(100000), e(100000))
 		await partyA1.setBalances(e(100000), e(100000))
 	})
 
 	describe("sendOpenIntent", async function () {
+		beforeEach(async () => {
+			await context.controlFacet.addOracle("test orancel", context.signers.others[0])
+			await context.controlFacet.addSymbol("BTC", 0, 1, context.collateral, true, 0, 0)
+		})
 		it("Should fail when partyA actions paused", async function () {
 			await context.controlFacet.pausePartyAActions()
 			const request = openIntentRequestBuilder()

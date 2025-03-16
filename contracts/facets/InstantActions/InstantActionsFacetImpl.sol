@@ -168,6 +168,7 @@ library InstantActionsFacetImpl {
 			"InstantActionsFacet: Invalid affiliate"
 		);
 		require(appLayout.partyBConfigs[signedFillOpenIntent.partyB].oracleId == symbol.oracleId, "InstantActionsFacet: Mismatched oracle");
+		require(appLayout.partyBConfigs[signedFillOpenIntent.partyB].symbolType == symbol.symbolType, "InstantActionsFacet: Mismatched symbol type");
 		require(accountLayout.suspendedAddresses[signedOpenIntent.partyA] == false, "InstantActionsFacet: PartyA is suspended");
 		require(!accountLayout.suspendedAddresses[signedOpenIntent.partyB], "InstantActionsFacet: PartyB is Suspended");
 		require(!appLayout.partyBEmergencyStatus[signedOpenIntent.partyB], "InstantActionsFacet: PartyB is in emergency mode");
@@ -199,6 +200,9 @@ library InstantActionsFacetImpl {
 		intentId = ++intentLayout.lastOpenIntentId;
 		uint256 tradeId = ++intentLayout.lastTradeId;
 
+		uint256 counter = 0; // Initialize counter
+		bytes memory userDataWithCounter = LibIntent.addCounter(signedOpenIntent.userData, counter);
+
 		address[] memory partyBsWhitelist = new address[](1);
 		partyBsWhitelist[0] = signedOpenIntent.partyB;
 		OpenIntent memory intent = OpenIntent({
@@ -224,7 +228,7 @@ library InstantActionsFacetImpl {
 			),
 			affiliate: signedOpenIntent.affiliate,
 			exerciseFee: signedOpenIntent.exerciseFee,
-			userData: signedOpenIntent.userData
+			userData: userDataWithCounter
 		});
 
 		intentLayout.openIntents[intentId] = intent;
