@@ -18,7 +18,8 @@ library PartyAOpenFacetImpl {
 	using LibOpenIntentOps for OpenIntent;
 
 	function sendOpenIntent(
-		address[] calldata partyBsWhiteList,
+		address sender,
+		address[] memory partyBsWhiteList,
 		uint256 symbolId,
 		uint256 price,
 		uint256 quantity,
@@ -41,22 +42,22 @@ library PartyAOpenFacetImpl {
 		require(deadline >= block.timestamp, "PartyAFacet: Low deadline");
 		require(expirationTimestamp >= block.timestamp, "PartyAFacet: Low expiration timestamp");
 		require(exerciseFee.cap <= 1e18, "PartyAFacet: High cap for exercise fee");
-		require(!accountLayout.instantActionsMode[msg.sender], "PartyAFacet: Instant action mode is activated");
+		require(!accountLayout.instantActionsMode[sender], "PartyAFacet: Instant action mode is activated");
 		require(appLayout.affiliateStatus[affiliate] || affiliate == address(0), "PartyAFacet: Invalid affiliate");
 
-		if (accountLayout.boundPartyB[msg.sender] != address(0)) {
+		if (accountLayout.boundPartyB[sender] != address(0)) {
 			require(
-				partyBsWhiteList.length == 1 && partyBsWhiteList[0] == accountLayout.boundPartyB[msg.sender],
+				partyBsWhiteList.length == 1 && partyBsWhiteList[0] == accountLayout.boundPartyB[sender],
 				"PartyAFacet: User is bound to another PartyB"
 			);
 		}
 
 		for (uint8 i = 0; i < partyBsWhiteList.length; i++) {
-			require(partyBsWhiteList[i] != msg.sender, "PartyAFacet: Sender isn't allowed in partyBWhiteList");
+			require(partyBsWhiteList[i] != sender, "PartyAFacet: Sender isn't allowed in partyBWhiteList");
 		}
 
-		ScheduledReleaseBalance storage partyABalance = accountLayout.balances[msg.sender][symbol.collateral];
-		ScheduledReleaseBalance storage partyAFeeBalance = accountLayout.balances[msg.sender][feeToken];
+		ScheduledReleaseBalance storage partyABalance = accountLayout.balances[sender][symbol.collateral];
+		ScheduledReleaseBalance storage partyAFeeBalance = accountLayout.balances[sender][feeToken];
 
 		if (partyBsWhiteList.length == 1) {
 			require(
@@ -89,7 +90,7 @@ library PartyAOpenFacetImpl {
 			expirationTimestamp: expirationTimestamp,
 			penalty: penalty,
 			exerciseFee: exerciseFee,
-			partyA: msg.sender,
+			partyA: sender,
 			partyB: address(0),
 			status: IntentStatus.PENDING,
 			parentId: 0,
@@ -120,14 +121,14 @@ library PartyAOpenFacetImpl {
 		}
 	}
 
-	function cancelOpenIntent(uint256 intentId) internal returns (IntentStatus finalStatus) {
+	function cancelOpenIntent(address sender, uint256 intentId) internal returns (IntentStatus finalStatus) {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
 		Symbol memory symbol = SymbolStorage.layout().symbols[intent.symbolId];
 
 		require(intent.status == IntentStatus.PENDING || intent.status == IntentStatus.LOCKED, "PartyAFacet: Invalid state");
-		require(intent.partyA == msg.sender, "PartyAFacet: Should be partyA of Intent");
-		require(!accountLayout.instantActionsMode[msg.sender], "PartyAFacet: Instant action mode is activated");
+		require(intent.partyA == sender, "PartyAFacet: Should be partyA of Intent");
+		require(!accountLayout.instantActionsMode[sender], "PartyAFacet: Instant action mode is activated");
 
 		ScheduledReleaseBalance storage partyABalance = accountLayout.balances[intent.partyA][symbol.collateral];
 		ScheduledReleaseBalance storage partyAFeeBalance = accountLayout.balances[intent.partyA][intent.tradingFee.feeToken];

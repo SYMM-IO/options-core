@@ -5,8 +5,8 @@
 pragma solidity >=0.8.18;
 
 import "../../libraries/LibIntent.sol";
-import "../../libraries/LibPartyB.sol";
 import "../../libraries/LibMuon.sol";
+import "../../libraries/LibUserData.sol";
 import "../../storages/AppStorage.sol";
 import "../../storages/IntentStorage.sol";
 import "../../storages/AccountStorage.sol";
@@ -19,21 +19,84 @@ library PartyBFacetImpl {
 	using LibCloseIntentOps for CloseIntent;
 	using LibTradeOps for Trade;
 
-	function acceptCancelOpenIntent(uint256 intentId) internal {
+	function lockOpenIntent(address sender, uint256 intentId) internal {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		AppStorage.Layout storage appLayout = AppStorage.layout();
+
+		OpenIntent storage intent = intentLayout.openIntents[intentId];
+		Symbol storage symbol = SymbolStorage.layout().symbols[intent.symbolId];
+
+		require(intent.partyB == sender, "PartyBFacet: Sender isn't the partyB of intent");
+		require(intentId <= intentLayout.lastOpenIntentId, "PartyBFacet: Invalid intentId");
+		require(intent.status == IntentStatus.PENDING, "PartyBFacet: Invalid state");
+		require(block.timestamp <= intent.deadline, "PartyBFacet: Intent is expired");
+		require(symbol.isValid, "PartyBFacet: Symbol is not valid");
+		require(block.timestamp <= intent.expirationTimestamp, "PartyBFacet: Requested expiration has been passed");
+		require(appLayout.partyBConfigs[sender].oracleId == symbol.oracleId, "PartyBFacet: Oracle not matched");
+
+		bool isValidPartyB;
+		if (intent.partyBsWhiteList.length == 0) {
+			require(sender != intent.partyA, "PartyBFacet: PartyA can't be partyB too");
+			isValidPartyB = true;
+		} else {
+			for (uint8 index = 0; index < intent.partyBsWhiteList.length; index++) {
+				if (sender == intent.partyBsWhiteList[index]) {
+					isValidPartyB = true;
+					break;
+				}
+			}
+		}
+		require(isValidPartyB, "PartyBFacet: Sender isn't whitelisted");
+		require(
+			appLayout.liquidationDetails[sender][symbol.collateral].status == LiquidationStatus.SOLVENT,
+			"PartyBFacet: PartyB is in the liquidation process"
+		);
+		intent.statusModifyTimestamp = block.timestamp;
+		intent.status = IntentStatus.LOCKED;
+		intent.partyB = sender;
+		intent.saveForPartyB();
+	}
+
+	function unlockOpenIntent(address sender, uint256 intentId) internal returns (IntentStatus) {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		OpenIntent storage intent = intentLayout.openIntents[intentId];
+
+		require(intent.partyB == sender, "PartyBFacet: Invalid sender");
+		require(intent.status == IntentStatus.LOCKED, "PartyBFacet: Invalid state");
+		require(
+			AppStorage.layout().liquidationDetails[intent.partyB][SymbolStorage.layout().symbols[intent.symbolId].collateral].status ==
+				LiquidationStatus.SOLVENT,
+			"PartyBFacet: PartyB is in the liquidation process"
+		);
+
+		if (block.timestamp > intent.deadline) {
+			LibIntent.expireOpenIntent(intentId);
+			return IntentStatus.EXPIRED;
+		} else {
+			intent.statusModifyTimestamp = block.timestamp;
+			intent.status = IntentStatus.PENDING;
+			intent.remove(true);
+			intent.partyB = address(0);
+			return IntentStatus.PENDING;
+		}
+	}
+
+	function acceptCancelOpenIntent(address sender, uint256 intentId) internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
 		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
 		Symbol memory symbol = SymbolStorage.layout().symbols[intent.symbolId];
 		require(intent.status == IntentStatus.CANCEL_PENDING, "PartyBFacet: Invalid state");
+		require(intent.partyB == sender, "PartyBFacet: Invalid sender");
 		require(
 			AppStorage.layout().liquidationDetails[intent.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
-			"AccountFacet: PartyB is in the liquidation process"
+			"PartyBFacet: PartyB is in the liquidation process"
 		);
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = IntentStatus.CANCELED;
 
-		ScheduledReleaseBalance storage partyABalance = accountLayout.balances[msg.sender][symbol.collateral];
-		ScheduledReleaseBalance storage partyAFeeBalance = accountLayout.balances[msg.sender][intent.tradingFee.feeToken];
+		ScheduledReleaseBalance storage partyABalance = accountLayout.balances[sender][symbol.collateral];
+		ScheduledReleaseBalance storage partyAFeeBalance = accountLayout.balances[sender][intent.tradingFee.feeToken];
 
 		partyABalance.instantAdd(symbol.collateral, intent.getPremium());
 
@@ -49,16 +112,17 @@ library PartyBFacetImpl {
 		intent.remove(false);
 	}
 
-	function acceptCancelCloseIntent(uint256 intentId) internal {
+	function acceptCancelCloseIntent(address sender, uint256 intentId) internal {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		CloseIntent storage intent = intentLayout.closeIntents[intentId];
 		Trade storage trade = IntentStorage.layout().trades[intent.tradeId];
 
-		require(intent.status == IntentStatus.CANCEL_PENDING, "LibIntent: Invalid state");
+		require(trade.partyB == sender, "PartyBFacet: Invalid sender");
+		require(intent.status == IntentStatus.CANCEL_PENDING, "PartyBFacet: Invalid state");
 		require(
 			AppStorage.layout().liquidationDetails[trade.partyB][SymbolStorage.layout().symbols[trade.symbolId].collateral].status ==
 				LiquidationStatus.SOLVENT,
-			"AccountFacet: PartyB is in the liquidation process"
+			"PartyBFacet: PartyB is in the liquidation process"
 		);
 
 		intent.statusModifyTimestamp = block.timestamp;
@@ -66,22 +130,186 @@ library PartyBFacetImpl {
 		intent.remove();
 	}
 
-	function fillOpenIntent(uint256 intentId, uint256 quantity, uint256 price) internal returns (uint256 tradeId) {
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+	function fillOpenIntent(
+		address sender,
+		uint256 intentId,
+		uint256 quantity,
+		uint256 price
+	) internal returns (uint256 tradeId, uint256 newIntentId) {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 
-		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
+		OpenIntent storage intent = intentLayout.openIntents[intentId];
+		Symbol memory symbol = SymbolStorage.layout().symbols[intent.symbolId];
 
+		require(sender == intent.partyB, "PartyBFacet: Invalid sender");
 		require(accountLayout.suspendedAddresses[intent.partyA] == false, "PartyBFacet: PartyA is suspended");
-		require(!accountLayout.suspendedAddresses[msg.sender], "PartyBFacet: Sender is Suspended");
+		require(!accountLayout.suspendedAddresses[intent.partyB], "PartyBFacet: Sender is Suspended");
 		require(!appLayout.partyBEmergencyStatus[intent.partyB], "PartyBFacet: PartyB is in emergency mode");
 		require(!appLayout.emergencyMode, "PartyBFacet: System is in emergency mode");
+		require(symbol.isValid, "PartyBFacet: Symbol is not valid");
+		require(appLayout.partyBConfigs[intent.partyB].symbolType == symbol.symbolType, "PartyBFacet: Mismatched symbol type");
+		require(intent.status == IntentStatus.LOCKED || intent.status == IntentStatus.CANCEL_PENDING, "PartyBFacet: Invalid state");
+		require(
+			appLayout.liquidationDetails[intent.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
+			"PartyBFacet: PartyB is liquidated"
+		);
+		require(block.timestamp <= intent.deadline, "PartyBFacet: Intent is expired");
+		require(block.timestamp <= intent.expirationTimestamp, "PartyBFacet: Requested expiration has been passed");
+		require(intentLayout.activeTradesOf[intent.partyA].length < appLayout.maxTradePerPartyA, "PartyBFacet: Too many active trades for partyA");
+		require(intent.quantity >= quantity && quantity > 0, "PartyBFacet: Invalid quantity");
+		require(price <= intent.price, "PartyBFacet: Opened price isn't valid");
 
-		tradeId = LibPartyB.fillOpenIntent(intentId, quantity, price);
+		address feeCollector = appLayout.affiliateFeeCollector[intent.affiliate] == address(0)
+			? appLayout.defaultFeeCollector
+			: appLayout.affiliateFeeCollector[intent.affiliate];
+		accountLayout.balances[appLayout.defaultFeeCollector][intent.tradingFee.feeToken].instantAdd(
+			intent.tradingFee.feeToken,
+			(quantity * price * intent.tradingFee.platformFee) / (intent.tradingFee.tokenPrice * 1e18)
+		);
+		accountLayout.balances[feeCollector][intent.tradingFee.feeToken].instantAdd(
+			intent.tradingFee.feeToken,
+			(quantity * price * appLayout.affiliateFees[intent.affiliate][intent.symbolId]) / (intent.tradingFee.tokenPrice * 1e18)
+		);
+
+		tradeId = ++intentLayout.lastTradeId;
+		Trade memory trade = Trade({
+			id: tradeId,
+			openIntentId: intentId,
+			activeCloseIntentIds: new uint256[](0),
+			symbolId: intent.symbolId,
+			quantity: quantity,
+			strikePrice: intent.strikePrice,
+			expirationTimestamp: intent.expirationTimestamp,
+			penalty: (intent.penalty * quantity) / intent.quantity,
+			penaltyParticipants: new address[](1),
+			settledPrice: 0,
+			exerciseFee: intent.exerciseFee,
+			partyA: intent.partyA,
+			partyB: intent.partyB,
+			openedPrice: price,
+			closedAmountBeforeExpiration: 0,
+			closePendingAmount: 0,
+			avgClosedPriceBeforeExpiration: 0,
+			status: TradeStatus.OPENED,
+			createTimestamp: block.timestamp,
+			statusModifyTimestamp: block.timestamp
+		});
+
+		trade.penaltyParticipants[0] = intent.partyB;
+		intent.tradeId = tradeId;
+		intent.status = IntentStatus.FILLED;
+		intent.statusModifyTimestamp = block.timestamp;
+
+		intent.remove(false);
+
+		// partially fill
+		if (intent.quantity > quantity) {
+			newIntentId = ++intentLayout.lastOpenIntentId;
+			IntentStatus newStatus;
+			if (intent.status == IntentStatus.CANCEL_PENDING) {
+				newStatus = IntentStatus.CANCELED;
+			} else {
+				newStatus = IntentStatus.PENDING;
+			}
+
+			bytes memory adjustedUserData = intent.parentId != 0 ? LibUserData.incrementCounter(intent.userData) : intent.userData;
+
+			OpenIntent memory newIntent = OpenIntent({
+				id: newIntentId,
+				tradeId: 0,
+				partyBsWhiteList: intent.partyBsWhiteList,
+				symbolId: intent.symbolId,
+				price: intent.price,
+				quantity: intent.quantity - quantity,
+				strikePrice: intent.strikePrice,
+				expirationTimestamp: intent.expirationTimestamp,
+				penalty: intent.penalty - trade.penalty,
+				exerciseFee: intent.exerciseFee,
+				partyA: intent.partyA,
+				partyB: address(0),
+				status: newStatus,
+				parentId: intent.id,
+				createTimestamp: block.timestamp,
+				statusModifyTimestamp: block.timestamp,
+				deadline: intent.deadline,
+				tradingFee: intent.tradingFee,
+				affiliate: intent.affiliate,
+				userData: adjustedUserData
+			});
+
+			newIntent.save();
+
+			if (newStatus == IntentStatus.CANCELED) {
+				// send trading Fee back to partyA
+				uint256 tradingFee = newIntent.getTradingFee();
+				uint256 affiliateFee = newIntent.getAffiliateFee();
+				if (intent.partyBsWhiteList.length == 1) {
+					accountLayout.balances[intent.partyA][symbol.collateral].scheduledAdd(
+						newIntent.partyBsWhiteList[0],
+						tradingFee + affiliateFee,
+						block.timestamp
+					);
+				} else {
+					accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(symbol.collateral, tradingFee + affiliateFee);
+				}
+			} else {
+				accountLayout.balances[intent.partyA][symbol.collateral].sub(newIntent.getPremium());
+			}
+			intent.quantity = quantity;
+		}
+		trade.save();
+		uint256 premium = intent.getPremium();
+		accountLayout.balances[trade.partyA][symbol.collateral].syncAll(block.timestamp);
+		accountLayout.balances[trade.partyB][symbol.collateral].instantAdd(symbol.collateral, premium);
 	}
 
-	function fillCloseIntent(uint256 intentId, uint256 quantity, uint256 price) internal {
-		LibPartyB.fillCloseIntent(intentId, quantity, price);
+	function fillCloseIntent(address sender, uint256 intentId, uint256 quantity, uint256 price) internal {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+
+		CloseIntent storage intent = intentLayout.closeIntents[intentId];
+		Trade storage trade = intentLayout.trades[intent.tradeId];
+		Symbol memory symbol = SymbolStorage.layout().symbols[trade.symbolId];
+
+		require(sender == trade.partyB, "PartyBFacet: Invalid sender");
+		require(
+			AppStorage.layout().liquidationDetails[trade.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
+			"PartyBFacet: PartyB is liquidated"
+		);
+		require(quantity > 0 && quantity <= intent.quantity - intent.filledAmount, "PartyBFacet: Invalid filled amount");
+		require(intent.status == IntentStatus.PENDING || intent.status == IntentStatus.CANCEL_PENDING, "PartyBFacet: Invalid state");
+		require(trade.status == TradeStatus.OPENED, "PartyBFacet: Invalid trade state");
+		require(block.timestamp <= intent.deadline, "PartyBFacet: Intent is expired");
+		require(block.timestamp < trade.expirationTimestamp, "PartyBFacet: Trade is expired");
+		require(price >= intent.price, "PartyBFacet: Closed price isn't valid");
+
+		uint256 pnl = (quantity * price) / 1e18;
+		accountLayout.balances[trade.partyA][symbol.collateral].instantAdd(symbol.collateral, pnl);
+		accountLayout.balances[trade.partyB][symbol.collateral].sub(pnl);
+
+		trade.avgClosedPriceBeforeExpiration =
+			(trade.avgClosedPriceBeforeExpiration * trade.closedAmountBeforeExpiration + quantity * price) /
+			(trade.closedAmountBeforeExpiration + quantity);
+
+		trade.closedAmountBeforeExpiration += quantity;
+		intent.filledAmount += quantity;
+
+		if (intent.filledAmount == intent.quantity) {
+			intent.statusModifyTimestamp = block.timestamp;
+			intent.status = IntentStatus.FILLED;
+			intent.remove();
+			if (trade.quantity == trade.closedAmountBeforeExpiration) {
+				trade.status = TradeStatus.CLOSED;
+				trade.statusModifyTimestamp = block.timestamp;
+				trade.remove();
+			}
+		} else if (intent.status == IntentStatus.CANCEL_PENDING) {
+			intent.status = IntentStatus.CANCELED;
+			intent.statusModifyTimestamp = block.timestamp;
+			intent.remove();
+		}
 	}
 
 	function expireTrade(uint256 tradeId, SettlementPriceSig memory sig) internal {

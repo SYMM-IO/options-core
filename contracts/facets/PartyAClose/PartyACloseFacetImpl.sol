@@ -19,10 +19,11 @@ library PartyACloseFacetImpl {
 	using LibCloseIntentOps for CloseIntent;
 	using LibTradeOps for Trade;
 
-	function sendCloseIntent(uint256 tradeId, uint256 price, uint256 quantity, uint256 deadline) internal returns (uint256 intentId) {
+	function sendCloseIntent(address sender, uint256 tradeId, uint256 price, uint256 quantity, uint256 deadline) internal returns (uint256 intentId) {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		Trade storage trade = intentLayout.trades[tradeId];
 
+		require(sender == trade.partyA, "PartyAFacet: Invalid sender");
 		require(trade.status == TradeStatus.OPENED, "PartyAFacet: Invalid state");
 		require(deadline >= block.timestamp, "PartyAFacet: Low deadline");
 		require(!AccountStorage.layout().instantActionsMode[trade.partyA], "PartyAFacet: Instant action mode is activated");
@@ -46,8 +47,13 @@ library PartyACloseFacetImpl {
 		intent.save();
 	}
 
-	function cancelCloseIntent(uint256 intentId) internal returns (IntentStatus) {
-		CloseIntent storage intent = IntentStorage.layout().closeIntents[intentId];
+	function cancelCloseIntent(address sender, uint256 intentId) internal returns (IntentStatus) {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+
+		CloseIntent storage intent = intentLayout.closeIntents[intentId];
+		Trade storage trade = intentLayout.trades[intent.tradeId];
+
+		require(trade.partyA == sender, "PartyAFacet: Invalid sender");
 		require(intent.status == IntentStatus.PENDING, "PartyAFacet: Invalid state");
 		require(IntentStorage.layout().trades[intent.tradeId].partyA == msg.sender, "PartyAFacet: Should be partyA of Intent");
 		require(!AccountStorage.layout().instantActionsMode[msg.sender], "PartyAFacet: Instant action mode is activated");

@@ -7,7 +7,6 @@ pragma solidity >=0.8.18;
 import "./PartyBFacetImpl.sol";
 import "../../utils/Accessibility.sol";
 import "../../utils/Pausable.sol";
-import "../../libraries/LibPartyB.sol";
 import "./IPartyBFacet.sol";
 
 contract PartyBFacet is Accessibility, Pausable, IPartyBFacet {
@@ -16,7 +15,7 @@ contract PartyBFacet is Accessibility, Pausable, IPartyBFacet {
 	 * @param intentId The ID of the open intent to be locked.
 	 */
 	function lockOpenIntent(uint256 intentId) external whenNotPartyBActionsPaused onlyPartyB {
-		LibPartyB.lockOpenIntent(intentId, msg.sender);
+		PartyBFacetImpl.lockOpenIntent(msg.sender, intentId);
 		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
 		emit LockOpenIntent(intent.partyB, intentId);
 	}
@@ -26,7 +25,7 @@ contract PartyBFacet is Accessibility, Pausable, IPartyBFacet {
 	 * @param intentId The ID of the open intent to be unlocked.
 	 */
 	function unlockOpenIntent(uint256 intentId) external whenNotPartyBActionsPaused onlyPartyBOfOpenIntent(intentId) {
-		IntentStatus res = LibPartyB.unlockOpenIntent(intentId);
+		IntentStatus res = PartyBFacetImpl.unlockOpenIntent(msg.sender, intentId);
 		if (res == IntentStatus.EXPIRED) {
 			emit ExpireOpenIntent(intentId);
 		} else if (res == IntentStatus.PENDING) {
@@ -39,7 +38,7 @@ contract PartyBFacet is Accessibility, Pausable, IPartyBFacet {
 	 * @param intentId The ID of the open intent for which the cancellation request is accepted.
 	 */
 	function acceptCancelOpenIntent(uint256 intentId) external whenNotPartyBActionsPaused onlyPartyBOfOpenIntent(intentId) {
-		PartyBFacetImpl.acceptCancelOpenIntent(intentId);
+		PartyBFacetImpl.acceptCancelOpenIntent(msg.sender, intentId);
 		emit AcceptCancelOpenIntent(intentId);
 	}
 
@@ -48,7 +47,7 @@ contract PartyBFacet is Accessibility, Pausable, IPartyBFacet {
 	 * @param intentId The ID of the close intent for which the cancellation request is accepted.
 	 */
 	function acceptCancelCloseIntent(uint256 intentId) external whenNotPartyBActionsPaused onlyPartyBOfCloseIntent(intentId) {
-		PartyBFacetImpl.acceptCancelCloseIntent(intentId);
+		PartyBFacetImpl.acceptCancelCloseIntent(msg.sender, intentId);
 		emit AcceptCancelCloseIntent(intentId);
 	}
 
@@ -59,11 +58,11 @@ contract PartyBFacet is Accessibility, Pausable, IPartyBFacet {
 	 * @param price The opened price for the trade.
 	 */
 	function fillOpenIntent(uint256 intentId, uint256 quantity, uint256 price) external whenNotPartyBActionsPaused onlyPartyBOfOpenIntent(intentId) {
-		uint256 newId = PartyBFacetImpl.fillOpenIntent(intentId, quantity, price);
+		(uint256 tradeId, uint256 newIntentId) = PartyBFacetImpl.fillOpenIntent(msg.sender, intentId, quantity, price);
 		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
-		emit FillOpenIntent(intentId, intent.tradeId, intent.partyA, intent.partyB, quantity, price);
-		if (newId != 0) {
-			OpenIntent storage newIntent = IntentStorage.layout().openIntents[newId];
+		emit FillOpenIntent(intentId, tradeId, intent.partyA, intent.partyB, quantity, price);
+		if (newIntentId != 0) {
+			OpenIntent storage newIntent = IntentStorage.layout().openIntents[newIntentId];
 			if (newIntent.status == IntentStatus.PENDING) {
 				emit SendOpenIntent(
 					newIntent.partyA,
@@ -96,7 +95,7 @@ contract PartyBFacet is Accessibility, Pausable, IPartyBFacet {
 		uint256 quantity,
 		uint256 price
 	) external whenNotPartyBActionsPaused onlyPartyBOfCloseIntent(intentId) {
-		PartyBFacetImpl.fillCloseIntent(intentId, quantity, price);
+		PartyBFacetImpl.fillCloseIntent(msg.sender, intentId, quantity, price);
 		Trade storage trade = IntentStorage.layout().trades[IntentStorage.layout().closeIntents[intentId].tradeId];
 
 		emit FillCloseIntent(intentId, trade.id, trade.partyA, trade.partyB, quantity, price);

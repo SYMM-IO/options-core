@@ -7,7 +7,6 @@ pragma solidity >=0.8.18;
 import "./InterdealerFacetImpl.sol";
 import "../../utils/Accessibility.sol";
 import "../../utils/Pausable.sol";
-import "../../libraries/LibPartyB.sol";
 import "./IInterdealerFacet.sol";
 
 contract InterdealerFacet is Accessibility, Pausable, IInterdealerFacet {
