@@ -55,7 +55,6 @@ library AccountStorage {
 		mapping(uint256 => bool) suspendedWithdrawal;
 		/////////////////////////////////////////////////////////
 		mapping(uint256 => Withdraw) withdrawals;
-		mapping(address => uint256[]) userWithdrawals;
 		uint256 lastWithdrawId;
 		/////////////////////////////////////////////////////////
 		mapping(address => bool) instantActionsMode;

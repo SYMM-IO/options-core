@@ -15,6 +15,9 @@ import "../../interfaces/ISignatureVerifier.sol";
 
 library PartyBFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
+	using LibOpenIntentOps for OpenIntent;
+	using LibCloseIntentOps for CloseIntent;
+	using LibTradeOps for Trade;
 
 	function acceptCancelOpenIntent(uint256 intentId) internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
@@ -28,23 +31,22 @@ library PartyBFacetImpl {
 		);
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = IntentStatus.CANCELED;
-		accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(symbol.collateral, LibIntent.getPremiumOfOpenIntent(intentId));
+
+		ScheduledReleaseBalance storage partyABalance = accountLayout.balances[msg.sender][symbol.collateral];
+		ScheduledReleaseBalance storage partyAFeeBalance = accountLayout.balances[msg.sender][intent.tradingFee.feeToken];
+
+		partyABalance.instantAdd(symbol.collateral, intent.getPremium());
 
 		// send trading Fee back to partyA
-		uint256 tradingFee = LibIntent.getTradingFee(intentId);
-		uint256 affiliateFee = LibIntent.getAffiliateFee(intentId);
+		uint256 tradingFee = intent.getTradingFee();
+		uint256 affiliateFee = intent.getAffiliateFee();
 		if (intent.partyBsWhiteList.length == 1) {
-			accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].scheduledAdd(
-				intent.partyBsWhiteList[0],
-				tradingFee + affiliateFee,
-				block.timestamp
-			);
+			partyAFeeBalance.scheduledAdd(intent.partyBsWhiteList[0], tradingFee + affiliateFee, block.timestamp);
 		} else {
-			accountLayout.balances[intent.partyA][intent.tradingFee.feeToken].instantAdd(intent.tradingFee.feeToken, tradingFee + affiliateFee);
+			partyAFeeBalance.instantAdd(intent.tradingFee.feeToken, tradingFee + affiliateFee);
 		}
 
-		LibIntent.removeFromPartyAOpenIntents(intentId);
-		LibIntent.removeFromPartyBOpenIntents(intentId);
+		intent.remove(false);
 	}
 
 	function acceptCancelCloseIntent(uint256 intentId) internal {
@@ -61,7 +63,7 @@ library PartyBFacetImpl {
 
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = IntentStatus.CANCELED;
-		LibIntent.removeFromActiveCloseIntents(intentId);
+		intent.remove();
 	}
 
 	function fillOpenIntent(uint256 intentId, uint256 quantity, uint256 price) internal returns (uint256 tradeId) {
@@ -106,12 +108,13 @@ library PartyBFacetImpl {
 			);
 		}
 		trade.settledPrice = sig.settlementPrice;
-
-		LibIntent.closeTrade(tradeId, TradeStatus.EXPIRED, IntentStatus.CANCELED);
+		trade.close(TradeStatus.EXPIRED, IntentStatus.CANCELED);
 	}
 
 	function exerciseTrade(uint256 tradeId, SettlementPriceSig memory sig) internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		AppStorage.Layout storage appLayout = AppStorage.layout();
+
 		Trade storage trade = IntentStorage.layout().trades[tradeId];
 		Symbol storage symbol = SymbolStorage.layout().symbols[trade.symbolId];
 		LibMuon.verifySettlementPriceSig(sig);
@@ -120,13 +123,13 @@ library PartyBFacetImpl {
 		require(trade.status == TradeStatus.OPENED, "PartyBFacet: Invalid trade state");
 		require(block.timestamp > trade.expirationTimestamp, "PartyBFacet: Trade isn't expired");
 		require(
-			AppStorage.layout().liquidationDetails[trade.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
+			appLayout.liquidationDetails[trade.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
 			"PartyBFacet: PartyB is liquidated"
 		);
 		if (msg.sender != trade.partyB) {
 			require(
-				trade.expirationTimestamp + AppStorage.layout().ownerExclusiveWindow <= block.timestamp,
-				"PartyBFacet: Third parties shoud wait for owner exclusive window"
+				trade.expirationTimestamp + appLayout.ownerExclusiveWindow <= block.timestamp,
+				"PartyBFacet: Third parties should wait for owner exclusive window"
 			);
 		}
 
@@ -154,6 +157,6 @@ library PartyBFacetImpl {
 		accountLayout.balances[trade.partyA][symbol.collateral].instantAdd(symbol.collateral, amountToTransfer); //TODO: instantAdd or add?
 		accountLayout.balances[trade.partyB][symbol.collateral].sub(amountToTransfer);
 
-		LibIntent.closeTrade(tradeId, TradeStatus.EXERCISED, IntentStatus.CANCELED);
+		trade.close(TradeStatus.EXERCISED, IntentStatus.CANCELED);
 	}
 }

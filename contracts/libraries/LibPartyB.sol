@@ -7,9 +7,13 @@ pragma solidity >=0.8.18;
 import "../storages/IntentStorage.sol";
 import "../storages/AppStorage.sol";
 import "./LibIntent.sol";
+import "./LibUserData.sol";
 
 library LibPartyB {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
+	using LibOpenIntentOps for OpenIntent;
+	using LibCloseIntentOps for CloseIntent;
+	using LibTradeOps for Trade;
 
 	function fillOpenIntent(uint256 intentId, uint256 quantity, uint256 price) internal returns (uint256 newIntentId) {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
@@ -73,8 +77,7 @@ library LibPartyB {
 		intent.status = IntentStatus.FILLED;
 		intent.statusModifyTimestamp = block.timestamp;
 
-		LibIntent.removeFromPartyAOpenIntents(intentId);
-		LibIntent.removeFromPartyBOpenIntents(intentId);
+		intent.remove(false);
 
 		// partially fill
 		if (intent.quantity > quantity) {
@@ -86,68 +89,37 @@ library LibPartyB {
 				newStatus = IntentStatus.PENDING;
 			}
 
-			OpenIntent memory q;
+			bytes memory adjustedUserData = intent.parentId != 0 ? LibUserData.incrementCounter(intent.userData) : intent.userData;
 
-			// Check if the intent has a parentId
-			if (intent.parentId != 0) {
-				bytes memory userDataWithIncrementedCounter = LibIntent.incrementCounter(intent.userData);
-				q = OpenIntent({
-					id: newIntentId,
-					tradeId: 0,
-					partyBsWhiteList: intent.partyBsWhiteList,
-					symbolId: intent.symbolId,
-					price: intent.price,
-					quantity: intent.quantity - quantity,
-					strikePrice: intent.strikePrice,
-					expirationTimestamp: intent.expirationTimestamp,
-					penalty: intent.penalty - trade.penalty,
-					exerciseFee: intent.exerciseFee,
-					partyA: intent.partyA,
-					partyB: address(0),
-					status: newStatus,
-					parentId: intent.id,
-					createTimestamp: block.timestamp,
-					statusModifyTimestamp: block.timestamp,
-					deadline: intent.deadline,
-					tradingFee: intent.tradingFee,
-					affiliate: intent.affiliate,
-					userData: userDataWithIncrementedCounter
-				});
-			} else {
-				q = OpenIntent({
-					id: newIntentId,
-					tradeId: 0,
-					partyBsWhiteList: intent.partyBsWhiteList,
-					symbolId: intent.symbolId,
-					price: intent.price,
-					quantity: intent.quantity - quantity,
-					strikePrice: intent.strikePrice,
-					expirationTimestamp: intent.expirationTimestamp,
-					penalty: intent.penalty - trade.penalty,
-					exerciseFee: intent.exerciseFee,
-					partyA: intent.partyA,
-					partyB: address(0),
-					status: newStatus,
-					parentId: intent.id,
-					createTimestamp: block.timestamp,
-					statusModifyTimestamp: block.timestamp,
-					deadline: intent.deadline,
-					tradingFee: intent.tradingFee,
-					affiliate: intent.affiliate,
-					userData: intent.userData
-				});
-			}
+			OpenIntent memory newIntent = OpenIntent({
+				id: newIntentId,
+				tradeId: 0,
+				partyBsWhiteList: intent.partyBsWhiteList,
+				symbolId: intent.symbolId,
+				price: intent.price,
+				quantity: intent.quantity - quantity,
+				strikePrice: intent.strikePrice,
+				expirationTimestamp: intent.expirationTimestamp,
+				penalty: intent.penalty - trade.penalty,
+				exerciseFee: intent.exerciseFee,
+				partyA: intent.partyA,
+				partyB: address(0),
+				status: newStatus,
+				parentId: intent.id,
+				createTimestamp: block.timestamp,
+				statusModifyTimestamp: block.timestamp,
+				deadline: intent.deadline,
+				tradingFee: intent.tradingFee,
+				affiliate: intent.affiliate,
+				userData: adjustedUserData
+			});
 
-			intentLayout.openIntents[newIntentId] = q;
-			intentLayout.openIntentsOf[intent.partyA].push(newIntentId);
-			LibIntent.addToPartyAOpenIntents(newIntentId);
-
-			OpenIntent storage newIntent = intentLayout.openIntents[newIntentId];
+			newIntent.save();
 
 			if (newStatus == IntentStatus.CANCELED) {
 				// send trading Fee back to partyA
-				uint256 tradingFee = LibIntent.getTradingFee(newIntent.id);
-				uint256 affiliateFee = LibIntent.getAffiliateFee(newIntent.id);
+				uint256 tradingFee = newIntent.getTradingFee();
+				uint256 affiliateFee = newIntent.getAffiliateFee();
 				if (intent.partyBsWhiteList.length == 1) {
 					accountLayout.balances[intent.partyA][symbol.collateral].scheduledAdd(
 						newIntent.partyBsWhiteList[0],
@@ -158,12 +130,12 @@ library LibPartyB {
 					accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(symbol.collateral, tradingFee + affiliateFee);
 				}
 			} else {
-				accountLayout.balances[intent.partyA][symbol.collateral].sub(LibIntent.getPremiumOfOpenIntent(newIntent.id));
+				accountLayout.balances[intent.partyA][symbol.collateral].sub(newIntent.getPremium());
 			}
 			intent.quantity = quantity;
 		}
-		LibIntent.addToActiveTrades(tradeId);
-		uint256 premium = LibIntent.getPremiumOfOpenIntent(intentId);
+		trade.save();
+		uint256 premium = intent.getPremium();
 		accountLayout.balances[trade.partyA][symbol.collateral].syncAll(block.timestamp);
 		accountLayout.balances[trade.partyB][symbol.collateral].instantAdd(symbol.collateral, premium);
 	}
@@ -201,16 +173,16 @@ library LibPartyB {
 		if (intent.filledAmount == intent.quantity) {
 			intent.statusModifyTimestamp = block.timestamp;
 			intent.status = IntentStatus.FILLED;
-			LibIntent.removeFromActiveCloseIntents(intentId);
+			intent.remove();
 			if (trade.quantity == trade.closedAmountBeforeExpiration) {
 				trade.status = TradeStatus.CLOSED;
 				trade.statusModifyTimestamp = block.timestamp;
-				LibIntent.removeFromActiveTrades(trade.id);
+				trade.remove();
 			}
 		} else if (intent.status == IntentStatus.CANCEL_PENDING) {
 			intent.status = IntentStatus.CANCELED;
 			intent.statusModifyTimestamp = block.timestamp;
-			LibIntent.removeFromActiveCloseIntents(intentId);
+			intent.remove();
 		}
 	}
 
@@ -246,7 +218,7 @@ library LibPartyB {
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = IntentStatus.LOCKED;
 		intent.partyB = partyB;
-		LibIntent.addToPartyBOpenIntents(intentId);
+		intent.saveForPartyB();
 		intentLayout.openIntentsOf[intent.partyB].push(intent.id);
 	}
 
@@ -267,7 +239,7 @@ library LibPartyB {
 		} else {
 			intent.statusModifyTimestamp = block.timestamp;
 			intent.status = IntentStatus.PENDING;
-			LibIntent.removeFromPartyBOpenIntents(intentId);
+			intent.remove(true);
 			intent.partyB = address(0);
 			return IntentStatus.PENDING;
 		}

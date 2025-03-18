@@ -13,6 +13,7 @@ import "../../storages/SymbolStorage.sol";
 
 library ClearingHouseFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
+	using LibTradeOps for Trade;
 
 	function flagLiquidation(address partyB, address collateral) internal {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
@@ -132,9 +133,9 @@ library ClearingHouseFacetImpl {
 				appLayout.debtsToPartyAs[trade.partyB][symbol.collateral][trade.partyA] += amountToTransfer;
 				appLayout.liquidationDetails[trade.partyB][symbol.collateral].requiredCollateral += amountToTransfer;
 
-				LibIntent.closeTrade(trade.id, TradeStatus.LIQUIDATED, IntentStatus.CANCELED);
+				trade.close( TradeStatus.LIQUIDATED, IntentStatus.CANCELED);
 			} else {
-				LibIntent.closeTrade(trade.id, TradeStatus.LIQUIDATED, IntentStatus.CANCELED);
+				trade.close( TradeStatus.LIQUIDATED, IntentStatus.CANCELED);
 			}
 		}
 	}
