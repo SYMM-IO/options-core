@@ -25,6 +25,28 @@ contract ViewFacet is IViewFacet {
 	}
 
 	/**
+	 * @notice Returns the balances for a specified user and collateral type.
+	 * @param user The address of the user.
+	 * @param collateral The address of the collateral type.
+	 * @return balances The balance datas of the user and specific collateral type.
+	 */
+	function getBalances(address user, address collateral) external view returns (ScheduledReleaseBalance memory) {
+		return AccountStorage.layout().balances[user][collateral];
+	}
+
+	/**
+	 * @notice Returns max connected partyBs.
+	 * @return max connected partyBs.
+	 */
+	function getMaxConnectedPartyBs() external view returns (uint256) {
+		return AccountStorage.layout().maxConnectedPartyBs;
+	}
+
+	function getPartyBReleaseIntervals(address partyB) external view returns (uint256){
+		return AccountStorage.layout().partyBReleaseIntervals[partyB];
+	}
+
+	/**
 	 * @notice Returns various values related to Party A.
 	 * @param partyA The address of Party A.
 	 // TODO 1, return liquidationStatus The liquidation status of Party A.
@@ -67,6 +89,44 @@ contract ViewFacet is IViewFacet {
 	}
 
 	/**
+	 @notice Checks whether the withdraw is suspended or not.
+	 @param withdrawId The id of withdraw.
+	 @return isSuspendedWithdrawal A boolean value(true/false) to show that the `withdraw` is suspended or not.
+	 */
+	function isSuspendedWithdrawal(uint256 withdrawId) external view returns (bool) {
+		return AccountStorage.layout().suspendedWithdrawal[withdrawId];
+	}
+
+	function getBridges(address bridge) external view returns (bool) {
+		return AccountStorage.layout().bridges[bridge];
+	}
+
+	function getBridgeTransaction(uint256 bridgeId) external view returns (BridgeTransaction) {
+		return AccountStorage.layout().bridgeTransactions[bridgeId];
+	}
+
+	function getBridgeTransactionIds(address bridge) external view returns (uint256[]) {
+		return AccountStorage.layout().bridgeTransactionIds[bridge];
+	}
+
+	function getLastBridgeId() external view returns (uint256) {
+		return AccountStorage.layout().lastBridgeId;
+	}
+
+	function getInvalidBridgedAmountsPool() external view returns (address) {
+		return AccountStorage.layout().invalidBridgedAmountsPool;
+	}
+
+	/**
+	 @notice Get a list of user withdrawals.
+	 @param user The address of the user.
+	 @return userWithdrawals A list of withdrawals of the user.
+	 */
+	function getUserWithdrawals(address user) external view returns (uint256[]) {
+		return AccountStorage.layout().userWithdrawals[user];
+	}
+
+	/**
 	 * @notice Returns the details of a symbol by its ID.
 	 * @param symbolId The ID of the symbol.
 	 * @return symbol The details of the symbol.
@@ -91,6 +151,14 @@ contract ViewFacet is IViewFacet {
 			symbols[i - start] = symbolLayout.symbols[i + 1];
 		}
 		return symbols;
+	}
+
+	/**
+	 * @notice Returns last symbol id.
+	 * @return last symbol id.
+	 */
+	function getLastSymbolId() external view returns (uint256) {
+        return SymbolStorage.layout().lastSymbolId;
 	}
 
 	/**
@@ -139,6 +207,14 @@ contract ViewFacet is IViewFacet {
 	 */
 	function getOracle(uint256 oracleId) external view returns (Oracle memory) {
 		return SymbolStorage.layout().oracles[oracleId];
+	}
+
+	/**
+	 * @notice Returns last oracle id.
+	 * @return last oracle id.
+	 */
+	function getLastOracleId() external view returns (uint256) {
+        return SymbolStorage.layout().lastOracleId;
 	}
 
 	/**
@@ -263,6 +339,54 @@ contract ViewFacet is IViewFacet {
 	 */
 	function activeOpenIntentsLength(address user) external view returns (uint256) {
 		return IntentStorage.layout().activeOpenIntentsOf[user].length;
+	}
+
+	function activeOpenIntentsCount(address user) external view returns (uint256){
+		return IntentStorage.layout().activeOpenIntentsCount;
+	}
+
+	function partyAOpenIntentsIndex(address user) external view returns (uint256){
+		return IntentStorage.layout().partyAOpenIntentsIndex;
+	}
+
+	function partyBOpenIntentsIndex(address user) external view returns (uint256){
+		return IntentStorage.layout().partyBOpenIntentsIndex;
+	}
+
+	function getLastOpenIntentId() external view returns (uint256){
+		return IntentStorage.layout().lastOpenIntentId;
+	}
+
+	function partyATradesIndex(uint256 index) external view returns (uint256){
+		return IntentStorage.layout().partyATradesIndex;
+	}
+
+	function partyBTradesIndex(uint256 index) external view returns (uint256){
+		return IntentStorage.layout().partyBTradesIndex;
+	}
+
+	function getLastTradeId() external view returns (uint256){
+		return IntentStorage.layout().lastTradeId;
+	}
+
+	function getLastCloseIntentId() external view returns (uint256){
+		return IntentStorage.layout().lastCloseIntentId;
+	}
+
+	function isSigUsed(byte32 intentHash) external view returns (bool){
+		return IntentStorage.layout().isSigUsed[intentHash];
+	}
+
+	function signatureVerifier() external view returns (address){
+        return IntentStorage.layout().signatureVerifier;
+    }
+
+	function getTransferIntents(uint256 intentId) external view returns (TransferIntent memory) {
+		return IntentStorage.layout().transferIntents[intentId];
+	}
+
+	function getLastTransferIntentId() external view returns (uint256){
+		return IntentStorage.layout().lastTransferIntentId;
 	}
 
 	/**
@@ -548,5 +672,145 @@ contract ViewFacet is IViewFacet {
 
 	function getUnbindingCooldown() external view returns (uint256) {
 		return AccountStorage.layout().unbindingCooldown;
+	}
+
+	function whiteListedCollateral(address collateral) external view returns (bool){
+		return AppStorage.layout().whiteListedCollateral[collateral];
+	}
+
+	function balanceLimitPerUser() external view returns (uint256){
+		return AppStorage.layout().balanceLimitPerUser;
+	}
+
+	function maxCloseOrdersLength() external view returns (uint256){
+		return AppStorage.layout().maxCloseOrdersLength;
+	}
+
+	function maxTradePerPartyA() external view returns (uint256){
+		return AppStorage.layout().maxTradePerPartyA;
+	}
+
+	function priceOracleAddress() external view returns (address){
+		return AppStorage.layout().priceOracleAddress;
+	}
+
+	function globalPaused() external view returns (bool){
+		return AppStorage.layout().globalPaused;
+	}
+
+	function depositingPaused() external view returns (bool){
+		return AppStorage.layout().depositingPaused;
+	}
+
+	function withdrawingPaused() external view returns (bool){
+		return AppStorage.layout().withdrawingPaused;
+	}
+
+	function partyBActionsPaused() external view returns (bool){
+		return AppStorage.layout().partyBActionsPaused;
+	}
+
+	function partyAActionsPaused() external view returns (bool){
+		return AppStorage.layout().partyAActionsPaused;
+	}
+
+	function liquidatingPaused() external view returns (bool){
+		return AppStorage.layout().liquidatingPaused;
+	}
+
+	function thirdPartyActionsPaused() external view returns (bool){
+		return AppStorage.layout().thirdPartyActionsPaused;
+	}
+
+	function internalTransferPaused() external view returns (bool){
+		return AppStorage.layout().internalTransferPaused;
+	}
+
+	function bridgePaused() external view returns (bool){
+		return AppStorage.layout().bridgePaused;
+	}
+
+	function bridgeWithdrawPaused() external view returns (bool){
+		return AppStorage.layout().bridgeWithdrawPaused;
+	}
+
+	function emergencyMode() external view returns (bool){
+		return AppStorage.layout().emergencyMode;
+	}
+
+	function partyBEmergencyStatus(address partyB) external view returns (bool){
+		return AppStorage.layout().partyBEmergencyStatus[partyB];
+	}
+
+	function partyADeallocateCooldown() external view returns (uint256){
+		return AppStorage.layout().partyADeallocateCooldown;
+	}
+
+	function partyBDeallocateCooldown() external view returns (uint256){
+		return AppStorage.layout().partyBDeallocateCooldown;
+	}
+
+	function forceCancelOpenIntentTimeout() external view returns (uint256){
+		return AppStorage.layout().forceCancelOpenIntentTimeout;
+	}
+
+	function forceCancelCloseIntentTimeout() external view returns (uint256){
+		return AppStorage.layout().forceCancelCloseIntentTimeout;
+	}
+
+	function ownerExclusiveWindow() external view returns (uint256){
+		return AppStorage.layout().ownerExclusiveWindow;
+	}
+
+	function defaultFeeCollector() external view returns (address){
+		return AppStorage.layout().defaultFeeCollector;
+	}
+
+	function affiliateStatus(address affiliate) external view returns (bool){
+		return AppStorage.layout().affiliateStatus[affiliate];
+	}
+
+	function affiliateFeeCollector(address affiliate) external view returns (address){
+		return AppStorage.layout().affiliateFeeCollector[affiliate];
+	}
+
+	function partyBConfigs(address partyB) external view returns (PartyBConfig memory){
+		return AppStorage.layout().partyBConfigs[partyB];
+	}
+
+	function partyBList() external view returns (address[]){
+		return AppStorage.layout().partyBList;
+	}
+
+	function tradeNftAddress() external view returns (address){
+		return AppStorage.layout().tradeNftAddress;
+	}
+
+	function settlementPriceSigValidTime() external view returns (uint256){
+		return AppStorage.layout().settlementPriceSigValidTime;
+	}
+
+	function liquidationSigValidTime() external view returns (uint256){
+		return AppStorage.layout().liquidationSigValidTime;
+	}
+
+	function version() external view returns (uint16){
+		return AppStorage.layout().version;
+	}
+
+	function liquidationDetails(address partyBAddress, address collateral) external view returns (LiquidationDetail memory){
+		return AppStorage.layout().liquidationDetails[partyBAddress][collateral];
+	}
+
+	function debtsToPartyAs(address partyB, address collateral, address partyA) external view returns (uint256){
+		return AppStorage.layout().debtsToPartyAs[partyB][collateral][partyA];
+	}
+
+	function connectedPartyAs(address partyB, address collateral) external view returns (uint256){
+		return AppStorage.layout().connectedPartyAs[partyB][collateral];
+	}
+
+	function affiliateFees(address affiliate, uint256 symbolId) external view returns (uint256){
+		return AppStorage.layout().affiliateFees[affiliate][symbolId];
 	}
 }
