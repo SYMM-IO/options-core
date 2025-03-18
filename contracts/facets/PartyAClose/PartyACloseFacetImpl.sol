@@ -4,7 +4,6 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "../../libraries/LibIntent.sol";
 import "../../libraries/LibTrade.sol";
 import "../../libraries/LibCloseIntent.sol";
 import "../../libraries/LibUserData.sol";
@@ -59,7 +58,7 @@ library PartyACloseFacetImpl {
 		require(!AccountStorage.layout().instantActionsMode[msg.sender], "PartyAFacet: Instant action mode is activated");
 
 		if (block.timestamp > intent.deadline) {
-			LibIntent.expireCloseIntent(intentId);
+			intent.expire();
 			return IntentStatus.EXPIRED;
 		} else {
 			intent.statusModifyTimestamp = block.timestamp;

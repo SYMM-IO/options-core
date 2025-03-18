@@ -4,7 +4,6 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "../../libraries/LibIntent.sol";
 import "../../libraries/LibOpenIntent.sol";
 import "../../libraries/LibUserData.sol";
 import "../../storages/AppStorage.sol";
@@ -12,6 +11,7 @@ import "../../storages/IntentStorage.sol";
 import "../../storages/AccountStorage.sol";
 import "../../storages/SymbolStorage.sol";
 import "../../interfaces/ITradeNFT.sol";
+import "../../interfaces/IPriceOracle.sol";
 
 library PartyAOpenFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
@@ -140,7 +140,7 @@ library PartyAOpenFacetImpl {
 		ScheduledReleaseBalance storage partyAFeeBalance = accountLayout.balances[intent.partyA][intent.tradingFee.feeToken];
 
 		if (block.timestamp > intent.deadline) {
-			LibIntent.expireOpenIntent(intentId);
+			intent.expire();
 		} else if (intent.status == IntentStatus.PENDING) {
 			intent.status = IntentStatus.CANCELED;
 

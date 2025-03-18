@@ -10,6 +10,8 @@ import "../../utils/Pausable.sol";
 import "./IPartyAOpenFacet.sol";
 
 contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
+	using LibOpenIntentOps for OpenIntent;
+
 	/**
 	 * @notice Send a open intent to the protocol. The intent status will be pending.
 	 * @param partyBsWhiteList List of party B addresses allowed to act on this intent.
@@ -57,7 +59,7 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 			affiliate,
 			userData
 		);
-		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
+		IntentStorage.layout().openIntents[intentId];
 		emit SendOpenIntent(
 			msg.sender,
 			intentId,
@@ -83,8 +85,10 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 	 * @param expiredIntentIds An array of IDs of the open intents to be expired.
 	 */
 	function expireOpenIntent(uint256[] memory expiredIntentIds) external whenNotPartyAActionsPaused {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		
 		for (uint256 i; i < expiredIntentIds.length; i++) {
-			LibIntent.expireOpenIntent(expiredIntentIds[i]);
+			intentLayout.openIntents[expiredIntentIds[i]].expire();
 			emit ExpireOpenIntent(expiredIntentIds[i]);
 		}
 	}

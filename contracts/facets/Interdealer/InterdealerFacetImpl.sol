@@ -5,7 +5,6 @@
 pragma solidity >=0.8.18;
 
 import "../../interfaces/ISignatureVerifier.sol";
-import "../../libraries/LibIntent.sol";
 import "../../libraries/LibMuon.sol";
 import "../../libraries/LibTransferIntent.sol";
 import "../../storages/AccountStorage.sol";

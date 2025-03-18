@@ -68,4 +68,34 @@ library LibOpenIntentOps {
 		intentLayout.activeOpenIntentsOf[self.partyB].push(self.id);
 		intentLayout.partyBOpenIntentsIndex[self.id] = intentLayout.activeOpenIntentsOf[self.partyB].length - 1;
 	}
+
+	function expire(OpenIntent storage self) internal {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+
+		Symbol memory symbol = SymbolStorage.layout().symbols[self.tradeAgreements.symbolId];
+
+		require(block.timestamp > self.deadline, "LibIntent: self isn't expired");
+		require(
+			self.status == IntentStatus.PENDING || self.status == IntentStatus.CANCEL_PENDING || self.status == IntentStatus.LOCKED,
+			"LibIntent: Invalid state"
+		);
+
+		ScheduledReleaseBalance storage partyABalance = accountLayout.balances[self.partyA][symbol.collateral];
+		ScheduledReleaseBalance storage partyAFeeBalance = accountLayout.balances[self.partyA][self.tradingFee.feeToken];
+
+		self.statusModifyTimestamp = block.timestamp;
+		partyABalance.instantAdd(symbol.collateral, getPremium(self));
+
+		// send trading Fee back to partyA
+		uint256 tradingFee = getTradingFee(self);
+		uint256 affiliateFee = getAffiliateFee(self);
+
+		if (self.partyBsWhiteList.length == 1) {
+			partyAFeeBalance.scheduledAdd(self.partyBsWhiteList[0], tradingFee + affiliateFee, block.timestamp);
+		} else {
+			partyAFeeBalance.instantAdd(self.tradingFee.feeToken, tradingFee + affiliateFee);
+		}
+		remove(self, false);
+		self.status = IntentStatus.EXPIRED;
+	}
 }

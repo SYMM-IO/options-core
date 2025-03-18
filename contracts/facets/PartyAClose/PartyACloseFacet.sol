@@ -10,6 +10,8 @@ import "../../utils/Pausable.sol";
 import "./IPartyACloseFacet.sol";
 
 contract PartyACloseFacet is Accessibility, Pausable, IPartyACloseFacet {
+	using LibCloseIntentOps for CloseIntent;
+
 	/**
 	 * @notice User sends a close intent to close their trade.
 	 * @param tradeId The ID of the trade to be closed.
@@ -35,8 +37,10 @@ contract PartyACloseFacet is Accessibility, Pausable, IPartyACloseFacet {
 	 * @param expiredIntentIds An array of IDs of the close intents to be expired.
 	 */
 	function expireCloseIntent(uint256[] memory expiredIntentIds) external whenNotPartyAActionsPaused {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+
 		for (uint256 i; i < expiredIntentIds.length; i++) {
-			LibIntent.expireCloseIntent(expiredIntentIds[i]);
+			intentLayout.closeIntents[expiredIntentIds[i]].expire();
 			emit ExpireCloseIntent(expiredIntentIds[i]);
 		}
 	}
