@@ -32,6 +32,8 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 		uint256 strikePrice,
 		uint256 expirationTimestamp,
 		uint256 penalty,
+		TradeSide tradeSide,
+		MarginType marginType,
 		ExerciseFee memory exerciseFee,
 		uint256 deadline,
 		address feeToken,
@@ -47,6 +49,8 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 			strikePrice,
 			expirationTimestamp,
 			penalty,
+			tradeSide,
+			marginType,
 			exerciseFee,
 			deadline,
 			feeToken,
@@ -58,15 +62,19 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 			msg.sender,
 			intentId,
 			partyBsWhiteList,
-			symbolId,
-			price,
-			quantity,
-			strikePrice,
-			expirationTimestamp,
-			penalty,
-			exerciseFee,
-			intent.tradingFee,
-			deadline
+			abi.encodePacked(
+				symbolId,
+				price,
+				quantity,
+				strikePrice,
+				expirationTimestamp,
+				penalty,
+				tradeSide,
+				marginType,
+				exerciseFee.rate,
+				exerciseFee.cap,
+				deadline
+			)
 		);
 	}
 

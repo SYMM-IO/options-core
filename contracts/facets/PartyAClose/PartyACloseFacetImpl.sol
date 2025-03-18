@@ -76,7 +76,7 @@ library PartyACloseFacetImpl {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		Trade storage trade = intentLayout.trades[tradeId];
-		Symbol memory symbol = SymbolStorage.layout().symbols[trade.symbolId];
+		Symbol memory symbol = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId];
 
 		require(trade.partyA == sender, "PartyAFacet: from != partyA");
 		require(trade.partyB != receiver, "PartyAFacet: to == partyB");

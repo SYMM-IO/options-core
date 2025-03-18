@@ -24,7 +24,7 @@ library LibIntent {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
 		OpenIntent storage intent = intentLayout.openIntents[intentId];
-		Symbol memory symbol = SymbolStorage.layout().symbols[intent.symbolId];
+		Symbol memory symbol = SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId];
 
 		require(block.timestamp > intent.deadline, "LibIntent: Intent isn't expired");
 		require(

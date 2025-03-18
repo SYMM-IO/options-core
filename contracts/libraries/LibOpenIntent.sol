@@ -13,16 +13,16 @@ library LibOpenIntentOps {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 
 	function getTradingFee(OpenIntent memory self) internal pure returns (uint256) {
-		return (self.quantity * self.price * self.tradingFee.platformFee) / (self.tradingFee.tokenPrice * 1e18);
+		return (self.tradeAgreements.quantity * self.price * self.tradingFee.platformFee) / (self.tradingFee.tokenPrice * 1e18);
 	}
 
 	function getAffiliateFee(OpenIntent memory self) internal view returns (uint256) {
-		uint256 affiliateFee = AppStorage.layout().affiliateFees[self.affiliate][self.symbolId];
-		return (self.quantity * self.price * affiliateFee) / (self.tradingFee.tokenPrice * 1e18);
+		uint256 affiliateFee = AppStorage.layout().affiliateFees[self.affiliate][self.tradeAgreements.symbolId];
+		return (self.tradeAgreements.quantity * self.price * affiliateFee) / (self.tradingFee.tokenPrice * 1e18);
 	}
 
 	function getPremium(OpenIntent memory self) internal pure returns (uint256) {
-		return (self.quantity * self.price) / 1e18;
+		return (self.tradeAgreements.quantity * self.price) / 1e18;
 	}
 
 	function save(OpenIntent memory self) internal {

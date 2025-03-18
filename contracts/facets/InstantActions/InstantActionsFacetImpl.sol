@@ -97,6 +97,8 @@ library InstantActionsFacetImpl {
 			signedOpenIntent.strikePrice,
 			signedOpenIntent.expirationTimestamp,
 			signedOpenIntent.penalty,
+			signedOpenIntent.tradeSide,
+			signedOpenIntent.marginType,
 			signedOpenIntent.exerciseFee,
 			signedOpenIntent.deadline,
 			signedOpenIntent.feeToken,

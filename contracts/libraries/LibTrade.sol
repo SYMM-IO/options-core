@@ -14,26 +14,26 @@ library LibTradeOps {
 	using LibCloseIntentOps for CloseIntent;
 
 	function tradeOpenAmount(Trade memory self) internal pure returns (uint256) {
-		return self.quantity - self.closedAmountBeforeExpiration;
+		return self.tradeAgreements.quantity - self.closedAmountBeforeExpiration;
 	}
 
 	function getAvailableAmountToClose(Trade memory self) internal pure returns (uint256) {
-		return self.quantity - self.closedAmountBeforeExpiration - self.closePendingAmount;
+		return self.tradeAgreements.quantity - self.closedAmountBeforeExpiration - self.closePendingAmount;
 	}
 
 	function getValueOfTradeForPartyA(Trade memory self, uint256 currentPrice, uint256 filledAmount) internal view returns (uint256 pnl) {
-		Symbol storage symbol = SymbolStorage.layout().symbols[self.symbolId];
+		Symbol storage symbol = SymbolStorage.layout().symbols[self.tradeAgreements.symbolId];
 
-		if (currentPrice > self.strikePrice && symbol.optionType == OptionType.CALL) {
-			pnl = ((currentPrice - self.strikePrice) * filledAmount) / 1e18;
-		} else if (currentPrice < self.strikePrice && symbol.optionType == OptionType.PUT) {
-			pnl = ((self.strikePrice - currentPrice) * filledAmount) / 1e18;
+		if (currentPrice > self.tradeAgreements.strikePrice && symbol.optionType == OptionType.CALL) {
+			pnl = ((currentPrice - self.tradeAgreements.strikePrice) * filledAmount) / 1e18;
+		} else if (currentPrice < self.tradeAgreements.strikePrice && symbol.optionType == OptionType.PUT) {
+			pnl = ((self.tradeAgreements.strikePrice - currentPrice) * filledAmount) / 1e18;
 		}
 	}
 
 	function save(Trade memory self) internal {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-		Symbol memory symbol = SymbolStorage.layout().symbols[self.symbolId];
+		Symbol memory symbol = SymbolStorage.layout().symbols[self.tradeAgreements.symbolId];
 		intentLayout.tradesOf[self.partyA].push(self.id);
 		intentLayout.tradesOf[self.partyB].push(self.id);
 		intentLayout.activeTradesOf[self.partyA].push(self.id);
@@ -47,7 +47,7 @@ library LibTradeOps {
 
 	function remove(Trade memory self) internal {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-		Symbol memory symbol = SymbolStorage.layout().symbols[self.symbolId];
+		Symbol memory symbol = SymbolStorage.layout().symbols[self.tradeAgreements.symbolId];
 
 		uint256 indexOfPartyATrade = intentLayout.partyATradesIndex[self.id];
 		uint256 indexOfPartyBTrade = intentLayout.partyBTradesIndex[self.id];

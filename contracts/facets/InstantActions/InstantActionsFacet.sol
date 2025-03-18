@@ -85,15 +85,19 @@ contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
 			intent.partyA,
 			intent.id,
 			intent.partyBsWhiteList,
-			intent.symbolId,
-			intent.price,
-			intent.quantity,
-			intent.strikePrice,
-			intent.expirationTimestamp,
-			intent.penalty,
-			intent.exerciseFee,
-			intent.tradingFee,
-			intent.deadline
+			abi.encodePacked(
+				intent.tradeAgreements.symbolId,
+				intent.price,
+				intent.tradeAgreements.quantity,
+				intent.tradeAgreements.strikePrice,
+				intent.tradeAgreements.expirationTimestamp,
+				intent.tradeAgreements.penalty,
+				intent.tradeAgreements.tradeSide,
+				intent.tradeAgreements.marginType,
+				intent.tradeAgreements.exerciseFee.rate,
+				intent.tradeAgreements.exerciseFee.cap,
+				intent.deadline
+			)
 		);
 		emit FillOpenIntent(intent.id, intent.tradeId, intent.partyA, intent.partyB, signedFillOpenIntent.quantity, signedFillOpenIntent.price);
 	}
