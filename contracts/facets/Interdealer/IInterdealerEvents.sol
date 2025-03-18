@@ -2,7 +2,7 @@
 // This contract is licensed under the SYMM Core Business Source License 1.1
 // Copyright (c) 2023 Symmetry Labs AG
 // For more information, see https://docs.symm.io/legal-disclaimer/license
-pragma solidity >=0.8.18;
+pragma solidity >=0.8.19;
 
 interface IInterdealerEvents {
 	event SendTransferIntent(uint256 tradeId, address sender, address[] partyBWhitelist, uint256 price, uint256 deadline);
