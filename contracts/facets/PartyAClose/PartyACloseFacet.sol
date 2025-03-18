@@ -24,7 +24,7 @@ contract PartyACloseFacet is Accessibility, Pausable, IPartyACloseFacet {
 		uint256 quantity,
 		uint256 deadline
 	) external whenNotPartyAActionsPaused onlyPartyAOfTrade(tradeId) {
-		uint256 closeIntentId = PartyACloseFacetImpl.sendCloseIntent(tradeId, price, quantity, deadline);
+		uint256 closeIntentId = PartyACloseFacetImpl.sendCloseIntent(msg.sender, tradeId, price, quantity, deadline);
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		Trade storage trade = intentLayout.trades[tradeId];
 		emit SendCloseIntent(trade.partyA, trade.partyB, tradeId, closeIntentId, price, quantity, deadline, IntentStatus.PENDING);
@@ -49,7 +49,7 @@ contract PartyACloseFacet is Accessibility, Pausable, IPartyACloseFacet {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		for (uint256 i; i < intentIds.length; i++) {
 			Trade storage trade = intentLayout.trades[intentLayout.closeIntents[intentIds[i]].tradeId];
-			IntentStatus result = PartyACloseFacetImpl.cancelCloseIntent(intentIds[i]);
+			IntentStatus result = PartyACloseFacetImpl.cancelCloseIntent(msg.sender, intentIds[i]);
 			if (result == IntentStatus.EXPIRED) {
 				emit ExpireCloseIntent(intentIds[i]);
 			} else if (result == IntentStatus.CANCEL_PENDING) {

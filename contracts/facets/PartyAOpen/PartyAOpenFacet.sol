@@ -39,6 +39,7 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 		bytes memory userData
 	) external whenNotPartyAActionsPaused notSuspended(msg.sender) returns (uint256 intentId) {
 		intentId = PartyAOpenFacetImpl.sendOpenIntent(
+			msg.sender,
 			partyBsWhiteList,
 			symbolId,
 			price,
@@ -90,7 +91,7 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
      */
 	function cancelOpenIntent(uint256[] memory intentIds) external whenNotPartyAActionsPaused {
 		for (uint256 i; i < intentIds.length; i++) {
-			IntentStatus result = PartyAOpenFacetImpl.cancelOpenIntent(intentIds[i]);
+			IntentStatus result = PartyAOpenFacetImpl.cancelOpenIntent(msg.sender, intentIds[i]);
 			OpenIntent memory intent = IntentStorage.layout().openIntents[intentIds[i]];
 
 			if (result == IntentStatus.EXPIRED) {

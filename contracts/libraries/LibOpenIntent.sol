@@ -64,6 +64,7 @@ library LibOpenIntentOps {
 	function saveForPartyB(OpenIntent memory self) internal {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 
+		intentLayout.openIntentsOf[self.partyB].push(self.id);
 		intentLayout.activeOpenIntentsOf[self.partyB].push(self.id);
 		intentLayout.partyBOpenIntentsIndex[self.id] = intentLayout.activeOpenIntentsOf[self.partyB].length - 1;
 	}
