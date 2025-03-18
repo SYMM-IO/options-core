@@ -4,11 +4,13 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "../../utils/Pausable.sol";
-import "../../utils/Accessibility.sol";
-import "./IClearingHouseFacet.sol";
-import "./ClearingHouseFacetImpl.sol";
-import "../../storages/AccountStorage.sol";
+import { LibAccessibility } from "../../libraries/LibAccessibility.sol";
+import { AccountStorage } from "../../storages/AccountStorage.sol";
+import { Accessibility } from "../../utils/Accessibility.sol";
+import { Pausable } from "../../utils/Pausable.sol";
+import { ClearingHouseFacetImpl } from "./ClearingHouseFacetImpl.sol";
+import { IClearingHouseEvents } from "./IClearingHouseEvents.sol";
+import { IClearingHouseFacet } from "./IClearingHouseFacet.sol";
 
 contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 	/**

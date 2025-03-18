@@ -4,10 +4,6 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "../storages/IntentStorage.sol";
-import "../storages/AccountStorage.sol";
-import "../storages/AppStorage.sol";
-
 library LibUserData {
 	function addCounter(bytes memory _data, uint256 _counter) internal pure returns (bytes memory) {
 		bytes32 counterBytes = bytes32(uint256(_counter));

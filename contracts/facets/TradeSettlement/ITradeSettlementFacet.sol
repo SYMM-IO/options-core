@@ -4,8 +4,8 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "./ITradeSettlementEvents.sol";
-import "../../storages/AppStorage.sol";
+import { SettlementPriceSig } from "../../storages/AppStorage.sol";
+import { ITradeSettlementEvents } from "./ITradeSettlementEvents.sol";
 
 interface ITradeSettlementFacet is ITradeSettlementEvents {
 	function expireTrade(uint256 tradeId, SettlementPriceSig memory settlementPriceSig) external;

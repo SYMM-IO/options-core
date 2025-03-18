@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity >=0.8.18;
 
+import { LibDiamond } from "../../libraries/LibDiamond.sol";
+import { AppStorage } from "../../storages/AppStorage.sol";
+import { IDiamondCut } from "./IDiamondCut.sol";
+
 /******************************************************************************\
 * Author: Nick Mudge <nick@perfectabstractions.com> (https://twitter.com/mudgen)
 * EIP-2535 Diamonds: https://eips.ethereum.org/EIPS/eip-2535
 /******************************************************************************/
-
-import { IDiamondCut } from "./IDiamondCut.sol";
-import { LibDiamond } from "../../libraries/LibDiamond.sol";
-import "../../storages/AppStorage.sol";
 
 contract DiamondCutFacet is IDiamondCut {
 	/// @notice Add/replace/remove any number of functions and optionally execute a function with delegatecall

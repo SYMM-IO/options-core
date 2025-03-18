@@ -4,12 +4,11 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "./IInstantActionsCloseEvents.sol";
+import { SignedFillIntentById, SignedCloseIntent, SignedFillIntent, SignedSimpleActionIntent } from "../../storages/IntentStorage.sol";
+import { IInstantActionsCloseEvents } from "./IInstantActionsCloseEvents.sol";
 
 interface IInstantActionsCloseFacet is IInstantActionsCloseEvents {
-
 	function instantFillCloseIntent(SignedFillIntentById calldata signedFillCloseIntent, bytes calldata partyBSignature) external;
-
 
 	function instantCreateAndFillCloseIntent(
 		SignedCloseIntent calldata signedCloseIntent,
@@ -18,12 +17,10 @@ interface IInstantActionsCloseFacet is IInstantActionsCloseEvents {
 		bytes calldata partyBSignature
 	) external;
 
-
 	function instantCancelCloseIntent(
 		SignedSimpleActionIntent calldata signedCancelCloseIntent,
 		bytes calldata partyASignature,
 		SignedSimpleActionIntent calldata signedAcceptCancelCloseIntent,
 		bytes calldata partyBSignature
 	) external;
-
 }

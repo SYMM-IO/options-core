@@ -4,8 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "../../storages/IntentStorage.sol";
-import "../../interfaces/IPartiesEvents.sol";
+import { IPartiesEvents } from "../../interfaces/IPartiesEvents.sol";
 
 interface IPartyBOpenEvents is IPartiesEvents {
 	event AcceptCancelOpenIntent(uint256 intentId);

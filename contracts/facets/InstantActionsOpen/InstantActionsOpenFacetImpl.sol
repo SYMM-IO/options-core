@@ -6,7 +6,7 @@ pragma solidity >=0.8.18;
 
 import { ISignatureVerifier } from "../../interfaces/ISignatureVerifier.sol";
 import { LibCloseIntentOps } from "../../libraries/LibCloseIntent.sol";
-import {PartyBOpenFacetImpl} from "../PartyBOpen/PartyBOpenFacetImpl.sol";
+import { PartyBOpenFacetImpl } from "../PartyBOpen/PartyBOpenFacetImpl.sol";
 import { LibHash } from "../../libraries/LibHash.sol";
 import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
 import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";

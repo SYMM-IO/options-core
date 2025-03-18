@@ -4,8 +4,6 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "../../storages/IntentStorage.sol";
-
 interface IInterdealerEvents {
 	event SendTransferIntent(uint256 tradeId, address sender, address[] partyBWhitelist, uint256 price, uint256 deadline);
 	event CancelTransferIntent(uint256 tradeId);

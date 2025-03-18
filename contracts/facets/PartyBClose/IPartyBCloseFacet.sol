@@ -4,8 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "./IPartyBCloseEvents.sol";
-import "../../storages/AppStorage.sol";
+import { IPartyBCloseEvents } from "./IPartyBCloseEvents.sol";
 
 interface IPartyBCloseFacet is IPartyBCloseEvents {
 	function acceptCancelCloseIntent(uint256 intentId) external;

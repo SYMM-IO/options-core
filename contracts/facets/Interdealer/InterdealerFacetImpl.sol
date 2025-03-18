@@ -4,12 +4,10 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "../../interfaces/ISignatureVerifier.sol";
-import "../../libraries/LibMuon.sol";
-import "../../libraries/LibTransferIntent.sol";
-import "../../storages/AccountStorage.sol";
-import "../../storages/AppStorage.sol";
-import "../../storages/IntentStorage.sol";
+import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { TransferIntentOps } from "../../libraries/LibTransferIntent.sol";
+import { AccountStorage } from "../../storages/AccountStorage.sol";
+import { TransferIntent, IntentStorage, Trade, TransferIntentStatus } from "../../storages/IntentStorage.sol";
 
 library InterdealerFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;

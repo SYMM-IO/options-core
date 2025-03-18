@@ -4,14 +4,14 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "../../libraries/LibOpenIntent.sol";
-import "../../libraries/LibUserData.sol";
-import "../../storages/AppStorage.sol";
-import "../../storages/IntentStorage.sol";
-import "../../storages/AccountStorage.sol";
-import "../../storages/SymbolStorage.sol";
-import "../../interfaces/ITradeNFT.sol";
-import "../../interfaces/IPriceOracle.sol";
+import { IPriceOracle } from "../../interfaces/IPriceOracle.sol";
+import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
+import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { LibUserData } from "../../libraries/LibUserData.sol";
+import { AccountStorage } from "../../storages/AccountStorage.sol";
+import { AppStorage } from "../../storages/AppStorage.sol";
+import { OpenIntent, ExerciseFee, IntentStorage, TradingFee, TradeSide, MarginType, IntentStatus, TradeAgreements } from "../../storages/IntentStorage.sol";
+import { Symbol, SymbolStorage } from "../../storages/SymbolStorage.sol";
 
 library PartyAOpenFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;

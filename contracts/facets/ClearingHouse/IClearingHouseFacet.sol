@@ -4,8 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "./IClearingHouseEvents.sol";
-import "../../storages/AppStorage.sol";
+import { IClearingHouseEvents } from "./IClearingHouseEvents.sol";
 
 interface IClearingHouseFacet is IClearingHouseEvents {
 	function flagLiquidation(address partyB, address collateral) external;

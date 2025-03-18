@@ -4,10 +4,12 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "./ForceActionsFacetEvents.sol";
+import { ForceActionsFacetEvents } from "./ForceActionsFacetEvents.sol";
 
 interface IForceActionsFacet is ForceActionsFacetEvents {
 	function forceCancelOpenIntent(uint256 intentId) external;
+
 	function forceCancelCloseIntent(uint256 intentId) external;
+
 	function forceCancelInterdealerIntent(uint256 intentId) external;
 }

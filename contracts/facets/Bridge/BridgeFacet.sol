@@ -4,10 +4,12 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "../../utils/Accessibility.sol";
-import "../../utils/Pausable.sol";
-import "./BridgeFacetImpl.sol";
-import "./IBridgeFacet.sol";
+import { LibAccessibility } from "../../libraries/LibAccessibility.sol";
+import { Accessibility } from "../../utils/Accessibility.sol";
+import { Pausable } from "../../utils/Pausable.sol";
+import { BridgeFacetImpl } from "./BridgeFacetImpl.sol";
+import { IBridgeEvents } from "./IBridgeEvents.sol";
+import { IBridgeFacet } from "./IBridgeFacet.sol";
 
 contract BridgeFacet is Accessibility, Pausable, IBridgeFacet {
 	/// @notice Transfers a specified amount to the designated bridge address.

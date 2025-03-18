@@ -4,7 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "../storages/AppStorage.sol";
+import { AppStorage } from "../storages/AppStorage.sol";
 
 abstract contract Pausable {
 	modifier whenNotGlobalPaused() {

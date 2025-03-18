@@ -4,9 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "../PartyBOpen/IPartyBOpenEvents.sol";
-import "../PartyBClose/IPartyBCloseEvents.sol";
-import "../PartyAOpen/IPartyAOpenEvents.sol";
-import "../PartyAClose/IPartyACloseEvents.sol";
+import { IPartyAOpenEvents } from "../PartyAOpen/IPartyAOpenEvents.sol";
+import { IPartyBOpenEvents } from "../PartyBOpen/IPartyBOpenEvents.sol";
 
-interface IInstantActionsOpenEvents is IPartyBOpenEvents, IPartyBCloseEvents, IPartyAOpenEvents, IPartyACloseEvents {}
+interface IInstantActionsOpenEvents is IPartyBOpenEvents, IPartyAOpenEvents {}

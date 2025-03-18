@@ -4,13 +4,16 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "./InstantActionsCloseFacetImpl.sol";
-import "../../utils/Accessibility.sol";
-import "../../utils/Pausable.sol";
-import "./IInstantActionsCloseFacet.sol";
+import { IPartiesEvents } from "../../interfaces/IPartiesEvents.sol";
+import { SignedFillIntentById, CloseIntent, IntentStorage, Trade, SignedCloseIntent, SignedFillIntent, SignedSimpleActionIntent, IntentStatus } from "../../storages/IntentStorage.sol";
+import { Accessibility } from "../../utils/Accessibility.sol";
+import { Pausable } from "../../utils/Pausable.sol";
+import { IPartyACloseEvents } from "../PartyAClose/IPartyACloseEvents.sol";
+import { IPartyBCloseEvents } from "../PartyBClose/IPartyBCloseEvents.sol";
+import { IInstantActionsCloseFacet } from "./IInstantActionsCloseFacet.sol";
+import { InstantActionsCloseFacetImpl } from "./InstantActionsCloseFacetImpl.sol";
 
 contract InstantActionsCloseFacet is Accessibility, Pausable, IInstantActionsCloseFacet {
-
 	/// @notice Any party can close a trade on behalf of partyB if it has the suitable signature from the partyB
 	/// @param signedFillCloseIntent The pure data of signature that partyB wants to fill the close order
 	/// @param partyBSignature The signature of partyB
@@ -23,7 +26,6 @@ contract InstantActionsCloseFacet is Accessibility, Pausable, IInstantActionsClo
 		Trade storage trade = IntentStorage.layout().trades[intent.tradeId];
 		emit FillCloseIntent(intent.id, trade.id, trade.partyA, trade.partyB, signedFillCloseIntent.quantity, signedFillCloseIntent.price);
 	}
-
 
 	/// @notice Any party can close a trade on behalf of partyB if it has the suitable signature from the partyB and partyA
 	/// @param signedCloseIntent The pure data of close intent that partyA wants to broadcast
@@ -55,7 +57,6 @@ contract InstantActionsCloseFacet is Accessibility, Pausable, IInstantActionsClo
 		);
 		emit FillCloseIntent(intentId, trade.id, trade.partyA, trade.partyB, signedFillCloseIntent.quantity, signedFillCloseIntent.price);
 	}
-
 
 	/// @notice Any party can cancel a close intent on behalf of parties if it has the suitable signature from the partyB and partyA
 	/// @param signedCancelCloseIntent The pure data of close intent that partyA wants to cancel

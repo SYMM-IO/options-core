@@ -4,7 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "./IAccountEvents.sol";
+import { IAccountEvents } from "./IAccountEvents.sol";
 
 interface IAccountFacet is IAccountEvents {
 	function deposit(address collateral, uint256 amount) external;

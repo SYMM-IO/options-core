@@ -4,10 +4,10 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "../../storages/IntentStorage.sol";
-import "../../utils/Pausable.sol";
-import "./IForceActionsFacet.sol";
-import "./ForceActionsFacetImpl.sol";
+import { Pausable } from "../../utils/Pausable.sol";
+import { ForceActionsFacetEvents } from "./ForceActionsFacetEvents.sol";
+import { ForceActionsFacetImpl } from "./ForceActionsFacetImpl.sol";
+import { IForceActionsFacet } from "./IForceActionsFacet.sol";
 
 contract ForceActionsFacet is Pausable, IForceActionsFacet {
 	/**

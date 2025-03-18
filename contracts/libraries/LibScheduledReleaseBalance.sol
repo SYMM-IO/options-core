@@ -5,8 +5,8 @@
 
 pragma solidity >=0.8.18;
 
-import "../storages/AccountStorage.sol";
-import "../storages/AppStorage.sol";
+import { AccountStorage } from "../storages/AccountStorage.sol";
+import { AppStorage, LiquidationStatus } from "../storages/AppStorage.sol";
 
 // ScheduledReleaseEntry implements a two-stage fund release system:
 // - Funds start in 'scheduled' stage
