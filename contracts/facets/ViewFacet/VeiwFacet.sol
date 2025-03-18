@@ -4,6 +4,8 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+
 import "../../storages/AccountStorage.sol";
 import "../../storages/IntentStorage.sol";
 import "../../storages/SymbolStorage.sol";
@@ -11,6 +13,8 @@ import "../../storages/AppStorage.sol";
 import "./IViewFacet.sol";
 
 contract ViewFacet is IViewFacet {
+	using EnumerableSet for EnumerableSet.AddressSet;
+
 	/**
 	 * @notice Returns the balance for a specified user and collateral type.
 	 * @param user The address of the user.
@@ -499,6 +503,18 @@ contract ViewFacet is IViewFacet {
 	 */
 	function hasRole(address user, bytes32 role) external view returns (bool) {
 		return AppStorage.layout().hasRole[user][role];
+	}
+
+	function getRoleMember(bytes32 role, uint256 index) public view returns (address) {
+		return AppStorage.layout().roleMembers[role].at(index);
+	}
+
+	function getRoleMemberCount(bytes32 role) public view returns (uint256) {
+		return AppStorage.layout().roleMembers[role].length();
+	}
+
+	function getRoleMembers(bytes32 role) public view returns (address[] memory) {
+		return AppStorage.layout().roleMembers[role].values();
 	}
 
 	/**

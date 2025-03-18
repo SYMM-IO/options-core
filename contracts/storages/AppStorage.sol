@@ -4,13 +4,16 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+
 import "../interfaces/IMuonOracle.sol";
+
 struct SettlementState {
 	int256 amount;
 	bool pending;
 }
 
-struct LiquidationDetail {
+struct LiquidationDetail{
 	bytes liquidationId;
 	LiquidationStatus status;
 	int256 upnl;
@@ -62,7 +65,7 @@ enum LiquidationStatus {
 	IN_PROGRESS
 }
 
-library AppStorage {
+library AppStorage{
 	bytes32 internal constant APP_STORAGE_SLOT = keccak256("diamond.standard.storage.app");
 
 	struct Layout {
@@ -96,6 +99,7 @@ library AppStorage {
 		mapping(address => address) affiliateFeeCollector;
 		///////////////////////////////////
 		mapping(address => mapping(bytes32 => bool)) hasRole;
+		mapping(bytes32 => EnumerableSet.AddressSet) roleMembers;
 		mapping(address => PartyBConfig) partyBConfigs;
 		address[] partyBList;
 		///////////////////////////////////
