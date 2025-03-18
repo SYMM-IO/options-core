@@ -51,4 +51,13 @@ library LibCloseIntentOps {
 
 		trade.closePendingAmount -= self.quantity;
 	}
+
+	function expire(CloseIntent storage self) internal {
+		require(block.timestamp > self.deadline, "LibIntent: Intent isn't expired");
+		require(self.status == IntentStatus.PENDING || self.status == IntentStatus.CANCEL_PENDING, "LibIntent: Invalid state");
+
+		self.statusModifyTimestamp = block.timestamp;
+		self.status = IntentStatus.EXPIRED;
+		remove(self);
+	}
 }

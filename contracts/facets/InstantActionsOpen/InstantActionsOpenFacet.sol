@@ -4,12 +4,12 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "./InstantActionsFacetImpl.sol";
+import "./InstantActionsOpenFacetImpl.sol";
 import "../../utils/Accessibility.sol";
 import "../../utils/Pausable.sol";
-import "./IInstantActionsFacet.sol";
+import "./IInstantActionsOpenFacet.sol";
 
-contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
+contract InstantActionsOpenFacet is Accessibility, Pausable, IInstantActionsOpenFacet {
 	/// @notice Any party can fill the existing open intent on behalf of partyB if it has the suitable signature from the partyB
 	/// @param signedFillOpenIntent The pure data of signature that partyB wants to fill the open order
 	/// @param partyBSignature The signature of partyB
@@ -17,22 +17,9 @@ contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
 		SignedFillIntentById calldata signedFillOpenIntent,
 		bytes calldata partyBSignature
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		InstantActionsFacetImpl.instantFillOpenIntent(signedFillOpenIntent, partyBSignature);
+		InstantActionsOpenFacetImpl.instantFillOpenIntent(signedFillOpenIntent, partyBSignature);
 		OpenIntent storage intent = IntentStorage.layout().openIntents[signedFillOpenIntent.intentId];
 		emit FillOpenIntent(intent.id, intent.tradeId, intent.partyA, intent.partyB, signedFillOpenIntent.quantity, signedFillOpenIntent.price);
-	}
-
-	/// @notice Any party can close a trade on behalf of partyB if it has the suitable signature from the partyB
-	/// @param signedFillCloseIntent The pure data of signature that partyB wants to fill the close order
-	/// @param partyBSignature The signature of partyB
-	function instantFillCloseIntent(
-		SignedFillIntentById calldata signedFillCloseIntent,
-		bytes calldata partyBSignature
-	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		InstantActionsFacetImpl.instantFillCloseIntent(signedFillCloseIntent, partyBSignature);
-		CloseIntent storage intent = IntentStorage.layout().closeIntents[signedFillCloseIntent.intentId];
-		Trade storage trade = IntentStorage.layout().trades[intent.tradeId];
-		emit FillCloseIntent(intent.id, trade.id, trade.partyA, trade.partyB, signedFillCloseIntent.quantity, signedFillCloseIntent.price);
 	}
 
 	/// @notice Any party can lock an open intent on behalf of partyB if it has the suitable signature from the partyB
@@ -42,7 +29,7 @@ contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
 		SignedSimpleActionIntent calldata signedLockIntent,
 		bytes calldata partyBSignature
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		InstantActionsFacetImpl.instantLock(signedLockIntent, partyBSignature);
+		InstantActionsOpenFacetImpl.instantLock(signedLockIntent, partyBSignature);
 		OpenIntent storage intent = IntentStorage.layout().openIntents[signedLockIntent.intentId];
 		emit LockOpenIntent(intent.partyB, signedLockIntent.intentId);
 	}
@@ -54,7 +41,7 @@ contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
 		SignedSimpleActionIntent calldata signedUnlockIntent,
 		bytes calldata partyBSignature
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		IntentStatus res = InstantActionsFacetImpl.instantUnlock(signedUnlockIntent, partyBSignature);
+		IntentStatus res = InstantActionsOpenFacetImpl.instantUnlock(signedUnlockIntent, partyBSignature);
 		if (res == IntentStatus.EXPIRED) {
 			emit ExpireOpenIntent(signedUnlockIntent.intentId);
 		} else if (res == IntentStatus.PENDING) {
@@ -73,7 +60,7 @@ contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
 		SignedFillIntent calldata signedFillOpenIntent,
 		bytes calldata partyBSignature
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		uint256 intentId = InstantActionsFacetImpl.instantCreateAndFillOpenIntent(
+		uint256 intentId = InstantActionsOpenFacetImpl.instantCreateAndFillOpenIntent(
 			signedOpenIntent,
 			partyASignature,
 			signedFillOpenIntent,
@@ -102,37 +89,6 @@ contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
 		emit FillOpenIntent(intent.id, intent.tradeId, intent.partyA, intent.partyB, signedFillOpenIntent.quantity, signedFillOpenIntent.price);
 	}
 
-	/// @notice Any party can close a trade on behalf of partyB if it has the suitable signature from the partyB and partyA
-	/// @param signedCloseIntent The pure data of close intent that partyA wants to broadcast
-	/// @param partyASignature The signature of partyA
-	/// @param signedFillCloseIntent The pure data of signature that partyB wants to fill the close order
-	/// @param partyBSignature The signature of partyB
-	function instantCreateAndFillCloseIntent(
-		SignedCloseIntent calldata signedCloseIntent,
-		bytes calldata partyASignature,
-		SignedFillIntent calldata signedFillCloseIntent,
-		bytes calldata partyBSignature
-	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		uint256 intentId = InstantActionsFacetImpl.instantCreateAndFillCloseIntent(
-			signedCloseIntent,
-			partyASignature,
-			signedFillCloseIntent,
-			partyBSignature
-		);
-		Trade storage trade = IntentStorage.layout().trades[signedCloseIntent.tradeId];
-		emit SendCloseIntent(
-			trade.partyA,
-			trade.partyB,
-			trade.id,
-			intentId,
-			signedFillCloseIntent.price,
-			signedFillCloseIntent.quantity,
-			signedCloseIntent.deadline,
-			IntentStatus.PENDING
-		);
-		emit FillCloseIntent(intentId, trade.id, trade.partyA, trade.partyB, signedFillCloseIntent.quantity, signedFillCloseIntent.price);
-	}
-
 	/// @notice Any party can cancel an open intent on behalf of parties if it has the suitable signature from the partyB and partyA
 	/// @param signedCancelOpenIntent The pure data of open intent that partyA wants to cancel
 	/// @param partyASignature The signature of partyA
@@ -144,7 +100,7 @@ contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
 		SignedSimpleActionIntent calldata signedAcceptCancelOpenIntent,
 		bytes calldata partyBSignature
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		IntentStatus result = InstantActionsFacetImpl.instantCancelOpenIntent(
+		IntentStatus result = InstantActionsOpenFacetImpl.instantCancelOpenIntent(
 			signedCancelOpenIntent,
 			partyASignature,
 			signedAcceptCancelOpenIntent,
@@ -155,32 +111,6 @@ contract InstantActionsFacet is Accessibility, Pausable, IInstantActionsFacet {
 			emit ExpireOpenIntent(intent.id);
 		} else if (result == IntentStatus.CANCELED) {
 			emit CancelOpenIntent(intent.partyA, intent.partyB, result, intent.id);
-		}
-	}
-
-	/// @notice Any party can cancel a close intent on behalf of parties if it has the suitable signature from the partyB and partyA
-	/// @param signedCancelCloseIntent The pure data of close intent that partyA wants to cancel
-	/// @param partyASignature The signature of partyA
-	/// @param signedAcceptCancelCloseIntent The pure data of signature that partyB wants to accept the cancel close intent
-	/// @param partyBSignature The signature of partyB
-	function instantCancelCloseIntent(
-		SignedSimpleActionIntent calldata signedCancelCloseIntent,
-		bytes calldata partyASignature,
-		SignedSimpleActionIntent calldata signedAcceptCancelCloseIntent,
-		bytes calldata partyBSignature
-	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-		IntentStatus result = InstantActionsFacetImpl.instantCancelCloseIntent(
-			signedCancelCloseIntent,
-			partyASignature,
-			signedAcceptCancelCloseIntent,
-			partyBSignature
-		);
-		Trade memory trade = intentLayout.trades[intentLayout.closeIntents[signedCancelCloseIntent.intentId].tradeId];
-		if (result == IntentStatus.EXPIRED) {
-			emit ExpireCloseIntent(signedCancelCloseIntent.intentId);
-		} else if (result == IntentStatus.CANCEL_PENDING) {
-			emit CancelCloseIntent(trade.partyA, trade.partyB, signedCancelCloseIntent.intentId);
 		}
 	}
 }

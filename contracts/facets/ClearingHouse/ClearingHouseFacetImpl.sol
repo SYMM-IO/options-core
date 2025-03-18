@@ -4,8 +4,8 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "../../libraries/LibIntent.sol";
 import "../../libraries/LibMuon.sol";
+import "../../libraries/LibTrade.sol";
 import "../../storages/AppStorage.sol";
 import "../../storages/IntentStorage.sol";
 import "../../storages/AccountStorage.sol";
@@ -110,18 +110,24 @@ library ClearingHouseFacetImpl {
 			uint256 pnl;
 			if (symbol.optionType == OptionType.PUT) {
 				if (price < trade.tradeAgreements.strikePrice) {
-					pnl = ((trade.tradeAgreements.quantity - trade.closedAmountBeforeExpiration) * (trade.tradeAgreements.strikePrice - price)) / 1e18;
+					pnl =
+						((trade.tradeAgreements.quantity - trade.closedAmountBeforeExpiration) * (trade.tradeAgreements.strikePrice - price)) /
+						1e18;
 				}
 			} else {
 				if (price > trade.tradeAgreements.strikePrice) {
-					pnl = ((trade.tradeAgreements.quantity - trade.closedAmountBeforeExpiration) * (price - trade.tradeAgreements.strikePrice)) / 1e18;
+					pnl =
+						((trade.tradeAgreements.quantity - trade.closedAmountBeforeExpiration) * (price - trade.tradeAgreements.strikePrice)) /
+						1e18;
 				}
 			}
 			if (pnl > 0) {
 				uint256 exerciseFee;
 				{
 					uint256 cap = (trade.tradeAgreements.exerciseFee.cap * pnl) / 1e18;
-					uint256 fee = (trade.tradeAgreements.exerciseFee.rate * price * (trade.tradeAgreements.quantity - trade.closedAmountBeforeExpiration)) / 1e36;
+					uint256 fee = (trade.tradeAgreements.exerciseFee.rate *
+						price *
+						(trade.tradeAgreements.quantity - trade.closedAmountBeforeExpiration)) / 1e36;
 					exerciseFee = cap < fee ? cap : fee;
 				}
 				// TODO: handle loss factor
@@ -133,9 +139,9 @@ library ClearingHouseFacetImpl {
 				appLayout.debtsToPartyAs[trade.partyB][symbol.collateral][trade.partyA] += amountToTransfer;
 				appLayout.liquidationDetails[trade.partyB][symbol.collateral].requiredCollateral += amountToTransfer;
 
-				trade.close( TradeStatus.LIQUIDATED, IntentStatus.CANCELED);
+				trade.close(TradeStatus.LIQUIDATED, IntentStatus.CANCELED);
 			} else {
-				trade.close( TradeStatus.LIQUIDATED, IntentStatus.CANCELED);
+				trade.close(TradeStatus.LIQUIDATED, IntentStatus.CANCELED);
 			}
 		}
 	}

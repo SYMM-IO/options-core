@@ -6,7 +6,7 @@ pragma solidity >=0.8.18;
 
 import "../../storages/IntentStorage.sol";
 import "../../storages/AppStorage.sol";
-import "../../libraries/LibIntent.sol";
+import "../../libraries/LibCloseIntent.sol";
 import "../../libraries/LibOpenIntent.sol";
 
 library ForceActionsFacetImpl {

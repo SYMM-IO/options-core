@@ -4,18 +4,18 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "./PartyBFacetImpl.sol";
 import "../../utils/Accessibility.sol";
 import "../../utils/Pausable.sol";
-import "./IPartyBFacet.sol";
+import "./PartyBOpenFacetImpl.sol";
+import "./IPartyBOpenFacet.sol";
 
-contract PartyBFacet is Accessibility, Pausable, IPartyBFacet {
+contract PartyBOpenFacet is Accessibility, Pausable, IPartyBOpenFacet {
 	/**
 	 * @notice Once a user issues a open intent, any PartyB can secure it, based on their estimated profit and loss from opening the trade.
 	 * @param intentId The ID of the open intent to be locked.
 	 */
 	function lockOpenIntent(uint256 intentId) external whenNotPartyBActionsPaused onlyPartyB {
-		PartyBFacetImpl.lockOpenIntent(msg.sender, intentId);
+		PartyBOpenFacetImpl.lockOpenIntent(msg.sender, intentId);
 		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
 		emit LockOpenIntent(intent.partyB, intentId);
 	}
@@ -25,7 +25,7 @@ contract PartyBFacet is Accessibility, Pausable, IPartyBFacet {
 	 * @param intentId The ID of the open intent to be unlocked.
 	 */
 	function unlockOpenIntent(uint256 intentId) external whenNotPartyBActionsPaused onlyPartyBOfOpenIntent(intentId) {
-		IntentStatus res = PartyBFacetImpl.unlockOpenIntent(msg.sender, intentId);
+		IntentStatus res = PartyBOpenFacetImpl.unlockOpenIntent(msg.sender, intentId);
 		if (res == IntentStatus.EXPIRED) {
 			emit ExpireOpenIntent(intentId);
 		} else if (res == IntentStatus.PENDING) {
@@ -38,17 +38,8 @@ contract PartyBFacet is Accessibility, Pausable, IPartyBFacet {
 	 * @param intentId The ID of the open intent for which the cancellation request is accepted.
 	 */
 	function acceptCancelOpenIntent(uint256 intentId) external whenNotPartyBActionsPaused onlyPartyBOfOpenIntent(intentId) {
-		PartyBFacetImpl.acceptCancelOpenIntent(msg.sender, intentId);
+		PartyBOpenFacetImpl.acceptCancelOpenIntent(msg.sender, intentId);
 		emit AcceptCancelOpenIntent(intentId);
-	}
-
-	/**
-	 * @notice Accepts the cancellation request for the specified close intent.
-	 * @param intentId The ID of the close intent for which the cancellation request is accepted.
-	 */
-	function acceptCancelCloseIntent(uint256 intentId) external whenNotPartyBActionsPaused onlyPartyBOfCloseIntent(intentId) {
-		PartyBFacetImpl.acceptCancelCloseIntent(msg.sender, intentId);
-		emit AcceptCancelCloseIntent(intentId);
 	}
 
 	/**
@@ -58,7 +49,7 @@ contract PartyBFacet is Accessibility, Pausable, IPartyBFacet {
 	 * @param price The opened price for the trade.
 	 */
 	function fillOpenIntent(uint256 intentId, uint256 quantity, uint256 price) external whenNotPartyBActionsPaused onlyPartyBOfOpenIntent(intentId) {
-		(uint256 tradeId, uint256 newIntentId) = PartyBFacetImpl.fillOpenIntent(msg.sender, intentId, quantity, price);
+		(uint256 tradeId, uint256 newIntentId) = PartyBOpenFacetImpl.fillOpenIntent(msg.sender, intentId, quantity, price);
 		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
 		emit FillOpenIntent(intentId, tradeId, intent.partyA, intent.partyB, quantity, price);
 		if (newIntentId != 0) {
@@ -86,48 +77,5 @@ contract PartyBFacet is Accessibility, Pausable, IPartyBFacet {
 				emit AcceptCancelOpenIntent(newIntent.id);
 			}
 		}
-	}
-
-	/**
-	 * @notice Closes a trade for the specified close intent.
-	 * @param intentId The ID of the close intent for which the trade is opened.
-	 * @param quantity PartyB has the option to close the position with either the full amount requested by the user or a specific fraction of it
-	 * @param price The closed price for the trade.
-	 */
-	function fillCloseIntent(
-		uint256 intentId,
-		uint256 quantity,
-		uint256 price
-	) external whenNotPartyBActionsPaused onlyPartyBOfCloseIntent(intentId) {
-		PartyBFacetImpl.fillCloseIntent(msg.sender, intentId, quantity, price);
-		Trade storage trade = IntentStorage.layout().trades[IntentStorage.layout().closeIntents[intentId].tradeId];
-
-		emit FillCloseIntent(intentId, trade.id, trade.partyA, trade.partyB, quantity, price);
-	}
-
-	/**
-	 * @notice Expires a trade.
-	 * @param tradeId The ID of the trade.
-	 * @param settlementPriceSig The muon sig about price of the symbol at the time of expiration
-	 */
-	function expireTrade(
-		uint256 tradeId,
-		SettlementPriceSig memory settlementPriceSig
-	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		PartyBFacetImpl.expireTrade(tradeId, settlementPriceSig);
-		emit ExpireTrade(msg.sender, tradeId, settlementPriceSig.settlementPrice);
-	}
-
-	/**
-	 * @notice Exercises a trade.
-	 * @param tradeId The ID of the trade.
-	 * @param settlementPriceSig The muon sig about price of the symbol at the time of expiration
-	 */
-	function exerciseTrade(
-		uint256 tradeId,
-		SettlementPriceSig memory settlementPriceSig
-	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		PartyBFacetImpl.exerciseTrade(tradeId, settlementPriceSig);
-		emit ExerciseTrade(msg.sender, tradeId, settlementPriceSig.settlementPrice);
 	}
 }

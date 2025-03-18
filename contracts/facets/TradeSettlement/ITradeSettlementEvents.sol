@@ -7,13 +7,7 @@ pragma solidity >=0.8.18;
 import "../../storages/IntentStorage.sol";
 import "../../interfaces/IPartiesEvents.sol";
 
-interface IPartyBEvents is IPartiesEvents {
-	event AcceptCancelOpenIntent(uint256 intentId);
-	event AcceptCancelCloseIntent(uint256 intentId);
-	event LockOpenIntent(address partyB, uint256 intentId);
-	event UnlockOpenIntent(address partyB, uint256 intentId);
-	event FillOpenIntent(uint256 intentId, uint256 tradeId, address partyA, address partyB, uint256 quantity, uint256 price);
-	event FillCloseIntent(uint256 intentId, uint256 tradeId, address partyA, address partyB, uint256 quantity, uint256 price);
+interface ITradeSettlementEvents is IPartiesEvents {
 	event ExpireTrade(address operator, uint256 tradeId, uint256 settlementPrice);
 	event ExerciseTrade(address operator, uint256 tradeId, uint256 settlementPrice);
 }

@@ -6,8 +6,8 @@ pragma solidity >=0.8.18;
 
 import { ISignatureVerifier } from "../../interfaces/ISignatureVerifier.sol";
 import { LibCloseIntentOps } from "../../libraries/LibCloseIntent.sol";
+import {PartyBOpenFacetImpl} from "../PartyBOpen/PartyBOpenFacetImpl.sol";
 import { LibHash } from "../../libraries/LibHash.sol";
-import { LibIntent } from "../../libraries/LibIntent.sol";
 import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
 import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { LibTradeOps } from "../../libraries/LibTrade.sol";
@@ -16,13 +16,10 @@ import { AppStorage } from "../../storages/AppStorage.sol";
 import { OpenIntent, CloseIntent, Trade, IntentStorage, IntentStatus, SignedFillIntentById, SignedSimpleActionIntent, SignedOpenIntent, SignedFillIntent, SignedCloseIntent } from "../../storages/IntentStorage.sol";
 import { Symbol, SymbolStorage } from "../../storages/SymbolStorage.sol";
 import { PartyAOpenFacetImpl } from "../PartyAOpen/PartyAOpenFacetImpl.sol";
-import { PartyACloseFacetImpl } from "../PartyAClose/PartyACloseFacetImpl.sol";
-import { PartyBFacetImpl } from "../PartyB/PartyBFacetImpl.sol";
 
-library InstantActionsFacetImpl {
+library InstantActionsOpenFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibOpenIntentOps for OpenIntent;
-	using LibCloseIntentOps for CloseIntent;
 	using LibTradeOps for Trade;
 
 	function verifySignature(bytes32 hashValue, bytes calldata signature, address signer) internal {
@@ -39,7 +36,7 @@ library InstantActionsFacetImpl {
 		bytes32 fillOpenIntentHash = LibHash.hashSignedFillOpenIntentById(signedFillOpenIntent);
 		verifySignature(fillOpenIntentHash, partyBSignature, signedFillOpenIntent.partyB);
 
-		PartyBFacetImpl.fillOpenIntent(
+		PartyBOpenFacetImpl.fillOpenIntent(
 			signedFillOpenIntent.partyB,
 			signedFillOpenIntent.intentId,
 			signedFillOpenIntent.quantity,
@@ -47,30 +44,18 @@ library InstantActionsFacetImpl {
 		);
 	}
 
-	function instantFillCloseIntent(SignedFillIntentById calldata signedFillCloseIntent, bytes calldata partyBSignature) internal {
-		bytes32 fillCloseIntentHash = LibHash.hashSignedFillCloseIntentById(signedFillCloseIntent);
-		verifySignature(fillCloseIntentHash, partyBSignature, signedFillCloseIntent.partyB);
-
-		PartyBFacetImpl.fillCloseIntent(
-			signedFillCloseIntent.partyB,
-			signedFillCloseIntent.intentId,
-			signedFillCloseIntent.quantity,
-			signedFillCloseIntent.price
-		);
-	}
-
 	function instantLock(SignedSimpleActionIntent calldata signedLockIntent, bytes calldata partyBSignature) internal {
 		bytes32 lockIntentHash = LibHash.hashSignedLockIntent(signedLockIntent);
 		verifySignature(lockIntentHash, partyBSignature, signedLockIntent.signer);
 
-		PartyBFacetImpl.lockOpenIntent(signedLockIntent.signer, signedLockIntent.intentId);
+		PartyBOpenFacetImpl.lockOpenIntent(signedLockIntent.signer, signedLockIntent.intentId);
 	}
 
 	function instantUnlock(SignedSimpleActionIntent calldata signedUnlockIntent, bytes calldata partyBSignature) internal returns (IntentStatus) {
 		bytes32 unlockIntentHash = LibHash.hashSignedUnlockIntent(signedUnlockIntent);
 		verifySignature(unlockIntentHash, partyBSignature, signedUnlockIntent.signer);
 
-		return PartyBFacetImpl.unlockOpenIntent(signedUnlockIntent.signer, signedUnlockIntent.intentId);
+		return PartyBOpenFacetImpl.unlockOpenIntent(signedUnlockIntent.signer, signedUnlockIntent.intentId);
 	}
 
 	function instantCreateAndFillOpenIntent(
@@ -106,32 +91,9 @@ library InstantActionsFacetImpl {
 			signedOpenIntent.userData
 		);
 
-		PartyBFacetImpl.lockOpenIntent(signedFillOpenIntent.partyB, intentId);
+		PartyBOpenFacetImpl.lockOpenIntent(signedFillOpenIntent.partyB, intentId);
 
-		PartyBFacetImpl.fillOpenIntent(signedFillOpenIntent.partyB, intentId, signedFillOpenIntent.quantity, signedFillOpenIntent.price);
-	}
-
-	function instantCreateAndFillCloseIntent(
-		SignedCloseIntent calldata signedCloseIntent,
-		bytes calldata partyASignature,
-		SignedFillIntent calldata signedFillCloseIntent,
-		bytes calldata partyBSignature
-	) internal returns (uint256 intentId) {
-		bytes32 closeIntentHash = LibHash.hashSignedCloseIntent(signedCloseIntent);
-		verifySignature(closeIntentHash, partyASignature, signedCloseIntent.partyA);
-
-		bytes32 fillCloseIntentHash = LibHash.hashSignedFillCloseIntent(signedFillCloseIntent);
-		verifySignature(fillCloseIntentHash, partyBSignature, signedFillCloseIntent.partyB);
-
-		intentId = PartyACloseFacetImpl.sendCloseIntent(
-			signedCloseIntent.partyA,
-			signedCloseIntent.tradeId,
-			signedCloseIntent.price,
-			signedCloseIntent.quantity,
-			signedCloseIntent.deadline
-		);
-
-		PartyBFacetImpl.fillCloseIntent(signedFillCloseIntent.partyB, intentId, signedFillCloseIntent.quantity, signedFillCloseIntent.price);
+		PartyBOpenFacetImpl.fillOpenIntent(signedFillOpenIntent.partyB, intentId, signedFillOpenIntent.quantity, signedFillOpenIntent.price);
 	}
 
 	function instantCancelOpenIntent(
@@ -149,28 +111,8 @@ library InstantActionsFacetImpl {
 			bytes32 acceptCancelIntentHash = LibHash.hashSignedAcceptCancelOpenIntent(signedAcceptCancelOpenIntent);
 			verifySignature(acceptCancelIntentHash, partyBSignature, signedAcceptCancelOpenIntent.signer);
 
-			PartyBFacetImpl.acceptCancelOpenIntent(signedAcceptCancelOpenIntent.signer, signedAcceptCancelOpenIntent.intentId);
-            status = IntentStatus.CANCELED;
+			PartyBOpenFacetImpl.acceptCancelOpenIntent(signedAcceptCancelOpenIntent.signer, signedAcceptCancelOpenIntent.intentId);
+			status = IntentStatus.CANCELED;
 		}
-	}
-
-	function instantCancelCloseIntent(
-		SignedSimpleActionIntent calldata signedCancelCloseIntent,
-		bytes calldata partyASignature,
-		SignedSimpleActionIntent calldata signedAcceptCancelCloseIntent,
-		bytes calldata partyBSignature
-	) internal returns (IntentStatus status){
-		bytes32 cancelIntentHash = LibHash.hashSignedCancelCloseIntent(signedCancelCloseIntent);
-		verifySignature(cancelIntentHash, partyASignature, signedCancelCloseIntent.signer);
-
-		status = PartyACloseFacetImpl.cancelCloseIntent(signedCancelCloseIntent.signer, signedCancelCloseIntent.intentId);
-
-        if (status == IntentStatus.CANCEL_PENDING){
-            bytes32 acceptCancelIntentHash = LibHash.hashSignedAcceptCancelCloseIntent(signedAcceptCancelCloseIntent);
-            verifySignature(acceptCancelIntentHash, partyBSignature, signedAcceptCancelCloseIntent.signer);
-            
-		    PartyBFacetImpl.acceptCancelCloseIntent(signedAcceptCancelCloseIntent.signer, signedAcceptCancelCloseIntent.intentId);
-            status = IntentStatus.CANCELED;
-        }
 	}
 }
