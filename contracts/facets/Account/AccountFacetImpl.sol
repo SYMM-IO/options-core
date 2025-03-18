@@ -15,20 +15,26 @@ library AccountFacetImpl {
 
 	function deposit(address collateral, address user, uint256 amount) internal {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+
 		require(appLayout.whiteListedCollateral[collateral], "AccountFacet: Collateral is not whitelisted");
 		IERC20(collateral).safeTransferFrom(msg.sender, address(this), amount);
 		uint256 amountWith18Decimals = (amount * 1e18) / (10 ** IERC20Metadata(collateral).decimals());
-		AccountStorage.layout().balances[user][collateral].instantAdd(collateral, amountWith18Decimals);
+		accountLayout.balances[user][collateral].instantAdd(collateral, amountWith18Decimals);
 	}
 
 	function securedDepositFor(address collateral, address user, uint256 amount) internal {
-		require(AppStorage.layout().whiteListedCollateral[collateral], "AccountFacet: Collateral is not whitelisted");
-		AccountStorage.layout().balances[user][collateral].instantAdd(collateral, amount);
+		AppStorage.Layout storage appLayout = AppStorage.layout();
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+
+		require(appLayout.whiteListedCollateral[collateral], "AccountFacet: Collateral is not whitelisted");
+		accountLayout.balances[user][collateral].instantAdd(collateral, amount);
 	}
 
 	function internalTransfer(address collateral, address user, uint256 amount) internal {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+
 		require(appLayout.whiteListedCollateral[collateral], "AccountFacet: Collateral is not whitelisted");
 		require(accountLayout.balances[msg.sender][collateral].available >= amount, "AccountFacet: Insufficient balance");
 		accountLayout.balances[msg.sender][collateral].sub(amount);
@@ -36,14 +42,16 @@ library AccountFacetImpl {
 	}
 
 	function initiateWithdraw(address collateral, uint256 amount, address to) internal returns (uint256 currentId) {
+		AppStorage.Layout storage appLayout = AppStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		require(AppStorage.layout().whiteListedCollateral[collateral], "AccountFacet: Collateral is not whitelisted");
+
+		require(appLayout.whiteListedCollateral[collateral], "AccountFacet: Collateral is not whitelisted");
 		require(to != address(0), "AccountFacet: Zero address");
 		accountLayout.balances[msg.sender][collateral].syncAll(block.timestamp);
 		require(accountLayout.balances[msg.sender][collateral].available >= amount, "AccountFacet: Insufficient balance");
 		require(!accountLayout.instantActionsMode[msg.sender], "AccountFacet: Instant action mode is activated");
 		require(
-			AppStorage.layout().liquidationDetails[msg.sender][collateral].status == LiquidationStatus.SOLVENT,
+			appLayout.liquidationDetails[msg.sender][collateral].status == LiquidationStatus.SOLVENT,
 			"AccountFacet: PartyB is in the liquidation process"
 		);
 		accountLayout.balances[msg.sender][collateral].sub(amount);
@@ -59,26 +67,25 @@ library AccountFacetImpl {
 			status: WithdrawStatus.INITIATED
 		});
 		accountLayout.withdrawals[currentId] = withdrawObject;
-		accountLayout.userWithdrawals[msg.sender].push(currentId); // CHECK: We don't need this mapping
 	}
 
 	function completeWithdraw(uint256 id) internal {
+		AppStorage.Layout storage appLayout = AppStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+
 		require(id <= accountLayout.lastWithdrawId, "AccountFacet: Invalid Id");
 
 		Withdraw storage w = accountLayout.withdrawals[id];
 		require(
-			AppStorage.layout().liquidationDetails[w.user][w.collateral].status == LiquidationStatus.SOLVENT,
+			appLayout.liquidationDetails[w.user][w.collateral].status == LiquidationStatus.SOLVENT,
 			"AccountFacet: PartyB is in the liquidation process"
 		);
 		require(w.status == WithdrawStatus.INITIATED, "AccountFacet: Invalid state");
-		if (AppStorage.layout().partyBConfigs[w.user].isActive) {
-			require(block.timestamp >= AppStorage.layout().partyBDeallocateCooldown + w.timestamp, "AccountFacet: Cooldown is not over yet");
+		if (appLayout.partyBConfigs[w.user].isActive) {
+			require(block.timestamp >= appLayout.partyBDeallocateCooldown + w.timestamp, "AccountFacet: Cooldown is not over yet");
 		} else {
-			require(block.timestamp >= AppStorage.layout().partyADeallocateCooldown + w.timestamp, "AccountFacet: Cooldown is not over yet");
+			require(block.timestamp >= appLayout.partyADeallocateCooldown + w.timestamp, "AccountFacet: Cooldown is not over yet");
 		}
-
-		// require(w.user != address(0), "AccountFacet: Zero address"); // CHECK: How can this be zero?
 
 		w.status = WithdrawStatus.COMPLETED;
 		uint256 amountInCollateralDecimals = (w.amount * (10 ** IERC20Metadata(w.collateral).decimals())) / 1e18;
@@ -87,11 +94,11 @@ library AccountFacetImpl {
 
 	function cancelWithdraw(uint256 id) internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+
 		require(id <= accountLayout.lastWithdrawId, "AccountFacet: Invalid Id");
 
 		Withdraw storage w = accountLayout.withdrawals[id];
 		require(w.status == WithdrawStatus.INITIATED, "AccountFacet: Invalid state");
-		// require(w.user != address(0), "AccountFacet: Zero address"); // CHECK: How can this be zero?
 
 		w.status = WithdrawStatus.CANCELED;
 		accountLayout.balances[w.user][w.collateral].instantAdd(w.collateral, w.amount);
@@ -124,8 +131,10 @@ library AccountFacetImpl {
 	}
 
 	function bindToPartyB(address partyB) internal {
+		AppStorage.Layout storage appLayout = AppStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		require(AppStorage.layout().partyBConfigs[partyB].isActive, "ControlFacet: PartyB is not active");
+
+		require(appLayout.partyBConfigs[partyB].isActive, "ControlFacet: PartyB is not active");
 		require(accountLayout.boundPartyB[msg.sender] == address(0), "ControlFacet: Already bound");
 
 		accountLayout.boundPartyB[msg.sender] = partyB;

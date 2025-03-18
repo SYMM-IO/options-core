@@ -27,14 +27,13 @@ contract ViewFacet is IViewFacet {
 	 // TODO 1, return liquidationStatus The liquidation status of Party A.
 	 * @return suspendedAddresses returns a true/false representing whether the given address is suspended or not.
 	 * @return balance The balance of Party A.
-	 * @return withdrawIds The list of withdrawIds of Party A.
 	 * @return openIntentsOf The list of openIntents of Party A.
 	 * @return tradesOf The list of trades of Party A.
 	 */
 	function partyAStats(
 		address partyA,
 		address collateral
-	) external view returns (bool, uint256, uint256[] memory, uint256[] memory, uint256[] memory) {
+	) external view returns (bool, uint256, uint256[] memory, uint256[] memory) {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		// MAStorage.Layout storage maLayout = MAStorage.layout();  #TODO 1: consider adding this after liquidation dev.
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
@@ -42,7 +41,6 @@ contract ViewFacet is IViewFacet {
 			// maLayout.liquidationStatus[partyA], #TODO 1
 			accountLayout.suspendedAddresses[partyA],
 			accountLayout.balances[partyA][collateral].available,
-			accountLayout.userWithdrawals[partyA],
 			//TODO 2: consider adding AppStorage:partyAReimbursement after it's used
 			intentLayout.openIntentsOf[partyA],
 			intentLayout.tradesOf[partyA]

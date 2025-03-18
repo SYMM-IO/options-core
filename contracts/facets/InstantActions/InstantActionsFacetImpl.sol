@@ -5,7 +5,10 @@
 pragma solidity >=0.8.18;
 
 import "../../libraries/LibIntent.sol";
+import "../../libraries/LibHash.sol";
 import "../../libraries/LibPartyB.sol";
+import "../../libraries/LibUserData.sol";
+import "../../libraries/LibTrade.sol";
 import "../../storages/AppStorage.sol";
 import "../../storages/IntentStorage.sol";
 import "../../storages/AccountStorage.sol";
@@ -14,6 +17,9 @@ import "../../interfaces/ISignatureVerifier.sol";
 
 library InstantActionsFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
+	using LibOpenIntentOps for OpenIntent;
+	using LibCloseIntentOps for CloseIntent;
+	using LibTradeOps for Trade;
 
 	function instantFillOpenIntent(SignedFillIntentById calldata signedFillOpenIntent, bytes calldata partyBSignature) internal {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
@@ -22,7 +28,7 @@ library InstantActionsFacetImpl {
 
 		OpenIntent storage intent = intentLayout.openIntents[signedFillOpenIntent.intentId];
 
-		bytes32 fillOpenIntentHash = LibIntent.hashSignedFillOpenIntentById(signedFillOpenIntent);
+		bytes32 fillOpenIntentHash = LibHash.hashSignedFillOpenIntentById(signedFillOpenIntent);
 		require(
 			ISignatureVerifier(intentLayout.signatureVerifier).verifySignature(signedFillOpenIntent.partyB, fillOpenIntentHash, partyBSignature),
 			"InstantActionsFacet: Invalid PartyB signature"
@@ -47,7 +53,7 @@ library InstantActionsFacetImpl {
 		Trade storage trade = intentLayout.trades[intent.tradeId];
 		Symbol memory symbol = SymbolStorage.layout().symbols[trade.symbolId];
 
-		bytes32 fillCloseIntentHash = LibIntent.hashSignedFillCloseIntentById(signedFillCloseIntent);
+		bytes32 fillCloseIntentHash = LibHash.hashSignedFillCloseIntentById(signedFillCloseIntent);
 		require(
 			ISignatureVerifier(intentLayout.signatureVerifier).verifySignature(signedFillCloseIntent.partyB, fillCloseIntentHash, partyBSignature),
 			"InstantActionsFacet: Invalid PartyB signature"
@@ -87,23 +93,23 @@ library InstantActionsFacetImpl {
 		if (intent.filledAmount == intent.quantity) {
 			intent.statusModifyTimestamp = block.timestamp;
 			intent.status = IntentStatus.FILLED;
-			LibIntent.removeFromActiveCloseIntents(intent.id);
+			intent.remove();
 			if (trade.quantity == trade.closedAmountBeforeExpiration) {
 				trade.status = TradeStatus.CLOSED;
 				trade.statusModifyTimestamp = block.timestamp;
-				LibIntent.removeFromActiveTrades(trade.id);
+				trade.remove();
 			}
 		} else if (intent.status == IntentStatus.CANCEL_PENDING) {
 			intent.status = IntentStatus.CANCELED;
 			intent.statusModifyTimestamp = block.timestamp;
-			LibIntent.removeFromActiveCloseIntents(intent.id);
+			intent.remove();
 		}
 	}
 
 	function instantLock(SignedSimpleActionIntent calldata signedLockIntent, bytes calldata partyBSignature) internal {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		OpenIntent storage intent = intentLayout.openIntents[signedLockIntent.intentId];
-		bytes32 lockIntentHash = LibIntent.hashSignedLockIntent(signedLockIntent);
+		bytes32 lockIntentHash = LibHash.hashSignedLockIntent(signedLockIntent);
 		require(
 			ISignatureVerifier(intentLayout.signatureVerifier).verifySignature(signedLockIntent.signer, lockIntentHash, partyBSignature),
 			"InstantActionsFacet: Invalid PartyB signature"
@@ -117,7 +123,7 @@ library InstantActionsFacetImpl {
 	function instantUnlock(SignedSimpleActionIntent calldata signedUnlockIntent, bytes calldata partyBSignature) internal returns (IntentStatus) {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		OpenIntent storage intent = intentLayout.openIntents[signedUnlockIntent.intentId];
-		bytes32 unlockIntentHash = LibIntent.hashSignedUnlockIntent(signedUnlockIntent);
+		bytes32 unlockIntentHash = LibHash.hashSignedUnlockIntent(signedUnlockIntent);
 		require(
 			ISignatureVerifier(intentLayout.signatureVerifier).verifySignature(signedUnlockIntent.signer, unlockIntentHash, partyBSignature),
 			"InstantActionsFacet: Invalid PartyB signature"
@@ -141,14 +147,14 @@ library InstantActionsFacetImpl {
 
 		Symbol memory symbol = SymbolStorage.layout().symbols[signedOpenIntent.symbolId];
 
-		bytes32 openIntentHash = LibIntent.hashSignedOpenIntent(signedOpenIntent);
+		bytes32 openIntentHash = LibHash.hashSignedOpenIntent(signedOpenIntent);
 		require(
 			ISignatureVerifier(intentLayout.signatureVerifier).verifySignature(signedOpenIntent.partyA, openIntentHash, partyASignature),
 			"InstantActionsFacet: Invalid PartyA signature"
 		);
 		require(!intentLayout.isSigUsed[openIntentHash], "InstantActionsFacet: PartyA signature is already used");
 
-		bytes32 fillOpenIntentHash = LibIntent.hashSignedFillOpenIntent(signedFillOpenIntent);
+		bytes32 fillOpenIntentHash = LibHash.hashSignedFillOpenIntent(signedFillOpenIntent);
 		require(
 			ISignatureVerifier(intentLayout.signatureVerifier).verifySignature(signedFillOpenIntent.partyB, fillOpenIntentHash, partyBSignature),
 			"InstantActionsFacet: Invalid PartyB signature"
@@ -201,7 +207,7 @@ library InstantActionsFacetImpl {
 		uint256 tradeId = ++intentLayout.lastTradeId;
 
 		uint256 counter = 0; // Initialize counter
-		bytes memory userDataWithCounter = LibIntent.addCounter(signedOpenIntent.userData, counter);
+		bytes memory userDataWithCounter = LibUserData.addCounter(signedOpenIntent.userData, counter);
 
 		address[] memory partyBsWhitelist = new address[](1);
 		partyBsWhitelist[0] = signedOpenIntent.partyB;
@@ -236,8 +242,8 @@ library InstantActionsFacetImpl {
 		intentLayout.openIntentsOf[signedOpenIntent.partyA].push(intent.id);
 		intentLayout.openIntentsOf[signedOpenIntent.partyB].push(intent.id);
 		{
-			uint256 tradingFee = LibIntent.getTradingFee(intentId);
-			uint256 affiliateFee = LibIntent.getAffiliateFee(intentId);
+			uint256 tradingFee = intent.getTradingFee();
+			uint256 affiliateFee = intent.getAffiliateFee();
 			accountLayout.balances[signedOpenIntent.partyA][intent.tradingFee.feeToken].syncAll(block.timestamp);
 			accountLayout.balances[signedOpenIntent.partyA][intent.tradingFee.feeToken].subForPartyB(
 				signedOpenIntent.partyB,
@@ -275,8 +281,8 @@ library InstantActionsFacetImpl {
 		});
 
 		trade.penaltyParticipants[0] = trade.partyB;
-		LibIntent.addToActiveTrades(tradeId);
-		uint256 premium = LibIntent.getPremiumOfOpenIntent(intentId);
+		trade.save();
+		uint256 premium = intent.getPremium();
 		accountLayout.balances[trade.partyA][symbol.collateral].syncAll(block.timestamp);
 		accountLayout.balances[trade.partyA][symbol.collateral].subForPartyB(trade.partyB, premium);
 		accountLayout.balances[trade.partyB][symbol.collateral].instantAdd(symbol.collateral, premium);
@@ -294,14 +300,14 @@ library InstantActionsFacetImpl {
 		Trade storage trade = intentLayout.trades[signedCloseIntent.tradeId];
 		Symbol memory symbol = SymbolStorage.layout().symbols[trade.symbolId];
 
-		bytes32 closeIntentHash = LibIntent.hashSignedCloseIntent(signedCloseIntent);
+		bytes32 closeIntentHash = LibHash.hashSignedCloseIntent(signedCloseIntent);
 		require(
 			ISignatureVerifier(intentLayout.signatureVerifier).verifySignature(signedCloseIntent.partyA, closeIntentHash, partyASignature),
 			"InstantActionsFacet: Invalid PartyA signature"
 		);
 		require(!intentLayout.isSigUsed[closeIntentHash], "InstantActionsFacet: PartyA signature is already used");
 
-		bytes32 fillCloseIntentHash = LibIntent.hashSignedFillCloseIntent(signedFillCloseIntent);
+		bytes32 fillCloseIntentHash = LibHash.hashSignedFillCloseIntent(signedFillCloseIntent);
 		require(
 			ISignatureVerifier(intentLayout.signatureVerifier).verifySignature(signedFillCloseIntent.partyB, fillCloseIntentHash, partyBSignature),
 			"InstantActionsFacet: Invalid PartyB signature"
@@ -311,7 +317,7 @@ library InstantActionsFacetImpl {
 		require(signedCloseIntent.deadline >= block.timestamp, "InstantActionsFacet: PartyA request is expired");
 		require(signedFillCloseIntent.deadline >= block.timestamp, "InstantActionsFacet: PartyB request is expired");
 		require(trade.status == TradeStatus.OPENED, "InstantActionsFacet: Invalid state");
-		require(LibIntent.getAvailableAmountToClose(trade.id) >= signedCloseIntent.quantity, "InstantActionsFacet: Invalid quantity");
+		require(trade.getAvailableAmountToClose() >= signedCloseIntent.quantity, "InstantActionsFacet: Invalid quantity");
 
 		require(
 			AppStorage.layout().liquidationDetails[trade.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
@@ -359,7 +365,7 @@ library InstantActionsFacetImpl {
 		if (trade.quantity == trade.closedAmountBeforeExpiration) {
 			trade.status = TradeStatus.CLOSED;
 			trade.statusModifyTimestamp = block.timestamp;
-			LibIntent.removeFromActiveTrades(trade.id);
+			trade.remove();
 		}
 	}
 
@@ -375,7 +381,7 @@ library InstantActionsFacetImpl {
 		OpenIntent storage intent = intentLayout.openIntents[signedCancelOpenIntent.intentId];
 		Symbol memory symbol = SymbolStorage.layout().symbols[intent.symbolId];
 
-		bytes32 cancelIntentHash = LibIntent.hashSignedCancelOpenIntent(signedCancelOpenIntent);
+		bytes32 cancelIntentHash = LibHash.hashSignedCancelOpenIntent(signedCancelOpenIntent);
 		require(
 			ISignatureVerifier(intentLayout.signatureVerifier).verifySignature(signedCancelOpenIntent.signer, cancelIntentHash, partyASignature),
 			"InstantActionsFacet: Invalid PartyA signature"
@@ -385,7 +391,7 @@ library InstantActionsFacetImpl {
 
 		// ignore the partyB signature if the status is PENDING
 		if (intent.status == IntentStatus.LOCKED) {
-			bytes32 acceptCancelIntentHash = LibIntent.hashSignedAcceptCancelOpenIntent(signedAcceptCancelOpenIntent);
+			bytes32 acceptCancelIntentHash = LibHash.hashSignedAcceptCancelOpenIntent(signedAcceptCancelOpenIntent);
 			require(
 				ISignatureVerifier(intentLayout.signatureVerifier).verifySignature(
 					signedAcceptCancelOpenIntent.signer,
@@ -404,7 +410,7 @@ library InstantActionsFacetImpl {
 			require(intent.partyB == signedAcceptCancelOpenIntent.signer);
 			require(signedCancelOpenIntent.intentId == signedAcceptCancelOpenIntent.intentId, "InstantActionsFacet: Signatures don't match");
 			require(signedAcceptCancelOpenIntent.deadline >= block.timestamp, "InstantActionsFacet: PartyB request is expired");
-			LibIntent.removeFromPartyBOpenIntents(intent.id);
+			intent.remove(false);
 		}
 		require(signedCancelOpenIntent.deadline >= block.timestamp, "InstantActionsFacet: PartyA request is expired");
 		require(intent.partyA == signedCancelOpenIntent.signer);
@@ -414,13 +420,13 @@ library InstantActionsFacetImpl {
 			result = IntentStatus.EXPIRED;
 		} else {
 			intent.status = IntentStatus.CANCELED;
-			uint256 tradingFee = LibIntent.getTradingFee(intent.id);
-			uint256 affiliateFee = LibIntent.getAffiliateFee(intent.id);
+			uint256 tradingFee = intent.getTradingFee();
+			uint256 affiliateFee = intent.getAffiliateFee();
 
 			accountLayout.balances[intent.partyA][symbol.collateral].scheduledAdd(intent.partyB, tradingFee + affiliateFee, block.timestamp);
 
-			accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(symbol.collateral, LibIntent.getPremiumOfOpenIntent(intent.id));
-			LibIntent.removeFromPartyAOpenIntents(intent.id);
+			accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(symbol.collateral, intent.getPremium());
+			intent.remove(false);
 			result = IntentStatus.CANCELED;
 			intent.statusModifyTimestamp = block.timestamp;
 		}
@@ -437,13 +443,13 @@ library InstantActionsFacetImpl {
 		CloseIntent storage intent = intentLayout.closeIntents[signedCancelCloseIntent.intentId];
 		Trade storage trade = intentLayout.trades[intent.tradeId];
 
-		bytes32 cancelIntentHash = LibIntent.hashSignedCancelCloseIntent(signedCancelCloseIntent);
+		bytes32 cancelIntentHash = LibHash.hashSignedCancelCloseIntent(signedCancelCloseIntent);
 		require(
 			ISignatureVerifier(intentLayout.signatureVerifier).verifySignature(signedCancelCloseIntent.signer, cancelIntentHash, partyASignature),
 			"InstantActionsFacet: Invalid PartyA signature"
 		);
 		require(!intentLayout.isSigUsed[cancelIntentHash], "InstantActionsFacet: PartyA signature is already used");
-		bytes32 acceptCancelIntentHash = LibIntent.hashSignedAcceptCancelCloseIntent(signedAcceptCancelCloseIntent);
+		bytes32 acceptCancelIntentHash = LibHash.hashSignedAcceptCancelCloseIntent(signedAcceptCancelCloseIntent);
 		require(
 			ISignatureVerifier(intentLayout.signatureVerifier).verifySignature(
 				signedAcceptCancelCloseIntent.signer,
@@ -475,7 +481,7 @@ library InstantActionsFacetImpl {
 		} else {
 			intent.statusModifyTimestamp = block.timestamp;
 			intent.status = IntentStatus.CANCELED;
-			LibIntent.removeFromActiveCloseIntents(intent.id);
+			intent.remove();
 			result = IntentStatus.CANCELED;
 		}
 	}

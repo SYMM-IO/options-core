@@ -7,9 +7,12 @@ pragma solidity >=0.8.18;
 import "../../storages/IntentStorage.sol";
 import "../../storages/AppStorage.sol";
 import "../../libraries/LibIntent.sol";
+import "../../libraries/LibOpenIntent.sol";
 
 library ForceActionsFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
+	using LibOpenIntentOps for OpenIntent;
+	using LibCloseIntentOps for CloseIntent;
 
 	function forceCancelOpenIntent(uint256 intentId) internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
@@ -21,11 +24,11 @@ library ForceActionsFacetImpl {
 		require(block.timestamp > intent.statusModifyTimestamp + appLayout.forceCancelOpenIntentTimeout, "PartyAFacet: Cooldown not reached");
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = IntentStatus.CANCELED;
-		accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(symbol.collateral, LibIntent.getPremiumOfOpenIntent(intentId));
+		accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(symbol.collateral, intent.getPremium());
 
 		// send trading Fee back to partyA
-		uint256 tradingFee = LibIntent.getTradingFee(intent.id);
-		uint256 affiliateFee = LibIntent.getAffiliateFee(intent.id);
+		uint256 tradingFee = intent.getTradingFee();
+		uint256 affiliateFee = intent.getAffiliateFee();
 		if (intent.partyBsWhiteList.length == 1) {
 			accountLayout.balances[intent.partyA][symbol.collateral].scheduledAdd(
 				intent.partyBsWhiteList[0],
@@ -35,9 +38,7 @@ library ForceActionsFacetImpl {
 		} else {
 			accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(symbol.collateral, tradingFee + affiliateFee);
 		}
-
-		LibIntent.removeFromPartyAOpenIntents(intent.id);
-		LibIntent.removeFromPartyBOpenIntents(intent.id);
+		intent.remove(false);
 	}
 
 	function forceCancelCloseIntent(uint256 intentId) internal {
@@ -48,7 +49,6 @@ library ForceActionsFacetImpl {
 
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = IntentStatus.CANCELED;
-
-		LibIntent.removeFromActiveCloseIntents(intentId);
+		intent.remove();
 	}
 }
