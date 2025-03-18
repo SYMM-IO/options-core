@@ -15,6 +15,8 @@ interface IPartyAOpenFacet is IPartyAOpenEvents {
         uint256 strikePrice,
         uint256 expirationTimestamp,
         uint256 penalty,
+        TradeSide tradeSide,
+	    MarginType marginType,
         ExerciseFee memory exerciseFee,
         uint256 deadline,
         address feeToken,

@@ -18,7 +18,7 @@ library ForceActionsFacetImpl {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
-		Symbol memory symbol = SymbolStorage.layout().symbols[intent.symbolId];
+		Symbol memory symbol = SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId];
 
 		require(intent.status == IntentStatus.CANCEL_PENDING, "PartyAFacet: Invalid state");
 		require(block.timestamp > intent.statusModifyTimestamp + appLayout.forceCancelOpenIntentTimeout, "PartyAFacet: Cooldown not reached");

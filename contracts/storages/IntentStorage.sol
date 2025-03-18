@@ -21,6 +21,16 @@ enum TradeStatus {
 	LIQUIDATED
 }
 
+enum TradeSide {
+	LONG,
+	SHORT
+}
+
+enum MarginType {
+	ISOLATED,
+	CROSS
+}
+
 struct ExerciseFee {
 	uint256 rate;
 	uint256 cap;
@@ -32,20 +42,26 @@ struct TradingFee {
 	uint256 platformFee;
 }
 
-struct Trade {
-	uint256 id;
-	uint256 openIntentId;
-	uint256[] activeCloseIntentIds;
+struct TradeAgreements {
 	uint256 symbolId;
 	uint256 quantity;
 	uint256 strikePrice;
 	uint256 expirationTimestamp;
 	uint256 penalty;
-	address[] penaltyParticipants;
-	uint256 settledPrice;
+	TradeSide tradeSide;
+	MarginType marginType;
 	ExerciseFee exerciseFee;
+}
+
+struct Trade {
+	uint256 id;
+	uint256 openIntentId;
+	TradeAgreements tradeAgreements;
 	address partyA;
 	address partyB;
+	uint256[] activeCloseIntentIds;
+	address[] penaltyParticipants;
+	uint256 settledPrice;
 	uint256 openedPrice;
 	uint256 closedAmountBeforeExpiration;
 	uint256 closePendingAmount;
@@ -58,16 +74,11 @@ struct Trade {
 struct OpenIntent {
 	uint256 id;
 	uint256 tradeId;
-	address[] partyBsWhiteList;
-	uint256 symbolId;
+	TradeAgreements tradeAgreements;
 	uint256 price;
-	uint256 quantity;
-	uint256 strikePrice;
-	uint256 expirationTimestamp;
-	uint256 penalty;
-	ExerciseFee exerciseFee;
 	address partyA;
 	address partyB;
+	address[] partyBsWhiteList;
 	IntentStatus status;
 	uint256 parentId;
 	uint256 createTimestamp;
@@ -99,6 +110,8 @@ struct SignedOpenIntent {
 	uint256 strikePrice;
 	uint256 expirationTimestamp;
 	uint256 penalty;
+	TradeSide tradeSide;
+	MarginType marginType;
 	ExerciseFee exerciseFee;
 	uint256 deadline;
 	address affiliate;

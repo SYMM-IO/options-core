@@ -24,14 +24,14 @@ library PartyBFacetImpl {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 
 		OpenIntent storage intent = intentLayout.openIntents[intentId];
-		Symbol storage symbol = SymbolStorage.layout().symbols[intent.symbolId];
+		Symbol storage symbol = SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId];
 
 		require(intent.partyB == sender, "PartyBFacet: Sender isn't the partyB of intent");
 		require(intentId <= intentLayout.lastOpenIntentId, "PartyBFacet: Invalid intentId");
 		require(intent.status == IntentStatus.PENDING, "PartyBFacet: Invalid state");
 		require(block.timestamp <= intent.deadline, "PartyBFacet: Intent is expired");
 		require(symbol.isValid, "PartyBFacet: Symbol is not valid");
-		require(block.timestamp <= intent.expirationTimestamp, "PartyBFacet: Requested expiration has been passed");
+		require(block.timestamp <= intent.tradeAgreements.expirationTimestamp, "PartyBFacet: Requested expiration has been passed");
 		require(appLayout.partyBConfigs[sender].oracleId == symbol.oracleId, "PartyBFacet: Oracle not matched");
 
 		bool isValidPartyB;
@@ -64,7 +64,9 @@ library PartyBFacetImpl {
 		require(intent.partyB == sender, "PartyBFacet: Invalid sender");
 		require(intent.status == IntentStatus.LOCKED, "PartyBFacet: Invalid state");
 		require(
-			AppStorage.layout().liquidationDetails[intent.partyB][SymbolStorage.layout().symbols[intent.symbolId].collateral].status ==
+			AppStorage
+			.layout()
+			.liquidationDetails[intent.partyB][SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId].collateral].status ==
 				LiquidationStatus.SOLVENT,
 			"PartyBFacet: PartyB is in the liquidation process"
 		);
@@ -85,7 +87,7 @@ library PartyBFacetImpl {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
 		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
-		Symbol memory symbol = SymbolStorage.layout().symbols[intent.symbolId];
+		Symbol memory symbol = SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId];
 		require(intent.status == IntentStatus.CANCEL_PENDING, "PartyBFacet: Invalid state");
 		require(intent.partyB == sender, "PartyBFacet: Invalid sender");
 		require(
@@ -120,7 +122,7 @@ library PartyBFacetImpl {
 		require(trade.partyB == sender, "PartyBFacet: Invalid sender");
 		require(intent.status == IntentStatus.CANCEL_PENDING, "PartyBFacet: Invalid state");
 		require(
-			AppStorage.layout().liquidationDetails[trade.partyB][SymbolStorage.layout().symbols[trade.symbolId].collateral].status ==
+			AppStorage.layout().liquidationDetails[trade.partyB][SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId].collateral].status ==
 				LiquidationStatus.SOLVENT,
 			"PartyBFacet: PartyB is in the liquidation process"
 		);
@@ -141,7 +143,7 @@ library PartyBFacetImpl {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 
 		OpenIntent storage intent = intentLayout.openIntents[intentId];
-		Symbol memory symbol = SymbolStorage.layout().symbols[intent.symbolId];
+		Symbol memory symbol = SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId];
 
 		require(sender == intent.partyB, "PartyBFacet: Invalid sender");
 		require(accountLayout.suspendedAddresses[intent.partyA] == false, "PartyBFacet: PartyA is suspended");
@@ -156,9 +158,9 @@ library PartyBFacetImpl {
 			"PartyBFacet: PartyB is liquidated"
 		);
 		require(block.timestamp <= intent.deadline, "PartyBFacet: Intent is expired");
-		require(block.timestamp <= intent.expirationTimestamp, "PartyBFacet: Requested expiration has been passed");
+		require(block.timestamp <= intent.tradeAgreements.expirationTimestamp, "PartyBFacet: Requested expiration has been passed");
 		require(intentLayout.activeTradesOf[intent.partyA].length < appLayout.maxTradePerPartyA, "PartyBFacet: Too many active trades for partyA");
-		require(intent.quantity >= quantity && quantity > 0, "PartyBFacet: Invalid quantity");
+		require(intent.tradeAgreements.quantity >= quantity && quantity > 0, "PartyBFacet: Invalid quantity");
 		require(price <= intent.price, "PartyBFacet: Opened price isn't valid");
 
 		address feeCollector = appLayout.affiliateFeeCollector[intent.affiliate] == address(0)
@@ -170,24 +172,28 @@ library PartyBFacetImpl {
 		);
 		accountLayout.balances[feeCollector][intent.tradingFee.feeToken].instantAdd(
 			intent.tradingFee.feeToken,
-			(quantity * price * appLayout.affiliateFees[intent.affiliate][intent.symbolId]) / (intent.tradingFee.tokenPrice * 1e18)
+			(quantity * price * appLayout.affiliateFees[intent.affiliate][intent.tradeAgreements.symbolId]) / (intent.tradingFee.tokenPrice * 1e18)
 		);
 
 		tradeId = ++intentLayout.lastTradeId;
 		Trade memory trade = Trade({
 			id: tradeId,
 			openIntentId: intentId,
-			activeCloseIntentIds: new uint256[](0),
-			symbolId: intent.symbolId,
-			quantity: quantity,
-			strikePrice: intent.strikePrice,
-			expirationTimestamp: intent.expirationTimestamp,
-			penalty: (intent.penalty * quantity) / intent.quantity,
-			penaltyParticipants: new address[](1),
-			settledPrice: 0,
-			exerciseFee: intent.exerciseFee,
+			tradeAgreements: TradeAgreements({
+				symbolId: intent.tradeAgreements.symbolId,
+				quantity: quantity,
+				strikePrice: intent.tradeAgreements.strikePrice,
+				expirationTimestamp: intent.tradeAgreements.expirationTimestamp,
+				penalty: (intent.tradeAgreements.penalty * quantity) / intent.tradeAgreements.quantity,
+				tradeSide: intent.tradeAgreements.tradeSide,
+				marginType: intent.tradeAgreements.marginType,
+				exerciseFee: intent.tradeAgreements.exerciseFee
+			}),
 			partyA: intent.partyA,
 			partyB: intent.partyB,
+			activeCloseIntentIds: new uint256[](0),
+			penaltyParticipants: new address[](1),
+			settledPrice: 0,
 			openedPrice: price,
 			closedAmountBeforeExpiration: 0,
 			closePendingAmount: 0,
@@ -205,7 +211,7 @@ library PartyBFacetImpl {
 		intent.remove(false);
 
 		// partially fill
-		if (intent.quantity > quantity) {
+		if (intent.tradeAgreements.quantity > quantity) {
 			newIntentId = ++intentLayout.lastOpenIntentId;
 			IntentStatus newStatus;
 			if (intent.status == IntentStatus.CANCEL_PENDING) {
@@ -219,16 +225,20 @@ library PartyBFacetImpl {
 			OpenIntent memory newIntent = OpenIntent({
 				id: newIntentId,
 				tradeId: 0,
-				partyBsWhiteList: intent.partyBsWhiteList,
-				symbolId: intent.symbolId,
+				tradeAgreements: TradeAgreements({
+					symbolId: intent.tradeAgreements.symbolId,
+					quantity: intent.tradeAgreements.quantity - quantity,
+					strikePrice: intent.tradeAgreements.strikePrice,
+					expirationTimestamp: intent.tradeAgreements.expirationTimestamp,
+					penalty: intent.tradeAgreements.penalty - trade.tradeAgreements.penalty,
+					tradeSide: intent.tradeAgreements.tradeSide,
+					marginType: intent.tradeAgreements.marginType,
+					exerciseFee: intent.tradeAgreements.exerciseFee
+				}),
 				price: intent.price,
-				quantity: intent.quantity - quantity,
-				strikePrice: intent.strikePrice,
-				expirationTimestamp: intent.expirationTimestamp,
-				penalty: intent.penalty - trade.penalty,
-				exerciseFee: intent.exerciseFee,
 				partyA: intent.partyA,
 				partyB: address(0),
+				partyBsWhiteList: intent.partyBsWhiteList,
 				status: newStatus,
 				parentId: intent.id,
 				createTimestamp: block.timestamp,
@@ -257,7 +267,7 @@ library PartyBFacetImpl {
 			} else {
 				accountLayout.balances[intent.partyA][symbol.collateral].sub(newIntent.getPremium());
 			}
-			intent.quantity = quantity;
+			intent.tradeAgreements.quantity = quantity;
 		}
 		trade.save();
 		uint256 premium = intent.getPremium();
@@ -271,7 +281,7 @@ library PartyBFacetImpl {
 
 		CloseIntent storage intent = intentLayout.closeIntents[intentId];
 		Trade storage trade = intentLayout.trades[intent.tradeId];
-		Symbol memory symbol = SymbolStorage.layout().symbols[trade.symbolId];
+		Symbol memory symbol = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId];
 
 		require(sender == trade.partyB, "PartyBFacet: Invalid sender");
 		require(
@@ -282,7 +292,7 @@ library PartyBFacetImpl {
 		require(intent.status == IntentStatus.PENDING || intent.status == IntentStatus.CANCEL_PENDING, "PartyBFacet: Invalid state");
 		require(trade.status == TradeStatus.OPENED, "PartyBFacet: Invalid trade state");
 		require(block.timestamp <= intent.deadline, "PartyBFacet: Intent is expired");
-		require(block.timestamp < trade.expirationTimestamp, "PartyBFacet: Trade is expired");
+		require(block.timestamp < trade.tradeAgreements.expirationTimestamp, "PartyBFacet: Trade is expired");
 		require(price >= intent.price, "PartyBFacet: Closed price isn't valid");
 
 		uint256 pnl = (quantity * price) / 1e18;
@@ -300,7 +310,7 @@ library PartyBFacetImpl {
 			intent.statusModifyTimestamp = block.timestamp;
 			intent.status = IntentStatus.FILLED;
 			intent.remove();
-			if (trade.quantity == trade.closedAmountBeforeExpiration) {
+			if (trade.tradeAgreements.quantity == trade.closedAmountBeforeExpiration) {
 				trade.status = TradeStatus.CLOSED;
 				trade.statusModifyTimestamp = block.timestamp;
 				trade.remove();
@@ -314,24 +324,24 @@ library PartyBFacetImpl {
 
 	function expireTrade(uint256 tradeId, SettlementPriceSig memory sig) internal {
 		Trade storage trade = IntentStorage.layout().trades[tradeId];
-		Symbol storage symbol = SymbolStorage.layout().symbols[trade.symbolId];
+		Symbol storage symbol = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId];
 		LibMuon.verifySettlementPriceSig(sig);
 
 		require(
 			AppStorage.layout().liquidationDetails[trade.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
 			"PartyBFacet: PartyB is liquidated"
 		);
-		require(sig.symbolId == trade.symbolId, "PartyBFacet: Invalid symbolId");
+		require(sig.symbolId == trade.tradeAgreements.symbolId, "PartyBFacet: Invalid symbolId");
 		require(trade.status == TradeStatus.OPENED, "PartyBFacet: Invalid trade state");
-		require(block.timestamp > trade.expirationTimestamp, "PartyBFacet: Trade isn't expired");
+		require(block.timestamp > trade.tradeAgreements.expirationTimestamp, "PartyBFacet: Trade isn't expired");
 		if (symbol.optionType == OptionType.PUT) {
-			require(sig.settlementPrice >= trade.strikePrice, "PartyBFacet: Invalid price");
+			require(sig.settlementPrice >= trade.tradeAgreements.strikePrice, "PartyBFacet: Invalid price");
 		} else {
-			require(sig.settlementPrice <= trade.strikePrice, "PartyBFacet: Invalid price");
+			require(sig.settlementPrice <= trade.tradeAgreements.strikePrice, "PartyBFacet: Invalid price");
 		}
 		if (msg.sender != trade.partyB) {
 			require(
-				trade.expirationTimestamp + AppStorage.layout().ownerExclusiveWindow <= block.timestamp,
+				trade.tradeAgreements.expirationTimestamp + AppStorage.layout().ownerExclusiveWindow <= block.timestamp,
 				"PartyBFacet: Third parties should wait for owner exclusive window"
 			);
 		}
@@ -344,35 +354,40 @@ library PartyBFacetImpl {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 
 		Trade storage trade = IntentStorage.layout().trades[tradeId];
-		Symbol storage symbol = SymbolStorage.layout().symbols[trade.symbolId];
+		Symbol storage symbol = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId];
 		LibMuon.verifySettlementPriceSig(sig);
 
-		require(sig.symbolId == trade.symbolId, "PartyBFacet: Invalid symbolId");
+		require(sig.symbolId == trade.tradeAgreements.symbolId, "PartyBFacet: Invalid symbolId");
 		require(trade.status == TradeStatus.OPENED, "PartyBFacet: Invalid trade state");
-		require(block.timestamp > trade.expirationTimestamp, "PartyBFacet: Trade isn't expired");
+		require(block.timestamp > trade.tradeAgreements.expirationTimestamp, "PartyBFacet: Trade isn't expired");
 		require(
 			appLayout.liquidationDetails[trade.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
 			"PartyBFacet: PartyB is liquidated"
 		);
 		if (msg.sender != trade.partyB) {
 			require(
-				trade.expirationTimestamp + appLayout.ownerExclusiveWindow <= block.timestamp,
+				trade.tradeAgreements.expirationTimestamp + appLayout.ownerExclusiveWindow <= block.timestamp,
 				"PartyBFacet: Third parties should wait for owner exclusive window"
 			);
 		}
 
 		uint256 pnl;
 		if (symbol.optionType == OptionType.PUT) {
-			require(sig.settlementPrice < trade.strikePrice, "PartyBFacet: Invalid price");
-			pnl = ((trade.quantity - trade.closedAmountBeforeExpiration) * (trade.strikePrice - sig.settlementPrice)) / 1e18;
+			require(sig.settlementPrice < trade.tradeAgreements.strikePrice, "PartyBFacet: Invalid price");
+			pnl =
+				((trade.tradeAgreements.quantity - trade.closedAmountBeforeExpiration) * (trade.tradeAgreements.strikePrice - sig.settlementPrice)) /
+				1e18;
 		} else {
-			require(sig.settlementPrice > trade.strikePrice, "PartyBFacet: Invalid price");
-			pnl = ((trade.quantity - trade.closedAmountBeforeExpiration) * (sig.settlementPrice - trade.strikePrice)) / 1e18;
+			require(sig.settlementPrice > trade.tradeAgreements.strikePrice, "PartyBFacet: Invalid price");
+			pnl =
+				((trade.tradeAgreements.quantity - trade.closedAmountBeforeExpiration) * (sig.settlementPrice - trade.tradeAgreements.strikePrice)) /
+				1e18;
 		}
 		uint256 exerciseFee;
 		{
-			uint256 cap = (trade.exerciseFee.cap * pnl) / 1e18;
-			uint256 fee = (trade.exerciseFee.rate * sig.settlementPrice * (trade.quantity - trade.closedAmountBeforeExpiration)) / 1e36;
+			uint256 cap = (trade.tradeAgreements.exerciseFee.cap * pnl) / 1e18;
+			uint256 fee = (trade.tradeAgreements.exerciseFee.rate * sig.settlementPrice * (trade.tradeAgreements.quantity - trade.closedAmountBeforeExpiration)) /
+				1e36;
 			exerciseFee = cap < fee ? cap : fee;
 		}
 		uint256 amountToTransfer = pnl - exerciseFee;

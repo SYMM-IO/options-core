@@ -105,7 +105,7 @@ contract ViewFacet is IViewFacet {
 	function symbolsByOpenIntentId(uint256[] memory openIntentIds) external view returns (Symbol[] memory) {
 		Symbol[] memory symbols = new Symbol[](openIntentIds.length);
 		for (uint256 i = 0; i < openIntentIds.length; i++) {
-			symbols[i] = SymbolStorage.layout().symbols[IntentStorage.layout().openIntents[openIntentIds[i]].symbolId];
+			symbols[i] = SymbolStorage.layout().symbols[IntentStorage.layout().openIntents[openIntentIds[i]].tradeAgreements.symbolId];
 		}
 		return symbols;
 	}
@@ -118,7 +118,7 @@ contract ViewFacet is IViewFacet {
 	function symbolNameByTradeId(uint256[] memory tradeIds) external view returns (string[] memory) {
 		string[] memory symbols = new string[](tradeIds.length);
 		for (uint256 i = 0; i < tradeIds.length; i++) {
-			symbols[i] = SymbolStorage.layout().symbols[IntentStorage.layout().trades[tradeIds[i]].symbolId].name;
+			symbols[i] = SymbolStorage.layout().symbols[IntentStorage.layout().trades[tradeIds[i]].tradeAgreements.symbolId].name;
 		}
 		return symbols;
 	}

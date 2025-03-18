@@ -26,6 +26,8 @@ library PartyAOpenFacetImpl {
 		uint256 strikePrice,
 		uint256 expirationTimestamp,
 		uint256 penalty,
+		TradeSide tradeSide,
+		MarginType marginType,
 		ExerciseFee memory exerciseFee,
 		uint256 deadline,
 		address feeToken,
@@ -82,16 +84,20 @@ library PartyAOpenFacetImpl {
 		OpenIntent memory intent = OpenIntent({
 			id: intentId,
 			tradeId: 0,
-			partyBsWhiteList: partyBsWhiteList,
-			symbolId: symbolId,
+			tradeAgreements: TradeAgreements({
+				symbolId: symbolId,
+				quantity: quantity,
+				strikePrice: strikePrice,
+				expirationTimestamp: expirationTimestamp,
+				penalty: penalty,
+				tradeSide: tradeSide,
+				marginType: marginType,
+				exerciseFee: exerciseFee
+			}),
 			price: price,
-			quantity: quantity,
-			strikePrice: strikePrice,
-			expirationTimestamp: expirationTimestamp,
-			penalty: penalty,
-			exerciseFee: exerciseFee,
 			partyA: sender,
 			partyB: address(0),
+			partyBsWhiteList: partyBsWhiteList,
 			status: IntentStatus.PENDING,
 			parentId: 0,
 			createTimestamp: block.timestamp,
@@ -124,7 +130,7 @@ library PartyAOpenFacetImpl {
 	function cancelOpenIntent(address sender, uint256 intentId) internal returns (IntentStatus finalStatus) {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
-		Symbol memory symbol = SymbolStorage.layout().symbols[intent.symbolId];
+		Symbol memory symbol = SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId];
 
 		require(intent.status == IntentStatus.PENDING || intent.status == IntentStatus.LOCKED, "PartyAFacet: Invalid state");
 		require(intent.partyA == sender, "PartyAFacet: Should be partyA of Intent");

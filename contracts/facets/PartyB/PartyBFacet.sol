@@ -68,15 +68,19 @@ contract PartyBFacet is Accessibility, Pausable, IPartyBFacet {
 					newIntent.partyA,
 					newIntent.id,
 					newIntent.partyBsWhiteList,
-					newIntent.symbolId,
-					newIntent.price,
-					newIntent.quantity,
-					newIntent.strikePrice,
-					newIntent.expirationTimestamp,
-					newIntent.penalty,
-					newIntent.exerciseFee,
-					newIntent.tradingFee,
-					newIntent.deadline
+					abi.encodePacked(
+						newIntent.tradeAgreements.symbolId,
+						newIntent.price,
+						newIntent.tradeAgreements.quantity,
+						newIntent.tradeAgreements.strikePrice,
+						newIntent.tradeAgreements.expirationTimestamp,
+						newIntent.tradeAgreements.penalty,
+						newIntent.tradeAgreements.tradeSide,
+						newIntent.tradeAgreements.marginType,
+						newIntent.tradeAgreements.exerciseFee.rate,
+						newIntent.tradeAgreements.exerciseFee.cap,
+						newIntent.deadline
+					)
 				);
 			} else if (newIntent.status == IntentStatus.CANCELED) {
 				emit AcceptCancelOpenIntent(newIntent.id);
