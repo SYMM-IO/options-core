@@ -4,11 +4,10 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "../storages/AppStorage.sol";
-import "../storages/SymbolStorage.sol";
-import "../storages/AccountStorage.sol";
-import "../storages/IntentStorage.sol";
-import "../libraries/LibAccessibility.sol";
+import { LibAccessibility } from "../libraries/LibAccessibility.sol";
+import { AccountStorage, Withdraw } from "../storages/AccountStorage.sol";
+import { AppStorage } from "../storages/AppStorage.sol";
+import { Trade, IntentStorage, OpenIntent } from "../storages/IntentStorage.sol";
 
 abstract contract Accessibility {
 	modifier onlyPartyB() {

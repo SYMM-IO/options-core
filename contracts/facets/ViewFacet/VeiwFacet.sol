@@ -4,13 +4,12 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-
-import "../../storages/AccountStorage.sol";
-import "../../storages/IntentStorage.sol";
-import "../../storages/SymbolStorage.sol";
-import "../../storages/AppStorage.sol";
-import "./IViewFacet.sol";
+import { AccountStorage, Withdraw } from "../../storages/AccountStorage.sol";
+import { AppStorage } from "../../storages/AppStorage.sol";
+import { IntentStorage, OpenIntent, Trade, CloseIntent } from "../../storages/IntentStorage.sol";
+import { SymbolStorage, Symbol, Oracle } from "../../storages/SymbolStorage.sol";
+import { IViewFacet } from "./IViewFacet.sol";
+import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 contract ViewFacet is IViewFacet {
 	using EnumerableSet for EnumerableSet.AddressSet;
@@ -19,7 +18,7 @@ contract ViewFacet is IViewFacet {
 	 * @notice Returns the balance for a specified user and collateral type.
 	 * @param user The address of the user.
 	 * @param collateral The address of the collateral type.
-	 * @return balance The balance of the user and specic collateral type.
+	 * @return balance The balance of the user and specific collateral type.
 	 */
 	function balanceOf(address user, address collateral) external view returns (uint256) {
 		return AccountStorage.layout().balances[user][collateral].available;
@@ -34,10 +33,7 @@ contract ViewFacet is IViewFacet {
 	 * @return openIntentsOf The list of openIntents of Party A.
 	 * @return tradesOf The list of trades of Party A.
 	 */
-	function partyAStats(
-		address partyA,
-		address collateral
-	) external view returns (bool, uint256, uint256[] memory, uint256[] memory) {
+	function partyAStats(address partyA, address collateral) external view returns (bool, uint256, uint256[] memory, uint256[] memory) {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		// MAStorage.Layout storage maLayout = MAStorage.layout();  #TODO 1: consider adding this after liquidation dev.
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();

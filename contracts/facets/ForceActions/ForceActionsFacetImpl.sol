@@ -4,10 +4,13 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "../../storages/IntentStorage.sol";
-import "../../storages/AppStorage.sol";
-import "../../libraries/LibCloseIntent.sol";
-import "../../libraries/LibOpenIntent.sol";
+import { LibCloseIntentOps } from "../../libraries/LibCloseIntent.sol";
+import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
+import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { AccountStorage } from "../../storages/AccountStorage.sol";
+import { AppStorage } from "../../storages/AppStorage.sol";
+import { OpenIntent, CloseIntent, IntentStorage, IntentStatus } from "../../storages/IntentStorage.sol";
+import { SymbolStorage, Symbol } from "../../storages/SymbolStorage.sol";
 
 library ForceActionsFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;

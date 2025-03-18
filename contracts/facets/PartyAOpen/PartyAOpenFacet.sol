@@ -4,10 +4,14 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "./PartyAOpenFacetImpl.sol";
-import "../../utils/Accessibility.sol";
-import "../../utils/Pausable.sol";
-import "./IPartyAOpenFacet.sol";
+import { IPartiesEvents } from "../../interfaces/IPartiesEvents.sol";
+import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
+import { OpenIntent, ExerciseFee, IntentStorage, TradeSide, MarginType, IntentStatus } from "../../storages/IntentStorage.sol";
+import { Accessibility } from "../../utils/Accessibility.sol";
+import { Pausable } from "../../utils/Pausable.sol";
+import { IPartyAOpenEvents } from "./IPartyAOpenEvents.sol";
+import { IPartyAOpenFacet } from "./IPartyAOpenFacet.sol";
+import { PartyAOpenFacetImpl } from "./PartyAOpenFacetImpl.sol";
 
 contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 	using LibOpenIntentOps for OpenIntent;
@@ -86,7 +90,7 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 	 */
 	function expireOpenIntent(uint256[] memory expiredIntentIds) external whenNotPartyAActionsPaused {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-		
+
 		for (uint256 i; i < expiredIntentIds.length; i++) {
 			intentLayout.openIntents[expiredIntentIds[i]].expire();
 			emit ExpireOpenIntent(expiredIntentIds[i]);

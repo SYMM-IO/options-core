@@ -4,9 +4,9 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "../../storages/AccountStorage.sol";
-import "../../storages/IntentStorage.sol";
-import "../../storages/SymbolStorage.sol";
+import { Withdraw } from "../../storages/AccountStorage.sol";
+import { OpenIntent, Trade, CloseIntent } from "../../storages/IntentStorage.sol";
+import { Symbol, Oracle } from "../../storages/SymbolStorage.sol";
 
 interface IViewFacet {
 	struct Bitmap {
@@ -22,10 +22,7 @@ interface IViewFacet {
 	// Account
 	function balanceOf(address user, address collateral) external view returns (uint256);
 
-	function partyAStats(
-		address partyA,
-		address collateral
-	) external view returns (bool, uint256, uint256[] memory, uint256[] memory);
+	function partyAStats(address partyA, address collateral) external view returns (bool, uint256, uint256[] memory, uint256[] memory);
 
 	function getWithdraw(uint256 id) external view returns (Withdraw memory);
 

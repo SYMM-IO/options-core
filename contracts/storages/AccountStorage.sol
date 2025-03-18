@@ -4,7 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "../libraries/LibScheduledReleaseBalance.sol";
+import { ScheduledReleaseBalance } from "../libraries/LibScheduledReleaseBalance.sol";
 
 struct Withdraw {
 	uint256 id;

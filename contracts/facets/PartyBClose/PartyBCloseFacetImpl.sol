@@ -4,12 +4,13 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "../../libraries/LibCloseIntent.sol";
-import "../../libraries/LibTrade.sol";
-import "../../storages/AppStorage.sol";
-import "../../storages/IntentStorage.sol";
-import "../../storages/AccountStorage.sol";
-import "../../storages/SymbolStorage.sol";
+import { LibCloseIntentOps } from "../../libraries/LibCloseIntent.sol";
+import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { LibTradeOps } from "../../libraries/LibTrade.sol";
+import { AccountStorage } from "../../storages/AccountStorage.sol";
+import { AppStorage, LiquidationStatus } from "../../storages/AppStorage.sol";
+import { CloseIntent, Trade, IntentStorage, IntentStatus, TradeStatus } from "../../storages/IntentStorage.sol";
+import { SymbolStorage, Symbol } from "../../storages/SymbolStorage.sol";
 
 library PartyBCloseFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;

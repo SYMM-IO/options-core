@@ -4,11 +4,12 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "./TradeSettlementFacetImpl.sol";
-import "./ITradeSettlementFacet.sol";
-import "../../utils/Accessibility.sol";
-import "../../utils/Pausable.sol";
-import "../PartyBClose/PartyBCloseFacetImpl.sol";
+import { SettlementPriceSig } from "../../storages/AppStorage.sol";
+import { Accessibility } from "../../utils/Accessibility.sol";
+import { Pausable } from "../../utils/Pausable.sol";
+import { ITradeSettlementEvents } from "./ITradeSettlementEvents.sol";
+import { ITradeSettlementFacet } from "./ITradeSettlementFacet.sol";
+import { TradeSettlementFacetImpl } from "./TradeSettlementFacetImpl.sol";
 
 contract TradeSettlementFacet is Accessibility, Pausable, ITradeSettlementFacet {
 	/**

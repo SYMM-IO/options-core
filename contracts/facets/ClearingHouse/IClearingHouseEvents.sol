@@ -3,6 +3,7 @@
 // Copyright (c) 2023 Symmetry Labs AG
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
+
 interface IClearingHouseEvents {
 	event FlagLiquidation(address operator, address partyB, address collateral);
 	event UnflagLiquidation(address operator, address partyB, address collateral);

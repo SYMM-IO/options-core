@@ -4,17 +4,15 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-
-import "../../utils/Ownable.sol";
-import "../../utils/Accessibility.sol";
-import "../../storages/SymbolStorage.sol";
-import "../../storages/AppStorage.sol";
-import "../../storages/AccountStorage.sol";
-import "../../storages/SymbolStorage.sol";
-import "../../libraries/LibDiamond.sol";
-import "./IControlFacet.sol";
+import { LibAccessibility } from "../../libraries/LibAccessibility.sol";
+import { AccountStorage } from "../../storages/AccountStorage.sol";
+import { AppStorage, PartyBConfig } from "../../storages/AppStorage.sol";
+import { SymbolStorage, Symbol, Oracle, OptionType } from "../../storages/SymbolStorage.sol";
+import { Accessibility } from "../../utils/Accessibility.sol";
+import { Ownable } from "../../utils/Ownable.sol";
+import { IControlEvents } from "./IControlEvents.sol";
+import { IControlFacet } from "./IControlFacet.sol";
+import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	using EnumerableSet for EnumerableSet.AddressSet;
@@ -28,7 +26,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	function grantRole(address _user, bytes32 _role) external onlyRole(LibAccessibility.DEFAULT_ADMIN_ROLE) {
 		require(_user != address(0), "ControlFacet: Zero address");
 		AppStorage.Layout storage appStorageLayout = AppStorage.layout();
-		if(!appStorageLayout.hasRole[_user][_role]){
+		if (!appStorageLayout.hasRole[_user][_role]) {
 			appStorageLayout.hasRole[_user][_role] = true;
 			appStorageLayout.roleMembers[_role].add(_user);
 			emit RoleGranted(_role, _user);
@@ -38,7 +36,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	function revokeRole(address _user, bytes32 _role) external onlyRole(LibAccessibility.DEFAULT_ADMIN_ROLE) {
 		require(_user != address(0), "ControlFacet: Zero address");
 		AppStorage.Layout storage appStorageLayout = AppStorage.layout();
-		if(appStorageLayout.hasRole[_user][_role]){
+		if (appStorageLayout.hasRole[_user][_role]) {
 			appStorageLayout.hasRole[_user][_role] = false;
 			appStorageLayout.roleMembers[_role].remove(_user);
 			emit RoleRevoked(_role, _user);

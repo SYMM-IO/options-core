@@ -4,10 +4,14 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "./PartyACloseFacetImpl.sol";
-import "../../utils/Accessibility.sol";
-import "../../utils/Pausable.sol";
-import "./IPartyACloseFacet.sol";
+import { IPartiesEvents } from "../../interfaces/IPartiesEvents.sol";
+import { LibCloseIntentOps } from "../../libraries/LibCloseIntent.sol";
+import { CloseIntent, IntentStorage, Trade, IntentStatus } from "../../storages/IntentStorage.sol";
+import { Accessibility } from "../../utils/Accessibility.sol";
+import { Pausable } from "../../utils/Pausable.sol";
+import { IPartyACloseEvents } from "./IPartyACloseEvents.sol";
+import { IPartyACloseFacet } from "./IPartyACloseFacet.sol";
+import { PartyACloseFacetImpl } from "./PartyACloseFacetImpl.sol";
 
 contract PartyACloseFacet is Accessibility, Pausable, IPartyACloseFacet {
 	using LibCloseIntentOps for CloseIntent;

@@ -4,8 +4,8 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "../../storages/IntentStorage.sol";
-import "../../interfaces/IPartiesEvents.sol";
+import { IPartiesEvents } from "../../interfaces/IPartiesEvents.sol";
+import { IntentStatus } from "../../storages/IntentStorage.sol";
 
 interface IPartyACloseEvents is IPartiesEvents {
 	event SendCloseIntent(

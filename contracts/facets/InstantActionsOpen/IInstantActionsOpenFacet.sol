@@ -4,14 +4,15 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "./IInstantActionsOpenEvents.sol";
+import { SignedFillIntentById, SignedOpenIntent, SignedFillIntent, SignedSimpleActionIntent } from "../../storages/IntentStorage.sol";
+import { IInstantActionsOpenEvents } from "./IInstantActionsOpenEvents.sol";
 
 interface IInstantActionsOpenFacet is IInstantActionsOpenEvents {
 	function instantFillOpenIntent(SignedFillIntentById calldata signedFillOpenIntent, bytes calldata partyBSignature) external;
 
 	function instantCreateAndFillOpenIntent(
 		SignedOpenIntent calldata signedOpenIntent,
-		bytes calldata partyAAignature,
+		bytes calldata partyASignature,
 		SignedFillIntent calldata signedFillOpenIntent,
 		bytes calldata partyBSignature
 	) external;

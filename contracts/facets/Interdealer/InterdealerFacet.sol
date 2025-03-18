@@ -4,10 +4,11 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "./InterdealerFacetImpl.sol";
-import "../../utils/Accessibility.sol";
-import "../../utils/Pausable.sol";
-import "./IInterdealerFacet.sol";
+import { Accessibility } from "../../utils/Accessibility.sol";
+import { Pausable } from "../../utils/Pausable.sol";
+import { IInterdealerEvents } from "./IInterdealerEvents.sol";
+import { IInterdealerFacet } from "./IInterdealerFacet.sol";
+import { InterdealerFacetImpl } from "./InterdealerFacetImpl.sol";
 
 contract InterdealerFacet is Accessibility, Pausable, IInterdealerFacet {
 	function sendTransferIntent(uint256 tradeId, address[] memory partyBWhitelist, uint256 proposedPrice, uint256 deadline) external {

@@ -4,10 +4,14 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "./InstantActionsOpenFacetImpl.sol";
-import "../../utils/Accessibility.sol";
-import "../../utils/Pausable.sol";
-import "./IInstantActionsOpenFacet.sol";
+import { IPartiesEvents } from "../../interfaces/IPartiesEvents.sol";
+import { SignedFillIntentById, OpenIntent, IntentStorage, SignedSimpleActionIntent, IntentStatus, SignedOpenIntent, SignedFillIntent } from "../../storages/IntentStorage.sol";
+import { Accessibility } from "../../utils/Accessibility.sol";
+import { Pausable } from "../../utils/Pausable.sol";
+import { IPartyAOpenEvents } from "../PartyAOpen/IPartyAOpenEvents.sol";
+import { IPartyBOpenEvents } from "../PartyBOpen/IPartyBOpenEvents.sol";
+import { IInstantActionsOpenFacet } from "./IInstantActionsOpenFacet.sol";
+import { InstantActionsOpenFacetImpl } from "./InstantActionsOpenFacetImpl.sol";
 
 contract InstantActionsOpenFacet is Accessibility, Pausable, IInstantActionsOpenFacet {
 	/// @notice Any party can fill the existing open intent on behalf of partyB if it has the suitable signature from the partyB

@@ -4,7 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "./IBridgeEvents.sol";
+import { IBridgeEvents } from "./IBridgeEvents.sol";
 
 interface IBridgeFacet is IBridgeEvents {
 	function transferToBridge(address collateral, uint256 amount, address bridgeAddress, address receiver) external;

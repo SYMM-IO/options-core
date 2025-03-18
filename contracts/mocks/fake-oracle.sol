@@ -2,7 +2,7 @@
 pragma solidity >=0.8.18;
 
 contract FakeOracle {
-	function getPrice(address token) external pure returns (uint256){
+	function getPrice(address token) external pure returns (uint256) {
 		return 1e18;
 	}
 }

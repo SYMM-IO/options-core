@@ -4,8 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "../storages/AppStorage.sol";
-import "../storages/IntentStorage.sol";
+import { SignedOpenIntent, SignedCloseIntent, SignedFillIntent, SignedFillIntentById, SignedSimpleActionIntent } from "../storages/IntentStorage.sol";
 
 library LibHash {
 	function hashSignedOpenIntent(SignedOpenIntent calldata req) internal pure returns (bytes32) {
