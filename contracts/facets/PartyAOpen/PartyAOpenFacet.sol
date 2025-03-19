@@ -6,7 +6,7 @@ pragma solidity >=0.8.19;
 
 import { IPartiesEvents } from "../../interfaces/IPartiesEvents.sol";
 import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
-import { OpenIntent, ExerciseFee, IntentStorage, TradeSide, MarginType, IntentStatus } from "../../storages/IntentStorage.sol";
+import { OpenIntent, ExerciseFee, IntentStorage, TradeSide, MarginType, IntentStatus, TradeAgreements } from "../../storages/IntentStorage.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
 import { Pausable } from "../../utils/Pausable.sol";
 import { IPartyAOpenEvents } from "./IPartyAOpenEvents.sol";
@@ -49,15 +49,17 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 		intentId = PartyAOpenFacetImpl.sendOpenIntent(
 			msg.sender,
 			partyBsWhiteList,
-			symbolId,
+			TradeAgreements({
+				symbolId: symbolId,
+				quantity: quantity,
+				strikePrice: strikePrice,
+				expirationTimestamp: expirationTimestamp,
+				penalty: penalty,
+				tradeSide: tradeSide,
+				marginType: marginType,
+				exerciseFee: exerciseFee
+			}),
 			price,
-			quantity,
-			strikePrice,
-			expirationTimestamp,
-			penalty,
-			tradeSide,
-			marginType,
-			exerciseFee,
 			deadline,
 			feeToken,
 			affiliate,
