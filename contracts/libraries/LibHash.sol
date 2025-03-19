@@ -10,26 +10,20 @@ library LibHash {
 	function hashSignedOpenIntent(SignedOpenIntent calldata req) internal pure returns (bytes32) {
 		bytes32 SIGN_PREFIX = keccak256("SymmioOpenIntent_v1");
 
-		return
-			keccak256(
-				abi.encode(
-					SIGN_PREFIX,
-					req.partyA,
-					req.partyB,
-					req.symbolId,
-					req.price,
-					req.quantity,
-					req.strikePrice,
-					req.expirationTimestamp,
-					req.penalty,
-					req.exerciseFee.rate,
-					req.exerciseFee.cap,
-					req.deadline,
-					req.feeToken,
-					req.affiliate,
-					req.salt
-				)
-			);
+		bytes memory encodedData = abi.encode(
+			SIGN_PREFIX,
+			req.partyA,
+			req.partyB,
+			req.price,
+			abi.encode(req.symbolId, req.quantity, req.strikePrice, req.expirationTimestamp, req.penalty, req.exerciseFee.rate, req.exerciseFee.cap),
+			req.marginType,
+			req.deadline,
+			req.feeToken,
+			req.affiliate,
+			req.salt
+		);
+
+		return keccak256(encodedData);
 	}
 
 	function hashSignedCloseIntent(SignedCloseIntent calldata req) internal pure returns (bytes32) {

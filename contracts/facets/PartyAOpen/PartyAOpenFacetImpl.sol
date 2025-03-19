@@ -46,12 +46,6 @@ library PartyAOpenFacetImpl {
 			);
 		}
 
-		for (uint8 i = 0; i < partyBsWhiteList.length; i++) {
-			require(partyBsWhiteList[i] != sender, "PartyAFacet: Sender isn't allowed in partyBWhiteList");
-		}
-
-		bytes memory userDataWithCounter = LibUserData.addCounter(userData, 0);
-
 		intentId = ++IntentStorage.layout().lastOpenIntentId;
 		OpenIntent memory intent = OpenIntent({
 			id: intentId,
@@ -68,7 +62,7 @@ library PartyAOpenFacetImpl {
 			deadline: deadline,
 			tradingFee: TradingFee(feeToken, IPriceOracle(appLayout.priceOracleAddress).getPrice(feeToken), symbol.tradingFee),
 			affiliate: affiliate,
-			userData: userDataWithCounter
+			userData: LibUserData.addCounter(userData, 0)
 		});
 
 		ScheduledReleaseBalance storage partyABalance = accountLayout.balances[sender][symbol.collateral];
