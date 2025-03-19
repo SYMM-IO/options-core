@@ -8,6 +8,7 @@ import { ISignatureVerifier } from "../../interfaces/ISignatureVerifier.sol";
 import { LibCloseIntentOps } from "../../libraries/LibCloseIntent.sol";
 import { PartyBOpenFacetImpl } from "../PartyBOpen/PartyBOpenFacetImpl.sol";
 import { LibHash } from "../../libraries/LibHash.sol";
+import { LibSignature } from "../../libraries/LibSignature.sol";
 import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
 import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { LibTradeOps } from "../../libraries/LibTrade.sol";
@@ -22,19 +23,9 @@ library InstantActionsOpenFacetImpl {
 	using LibOpenIntentOps for OpenIntent;
 	using LibTradeOps for Trade;
 
-	function verifySignature(bytes32 hashValue, bytes calldata signature, address signer) internal {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-		require(
-			ISignatureVerifier(intentLayout.signatureVerifier).verifySignature(signer, hashValue, signature),
-			"InstantActionsFacet: Invalid signature"
-		);
-		require(!intentLayout.isSigUsed[hashValue], "InstantActionsFacet: Signature is already used");
-		intentLayout.isSigUsed[hashValue] = true;
-	}
-
 	function instantFillOpenIntent(SignedFillIntentById calldata signedFillOpenIntent, bytes calldata partyBSignature) internal {
 		bytes32 fillOpenIntentHash = LibHash.hashSignedFillOpenIntentById(signedFillOpenIntent);
-		verifySignature(fillOpenIntentHash, partyBSignature, signedFillOpenIntent.partyB);
+		LibSignature.verifySignature(fillOpenIntentHash, partyBSignature, signedFillOpenIntent.partyB);
 
 		PartyBOpenFacetImpl.fillOpenIntent(
 			signedFillOpenIntent.partyB,
@@ -46,14 +37,14 @@ library InstantActionsOpenFacetImpl {
 
 	function instantLock(SignedSimpleActionIntent calldata signedLockIntent, bytes calldata partyBSignature) internal {
 		bytes32 lockIntentHash = LibHash.hashSignedLockIntent(signedLockIntent);
-		verifySignature(lockIntentHash, partyBSignature, signedLockIntent.signer);
+		LibSignature.verifySignature(lockIntentHash, partyBSignature, signedLockIntent.signer);
 
 		PartyBOpenFacetImpl.lockOpenIntent(signedLockIntent.signer, signedLockIntent.intentId);
 	}
 
 	function instantUnlock(SignedSimpleActionIntent calldata signedUnlockIntent, bytes calldata partyBSignature) internal returns (IntentStatus) {
 		bytes32 unlockIntentHash = LibHash.hashSignedUnlockIntent(signedUnlockIntent);
-		verifySignature(unlockIntentHash, partyBSignature, signedUnlockIntent.signer);
+		LibSignature.verifySignature(unlockIntentHash, partyBSignature, signedUnlockIntent.signer);
 
 		return PartyBOpenFacetImpl.unlockOpenIntent(signedUnlockIntent.signer, signedUnlockIntent.intentId);
 	}
@@ -65,10 +56,10 @@ library InstantActionsOpenFacetImpl {
 		bytes calldata partyBSignature
 	) internal returns (uint256 intentId) {
 		bytes32 openIntentHash = LibHash.hashSignedOpenIntent(signedOpenIntent);
-		verifySignature(openIntentHash, partyASignature, signedOpenIntent.partyA);
+		LibSignature.verifySignature(openIntentHash, partyASignature, signedOpenIntent.partyA);
 
 		bytes32 fillOpenIntentHash = LibHash.hashSignedFillOpenIntent(signedFillOpenIntent);
-		verifySignature(fillOpenIntentHash, partyBSignature, signedFillOpenIntent.partyB);
+		LibSignature.verifySignature(fillOpenIntentHash, partyBSignature, signedFillOpenIntent.partyB);
 
 		address[] memory partyBsWhitelist = new address[](1);
 		partyBsWhitelist[0] = signedOpenIntent.partyB;
@@ -103,13 +94,13 @@ library InstantActionsOpenFacetImpl {
 		bytes calldata partyBSignature
 	) internal returns (IntentStatus status) {
 		bytes32 cancelIntentHash = LibHash.hashSignedCancelOpenIntent(signedCancelOpenIntent);
-		verifySignature(cancelIntentHash, partyASignature, signedCancelOpenIntent.signer);
+		LibSignature.verifySignature(cancelIntentHash, partyASignature, signedCancelOpenIntent.signer);
 
 		status = PartyAOpenFacetImpl.cancelOpenIntent(signedCancelOpenIntent.signer, signedCancelOpenIntent.intentId);
 
 		if (status == IntentStatus.CANCEL_PENDING) {
 			bytes32 acceptCancelIntentHash = LibHash.hashSignedAcceptCancelOpenIntent(signedAcceptCancelOpenIntent);
-			verifySignature(acceptCancelIntentHash, partyBSignature, signedAcceptCancelOpenIntent.signer);
+			LibSignature.verifySignature(acceptCancelIntentHash, partyBSignature, signedAcceptCancelOpenIntent.signer);
 
 			PartyBOpenFacetImpl.acceptCancelOpenIntent(signedAcceptCancelOpenIntent.signer, signedAcceptCancelOpenIntent.intentId);
 			status = IntentStatus.CANCELED;

@@ -9,6 +9,7 @@ import { LibCloseIntentOps } from "../../libraries/LibCloseIntent.sol";
 import { LibHash } from "../../libraries/LibHash.sol";
 import { PartyBCloseFacetImpl } from "../PartyBClose/PartyBCloseFacetImpl.sol";
 import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
+import { LibSignature } from "../../libraries/LibSignature.sol";
 import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { LibTradeOps } from "../../libraries/LibTrade.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
@@ -24,19 +25,9 @@ library InstantActionsCloseFacetImpl {
 	using LibCloseIntentOps for CloseIntent;
 	using LibTradeOps for Trade;
 
-	function verifySignature(bytes32 hashValue, bytes calldata signature, address signer) internal {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-		require(
-			ISignatureVerifier(intentLayout.signatureVerifier).verifySignature(signer, hashValue, signature),
-			"InstantActionsFacet: Invalid signature"
-		);
-		require(!intentLayout.isSigUsed[hashValue], "InstantActionsFacet: Signature is already used");
-		intentLayout.isSigUsed[hashValue] = true;
-	}
-
 	function instantFillCloseIntent(SignedFillIntentById calldata signedFillCloseIntent, bytes calldata partyBSignature) internal {
 		bytes32 fillCloseIntentHash = LibHash.hashSignedFillCloseIntentById(signedFillCloseIntent);
-		verifySignature(fillCloseIntentHash, partyBSignature, signedFillCloseIntent.partyB);
+		LibSignature.verifySignature(fillCloseIntentHash, partyBSignature, signedFillCloseIntent.partyB);
 
 		PartyBCloseFacetImpl.fillCloseIntent(
 			signedFillCloseIntent.partyB,
@@ -53,10 +44,10 @@ library InstantActionsCloseFacetImpl {
 		bytes calldata partyBSignature
 	) internal returns (uint256 intentId) {
 		bytes32 closeIntentHash = LibHash.hashSignedCloseIntent(signedCloseIntent);
-		verifySignature(closeIntentHash, partyASignature, signedCloseIntent.partyA);
+		LibSignature.verifySignature(closeIntentHash, partyASignature, signedCloseIntent.partyA);
 
 		bytes32 fillCloseIntentHash = LibHash.hashSignedFillCloseIntent(signedFillCloseIntent);
-		verifySignature(fillCloseIntentHash, partyBSignature, signedFillCloseIntent.partyB);
+		LibSignature.verifySignature(fillCloseIntentHash, partyBSignature, signedFillCloseIntent.partyB);
 
 		intentId = PartyACloseFacetImpl.sendCloseIntent(
 			signedCloseIntent.partyA,
@@ -76,13 +67,13 @@ library InstantActionsCloseFacetImpl {
 		bytes calldata partyBSignature
 	) internal returns (IntentStatus status) {
 		bytes32 cancelIntentHash = LibHash.hashSignedCancelCloseIntent(signedCancelCloseIntent);
-		verifySignature(cancelIntentHash, partyASignature, signedCancelCloseIntent.signer);
+		LibSignature.verifySignature(cancelIntentHash, partyASignature, signedCancelCloseIntent.signer);
 
 		status = PartyACloseFacetImpl.cancelCloseIntent(signedCancelCloseIntent.signer, signedCancelCloseIntent.intentId);
 
 		if (status == IntentStatus.CANCEL_PENDING) {
 			bytes32 acceptCancelIntentHash = LibHash.hashSignedAcceptCancelCloseIntent(signedAcceptCancelCloseIntent);
-			verifySignature(acceptCancelIntentHash, partyBSignature, signedAcceptCancelCloseIntent.signer);
+			LibSignature.verifySignature(acceptCancelIntentHash, partyBSignature, signedAcceptCancelCloseIntent.signer);
 
 			PartyBCloseFacetImpl.acceptCancelCloseIntent(signedAcceptCancelCloseIntent.signer, signedAcceptCancelCloseIntent.intentId);
 			status = IntentStatus.CANCELED;
