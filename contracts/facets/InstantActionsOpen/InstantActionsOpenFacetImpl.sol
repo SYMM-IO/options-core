@@ -14,7 +14,7 @@ import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "../../libra
 import { LibTradeOps } from "../../libraries/LibTrade.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { AppStorage } from "../../storages/AppStorage.sol";
-import { OpenIntent, CloseIntent, Trade, IntentStorage, IntentStatus, SignedFillIntentById, SignedSimpleActionIntent, SignedOpenIntent, SignedFillIntent, SignedCloseIntent } from "../../storages/IntentStorage.sol";
+import { OpenIntent, CloseIntent, Trade, IntentStorage, IntentStatus, TradeAgreements, SignedFillIntentById, SignedSimpleActionIntent, SignedOpenIntent, SignedFillIntent, SignedCloseIntent } from "../../storages/IntentStorage.sol";
 import { Symbol, SymbolStorage } from "../../storages/SymbolStorage.sol";
 import { PartyAOpenFacetImpl } from "../PartyAOpen/PartyAOpenFacetImpl.sol";
 
@@ -67,15 +67,17 @@ library InstantActionsOpenFacetImpl {
 		intentId = PartyAOpenFacetImpl.sendOpenIntent(
 			signedOpenIntent.partyA,
 			partyBsWhitelist,
-			signedOpenIntent.symbolId,
+			TradeAgreements({
+				symbolId: signedOpenIntent.symbolId,
+				quantity: signedOpenIntent.quantity,
+				strikePrice: signedOpenIntent.strikePrice,
+				expirationTimestamp: signedOpenIntent.expirationTimestamp,
+				penalty: signedOpenIntent.penalty,
+				tradeSide: signedOpenIntent.tradeSide,
+				marginType: signedOpenIntent.marginType,
+				exerciseFee: signedOpenIntent.exerciseFee
+			}),
 			signedOpenIntent.price,
-			signedOpenIntent.quantity,
-			signedOpenIntent.strikePrice,
-			signedOpenIntent.expirationTimestamp,
-			signedOpenIntent.penalty,
-			signedOpenIntent.tradeSide,
-			signedOpenIntent.marginType,
-			signedOpenIntent.exerciseFee,
 			signedOpenIntent.deadline,
 			signedOpenIntent.feeToken,
 			signedOpenIntent.affiliate,

@@ -20,30 +20,22 @@ library PartyAOpenFacetImpl {
 	function sendOpenIntent(
 		address sender,
 		address[] memory partyBsWhiteList,
-		uint256 symbolId,
+		TradeAgreements memory tradeAgreements,
 		uint256 price,
-		uint256 quantity,
-		uint256 strikePrice,
-		uint256 expirationTimestamp,
-		uint256 penalty,
-		TradeSide tradeSide,
-		MarginType marginType,
-		ExerciseFee memory exerciseFee,
 		uint256 deadline,
 		address feeToken,
 		address affiliate,
 		bytes memory userData
 	) internal returns (uint256 intentId) {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 
-		Symbol memory symbol = SymbolStorage.layout().symbols[symbolId];
+		Symbol memory symbol = SymbolStorage.layout().symbols[tradeAgreements.symbolId];
 
 		require(symbol.isValid, "PartyAFacet: Symbol is not valid");
 		require(deadline >= block.timestamp, "PartyAFacet: Low deadline");
-		require(expirationTimestamp >= block.timestamp, "PartyAFacet: Low expiration timestamp");
-		require(exerciseFee.cap <= 1e18, "PartyAFacet: High cap for exercise fee");
+		require(tradeAgreements.expirationTimestamp >= block.timestamp, "PartyAFacet: Low expiration timestamp");
+		require(tradeAgreements.exerciseFee.cap <= 1e18, "PartyAFacet: High cap for exercise fee");
 		require(!accountLayout.instantActionsMode[sender], "PartyAFacet: Instant action mode is activated");
 		require(appLayout.affiliateStatus[affiliate] || affiliate == address(0), "PartyAFacet: Invalid affiliate");
 
@@ -58,42 +50,13 @@ library PartyAOpenFacetImpl {
 			require(partyBsWhiteList[i] != sender, "PartyAFacet: Sender isn't allowed in partyBWhiteList");
 		}
 
-		ScheduledReleaseBalance storage partyABalance = accountLayout.balances[sender][symbol.collateral];
-		ScheduledReleaseBalance storage partyAFeeBalance = accountLayout.balances[sender][feeToken];
-
-		if (partyBsWhiteList.length == 1) {
-			require(
-				uint256(partyABalance.partyBBalance(partyBsWhiteList[0])) >= (quantity * price) / 1e18,
-				"PartyAFacet: insufficient available balance"
-			);
-			require(
-				uint256(partyAFeeBalance.partyBBalance(partyBsWhiteList[0])) >= (quantity * price * symbol.tradingFee) / 1e36,
-				"PartyAFacet: insufficient available balance for trading fee"
-			);
-		} else {
-			require(uint256(partyABalance.available) >= (quantity * price) / 1e18, "PartyAFacet: insufficient available balance");
-			require(
-				uint256(partyAFeeBalance.available) >= (quantity * price * symbol.tradingFee) / 1e36,
-				"PartyAFacet: insufficient available balance for trading fee"
-			);
-		}
-
 		bytes memory userDataWithCounter = LibUserData.addCounter(userData, 0);
 
-		intentId = ++intentLayout.lastOpenIntentId;
+		intentId = ++IntentStorage.layout().lastOpenIntentId;
 		OpenIntent memory intent = OpenIntent({
 			id: intentId,
 			tradeId: 0,
-			tradeAgreements: TradeAgreements({
-				symbolId: symbolId,
-				quantity: quantity,
-				strikePrice: strikePrice,
-				expirationTimestamp: expirationTimestamp,
-				penalty: penalty,
-				tradeSide: tradeSide,
-				marginType: marginType,
-				exerciseFee: exerciseFee
-			}),
+			tradeAgreements: tradeAgreements,
 			price: price,
 			partyA: sender,
 			partyB: address(0),
@@ -107,6 +70,23 @@ library PartyAOpenFacetImpl {
 			affiliate: affiliate,
 			userData: userDataWithCounter
 		});
+
+		ScheduledReleaseBalance storage partyABalance = accountLayout.balances[sender][symbol.collateral];
+		ScheduledReleaseBalance storage partyAFeeBalance = accountLayout.balances[sender][feeToken];
+
+		if (partyBsWhiteList.length == 1) {
+			require(uint256(partyABalance.partyBBalance(partyBsWhiteList[0])) >= intent.getPremium(), "PartyAFacet: insufficient available balance");
+			require(
+				uint256(partyAFeeBalance.partyBBalance(partyBsWhiteList[0])) >= intent.getTradingFee() + intent.getAffiliateFee(),
+				"PartyAFacet: insufficient available balance for fee"
+			);
+		} else {
+			require(uint256(partyABalance.available) >= intent.getPremium(), "PartyAFacet: insufficient available balance");
+			require(
+				uint256(partyAFeeBalance.available) >= intent.getTradingFee() + intent.getAffiliateFee(),
+				"PartyAFacet: insufficient available balance for fee"
+			);
+		}
 
 		intent.save();
 		intent.getFeesAndPremiumFromUser();
