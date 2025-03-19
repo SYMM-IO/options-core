@@ -83,8 +83,6 @@ library PartyBOpenFacetImpl {
 	}
 
 	function acceptCancelOpenIntent(address sender, uint256 intentId) internal {
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-
 		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
 		Symbol memory symbol = SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId];
 		require(intent.status == IntentStatus.CANCEL_PENDING, "PartyBFacet: Invalid state");
@@ -93,23 +91,10 @@ library PartyBOpenFacetImpl {
 			AppStorage.layout().liquidationDetails[intent.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
 			"PartyBFacet: PartyB is in the liquidation process"
 		);
+
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = IntentStatus.CANCELED;
-
-		ScheduledReleaseBalance storage partyABalance = accountLayout.balances[sender][symbol.collateral];
-		ScheduledReleaseBalance storage partyAFeeBalance = accountLayout.balances[sender][intent.tradingFee.feeToken];
-
-		partyABalance.instantAdd(symbol.collateral, intent.getPremium());
-
-		// send trading Fee back to partyA
-		uint256 tradingFee = intent.getTradingFee();
-		uint256 affiliateFee = intent.getAffiliateFee();
-		if (intent.partyBsWhiteList.length == 1) {
-			partyAFeeBalance.scheduledAdd(intent.partyBsWhiteList[0], tradingFee + affiliateFee, block.timestamp);
-		} else {
-			partyAFeeBalance.instantAdd(intent.tradingFee.feeToken, tradingFee + affiliateFee);
-		}
-
+		intent.returnFeesAndPremium();
 		intent.remove(false);
 	}
 
@@ -147,14 +132,12 @@ library PartyBOpenFacetImpl {
 		address feeCollector = appLayout.affiliateFeeCollector[intent.affiliate] == address(0)
 			? appLayout.defaultFeeCollector
 			: appLayout.affiliateFeeCollector[intent.affiliate];
+
 		accountLayout.balances[appLayout.defaultFeeCollector][intent.tradingFee.feeToken].instantAdd(
 			intent.tradingFee.feeToken,
-			(quantity * price * intent.tradingFee.platformFee) / (intent.tradingFee.tokenPrice * 1e18)
+			intent.getTradingFee()
 		);
-		accountLayout.balances[feeCollector][intent.tradingFee.feeToken].instantAdd(
-			intent.tradingFee.feeToken,
-			(quantity * price * appLayout.affiliateFees[intent.affiliate][intent.tradeAgreements.symbolId]) / (intent.tradingFee.tokenPrice * 1e18)
-		);
+		accountLayout.balances[feeCollector][intent.tradingFee.feeToken].instantAdd(intent.tradingFee.feeToken, intent.getAffiliateFee());
 
 		tradeId = ++intentLayout.lastTradeId;
 		Trade memory trade = Trade({
@@ -233,20 +216,9 @@ library PartyBOpenFacetImpl {
 			newIntent.save();
 
 			if (newStatus == IntentStatus.CANCELED) {
-				// send trading Fee back to partyA
-				uint256 tradingFee = newIntent.getTradingFee();
-				uint256 affiliateFee = newIntent.getAffiliateFee();
-				if (intent.partyBsWhiteList.length == 1) {
-					accountLayout.balances[intent.partyA][symbol.collateral].scheduledAdd(
-						newIntent.partyBsWhiteList[0],
-						tradingFee + affiliateFee,
-						block.timestamp
-					);
-				} else {
-					accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(symbol.collateral, tradingFee + affiliateFee);
-				}
+				newIntent.returnFeesAndPremium();
 			} else {
-				accountLayout.balances[intent.partyA][symbol.collateral].sub(newIntent.getPremium());
+				accountLayout.balances[intent.partyA][symbol.collateral].sub(newIntent.getPremium()); //FIXME: Getting premium twice?
 			}
 			intent.tradeAgreements.quantity = quantity;
 		}

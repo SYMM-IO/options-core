@@ -99,4 +99,48 @@ library LibOpenIntentOps {
 		remove(self, false);
 		self.status = IntentStatus.EXPIRED;
 	}
+
+	function getFeesAndPremiumFromUser(OpenIntent memory self) internal {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+
+		Symbol memory symbol = SymbolStorage.layout().symbols[self.tradeAgreements.symbolId];
+		ScheduledReleaseBalance storage partyABalance = accountLayout.balances[self.partyA][symbol.collateral];
+		ScheduledReleaseBalance storage partyAFeeBalance = accountLayout.balances[self.partyA][self.tradingFee.feeToken];
+
+		uint256 tradingFee = getTradingFee(self);
+		uint256 affiliateFee = getAffiliateFee(self);
+		uint256 premium = getPremium(self);
+
+		// CHECK: These two can be moved to the first condition
+		partyAFeeBalance.syncAll(block.timestamp);
+		partyABalance.syncAll(block.timestamp);
+
+		if (self.partyBsWhiteList.length == 1) {
+			partyAFeeBalance.subForPartyB(self.partyBsWhiteList[0], tradingFee + affiliateFee);
+			partyABalance.subForPartyB(self.partyBsWhiteList[0], premium);
+		} else {
+			partyAFeeBalance.sub(tradingFee + affiliateFee);
+			partyABalance.sub(premium);
+		}
+	}
+
+	function returnFeesAndPremium(OpenIntent memory self) internal {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+
+		Symbol memory symbol = SymbolStorage.layout().symbols[self.tradeAgreements.symbolId];
+		ScheduledReleaseBalance storage partyABalance = accountLayout.balances[self.partyA][symbol.collateral];
+		ScheduledReleaseBalance storage partyAFeeBalance = accountLayout.balances[self.partyA][self.tradingFee.feeToken];
+
+		uint256 tradingFee = getTradingFee(self);
+		uint256 affiliateFee = getAffiliateFee(self);
+		uint256 premium = getPremium(self);
+
+		if (self.partyBsWhiteList.length == 1) {
+			partyAFeeBalance.scheduledAdd(self.partyBsWhiteList[0], tradingFee + affiliateFee, block.timestamp);
+			partyABalance.scheduledAdd(self.partyBsWhiteList[0], premium, block.timestamp);
+		} else {
+			partyAFeeBalance.instantAdd(self.tradingFee.feeToken, tradingFee + affiliateFee);
+			partyABalance.instantAdd(symbol.collateral, premium);
+		}
+	}
 }
