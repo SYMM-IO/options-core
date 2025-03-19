@@ -109,52 +109,21 @@ library PartyAOpenFacetImpl {
 		});
 
 		intent.save();
-
-		uint256 tradingFee = intent.getTradingFee();
-		uint256 affiliateFee = intent.getAffiliateFee();
-		uint256 premium = intent.getPremium();
-
-		// CHECK: These two can be moved to the first condition
-		partyAFeeBalance.syncAll(block.timestamp);
-		partyABalance.syncAll(block.timestamp);
-
-		if (partyBsWhiteList.length == 1) {
-			partyAFeeBalance.subForPartyB(partyBsWhiteList[0], tradingFee + affiliateFee);
-			partyABalance.subForPartyB(partyBsWhiteList[0], premium);
-		} else {
-			partyAFeeBalance.sub(tradingFee + affiliateFee);
-			partyABalance.sub(premium);
-		}
+		intent.getFeesAndPremiumFromUser();
 	}
 
 	function cancelOpenIntent(address sender, uint256 intentId) internal returns (IntentStatus finalStatus) {
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
-		Symbol memory symbol = SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId];
 
 		require(intent.status == IntentStatus.PENDING || intent.status == IntentStatus.LOCKED, "PartyAFacet: Invalid state");
 		require(intent.partyA == sender, "PartyAFacet: Should be partyA of Intent");
-		require(!accountLayout.instantActionsMode[sender], "PartyAFacet: Instant action mode is activated");
-
-		ScheduledReleaseBalance storage partyABalance = accountLayout.balances[intent.partyA][symbol.collateral];
-		ScheduledReleaseBalance storage partyAFeeBalance = accountLayout.balances[intent.partyA][intent.tradingFee.feeToken];
+		require(!AccountStorage.layout().instantActionsMode[sender], "PartyAFacet: Instant action mode is activated");
 
 		if (block.timestamp > intent.deadline) {
 			intent.expire();
 		} else if (intent.status == IntentStatus.PENDING) {
 			intent.status = IntentStatus.CANCELED;
-
-			uint256 tradingFee = intent.getTradingFee();
-			uint256 affiliateFee = intent.getAffiliateFee();
-
-			if (intent.partyBsWhiteList.length == 1) {
-				partyAFeeBalance.scheduledAdd(intent.partyBsWhiteList[0], tradingFee + affiliateFee, block.timestamp);
-			} else {
-				partyAFeeBalance.instantAdd(intent.tradingFee.feeToken, tradingFee + affiliateFee);
-			}
-
-			partyABalance.instantAdd(symbol.collateral, intent.getPremium());
-
+			intent.returnFeesAndPremium();
 			intent.remove(false);
 		} else {
 			// LOCKED

@@ -6,41 +6,23 @@ pragma solidity >=0.8.19;
 
 import { LibCloseIntentOps } from "../../libraries/LibCloseIntent.sol";
 import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
-import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
-import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { AppStorage } from "../../storages/AppStorage.sol";
 import { OpenIntent, CloseIntent, IntentStorage, IntentStatus } from "../../storages/IntentStorage.sol";
-import { SymbolStorage, Symbol } from "../../storages/SymbolStorage.sol";
 
 library ForceActionsFacetImpl {
-	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibOpenIntentOps for OpenIntent;
 	using LibCloseIntentOps for CloseIntent;
 
 	function forceCancelOpenIntent(uint256 intentId) internal {
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
-		Symbol memory symbol = SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId];
 
 		require(intent.status == IntentStatus.CANCEL_PENDING, "PartyAFacet: Invalid state");
 		require(block.timestamp > intent.statusModifyTimestamp + appLayout.forceCancelOpenIntentTimeout, "PartyAFacet: Cooldown not reached");
+
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = IntentStatus.CANCELED;
-		accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(symbol.collateral, intent.getPremium());
-
-		// send trading Fee back to partyA
-		uint256 tradingFee = intent.getTradingFee();
-		uint256 affiliateFee = intent.getAffiliateFee();
-		if (intent.partyBsWhiteList.length == 1) {
-			accountLayout.balances[intent.partyA][symbol.collateral].scheduledAdd(
-				intent.partyBsWhiteList[0],
-				tradingFee + affiliateFee,
-				block.timestamp
-			);
-		} else {
-			accountLayout.balances[intent.partyA][symbol.collateral].instantAdd(symbol.collateral, tradingFee + affiliateFee);
-		}
+		intent.returnFeesAndPremium();
 		intent.remove(false);
 	}
 
