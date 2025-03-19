@@ -25,7 +25,7 @@ library PartyBOpenFacetImpl {
 		OpenIntent storage intent = intentLayout.openIntents[intentId];
 		Symbol storage symbol = SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId];
 
-		require(intent.partyB == sender, "PartyBFacet: Sender isn't the partyB of intent");
+		require(intent.partyA != sender, "PartyBFacet: User can't be on both sides");
 		require(intentId <= intentLayout.lastOpenIntentId, "PartyBFacet: Invalid intentId");
 		require(intent.status == IntentStatus.PENDING, "PartyBFacet: Invalid state");
 		require(block.timestamp <= intent.deadline, "PartyBFacet: Intent is expired");
