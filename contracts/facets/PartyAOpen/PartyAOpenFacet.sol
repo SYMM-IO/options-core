@@ -45,7 +45,7 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 		address feeToken,
 		address affiliate,
 		bytes memory userData
-	) external whenNotPartyAActionsPaused notSuspended(msg.sender) returns (uint256 intentId) {
+	) external whenNotPartyAActionsPaused notSuspended(msg.sender) inactiveInstantMode(msg.sender) returns (uint256 intentId) {
 		intentId = PartyAOpenFacetImpl.sendOpenIntent(
 			msg.sender,
 			partyBsWhiteList,
@@ -107,15 +107,14 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
     		Conversely, if the position has been opened, the user is unable to issue this request.
      * @param intentIds The ID of the open intents to be canceled.
      */
-	function cancelOpenIntent(uint256[] memory intentIds) external whenNotPartyAActionsPaused {
+	function cancelOpenIntent(uint256[] memory intentIds) external whenNotPartyAActionsPaused inactiveInstantMode(msg.sender) {
 		for (uint256 i; i < intentIds.length; i++) {
 			IntentStatus result = PartyAOpenFacetImpl.cancelOpenIntent(msg.sender, intentIds[i]);
-			OpenIntent memory intent = IntentStorage.layout().openIntents[intentIds[i]];
 
 			if (result == IntentStatus.EXPIRED) {
-				emit ExpireOpenIntent(intent.id);
+				emit ExpireOpenIntent(intentIds[i]);
 			} else if (result == IntentStatus.CANCELED || result == IntentStatus.CANCEL_PENDING) {
-				emit CancelOpenIntent(intent.partyA, intent.partyB, result, intent.id);
+				emit CancelOpenIntent(intentIds[i], result);
 			}
 		}
 	}

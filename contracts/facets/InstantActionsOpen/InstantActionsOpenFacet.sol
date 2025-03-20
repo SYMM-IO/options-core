@@ -23,7 +23,7 @@ contract InstantActionsOpenFacet is Accessibility, Pausable, IInstantActionsOpen
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
 		InstantActionsOpenFacetImpl.instantFillOpenIntent(signedFillOpenIntent, partyBSignature);
 		OpenIntent storage intent = IntentStorage.layout().openIntents[signedFillOpenIntent.intentId];
-		emit FillOpenIntent(intent.id, intent.tradeId, intent.partyA, intent.partyB, signedFillOpenIntent.quantity, signedFillOpenIntent.price);
+		emit FillOpenIntent(intent.id, intent.tradeId, signedFillOpenIntent.quantity, signedFillOpenIntent.price);
 	}
 
 	/// @notice Any party can lock an open intent on behalf of partyB if it has the suitable signature from the partyB
@@ -34,8 +34,7 @@ contract InstantActionsOpenFacet is Accessibility, Pausable, IInstantActionsOpen
 		bytes calldata partyBSignature
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
 		InstantActionsOpenFacetImpl.instantLock(signedLockIntent, partyBSignature);
-		OpenIntent storage intent = IntentStorage.layout().openIntents[signedLockIntent.intentId];
-		emit LockOpenIntent(intent.partyB, signedLockIntent.intentId);
+		emit LockOpenIntent(signedLockIntent.intentId, signedLockIntent.signer);
 	}
 
 	/// @notice Any party can unlock an open intent on behalf of partyB if it has the suitable signature from the partyB
@@ -49,7 +48,7 @@ contract InstantActionsOpenFacet is Accessibility, Pausable, IInstantActionsOpen
 		if (res == IntentStatus.EXPIRED) {
 			emit ExpireOpenIntent(signedUnlockIntent.intentId);
 		} else if (res == IntentStatus.PENDING) {
-			emit UnlockOpenIntent(signedUnlockIntent.signer, signedUnlockIntent.intentId);
+			emit UnlockOpenIntent(signedUnlockIntent.intentId);
 		}
 	}
 
@@ -90,7 +89,7 @@ contract InstantActionsOpenFacet is Accessibility, Pausable, IInstantActionsOpen
 				intent.deadline
 			)
 		);
-		emit FillOpenIntent(intent.id, intent.tradeId, intent.partyA, intent.partyB, signedFillOpenIntent.quantity, signedFillOpenIntent.price);
+		emit FillOpenIntent(intent.id, intent.tradeId, signedFillOpenIntent.quantity, signedFillOpenIntent.price);
 	}
 
 	/// @notice Any party can cancel an open intent on behalf of parties if it has the suitable signature from the partyB and partyA
@@ -114,7 +113,7 @@ contract InstantActionsOpenFacet is Accessibility, Pausable, IInstantActionsOpen
 		if (result == IntentStatus.EXPIRED) {
 			emit ExpireOpenIntent(intent.id);
 		} else if (result == IntentStatus.CANCELED) {
-			emit CancelOpenIntent(intent.partyA, intent.partyB, result, intent.id);
+			emit CancelOpenIntent(intent.id, result);
 		}
 	}
 }

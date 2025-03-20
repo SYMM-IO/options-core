@@ -36,12 +36,6 @@ abstract contract Accessibility {
 		_;
 	}
 
-	modifier onlyPartyBOfOpenIntent(uint256 intentId) {
-		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
-		require(intent.partyB == msg.sender, "Accessibility: Should be partyB of Intent");
-		_;
-	}
-
 	modifier onlyPartyBOfTrade(uint256 tradeId) {
 		Trade storage trade = IntentStorage.layout().trades[tradeId];
 		require(trade.partyB == msg.sender, "Accessibility: Should be partyB of Trade");
@@ -65,6 +59,11 @@ abstract contract Accessibility {
 		require(!AccountStorage.layout().suspendedAddresses[withdrawObject.user], "Accessibility: User is Suspended");
 		require(!AccountStorage.layout().suspendedAddresses[withdrawObject.to], "Accessibility: Receiver is Suspended");
 		require(!AccountStorage.layout().suspendedWithdrawal[withdrawId], "Accessibility: Withdrawal is Suspended");
+		_;
+	}
+
+	modifier inactiveInstantMode(address sender) {
+		require(!AccountStorage.layout().instantActionsMode[sender], "Accessibility: Instant action mode is activated");
 		_;
 	}
 }

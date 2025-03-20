@@ -8,7 +8,7 @@ import { IPartiesEvents } from "../../interfaces/IPartiesEvents.sol";
 
 interface IPartyBOpenEvents is IPartiesEvents {
 	event AcceptCancelOpenIntent(uint256 intentId);
-	event LockOpenIntent(address partyB, uint256 intentId);
-	event UnlockOpenIntent(address partyB, uint256 intentId);
-	event FillOpenIntent(uint256 intentId, uint256 tradeId, address partyA, address partyB, uint256 quantity, uint256 price);
+	event LockOpenIntent(uint256 intentId, address partyB);
+	event UnlockOpenIntent(uint256 intentId);
+	event FillOpenIntent(uint256 intentId, uint256 tradeId, uint256 quantity, uint256 price);
 }

@@ -25,11 +25,9 @@ library PartyACloseFacetImpl {
 		require(sender == trade.partyA, "PartyAFacet: Invalid sender");
 		require(trade.status == TradeStatus.OPENED, "PartyAFacet: Invalid state");
 		require(deadline >= block.timestamp, "PartyAFacet: Low deadline");
-		require(!AccountStorage.layout().instantActionsMode[trade.partyA], "PartyAFacet: Instant action mode is activated");
 		require(trade.getAvailableAmountToClose() >= quantity, "PartyAFacet: Invalid quantity");
 		require(trade.activeCloseIntentIds.length < AppStorage.layout().maxCloseOrdersLength, "PartyAFacet: Too many close orders");
 
-		// create intent.
 		intentId = ++intentLayout.lastCloseIntentId;
 		CloseIntent memory intent = CloseIntent({
 			id: intentId,
@@ -54,8 +52,6 @@ library PartyACloseFacetImpl {
 
 		require(trade.partyA == sender, "PartyAFacet: Invalid sender");
 		require(intent.status == IntentStatus.PENDING, "PartyAFacet: Invalid state");
-		require(IntentStorage.layout().trades[intent.tradeId].partyA == msg.sender, "PartyAFacet: Should be partyA of Intent");
-		require(!AccountStorage.layout().instantActionsMode[msg.sender], "PartyAFacet: Instant action mode is activated");
 
 		if (block.timestamp > intent.deadline) {
 			intent.expire();
@@ -73,35 +69,22 @@ library PartyACloseFacetImpl {
 	function validateAndTransferTrade(address sender, address receiver, uint256 tradeId) internal {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		AppStorage.Layout storage appLayout = AppStorage.layout();
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		Trade storage trade = intentLayout.trades[tradeId];
 		Symbol memory symbol = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId];
 
-		require(trade.partyA == sender, "PartyAFacet: from != partyA");
-		require(trade.partyB != receiver, "PartyAFacet: to == partyB");
-		require(receiver != address(0), "PartyAFacet: zero address");
+		require(trade.partyA == sender, "PartyAFacet: Only partyA of trade can transfer it");
+		require(trade.partyB != receiver, "PartyAFacet: PartyB can't be the receiver");
+		require(receiver != address(0), "PartyAFacet: Invalid receiver");
 		require(trade.status == TradeStatus.OPENED, "PartyAFacet: Invalid trade state");
 		require(
 			appLayout.liquidationDetails[trade.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
 			"PartyAFacet: PartyB is liquidated"
 		);
 		require(intentLayout.activeTradesOf[receiver].length < appLayout.maxTradePerPartyA, "PartyAFacet: too many trades for to");
-		require(!accountLayout.suspendedAddresses[sender], "PartyAFacet: from suspended");
-		require(!accountLayout.suspendedAddresses[receiver], "PartyAFacet: to suspended");
 
-		// remove from active trades
-		uint256 indexOfPartyATrade = intentLayout.partyATradesIndex[trade.id];
-		uint256 lastIndex = intentLayout.activeTradesOf[trade.partyA].length - 1;
-		intentLayout.activeTradesOf[trade.partyA][indexOfPartyATrade] = intentLayout.activeTradesOf[trade.partyA][lastIndex];
-		intentLayout.partyATradesIndex[intentLayout.activeTradesOf[trade.partyA][lastIndex]] = indexOfPartyATrade;
-		intentLayout.activeTradesOf[trade.partyA].pop();
-
+		trade.remove();
 		trade.partyA = receiver;
-
-		// add to active trades
-		intentLayout.tradesOf[trade.partyA].push(trade.id);
-		intentLayout.activeTradesOf[trade.partyA].push(trade.id);
-		intentLayout.partyATradesIndex[trade.id] = intentLayout.activeTradesOf[trade.partyA].length - 1;
+		trade.save();
 	}
 
 	function transferTrade(address receiver, uint256 tradeId) internal {

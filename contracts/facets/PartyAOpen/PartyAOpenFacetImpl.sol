@@ -36,7 +36,6 @@ library PartyAOpenFacetImpl {
 		require(deadline >= block.timestamp, "PartyAFacet: Low deadline");
 		require(tradeAgreements.expirationTimestamp >= block.timestamp, "PartyAFacet: Low expiration timestamp");
 		require(tradeAgreements.exerciseFee.cap <= 1e18, "PartyAFacet: High cap for exercise fee");
-		require(!accountLayout.instantActionsMode[sender], "PartyAFacet: Instant action mode is activated");
 		require(appLayout.affiliateStatus[affiliate] || affiliate == address(0), "PartyAFacet: Invalid affiliate");
 
 		if (accountLayout.boundPartyB[sender] != address(0)) {
@@ -69,13 +68,16 @@ library PartyAOpenFacetImpl {
 		ScheduledReleaseBalance storage partyAFeeBalance = accountLayout.balances[sender][feeToken];
 
 		if (partyBsWhiteList.length == 1) {
-			require(uint256(partyABalance.partyBBalance(partyBsWhiteList[0])) >= intent.getPremium(), "PartyAFacet: insufficient available balance");
+			require(
+				uint256(partyABalance.partyBBalance(partyBsWhiteList[0])) >= intent.getPremium(),
+				"PartyAFacet: insufficient available balance for premium"
+			);
 			require(
 				uint256(partyAFeeBalance.partyBBalance(partyBsWhiteList[0])) >= intent.getTradingFee() + intent.getAffiliateFee(),
 				"PartyAFacet: insufficient available balance for fee"
 			);
 		} else {
-			require(uint256(partyABalance.available) >= intent.getPremium(), "PartyAFacet: insufficient available balance");
+			require(uint256(partyABalance.available) >= intent.getPremium(), "PartyAFacet: insufficient available balance for premium");
 			require(
 				uint256(partyAFeeBalance.available) >= intent.getTradingFee() + intent.getAffiliateFee(),
 				"PartyAFacet: insufficient available balance for fee"
@@ -83,7 +85,7 @@ library PartyAOpenFacetImpl {
 		}
 
 		intent.save();
-		intent.getFeesAndPremiumFromUser();
+		intent.getFeesAndPremium();
 	}
 
 	function cancelOpenIntent(address sender, uint256 intentId) internal returns (IntentStatus finalStatus) {
@@ -91,7 +93,6 @@ library PartyAOpenFacetImpl {
 
 		require(intent.status == IntentStatus.PENDING || intent.status == IntentStatus.LOCKED, "PartyAFacet: Invalid state");
 		require(intent.partyA == sender, "PartyAFacet: Should be partyA of Intent");
-		require(!AccountStorage.layout().instantActionsMode[sender], "PartyAFacet: Instant action mode is activated");
 
 		if (block.timestamp > intent.deadline) {
 			intent.expire();

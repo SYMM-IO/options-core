@@ -8,5 +8,5 @@ import { IPartiesEvents } from "../../interfaces/IPartiesEvents.sol";
 import { IntentStatus } from "../../storages/IntentStorage.sol";
 
 interface IPartyAOpenEvents is IPartiesEvents {
-	event CancelOpenIntent(address partyA, address partyB, IntentStatus status, uint256 intentId);
+	event CancelOpenIntent(uint256 intentId, IntentStatus finalStatus);
 }

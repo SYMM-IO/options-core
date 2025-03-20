@@ -31,7 +31,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		uint256 amount
 	) external whenNotInternalTransferPaused notSuspended(msg.sender) notSuspended(user) {
 		AccountFacetImpl.internalTransfer(collateral, user, amount);
-		emit InternalTransfer(msg.sender, user, AccountStorage.layout().balances[collateral][user].available, collateral, amount);
+		emit InternalTransfer(msg.sender, user, collateral, amount, AccountStorage.layout().balances[collateral][user].available);
 	}
 
 	/// @notice Allows specific roles to deposit collateral on behalf of another user out of this contract.
