@@ -7,6 +7,7 @@ pragma solidity >=0.8.19;
 import { LibCloseIntentOps } from "../../libraries/LibCloseIntent.sol";
 import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { LibTradeOps } from "../../libraries/LibTrade.sol";
+import { LibPartyB } from "../../libraries/LibPartyB.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { AppStorage, LiquidationStatus } from "../../storages/AppStorage.sol";
 import { CloseIntent, Trade, IntentStorage, IntentStatus, TradeStatus } from "../../storages/IntentStorage.sol";
@@ -24,11 +25,7 @@ library PartyBCloseFacetImpl {
 
 		require(trade.partyB == sender, "PartyBFacet: Invalid sender");
 		require(intent.status == IntentStatus.CANCEL_PENDING, "PartyBFacet: Invalid state");
-		require(
-			AppStorage.layout().liquidationDetails[trade.partyB][SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId].collateral].status ==
-				LiquidationStatus.SOLVENT,
-			"PartyBFacet: PartyB is in the liquidation process"
-		);
+		LibPartyB.requireNotLiquidatedPartyB(trade.partyB, SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId].collateral);
 
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = IntentStatus.CANCELED;
@@ -44,10 +41,8 @@ library PartyBCloseFacetImpl {
 		Symbol memory symbol = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId];
 
 		require(sender == trade.partyB, "PartyBFacet: Invalid sender");
-		require(
-			AppStorage.layout().liquidationDetails[trade.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
-			"PartyBFacet: PartyB is liquidated"
-		);
+		LibPartyB.requireNotLiquidatedPartyB(trade.partyB, symbol.collateral);
+
 		require(quantity > 0 && quantity <= intent.quantity - intent.filledAmount, "PartyBFacet: Invalid filled amount");
 		require(intent.status == IntentStatus.PENDING || intent.status == IntentStatus.CANCEL_PENDING, "PartyBFacet: Invalid state");
 		require(trade.status == TradeStatus.OPENED, "PartyBFacet: Invalid trade state");

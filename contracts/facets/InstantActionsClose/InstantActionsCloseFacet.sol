@@ -45,16 +45,7 @@ contract InstantActionsCloseFacet is Accessibility, Pausable, IInstantActionsClo
 			partyBSignature
 		);
 		Trade storage trade = IntentStorage.layout().trades[signedCloseIntent.tradeId];
-		emit SendCloseIntent(
-			trade.partyA,
-			trade.partyB,
-			trade.id,
-			intentId,
-			signedFillCloseIntent.price,
-			signedFillCloseIntent.quantity,
-			signedCloseIntent.deadline,
-			IntentStatus.PENDING
-		);
+		emit SendCloseIntent(trade.id, intentId, signedFillCloseIntent.price, signedFillCloseIntent.quantity, signedCloseIntent.deadline);
 		emit FillCloseIntent(intentId, trade.id, trade.partyA, trade.partyB, signedFillCloseIntent.quantity, signedFillCloseIntent.price);
 	}
 
@@ -69,18 +60,16 @@ contract InstantActionsCloseFacet is Accessibility, Pausable, IInstantActionsClo
 		SignedSimpleActionIntent calldata signedAcceptCancelCloseIntent,
 		bytes calldata partyBSignature
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		IntentStatus result = InstantActionsCloseFacetImpl.instantCancelCloseIntent(
 			signedCancelCloseIntent,
 			partyASignature,
 			signedAcceptCancelCloseIntent,
 			partyBSignature
 		);
-		Trade memory trade = intentLayout.trades[intentLayout.closeIntents[signedCancelCloseIntent.intentId].tradeId];
 		if (result == IntentStatus.EXPIRED) {
 			emit ExpireCloseIntent(signedCancelCloseIntent.intentId);
 		} else if (result == IntentStatus.CANCEL_PENDING) {
-			emit CancelCloseIntent(trade.partyA, trade.partyB, signedCancelCloseIntent.intentId);
+			emit CancelCloseIntent(signedCancelCloseIntent.intentId);
 		}
 	}
 }

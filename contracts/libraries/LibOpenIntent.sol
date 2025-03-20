@@ -39,6 +39,14 @@ library LibOpenIntentOps {
 		}
 	}
 
+	function saveForPartyB(OpenIntent memory self) internal {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+
+		intentLayout.openIntentsOf[self.partyB].push(self.id);
+		intentLayout.activeOpenIntentsOf[self.partyB].push(self.id);
+		intentLayout.partyBOpenIntentsIndex[self.id] = intentLayout.activeOpenIntentsOf[self.partyB].length - 1;
+	}
+
 	function remove(OpenIntent memory self, bool fromPartyBOnly) internal {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 
@@ -62,69 +70,29 @@ library LibOpenIntentOps {
 		}
 	}
 
-	function saveForPartyB(OpenIntent memory self) internal {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-
-		intentLayout.openIntentsOf[self.partyB].push(self.id);
-		intentLayout.activeOpenIntentsOf[self.partyB].push(self.id);
-		intentLayout.partyBOpenIntentsIndex[self.id] = intentLayout.activeOpenIntentsOf[self.partyB].length - 1;
-	}
-
 	function expire(OpenIntent storage self) internal {
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-
-		Symbol memory symbol = SymbolStorage.layout().symbols[self.tradeAgreements.symbolId];
-
-		require(block.timestamp > self.deadline, "LibIntent: self isn't expired");
+		require(block.timestamp > self.deadline, "LibIntent: intent isn't expired");
 		require(
 			self.status == IntentStatus.PENDING || self.status == IntentStatus.CANCEL_PENDING || self.status == IntentStatus.LOCKED,
 			"LibIntent: Invalid state"
 		);
 
-		ScheduledReleaseBalance storage partyABalance = accountLayout.balances[self.partyA][symbol.collateral];
-		ScheduledReleaseBalance storage partyAFeeBalance = accountLayout.balances[self.partyA][self.tradingFee.feeToken];
-
-		self.statusModifyTimestamp = block.timestamp;
-		partyABalance.instantAdd(symbol.collateral, getPremium(self));
-
-		// send trading Fee back to partyA
-		uint256 tradingFee = getTradingFee(self);
-		uint256 affiliateFee = getAffiliateFee(self);
-
-		if (self.partyBsWhiteList.length == 1) {
-			partyAFeeBalance.scheduledAdd(self.partyBsWhiteList[0], tradingFee + affiliateFee, block.timestamp);
-		} else {
-			partyAFeeBalance.instantAdd(self.tradingFee.feeToken, tradingFee + affiliateFee);
-		}
-		remove(self, false);
 		self.status = IntentStatus.EXPIRED;
+		self.statusModifyTimestamp = block.timestamp;
+
+		returnFeesAndPremium(self);
+		remove(self, false);
 	}
 
-	function getFeesAndPremiumFromUser(OpenIntent memory self) internal {
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-
-		Symbol memory symbol = SymbolStorage.layout().symbols[self.tradeAgreements.symbolId];
-		ScheduledReleaseBalance storage partyABalance = accountLayout.balances[self.partyA][symbol.collateral];
-		ScheduledReleaseBalance storage partyAFeeBalance = accountLayout.balances[self.partyA][self.tradingFee.feeToken];
-
-		uint256 tradingFee = getTradingFee(self);
-		uint256 affiliateFee = getAffiliateFee(self);
-		uint256 premium = getPremium(self);
-
-		// CHECK: These two can be moved to the first condition
-		partyAFeeBalance.syncAll(block.timestamp);
-		partyABalance.syncAll(block.timestamp);
-
-		if (self.partyBsWhiteList.length == 1) {
-			partyAFeeBalance.subForPartyB(self.partyBsWhiteList[0], tradingFee + affiliateFee);
-			partyABalance.subForPartyB(self.partyBsWhiteList[0], premium);
-		} else {
-			partyAFeeBalance.sub(tradingFee + affiliateFee);
-			partyABalance.sub(premium);
-		}
+	function getFeesAndPremium(OpenIntent memory self) internal {
+		handleFeesAndPremium(self, true);
 	}
 
 	function returnFeesAndPremium(OpenIntent memory self) internal {
+		handleFeesAndPremium(self, false);
+	}
+
+	function handleFeesAndPremium(OpenIntent memory self, bool isGetting) internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
 		Symbol memory symbol = SymbolStorage.layout().symbols[self.tradeAgreements.symbolId];
@@ -136,11 +104,23 @@ library LibOpenIntentOps {
 		uint256 premium = getPremium(self);
 
 		if (self.partyBsWhiteList.length == 1) {
-			partyAFeeBalance.scheduledAdd(self.partyBsWhiteList[0], tradingFee + affiliateFee, block.timestamp);
-			partyABalance.scheduledAdd(self.partyBsWhiteList[0], premium, block.timestamp);
+			if (isGetting) {
+				partyAFeeBalance.syncAll(block.timestamp);
+				partyABalance.syncAll(block.timestamp);
+				partyAFeeBalance.subForPartyB(self.partyBsWhiteList[0], tradingFee + affiliateFee);
+				partyABalance.subForPartyB(self.partyBsWhiteList[0], premium);
+			} else {
+				partyAFeeBalance.scheduledAdd(self.partyBsWhiteList[0], tradingFee + affiliateFee, block.timestamp);
+				partyABalance.scheduledAdd(self.partyBsWhiteList[0], premium, block.timestamp);
+			}
 		} else {
-			partyAFeeBalance.instantAdd(self.tradingFee.feeToken, tradingFee + affiliateFee);
-			partyABalance.instantAdd(symbol.collateral, premium);
+			if (isGetting) {
+				partyAFeeBalance.sub(tradingFee + affiliateFee);
+				partyABalance.sub(premium);
+			} else {
+				partyAFeeBalance.instantAdd(self.tradingFee.feeToken, tradingFee + affiliateFee);
+				partyABalance.instantAdd(symbol.collateral, premium);
+			}
 		}
 	}
 }

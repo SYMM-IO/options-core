@@ -8,6 +8,7 @@ import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
 import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { LibTradeOps } from "../../libraries/LibTrade.sol";
 import { LibUserData } from "../../libraries/LibUserData.sol";
+import { LibPartyB } from "../../libraries/LibPartyB.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { AppStorage, LiquidationStatus } from "../../storages/AppStorage.sol";
 import { OpenIntent, Trade, IntentStorage, TradeAgreements, IntentStatus, TradeStatus } from "../../storages/IntentStorage.sol";
@@ -35,7 +36,6 @@ library PartyBOpenFacetImpl {
 
 		bool isValidPartyB;
 		if (intent.partyBsWhiteList.length == 0) {
-			require(sender != intent.partyA, "PartyBFacet: PartyA can't be partyB too");
 			isValidPartyB = true;
 		} else {
 			for (uint8 index = 0; index < intent.partyBsWhiteList.length; index++) {
@@ -46,10 +46,8 @@ library PartyBOpenFacetImpl {
 			}
 		}
 		require(isValidPartyB, "PartyBFacet: Sender isn't whitelisted");
-		require(
-			appLayout.liquidationDetails[sender][symbol.collateral].status == LiquidationStatus.SOLVENT,
-			"PartyBFacet: PartyB is in the liquidation process"
-		);
+
+		LibPartyB.requireNotLiquidatedPartyB(sender, symbol.collateral);
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = IntentStatus.LOCKED;
 		intent.partyB = sender;
@@ -62,13 +60,7 @@ library PartyBOpenFacetImpl {
 
 		require(intent.partyB == sender, "PartyBFacet: Invalid sender");
 		require(intent.status == IntentStatus.LOCKED, "PartyBFacet: Invalid state");
-		require(
-			AppStorage
-			.layout()
-			.liquidationDetails[intent.partyB][SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId].collateral].status ==
-				LiquidationStatus.SOLVENT,
-			"PartyBFacet: PartyB is in the liquidation process"
-		);
+		LibPartyB.requireNotLiquidatedPartyB(sender, SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId].collateral);
 
 		if (block.timestamp > intent.deadline) {
 			intent.expire();
@@ -77,20 +69,16 @@ library PartyBOpenFacetImpl {
 			intent.statusModifyTimestamp = block.timestamp;
 			intent.status = IntentStatus.PENDING;
 			intent.remove(true);
-			intent.partyB = address(0);
+			intent.partyB = address(0); // should be after remove
 			return IntentStatus.PENDING;
 		}
 	}
 
 	function acceptCancelOpenIntent(address sender, uint256 intentId) internal {
 		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
-		Symbol memory symbol = SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId];
 		require(intent.status == IntentStatus.CANCEL_PENDING, "PartyBFacet: Invalid state");
 		require(intent.partyB == sender, "PartyBFacet: Invalid sender");
-		require(
-			AppStorage.layout().liquidationDetails[intent.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
-			"PartyBFacet: PartyB is in the liquidation process"
-		);
+		LibPartyB.requireNotLiquidatedPartyB(sender, SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId].collateral);
 
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = IntentStatus.CANCELED;
@@ -119,10 +107,7 @@ library PartyBOpenFacetImpl {
 		require(symbol.isValid, "PartyBFacet: Symbol is not valid");
 		require(appLayout.partyBConfigs[intent.partyB].symbolType == symbol.symbolType, "PartyBFacet: Mismatched symbol type");
 		require(intent.status == IntentStatus.LOCKED || intent.status == IntentStatus.CANCEL_PENDING, "PartyBFacet: Invalid state");
-		require(
-			appLayout.liquidationDetails[intent.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
-			"PartyBFacet: PartyB is liquidated"
-		);
+		LibPartyB.requireNotLiquidatedPartyB(intent.partyB, symbol.collateral);
 		require(block.timestamp <= intent.deadline, "PartyBFacet: Intent is expired");
 		require(block.timestamp <= intent.tradeAgreements.expirationTimestamp, "PartyBFacet: Requested expiration has been passed");
 		require(intentLayout.activeTradesOf[intent.partyA].length < appLayout.maxTradePerPartyA, "PartyBFacet: Too many active trades for partyA");

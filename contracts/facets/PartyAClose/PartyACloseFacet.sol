@@ -29,11 +29,9 @@ contract PartyACloseFacet is Accessibility, Pausable, IPartyACloseFacet {
 		uint256 price,
 		uint256 quantity,
 		uint256 deadline
-	) external whenNotPartyAActionsPaused onlyPartyAOfTrade(tradeId) {
-		uint256 closeIntentId = PartyACloseFacetImpl.sendCloseIntent(msg.sender, tradeId, price, quantity, deadline);
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-		Trade storage trade = intentLayout.trades[tradeId];
-		emit SendCloseIntent(trade.partyA, trade.partyB, tradeId, closeIntentId, price, quantity, deadline, IntentStatus.PENDING);
+	) external whenNotPartyAActionsPaused onlyPartyAOfTrade(tradeId) inactiveInstantMode(msg.sender) {
+		uint256 intentId = PartyACloseFacetImpl.sendCloseIntent(msg.sender, tradeId, price, quantity, deadline);
+		emit SendCloseIntent(tradeId, intentId, price, quantity, deadline);
 	}
 
 	/**
@@ -53,15 +51,13 @@ contract PartyACloseFacet is Accessibility, Pausable, IPartyACloseFacet {
 	 * @notice Requests to cancel a close intent.
 	 * @param intentIds The ID of the close intents to be canceled.
 	 */
-	function cancelCloseIntent(uint256[] memory intentIds) external whenNotPartyAActionsPaused {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+	function cancelCloseIntent(uint256[] memory intentIds) external whenNotPartyAActionsPaused inactiveInstantMode(msg.sender) {
 		for (uint256 i; i < intentIds.length; i++) {
-			Trade storage trade = intentLayout.trades[intentLayout.closeIntents[intentIds[i]].tradeId];
 			IntentStatus result = PartyACloseFacetImpl.cancelCloseIntent(msg.sender, intentIds[i]);
 			if (result == IntentStatus.EXPIRED) {
 				emit ExpireCloseIntent(intentIds[i]);
 			} else if (result == IntentStatus.CANCEL_PENDING) {
-				emit CancelCloseIntent(trade.partyA, trade.partyB, intentIds[i]);
+				emit CancelCloseIntent(intentIds[i]);
 			}
 		}
 	}
@@ -72,7 +68,10 @@ contract PartyACloseFacet is Accessibility, Pausable, IPartyACloseFacet {
 	 * @param receiver The receiver address of the trade
 	 * @param tradeId The Id of the trade
 	 */
-	function transferTrade(address receiver, uint256 tradeId) external whenNotPartyAActionsPaused onlyPartyAOfTrade(tradeId) {
+	function transferTrade(
+		address receiver,
+		uint256 tradeId
+	) external whenNotPartyAActionsPaused onlyPartyAOfTrade(tradeId) notSuspended(msg.sender) notSuspended(receiver) {
 		PartyACloseFacetImpl.transferTrade(receiver, tradeId);
 		emit TransferTradeByPartyA(msg.sender, receiver, tradeId);
 	}
@@ -84,7 +83,11 @@ contract PartyACloseFacet is Accessibility, Pausable, IPartyACloseFacet {
 	 * @param receiver The receiver address of the trade
 	 * @param tradeId The Id of the trade
 	 */
-	function transferTradeFromNFT(address sender, address receiver, uint256 tradeId) external whenNotPartyAActionsPaused {
+	function transferTradeFromNFT(
+		address sender,
+		address receiver,
+		uint256 tradeId
+	) external whenNotPartyAActionsPaused notSuspended(sender) notSuspended(receiver) {
 		PartyACloseFacetImpl.transferTradeFromNFT(sender, receiver, tradeId);
 		emit TransferTradeByPartyA(sender, receiver, tradeId);
 	}

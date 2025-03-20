@@ -5,20 +5,8 @@
 pragma solidity >=0.8.19;
 
 import { IPartiesEvents } from "../../interfaces/IPartiesEvents.sol";
-import { IntentStatus } from "../../storages/IntentStorage.sol";
-
 interface IPartyACloseEvents is IPartiesEvents {
-	event SendCloseIntent(
-		address partyA,
-		address partyB,
-		uint256 tradeId,
-		uint256 closeIntentId,
-		uint256 price,
-		uint256 quantity,
-		uint256 deadline,
-		IntentStatus status
-	);
-	event CancelCloseIntent(address partyA, address partyB, uint256 intentId);
+	event SendCloseIntent(uint256 tradeId, uint256 intentId, uint256 price, uint256 quantity, uint256 deadline);
+	event CancelCloseIntent(uint256 intentId);
 	event TransferTradeByPartyA(address sender, address receiver, uint256 tradeId);
-	event MintMappingForTrade(uint256 tradeId, uint256 tokenId);
 }
