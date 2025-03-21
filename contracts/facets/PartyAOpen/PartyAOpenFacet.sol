@@ -13,22 +13,32 @@ import { IPartyAOpenEvents } from "./IPartyAOpenEvents.sol";
 import { IPartyAOpenFacet } from "./IPartyAOpenFacet.sol";
 import { PartyAOpenFacetImpl } from "./PartyAOpenFacetImpl.sol";
 
+/**
+ * @title PartyAOpenFacet
+ * @notice Manages open intent creation and lifecycle actions for PartyA users
+ * @dev Implements the IPartyAOpenFacet interface with access control and pausability
+ */
 contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 	using LibOpenIntentOps for OpenIntent;
 
 	/**
-	 * @notice Send a open intent to the protocol. The intent status will be pending.
-	 * @param partyBsWhiteList List of party B addresses allowed to act on this intent.
-	 * @param symbolId Each symbol within the system possesses a unique identifier, for instance, BTCUSDT carries its own distinct ID
-	 * @param price This is the user-requested price that the user is willing to open a trade. For example, if the market price for an arbitrary symbol is $1000 and the user wants to
-	 * 				open a trade on this symbol they might be ok with prices up to $1050
-	 * @param quantity Size of the trade
+	 * @notice Creates and submits a new open intent to the protocol
+	 * @dev The intent status will be set to PENDING upon creation. Only non-suspended users with inactive instant mode can call this function.
+	 * @param partyBsWhiteList List of PartyB addresses allowed to act on this intent
+	 * @param symbolId Unique identifier for the trading symbol (e.g., BTCUSDT)
+	 * @param price The maximum price at which PartyA is willing to open the trade
+	 * @param quantity Size of the trade in base units
 	 * @param strikePrice The strike price for the options contract
-	 * @param expirationTimestamp The expiration time for the options contract
-	 * @param penalty The penalty that partyB would pay to partyA if it gets liquidated
-	 * @param exerciseFee The exercise fee for the options contract during the exercise
-	 * @param deadline The user should set a deadline for their request. If no PartyB takes action on the intent within this timeframe, the request will expire
-	 * @param affiliate The affiliate of this intent
+	 * @param expirationTimestamp The timestamp when the options contract expires
+	 * @param penalty The amount PartyB would pay to PartyA if the position gets liquidated
+	 * @param tradeSide Direction of the trade (LONG or SHORT)
+	 * @param marginType Type of margin used for the trade (e.g., ISOLATED, CROSS)
+	 * @param exerciseFee The fee structure applied during option exercise
+	 * @param deadline Timestamp after which the intent expires if no PartyB takes action
+	 * @param feeToken The token used for paying fees related to this trade
+	 * @param affiliate The affiliate address for this trade, if any
+	 * @param userData Additional user-defined data to be stored with the intent
+	 * @return intentId The unique identifier for the newly created open intent
 	 */
 	function sendOpenIntent(
 		address[] calldata partyBsWhiteList,
@@ -87,8 +97,9 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 	}
 
 	/**
-	 * @notice Expires the specified open intents.
-	 * @param expiredIntentIds An array of IDs of the open intents to be expired.
+	 * @notice Expires multiple open intents that have reached their deadline
+	 * @dev This function transitions intents to EXPIRED state and can be called by anyone when PartyA actions are not paused
+	 * @param expiredIntentIds Array of intent IDs to be marked as expired
 	 */
 	function expireOpenIntent(uint256[] memory expiredIntentIds) external whenNotPartyAActionsPaused {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
@@ -100,13 +111,13 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 	}
 
 	/**
-     * @notice Requests to cancel the specified open intent. Two scenarios can occur:
-    		If the intent has not yet been locked, it will be immediately canceled.
-    		For a locked intent, the outcome depends on PartyB's decision to either accept the cancellation request or to proceed with opening the trade, disregarding the request.
-    		If PartyB agrees to cancel, the intent will no longer be accessible for others to interact with.
-    		Conversely, if the position has been opened, the user is unable to issue this request.
-     * @param intentIds The ID of the open intents to be canceled.
-     */
+	 * @notice Initiates cancellation requests for specified open intents
+	 * @dev The outcome depends on the current state of each intent:
+	 *      - For unlocked intents: Immediate cancellation (CANCELED state)
+	 *      - For locked intents: Pending cancellation (CANCEL_PENDING state) awaiting PartyB's decision
+	 *      - For opened positions: Cancellation not possible
+	 * @param intentIds Array of intent IDs to be canceled
+	 */
 	function cancelOpenIntent(uint256[] memory intentIds) external whenNotPartyAActionsPaused inactiveInstantMode(msg.sender) {
 		for (uint256 i; i < intentIds.length; i++) {
 			IntentStatus result = PartyAOpenFacetImpl.cancelOpenIntent(msg.sender, intentIds[i]);

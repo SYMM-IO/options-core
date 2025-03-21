@@ -11,11 +11,19 @@ import { ITradeSettlementEvents } from "./ITradeSettlementEvents.sol";
 import { ITradeSettlementFacet } from "./ITradeSettlementFacet.sol";
 import { TradeSettlementFacetImpl } from "./TradeSettlementFacetImpl.sol";
 
+/**
+ * @title TradeSettlementFacet
+ * @notice Manages the settlement of trades
+ * @dev Implements the ITradeSettlementFacet interface with access control and pausability
+ *      This facet handles the final processes of trade lifecycle including PnL calculation
+ */
 contract TradeSettlementFacet is Accessibility, Pausable, ITradeSettlementFacet {
 	/**
-	 * @notice Expires a trade.
-	 * @param tradeId The ID of the trade.
-	 * @param settlementPriceSig The muon sig about price of the symbol at the time of expiration
+	 * @notice Settles a trade that has reached its expiration timestamp
+	 * @dev Can be called by either PartyB or authorized third parties
+	 * @param tradeId The unique identifier of the trade being expired
+	 * @param settlementPriceSig Cryptographically signed data from Muon oracle containing
+	 *                          the verified settlement price of the symbol at expiration time
 	 */
 	function expireTrade(
 		uint256 tradeId,
@@ -26,9 +34,13 @@ contract TradeSettlementFacet is Accessibility, Pausable, ITradeSettlementFacet 
 	}
 
 	/**
-	 * @notice Exercises a trade.
-	 * @param tradeId The ID of the trade.
-	 * @param settlementPriceSig The muon sig about price of the symbol at the time of expiration
+	 * @notice Settles a trade that has reached its expiration timestamp
+	 * @dev Differs from expiration by potentially including exercise fees and accounting for potential PNLs.
+	 *      Settlement occurs using the current market price verified by Muon oracle
+	 *      Can be called by either PartyB or authorized third parties
+	 * @param tradeId The unique identifier of the trade being exercised
+	 * @param settlementPriceSig Cryptographically signed data from Muon oracle containing
+	 *                          the verified current market price for settlement
 	 */
 	function exerciseTrade(
 		uint256 tradeId,

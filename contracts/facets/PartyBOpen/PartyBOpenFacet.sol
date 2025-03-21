@@ -12,10 +12,16 @@ import { IPartyBOpenEvents } from "./IPartyBOpenEvents.sol";
 import { IPartyBOpenFacet } from "./IPartyBOpenFacet.sol";
 import { PartyBOpenFacetImpl } from "./PartyBOpenFacetImpl.sol";
 
+/**
+ * @title PartyBOpenFacet
+ * @notice Manages PartyB's interactions with open intents submitted by PartyA users
+ * @dev Implements the IPartyBOpenFacet interface with access control and pausability mechanisms
+ */
 contract PartyBOpenFacet is Accessibility, Pausable, IPartyBOpenFacet {
 	/**
-	 * @notice Once a user issues a open intent, any PartyB can secure it, based on their estimated profit and loss from opening the trade.
-	 * @param intentId The ID of the open intent to be locked.
+	 * @notice Allows PartyB to reserve an open intent for fulfillment
+	 * @dev Temporarily locks the intent to prevent other PartyBs from acting on it
+	 * @param intentId The unique identifier of the open intent to be locked
 	 */
 	function lockOpenIntent(uint256 intentId) external whenNotPartyBActionsPaused onlyPartyB {
 		PartyBOpenFacetImpl.lockOpenIntent(msg.sender, intentId);
@@ -23,8 +29,11 @@ contract PartyBOpenFacet is Accessibility, Pausable, IPartyBOpenFacet {
 	}
 
 	/**
-	 * @notice Unlocks the specified open intent.
-	 * @param intentId The ID of the open intent to be unlocked.
+	 * @notice Releases a previously locked open intent, making it available again
+	 * @dev The intent may be marked as expired if its deadline has passed or returned to pending state
+	 *      Only the PartyB who locked the intent can unlock it
+	 * @param intentId The unique identifier of the open intent to be unlocked
+	 * @return finalStatus The resulting status of the intent after unlocking (EXPIRED or PENDING)
 	 */
 	function unlockOpenIntent(uint256 intentId) external whenNotPartyBActionsPaused {
 		IntentStatus finalStatus = PartyBOpenFacetImpl.unlockOpenIntent(msg.sender, intentId);
@@ -36,8 +45,10 @@ contract PartyBOpenFacet is Accessibility, Pausable, IPartyBOpenFacet {
 	}
 
 	/**
-	 * @notice Accepts the cancellation request for the specified open intent.
-	 * @param intentId The ID of the open intent for which the cancellation request is accepted.
+	 * @notice Approves a cancellation request initiated by PartyA for an open intent
+	 * @dev This can only be called by the PartyB who locked the intent
+	 *      Once accepted, the intent will be marked as canceled
+	 * @param intentId The unique identifier of the open intent for which the cancellation is being accepted
 	 */
 	function acceptCancelOpenIntent(uint256 intentId) external whenNotPartyBActionsPaused {
 		PartyBOpenFacetImpl.acceptCancelOpenIntent(msg.sender, intentId);
@@ -45,10 +56,15 @@ contract PartyBOpenFacet is Accessibility, Pausable, IPartyBOpenFacet {
 	}
 
 	/**
-	 * @notice Opens a trade for the specified open intent.
-	 * @param intentId The ID of the open intent for which the trade is opened.
-	 * @param quantity PartyB has the option to open the position with either the full amount requested by the user or a specific fraction of it
-	 * @param price The opened price for the trade.
+	 * @notice Opens a trade based on a previously submitted open intent
+	 * @dev Creates a new trade record and potentially a new intent for any unfilled quantity
+	 *      The price must be favorable to PartyA compared to their requested price
+	 *      Only the PartyB who locked the intent can fill it
+	 * @param intentId The unique identifier of the open intent to be filled
+	 * @param quantity The amount to be filled, which can be equal to or less than the original requested quantity
+	 * @param price The price at which the trade is being opened
+	 * @return tradeId The unique identifier of the newly created trade
+	 * @return newIntentId The identifier of a new intent created for any unfilled quantity (0 if fully filled)
 	 */
 	function fillOpenIntent(uint256 intentId, uint256 quantity, uint256 price) external whenNotPartyBActionsPaused {
 		(uint256 tradeId, uint256 newIntentId) = PartyBOpenFacetImpl.fillOpenIntent(msg.sender, intentId, quantity, price);

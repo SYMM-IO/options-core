@@ -15,13 +15,17 @@ library AccountFacetImpl {
 	using SafeERC20 for IERC20;
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 
+	// Constants
+	uint256 private constant PRECISION_FACTOR = 1e18;
+
 	function deposit(address collateral, address user, uint256 amount) internal {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
 		require(appLayout.whiteListedCollateral[collateral], "AccountFacet: Collateral is not whitelisted");
 		IERC20(collateral).safeTransferFrom(msg.sender, address(this), amount);
-		uint256 amountWith18Decimals = (amount * 1e18) / (10 ** IERC20Metadata(collateral).decimals());
+
+		uint256 amountWith18Decimals = _normalizeAmount(collateral, amount);
 		accountLayout.balances[user][collateral].instantAdd(collateral, amountWith18Decimals);
 	}
 
@@ -39,6 +43,7 @@ library AccountFacetImpl {
 
 		require(appLayout.whiteListedCollateral[collateral], "AccountFacet: Collateral is not whitelisted");
 		require(accountLayout.balances[msg.sender][collateral].available >= amount, "AccountFacet: Insufficient balance");
+
 		accountLayout.balances[msg.sender][collateral].sub(amount);
 		accountLayout.balances[user][collateral].instantAdd(collateral, amount);
 	}
@@ -49,13 +54,16 @@ library AccountFacetImpl {
 
 		require(appLayout.whiteListedCollateral[collateral], "AccountFacet: Collateral is not whitelisted");
 		require(to != address(0), "AccountFacet: Zero address");
+
 		accountLayout.balances[msg.sender][collateral].syncAll(block.timestamp);
+
 		require(accountLayout.balances[msg.sender][collateral].available >= amount, "AccountFacet: Insufficient balance");
 		require(!accountLayout.instantActionsMode[msg.sender], "AccountFacet: Instant action mode is activated");
 		require(
 			appLayout.liquidationDetails[msg.sender][collateral].status == LiquidationStatus.SOLVENT,
-			"AccountFacet: PartyB is in the liquidation process"
+			"AccountFacet: User is in the liquidation process"
 		);
+
 		accountLayout.balances[msg.sender][collateral].sub(amount);
 
 		currentId = ++accountLayout.lastWithdrawId;
@@ -68,6 +76,7 @@ library AccountFacetImpl {
 			timestamp: block.timestamp,
 			status: WithdrawStatus.INITIATED
 		});
+
 		accountLayout.withdrawals[currentId] = withdrawObject;
 	}
 
@@ -77,21 +86,27 @@ library AccountFacetImpl {
 
 		require(id <= accountLayout.lastWithdrawId, "AccountFacet: Invalid Id");
 
-		Withdraw storage w = accountLayout.withdrawals[id];
+		Withdraw storage withdrawal = accountLayout.withdrawals[id];
+
 		require(
-			appLayout.liquidationDetails[w.user][w.collateral].status == LiquidationStatus.SOLVENT,
+			appLayout.liquidationDetails[withdrawal.user][withdrawal.collateral].status == LiquidationStatus.SOLVENT,
 			"AccountFacet: PartyB is in the liquidation process"
 		);
-		require(w.status == WithdrawStatus.INITIATED, "AccountFacet: Invalid state");
-		if (appLayout.partyBConfigs[w.user].isActive) {
-			require(block.timestamp >= appLayout.partyBDeallocateCooldown + w.timestamp, "AccountFacet: Cooldown is not over yet");
+		require(withdrawal.status == WithdrawStatus.INITIATED, "AccountFacet: Invalid state");
+
+		uint256 cooldownPeriod;
+		if (appLayout.partyBConfigs[withdrawal.user].isActive) {
+			cooldownPeriod = appLayout.partyBDeallocateCooldown;
 		} else {
-			require(block.timestamp >= appLayout.partyADeallocateCooldown + w.timestamp, "AccountFacet: Cooldown is not over yet");
+			cooldownPeriod = appLayout.partyADeallocateCooldown;
 		}
 
-		w.status = WithdrawStatus.COMPLETED;
-		uint256 amountInCollateralDecimals = (w.amount * (10 ** IERC20Metadata(w.collateral).decimals())) / 1e18;
-		IERC20(w.collateral).safeTransfer(w.to, amountInCollateralDecimals);
+		require(block.timestamp >= cooldownPeriod + withdrawal.timestamp, "AccountFacet: Cooldown is not over yet");
+
+		withdrawal.status = WithdrawStatus.COMPLETED;
+
+		uint256 amountInCollateralDecimals = _denormalizeAmount(withdrawal.collateral, withdrawal.amount);
+		IERC20(withdrawal.collateral).safeTransfer(withdrawal.to, amountInCollateralDecimals);
 	}
 
 	function cancelWithdraw(uint256 id) internal {
@@ -99,16 +114,19 @@ library AccountFacetImpl {
 
 		require(id <= accountLayout.lastWithdrawId, "AccountFacet: Invalid Id");
 
-		Withdraw storage w = accountLayout.withdrawals[id];
-		require(w.status == WithdrawStatus.INITIATED, "AccountFacet: Invalid state");
+		Withdraw storage withdrawal = accountLayout.withdrawals[id];
+		require(withdrawal.status == WithdrawStatus.INITIATED, "AccountFacet: Invalid state");
 
-		w.status = WithdrawStatus.CANCELED;
-		accountLayout.balances[w.user][w.collateral].instantAdd(w.collateral, w.amount);
+		withdrawal.status = WithdrawStatus.CANCELED;
+		accountLayout.balances[withdrawal.user][withdrawal.collateral].instantAdd(withdrawal.collateral, withdrawal.amount);
 	}
 
 	function syncBalances(address collateral, address partyA, address[] calldata partyBs) internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		for (uint256 i = 0; i < partyBs.length; i++) accountLayout.balances[partyA][collateral].sync(partyBs[i], block.timestamp);
+
+		for (uint256 i = 0; i < partyBs.length; i++) {
+			accountLayout.balances[partyA][collateral].sync(partyBs[i], block.timestamp);
+		}
 	}
 
 	function activateInstantActionMode() internal {
@@ -128,6 +146,7 @@ library AccountFacetImpl {
 		require(accountLayout.instantActionsMode[msg.sender], "AccountFacet: Instant actions mode isn't activated");
 		require(accountLayout.instantActionsModeDeactivateTime[msg.sender] != 0, "AccountFacet: Deactivation is not proposed");
 		require(accountLayout.instantActionsModeDeactivateTime[msg.sender] <= block.timestamp, "AccountFacet: Cooldown is not over yet");
+
 		accountLayout.instantActionsMode[msg.sender] = false;
 		accountLayout.instantActionsModeDeactivateTime[msg.sender] = 0;
 	}
@@ -145,6 +164,7 @@ library AccountFacetImpl {
 	function initiateUnbindingFromPartyB() internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		address currentPartyB = accountLayout.boundPartyB[msg.sender];
+
 		require(currentPartyB != address(0), "ControlFacet: Not bound to any PartyB");
 		require(accountLayout.unbindingRequestTime[msg.sender] == 0, "ControlFacet: Unbinding already initiated");
 
@@ -154,6 +174,7 @@ library AccountFacetImpl {
 	function completeUnbindingFromPartyB() internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		address currentPartyB = accountLayout.boundPartyB[msg.sender];
+
 		require(currentPartyB != address(0), "ControlFacet: Not bound to any PartyB");
 		require(accountLayout.unbindingRequestTime[msg.sender] != 0, "ControlFacet: Unbinding not initiated");
 		require(
@@ -170,5 +191,16 @@ library AccountFacetImpl {
 		require(accountLayout.unbindingRequestTime[msg.sender] != 0, "ControlFacet: No pending unbinding");
 
 		delete accountLayout.unbindingRequestTime[msg.sender];
+	}
+
+	// Helper functions
+	function _normalizeAmount(address token, uint256 amount) private view returns (uint256) {
+		uint8 decimals = IERC20Metadata(token).decimals();
+		return (amount * PRECISION_FACTOR) / (10 ** decimals);
+	}
+
+	function _denormalizeAmount(address token, uint256 amount) private view returns (uint256) {
+		uint8 decimals = IERC20Metadata(token).decimals();
+		return (amount * (10 ** decimals)) / PRECISION_FACTOR;
 	}
 }
