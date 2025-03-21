@@ -199,8 +199,6 @@ library PartyBOpenFacetImpl {
 
 			if (newStatus == IntentStatus.CANCELED) {
 				newIntent.returnFeesAndPremium();
-			} else {
-				accountLayout.balances[intent.partyA][symbol.collateral].sub(newIntent.getPremium()); //FIXME: Getting premium twice?
 			}
 			intent.tradeAgreements.quantity = quantity;
 		}

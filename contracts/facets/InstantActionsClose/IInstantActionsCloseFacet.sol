@@ -8,19 +8,19 @@ import { SignedFillIntentById, SignedCloseIntent, SignedFillIntent, SignedSimple
 import { IInstantActionsCloseEvents } from "./IInstantActionsCloseEvents.sol";
 
 interface IInstantActionsCloseFacet is IInstantActionsCloseEvents {
+	function instantCancelCloseIntent(
+		SignedSimpleActionIntent calldata signedCancelCloseIntent,
+		bytes calldata partyASignature,
+		SignedSimpleActionIntent calldata signedAcceptCancelCloseIntent,
+		bytes calldata partyBSignature
+	) external;
+
 	function instantFillCloseIntent(SignedFillIntentById calldata signedFillCloseIntent, bytes calldata partyBSignature) external;
 
 	function instantCreateAndFillCloseIntent(
 		SignedCloseIntent calldata signedCloseIntent,
 		bytes calldata partyASignature,
 		SignedFillIntent calldata signedFillCloseIntent,
-		bytes calldata partyBSignature
-	) external;
-
-	function instantCancelCloseIntent(
-		SignedSimpleActionIntent calldata signedCancelCloseIntent,
-		bytes calldata partyASignature,
-		SignedSimpleActionIntent calldata signedAcceptCancelCloseIntent,
 		bytes calldata partyBSignature
 	) external;
 }

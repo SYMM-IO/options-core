@@ -29,6 +29,6 @@ contract PartyBCloseFacet is Accessibility, Pausable, IPartyBCloseFacet {
 	 */
 	function fillCloseIntent(uint256 intentId, uint256 quantity, uint256 price) external whenNotPartyBActionsPaused {
 		PartyBCloseFacetImpl.fillCloseIntent(msg.sender, intentId, quantity, price);
-		emit FillCloseIntent(intentId, IntentStorage.layout().closeIntents[intentId].tradeId, quantity, price);
+		emit FillCloseIntent(intentId, quantity, price);
 	}
 }
