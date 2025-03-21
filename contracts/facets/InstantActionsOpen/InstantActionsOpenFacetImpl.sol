@@ -4,30 +4,21 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { ISignatureVerifier } from "../../interfaces/ISignatureVerifier.sol";
-import { LibCloseIntentOps } from "../../libraries/LibCloseIntent.sol";
-import { PartyBOpenFacetImpl } from "../PartyBOpen/PartyBOpenFacetImpl.sol";
 import { LibHash } from "../../libraries/LibHash.sol";
 import { LibSignature } from "../../libraries/LibSignature.sol";
-import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
-import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
-import { LibTradeOps } from "../../libraries/LibTrade.sol";
-import { AccountStorage } from "../../storages/AccountStorage.sol";
-import { AppStorage } from "../../storages/AppStorage.sol";
-import { OpenIntent, CloseIntent, Trade, IntentStorage, IntentStatus, TradeAgreements, SignedFillIntentById, SignedSimpleActionIntent, SignedOpenIntent, SignedFillIntent, SignedCloseIntent } from "../../storages/IntentStorage.sol";
-import { Symbol, SymbolStorage } from "../../storages/SymbolStorage.sol";
+import { IntentStatus, TradeAgreements, SignedFillIntentById, SignedSimpleActionIntent, SignedOpenIntent, SignedFillIntent } from "../../storages/IntentStorage.sol";
+import { PartyBOpenFacetImpl } from "../PartyBOpen/PartyBOpenFacetImpl.sol";
 import { PartyAOpenFacetImpl } from "../PartyAOpen/PartyAOpenFacetImpl.sol";
 
 library InstantActionsOpenFacetImpl {
-	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
-	using LibOpenIntentOps for OpenIntent;
-	using LibTradeOps for Trade;
-
-	function instantFillOpenIntent(SignedFillIntentById calldata signedFillOpenIntent, bytes calldata partyBSignature) internal {
+	function instantFillOpenIntent(
+		SignedFillIntentById calldata signedFillOpenIntent,
+		bytes calldata partyBSignature
+	) internal returns (uint256 tradeId, uint256 newIntentId) {
 		bytes32 fillOpenIntentHash = LibHash.hashSignedFillOpenIntentById(signedFillOpenIntent);
 		LibSignature.verifySignature(fillOpenIntentHash, partyBSignature, signedFillOpenIntent.partyB);
 
-		PartyBOpenFacetImpl.fillOpenIntent(
+		(tradeId, newIntentId) = PartyBOpenFacetImpl.fillOpenIntent(
 			signedFillOpenIntent.partyB,
 			signedFillOpenIntent.intentId,
 			signedFillOpenIntent.quantity,
@@ -54,7 +45,7 @@ library InstantActionsOpenFacetImpl {
 		bytes calldata partyASignature,
 		SignedFillIntent calldata signedFillOpenIntent,
 		bytes calldata partyBSignature
-	) internal returns (uint256 intentId) {
+	) internal returns (uint256 intentId, uint256 tradeId, uint256 newIntentId) {
 		bytes32 openIntentHash = LibHash.hashSignedOpenIntent(signedOpenIntent);
 		LibSignature.verifySignature(openIntentHash, partyASignature, signedOpenIntent.partyA);
 
@@ -85,8 +76,12 @@ library InstantActionsOpenFacetImpl {
 		);
 
 		PartyBOpenFacetImpl.lockOpenIntent(signedFillOpenIntent.partyB, intentId);
-
-		PartyBOpenFacetImpl.fillOpenIntent(signedFillOpenIntent.partyB, intentId, signedFillOpenIntent.quantity, signedFillOpenIntent.price);
+		(tradeId, newIntentId) = PartyBOpenFacetImpl.fillOpenIntent(
+			signedFillOpenIntent.partyB,
+			intentId,
+			signedFillOpenIntent.quantity,
+			signedFillOpenIntent.price
+		);
 	}
 
 	function instantCancelOpenIntent(

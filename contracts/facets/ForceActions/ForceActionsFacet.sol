@@ -11,7 +11,7 @@ import { IForceActionsFacet } from "./IForceActionsFacet.sol";
 
 contract ForceActionsFacet is Pausable, IForceActionsFacet {
 	/**
-	 * @notice Forces the cancellation of the specified open intent when partyB is not responsive for a certian amount of time(forceCancelOpenIntentTimeout).
+	 * @notice Forces the cancellation of the specified open intent when partyB is not responsive for a certain amount of time(forceCancelOpenIntentTimeout).
 	 * @param intentId The ID of the open intent to be canceled.
 	 */
 	function forceCancelOpenIntent(uint256 intentId) external whenNotPartyAActionsPaused {
@@ -28,6 +28,7 @@ contract ForceActionsFacet is Pausable, IForceActionsFacet {
 		emit ForceCancelCloseIntent(intentId);
 	}
 
-	// TODO
-	function forceCancelInterdealerIntent(uint256 intentId) external {}
+	function forceCancelInterdealerIntent(uint256 intentId) external {
+		//TODO
+	}
 }

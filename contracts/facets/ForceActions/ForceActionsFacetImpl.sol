@@ -14,11 +14,12 @@ library ForceActionsFacetImpl {
 	using LibCloseIntentOps for CloseIntent;
 
 	function forceCancelOpenIntent(uint256 intentId) internal {
-		AppStorage.Layout storage appLayout = AppStorage.layout();
 		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
-
 		require(intent.status == IntentStatus.CANCEL_PENDING, "PartyAFacet: Invalid state");
-		require(block.timestamp > intent.statusModifyTimestamp + appLayout.forceCancelOpenIntentTimeout, "PartyAFacet: Cooldown not reached");
+		require(
+			block.timestamp > intent.statusModifyTimestamp + AppStorage.layout().forceCancelOpenIntentTimeout,
+			"PartyAFacet: Cooldown not reached"
+		);
 
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = IntentStatus.CANCELED;
@@ -27,10 +28,12 @@ library ForceActionsFacetImpl {
 	}
 
 	function forceCancelCloseIntent(uint256 intentId) internal {
-		AppStorage.Layout storage appLayout = AppStorage.layout();
 		CloseIntent storage intent = IntentStorage.layout().closeIntents[intentId];
 		require(intent.status == IntentStatus.CANCEL_PENDING, "PartyAFacet: Invalid state");
-		require(block.timestamp > intent.statusModifyTimestamp + appLayout.forceCancelCloseIntentTimeout, "PartyAFacet: Cooldown not reached");
+		require(
+			block.timestamp > intent.statusModifyTimestamp + AppStorage.layout().forceCancelCloseIntentTimeout,
+			"PartyAFacet: Cooldown not reached"
+		);
 
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = IntentStatus.CANCELED;

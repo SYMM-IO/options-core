@@ -14,18 +14,6 @@ import { IInstantActionsOpenFacet } from "./IInstantActionsOpenFacet.sol";
 import { InstantActionsOpenFacetImpl } from "./InstantActionsOpenFacetImpl.sol";
 
 contract InstantActionsOpenFacet is Accessibility, Pausable, IInstantActionsOpenFacet {
-	/// @notice Any party can fill the existing open intent on behalf of partyB if it has the suitable signature from the partyB
-	/// @param signedFillOpenIntent The pure data of signature that partyB wants to fill the open order
-	/// @param partyBSignature The signature of partyB
-	function instantFillOpenIntent(
-		SignedFillIntentById calldata signedFillOpenIntent,
-		bytes calldata partyBSignature
-	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		InstantActionsOpenFacetImpl.instantFillOpenIntent(signedFillOpenIntent, partyBSignature);
-		OpenIntent storage intent = IntentStorage.layout().openIntents[signedFillOpenIntent.intentId];
-		emit FillOpenIntent(intent.id, intent.tradeId, signedFillOpenIntent.quantity, signedFillOpenIntent.price);
-	}
-
 	/// @notice Any party can lock an open intent on behalf of partyB if it has the suitable signature from the partyB
 	/// @param signedLockIntent The pure data of intent that is going to be locked
 	/// @param partyBSignature The signature of partyB
@@ -44,11 +32,54 @@ contract InstantActionsOpenFacet is Accessibility, Pausable, IInstantActionsOpen
 		SignedSimpleActionIntent calldata signedUnlockIntent,
 		bytes calldata partyBSignature
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		IntentStatus res = InstantActionsOpenFacetImpl.instantUnlock(signedUnlockIntent, partyBSignature);
-		if (res == IntentStatus.EXPIRED) {
+		IntentStatus finalStatus = InstantActionsOpenFacetImpl.instantUnlock(signedUnlockIntent, partyBSignature);
+		if (finalStatus == IntentStatus.EXPIRED) {
 			emit ExpireOpenIntent(signedUnlockIntent.intentId);
-		} else if (res == IntentStatus.PENDING) {
+		} else if (finalStatus == IntentStatus.PENDING) {
 			emit UnlockOpenIntent(signedUnlockIntent.intentId);
+		}
+	}
+
+	/// @notice Any party can cancel an open intent on behalf of parties if it has the suitable signature from the partyB and partyA
+	/// @param signedCancelOpenIntent The pure data of open intent that partyA wants to cancel
+	/// @param partyASignature The signature of partyA
+	/// @param signedAcceptCancelOpenIntent The pure data of signature that partyB wants to accept the cancel open intent
+	/// @param partyBSignature The signature of partyB
+	function instantCancelOpenIntent(
+		SignedSimpleActionIntent calldata signedCancelOpenIntent,
+		bytes calldata partyASignature,
+		SignedSimpleActionIntent calldata signedAcceptCancelOpenIntent,
+		bytes calldata partyBSignature
+	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
+		IntentStatus finalStatus = InstantActionsOpenFacetImpl.instantCancelOpenIntent(
+			signedCancelOpenIntent,
+			partyASignature,
+			signedAcceptCancelOpenIntent,
+			partyBSignature
+		);
+		if (finalStatus == IntentStatus.EXPIRED) {
+			emit ExpireOpenIntent(signedCancelOpenIntent.intentId);
+		} else if (finalStatus == IntentStatus.CANCELED) {
+			emit CancelOpenIntent(signedCancelOpenIntent.intentId, IntentStatus.CANCELED);
+		}
+	}
+
+	/// @notice Any party can fill the existing open intent on behalf of partyB if it has the suitable signature from the partyB
+	/// @param signedFillOpenIntent The pure data of signature that partyB wants to fill the open order
+	/// @param partyBSignature The signature of partyB
+	function instantFillOpenIntent(
+		SignedFillIntentById calldata signedFillOpenIntent,
+		bytes calldata partyBSignature
+	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
+		(uint256 tradeId, uint256 newIntentId) = InstantActionsOpenFacetImpl.instantFillOpenIntent(signedFillOpenIntent, partyBSignature);
+		emit FillOpenIntent(signedFillOpenIntent.intentId, tradeId, signedFillOpenIntent.quantity, signedFillOpenIntent.price);
+		if (newIntentId != 0) {
+			OpenIntent storage newIntent = IntentStorage.layout().openIntents[newIntentId];
+			if (newIntent.status == IntentStatus.PENDING) {
+				_emitSendOpenIntent(newIntent);
+			} else if (newIntent.status == IntentStatus.CANCELED) {
+				emit AcceptCancelOpenIntent(newIntent.id);
+			}
 		}
 	}
 
@@ -63,14 +94,23 @@ contract InstantActionsOpenFacet is Accessibility, Pausable, IInstantActionsOpen
 		SignedFillIntent calldata signedFillOpenIntent,
 		bytes calldata partyBSignature
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		uint256 intentId = InstantActionsOpenFacetImpl.instantCreateAndFillOpenIntent(
+		(uint256 intentId, uint256 tradeId, uint256 newIntentId) = InstantActionsOpenFacetImpl.instantCreateAndFillOpenIntent(
 			signedOpenIntent,
 			partyASignature,
 			signedFillOpenIntent,
 			partyBSignature
 		);
 		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
+		_emitSendOpenIntent(intent);
+		emit FillOpenIntent(intent.id, tradeId, signedFillOpenIntent.quantity, signedFillOpenIntent.price);
+		if (newIntentId != 0) {
+			_emitSendOpenIntent(IntentStorage.layout().openIntents[newIntentId]);
+		}
+	}
 
+	/// @notice Internal helper function to emit the SendOpenIntent event
+	/// @param intent The OpenIntent storage pointer to emit the event for
+	function _emitSendOpenIntent(OpenIntent storage intent) private {
 		emit SendOpenIntent(
 			intent.partyA,
 			intent.id,
@@ -89,31 +129,5 @@ contract InstantActionsOpenFacet is Accessibility, Pausable, IInstantActionsOpen
 				intent.deadline
 			)
 		);
-		emit FillOpenIntent(intent.id, intent.tradeId, signedFillOpenIntent.quantity, signedFillOpenIntent.price);
-	}
-
-	/// @notice Any party can cancel an open intent on behalf of parties if it has the suitable signature from the partyB and partyA
-	/// @param signedCancelOpenIntent The pure data of open intent that partyA wants to cancel
-	/// @param partyASignature The signature of partyA
-	/// @param signedAcceptCancelOpenIntent The pure data of signature that partyB wants to accept the cancel open intent
-	/// @param partyBSignature The signature of partyB
-	function instantCancelOpenIntent(
-		SignedSimpleActionIntent calldata signedCancelOpenIntent,
-		bytes calldata partyASignature,
-		SignedSimpleActionIntent calldata signedAcceptCancelOpenIntent,
-		bytes calldata partyBSignature
-	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		IntentStatus result = InstantActionsOpenFacetImpl.instantCancelOpenIntent(
-			signedCancelOpenIntent,
-			partyASignature,
-			signedAcceptCancelOpenIntent,
-			partyBSignature
-		);
-		OpenIntent memory intent = IntentStorage.layout().openIntents[signedCancelOpenIntent.intentId];
-		if (result == IntentStatus.EXPIRED) {
-			emit ExpireOpenIntent(intent.id);
-		} else if (result == IntentStatus.CANCELED) {
-			emit CancelOpenIntent(intent.id, result);
-		}
 	}
 }
