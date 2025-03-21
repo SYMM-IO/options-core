@@ -4,8 +4,10 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { Withdraw } from "../../storages/AccountStorage.sol";
-import { OpenIntent, Trade, CloseIntent } from "../../storages/IntentStorage.sol";
+import { ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { Withdraw, BridgeTransaction } from "../../storages/AccountStorage.sol";
+import { PartyBConfig, LiquidationDetail } from "../../storages/AppStorage.sol";
+import { OpenIntent, TransferIntent, Trade, CloseIntent } from "../../storages/IntentStorage.sol";
 import { Symbol, Oracle } from "../../storages/SymbolStorage.sol";
 
 interface IViewFacet {
@@ -24,8 +26,6 @@ interface IViewFacet {
 
 	function partyAStats(address partyA, address collateral) external view returns (bool, uint256, uint256[] memory, uint256[] memory);
 
-	function getBalances(address user, address collateral) external view returns (ScheduledReleaseBalance memory);
-
 	function getPartyBReleaseIntervals(address partyB) external view returns (uint256);
 
 	function getMaxConnectedPartyBs() external view returns (uint256);
@@ -38,9 +38,9 @@ interface IViewFacet {
 
 	function getBridges(address bridge) external view returns (bool);
 
-	function getBridgeTransaction(uint256 bridgeId) external view returns (BridgeTransaction);
+	function getBridgeTransaction(uint256 bridgeId) external view returns (BridgeTransaction memory);
 
-	function getBridgeTransactionIds(address bridge) external view returns (uint256[]);
+	function getBridgeTransactionIds(address bridge) external view returns (uint256[] memory);
 
 	function getLastBridgeId() external view returns (uint256);
 
@@ -83,10 +83,6 @@ interface IViewFacet {
 
 	function activeOpenIntentsCount(address user) external view returns (uint256);
 
-	function partyAOpenIntentsIndex(address user) external view returns (uint256);
-
-	function partyBOpenIntentsIndex(address user) external view returns (uint256);
-
 	function getLastOpenIntentId() external view returns (uint256);
 
 	function partyATradesIndex(uint256 index) external view returns (uint256);
@@ -97,15 +93,15 @@ interface IViewFacet {
 
 	function getLastCloseIntentId() external view returns (uint256);
 
-	function isSigUsed(byte32 intentHash) external view returns (bool);
+	function isSigUsed(bytes32 intentHash) external view returns (bool);
 
 	function signatureVerifier() external view returns (address);
 
-	function getTransferIntents(uint256 intentId) external view returns (TransferIntent memory);
+	function getTransferIntent(uint256 intentId) external view returns (TransferIntent memory);
 
 	function getLastTransferIntentId() external view returns (uint256);
 
-	function getOpenIntentssWithBitmap(Bitmap calldata bitmap, uint256 gasNeededForReturn) external view returns (OpenIntent[] memory openIntents);
+	function getOpenIntentsWithBitmap(Bitmap calldata bitmap, uint256 gasNeededForReturn) external view returns (OpenIntent[] memory openIntents);
 
 	function getTrade(uint256 tradeId) external view returns (Trade memory);
 
@@ -186,7 +182,7 @@ interface IViewFacet {
 
 	function partyBConfigs(address partyB) external view returns (PartyBConfig memory);
 
-	function partyBList() external view returns (address[]);
+	function partyBList() external view returns (address[] memory);
 
 	function tradeNftAddress() external view returns (address);
 

@@ -166,8 +166,6 @@ library PartyBOpenFacetImpl {
 				newStatus = IntentStatus.PENDING;
 			}
 
-			bytes memory adjustedUserData = intent.parentId != 0 ? LibUserData.incrementCounter(intent.userData) : intent.userData;
-
 			OpenIntent memory newIntent = OpenIntent({
 				id: newIntentId,
 				tradeId: 0,
@@ -192,7 +190,7 @@ library PartyBOpenFacetImpl {
 				deadline: intent.deadline,
 				tradingFee: intent.tradingFee,
 				affiliate: intent.affiliate,
-				userData: adjustedUserData
+				userData: LibUserData.incrementCounter(intent.userData)
 			});
 
 			newIntent.save();
