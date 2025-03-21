@@ -11,12 +11,21 @@ import { BridgeFacetImpl } from "./BridgeFacetImpl.sol";
 import { IBridgeEvents } from "./IBridgeEvents.sol";
 import { IBridgeFacet } from "./IBridgeFacet.sol";
 
+/**
+ * @title BridgeFacet
+ * @notice Manages bridge transactions through bridge operations
+ * @dev Implements the IBridgeFacet interface with access control and pausability mechanisms
+ */
 contract BridgeFacet is Accessibility, Pausable, IBridgeFacet {
-	/// @notice Transfers a specified amount to the designated bridge address.
-	/// @param collateral The address of the collateral token to bridge.
-	/// @param amount The precise amount to be transferred, specified in decimal units.
-	/// @param bridgeAddress The address of the bridge to which the collateral will be transferred.
-	/// @param receiver The address of the receiver to which bridge will send the collateral.
+	/**
+	 * @notice Transfers collateral to a designated bridge to skip deallocate cooldown
+	 * @dev Generates a unique transaction ID for tracking the bridge transfer
+	 * @param collateral The address of the collateral token to bridge
+	 * @param amount The precise amount to be transferred, specified in collateral decimals
+	 * @param bridgeAddress The address of the bridge contract
+	 * @param receiver The address on the destination chain that will receive the collateral
+	 * @return transactionId The unique identifier assigned to this bridge transaction
+	 */
 	function transferToBridge(
 		address collateral,
 		uint256 amount,
@@ -27,23 +36,32 @@ contract BridgeFacet is Accessibility, Pausable, IBridgeFacet {
 		emit TransferToBridge(msg.sender, receiver, collateral, amount, bridgeAddress, transactionId);
 	}
 
-	/// @notice Withdraws the received bridge values associated with multiple transaction IDs.
-	/// @param transactionIds An array of transaction IDs for which the received bridge values will be withdrawn.
+	/**
+	 * @notice Processes and finalizes multiple received bridge transactions
+	 * @dev Claims tokens that have been bridged to this bridge and updates internal accounting
+	 * @param transactionIds An array of transaction IDs for which the received bridge values will be withdrawn
+	 */
 	function withdrawReceivedBridgeValues(uint256[] memory transactionIds) external whenNotBridgeWithdrawPaused notSuspended(msg.sender) {
 		BridgeFacetImpl.withdrawReceivedBridgeValues(transactionIds);
 		emit WithdrawReceivedBridgeValues(transactionIds);
 	}
 
-	/// @notice Suspends a specific bridge transaction.
-	/// @param transactionId The transaction ID of the bridge transaction to be suspended.
+	/**
+	 * @notice Temporarily halts a specific bridge transaction due to suspicious activity
+	 * @dev Only accounts with SUSPENDER_ROLE can suspend transactions
+	 * @param transactionId The transaction ID of the bridge transaction to be suspended
+	 */
 	function suspendBridgeTransaction(uint256 transactionId) external onlyRole(LibAccessibility.SUSPENDER_ROLE) {
 		BridgeFacetImpl.suspendBridgeTransaction(transactionId);
 		emit SuspendBridgeTransaction(transactionId);
 	}
 
-	/// @notice Restores a previously suspended bridge transaction and updates the valid transaction amount.
-	/// @param transactionId The transaction ID of the bridge transaction to be restored.
-	/// @param validAmount The validated amount to be associated with the restored transaction.
+	/**
+	 * @notice Reactivates a previously suspended bridge transaction with a potentially adjusted amount
+	 * @dev Only accounts with DISPUTE_ROLE can restore transactions, typically after investigation
+	 * @param transactionId The transaction ID of the bridge transaction to be restored
+	 * @param validAmount The verified amount to be processed, which may differ from the original amount
+	 */
 	function restoreBridgeTransaction(uint256 transactionId, uint256 validAmount) external onlyRole(LibAccessibility.DISPUTE_ROLE) {
 		BridgeFacetImpl.restoreBridgeTransaction(transactionId, validAmount);
 		emit RestoreBridgeTransaction(transactionId, validAmount);

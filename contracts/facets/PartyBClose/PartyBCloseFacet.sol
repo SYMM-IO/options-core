@@ -11,10 +11,16 @@ import { IPartyBCloseEvents } from "./IPartyBCloseEvents.sol";
 import { IPartyBCloseFacet } from "./IPartyBCloseFacet.sol";
 import { PartyBCloseFacetImpl } from "./PartyBCloseFacetImpl.sol";
 
+/**
+ * @title PartyBCloseFacet
+ * @notice Manages PartyB's actions for closing and handling cancellations of close intents
+ * @dev Implements the IPartyBCloseFacet interface with access controls and pausability
+ */
 contract PartyBCloseFacet is Accessibility, Pausable, IPartyBCloseFacet {
 	/**
-	 * @notice Accepts the cancellation request for the specified close intent.
-	 * @param intentId The ID of the close intent for which the cancellation request is accepted.
+	 * @notice Allows PartyB to accept a cancellation request for a close intent
+	 * @dev When accepted, the close intent will be marked as canceled
+	 * @param intentId The unique identifier of the close intent for which the cancellation request is being accepted
 	 */
 	function acceptCancelCloseIntent(uint256 intentId) external whenNotPartyBActionsPaused {
 		PartyBCloseFacetImpl.acceptCancelCloseIntent(msg.sender, intentId);
@@ -22,10 +28,11 @@ contract PartyBCloseFacet is Accessibility, Pausable, IPartyBCloseFacet {
 	}
 
 	/**
-	 * @notice Closes a trade for the specified close intent.
-	 * @param intentId The ID of the close intent for which the trade is opened.
-	 * @param quantity PartyB has the option to close the position with either the full amount requested by the user or a specific fraction of it
-	 * @param price The closed price for the trade.
+	 * @notice Executes a trade closure based on a previously submitted close intent
+	 * @dev PartyB can choose to close the full requested amount or a partial amount at the specified price
+	 * @param intentId The unique identifier of the close intent to be filled
+	 * @param quantity The amount to be closed, which can be equal to or less than the original requested amount
+	 * @param price The execution price at which the trade is being closed, must be favorable to PartyA compared to their requested price
 	 */
 	function fillCloseIntent(uint256 intentId, uint256 quantity, uint256 price) external whenNotPartyBActionsPaused {
 		PartyBCloseFacetImpl.fillCloseIntent(msg.sender, intentId, quantity, price);
