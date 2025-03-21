@@ -7,6 +7,7 @@ pragma solidity >=0.8.19;
 import { LibMuon } from "../../libraries/LibMuon.sol";
 import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { LibTradeOps } from "../../libraries/LibTrade.sol";
+import { LibPartyB } from "../../libraries/LibPartyB.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { SettlementPriceSig, AppStorage, LiquidationStatus } from "../../storages/AppStorage.sol";
 import { Trade, IntentStorage, TradeStatus, IntentStatus } from "../../storages/IntentStorage.sol";
@@ -21,13 +22,11 @@ library TradeSettlementFacetImpl {
 		Symbol storage symbol = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId];
 		LibMuon.verifySettlementPriceSig(sig);
 
-		require(
-			AppStorage.layout().liquidationDetails[trade.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
-			"PartyBFacet: PartyB is liquidated"
-		);
+		LibPartyB.requireNotLiquidatedPartyB(trade.partyB, symbol.collateral);
 		require(sig.symbolId == trade.tradeAgreements.symbolId, "PartyBFacet: Invalid symbolId");
 		require(trade.status == TradeStatus.OPENED, "PartyBFacet: Invalid trade state");
 		require(block.timestamp > trade.tradeAgreements.expirationTimestamp, "PartyBFacet: Trade isn't expired");
+
 		if (symbol.optionType == OptionType.PUT) {
 			require(sig.settlementPrice >= trade.tradeAgreements.strikePrice, "PartyBFacet: Invalid price");
 		} else {
@@ -54,10 +53,8 @@ library TradeSettlementFacetImpl {
 		require(sig.symbolId == trade.tradeAgreements.symbolId, "PartyBFacet: Invalid symbolId");
 		require(trade.status == TradeStatus.OPENED, "PartyBFacet: Invalid trade state");
 		require(block.timestamp > trade.tradeAgreements.expirationTimestamp, "PartyBFacet: Trade isn't expired");
-		require(
-			appLayout.liquidationDetails[trade.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
-			"PartyBFacet: PartyB is liquidated"
-		);
+		LibPartyB.requireNotLiquidatedPartyB(trade.partyB, symbol.collateral);
+
 		if (msg.sender != trade.partyB) {
 			require(
 				trade.tradeAgreements.expirationTimestamp + appLayout.ownerExclusiveWindow <= block.timestamp,
@@ -65,24 +62,16 @@ library TradeSettlementFacetImpl {
 			);
 		}
 
-		uint256 pnl;
+		uint256 pnl = trade.getValueOfTradeForPartyA(sig.settlementPrice, trade.getOpenAmount());
 		if (symbol.optionType == OptionType.PUT) {
 			require(sig.settlementPrice < trade.tradeAgreements.strikePrice, "PartyBFacet: Invalid price");
-			pnl =
-				((trade.tradeAgreements.quantity - trade.closedAmountBeforeExpiration) * (trade.tradeAgreements.strikePrice - sig.settlementPrice)) /
-				1e18;
 		} else {
 			require(sig.settlementPrice > trade.tradeAgreements.strikePrice, "PartyBFacet: Invalid price");
-			pnl =
-				((trade.tradeAgreements.quantity - trade.closedAmountBeforeExpiration) * (sig.settlementPrice - trade.tradeAgreements.strikePrice)) /
-				1e18;
 		}
 		uint256 exerciseFee;
 		{
 			uint256 cap = (trade.tradeAgreements.exerciseFee.cap * pnl) / 1e18;
-			uint256 fee = (trade.tradeAgreements.exerciseFee.rate *
-				sig.settlementPrice *
-				(trade.tradeAgreements.quantity - trade.closedAmountBeforeExpiration)) / 1e36;
+			uint256 fee = (trade.tradeAgreements.exerciseFee.rate * sig.settlementPrice * (trade.getOpenAmount())) / 1e36;
 			exerciseFee = cap < fee ? cap : fee;
 		}
 		uint256 amountToTransfer = pnl - exerciseFee;

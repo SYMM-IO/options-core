@@ -20,8 +20,9 @@ library PartyBCloseFacetImpl {
 
 	function acceptCancelCloseIntent(address sender, uint256 intentId) internal {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+
 		CloseIntent storage intent = intentLayout.closeIntents[intentId];
-		Trade storage trade = IntentStorage.layout().trades[intent.tradeId];
+		Trade storage trade = intentLayout.trades[intent.tradeId];
 
 		require(trade.partyB == sender, "PartyBFacet: Invalid sender");
 		require(intent.status == IntentStatus.CANCEL_PENDING, "PartyBFacet: Invalid state");
@@ -50,9 +51,9 @@ library PartyBCloseFacetImpl {
 		require(block.timestamp < trade.tradeAgreements.expirationTimestamp, "PartyBFacet: Trade is expired");
 		require(price >= intent.price, "PartyBFacet: Closed price isn't valid");
 
-		uint256 pnl = (quantity * price) / 1e18;
-		accountLayout.balances[trade.partyA][symbol.collateral].instantAdd(symbol.collateral, pnl);
-		accountLayout.balances[trade.partyB][symbol.collateral].sub(pnl);
+		uint256 premium = (quantity * price) / 1e18;
+		accountLayout.balances[trade.partyA][symbol.collateral].instantAdd(symbol.collateral, premium);
+		accountLayout.balances[trade.partyB][symbol.collateral].sub(premium);
 
 		trade.avgClosedPriceBeforeExpiration =
 			(trade.avgClosedPriceBeforeExpiration * trade.closedAmountBeforeExpiration + quantity * price) /

@@ -110,7 +110,6 @@ library PartyBOpenFacetImpl {
 		LibPartyB.requireNotLiquidatedPartyB(intent.partyB, symbol.collateral);
 		require(block.timestamp <= intent.deadline, "PartyBFacet: Intent is expired");
 		require(block.timestamp <= intent.tradeAgreements.expirationTimestamp, "PartyBFacet: Requested expiration has been passed");
-		require(intentLayout.activeTradesOf[intent.partyA].length < appLayout.maxTradePerPartyA, "PartyBFacet: Too many active trades for partyA");
 		require(intent.tradeAgreements.quantity >= quantity && quantity > 0, "PartyBFacet: Invalid quantity");
 		require(price <= intent.price, "PartyBFacet: Opened price isn't valid");
 
@@ -118,11 +117,9 @@ library PartyBOpenFacetImpl {
 			? appLayout.defaultFeeCollector
 			: appLayout.affiliateFeeCollector[intent.affiliate];
 
-		accountLayout.balances[appLayout.defaultFeeCollector][intent.tradingFee.feeToken].instantAdd(
-			intent.tradingFee.feeToken,
-			intent.getTradingFee()
-		);
-		accountLayout.balances[feeCollector][intent.tradingFee.feeToken].instantAdd(intent.tradingFee.feeToken, intent.getAffiliateFee());
+		address feeToken = intent.tradingFee.feeToken;
+		accountLayout.balances[appLayout.defaultFeeCollector][feeToken].instantAdd(feeToken, intent.getTradingFee());
+		accountLayout.balances[feeCollector][feeToken].instantAdd(feeToken, intent.getAffiliateFee());
 
 		tradeId = ++intentLayout.lastTradeId;
 		Trade memory trade = Trade({
@@ -208,8 +205,6 @@ library PartyBOpenFacetImpl {
 			intent.tradeAgreements.quantity = quantity;
 		}
 		trade.save();
-		uint256 premium = intent.getPremium();
-		accountLayout.balances[trade.partyA][symbol.collateral].syncAll(block.timestamp);
-		accountLayout.balances[trade.partyB][symbol.collateral].instantAdd(symbol.collateral, premium);
+		accountLayout.balances[trade.partyB][symbol.collateral].instantAdd(symbol.collateral, intent.getPremium());
 	}
 }
