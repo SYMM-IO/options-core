@@ -23,8 +23,7 @@ contract InstantActionsCloseFacet is Accessibility, Pausable, IInstantActionsClo
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
 		InstantActionsCloseFacetImpl.instantFillCloseIntent(signedFillCloseIntent, partyBSignature);
 		CloseIntent storage intent = IntentStorage.layout().closeIntents[signedFillCloseIntent.intentId];
-		Trade storage trade = IntentStorage.layout().trades[intent.tradeId];
-		emit FillCloseIntent(intent.id, trade.id, trade.partyA, trade.partyB, signedFillCloseIntent.quantity, signedFillCloseIntent.price);
+		emit FillCloseIntent(intent.id, intent.tradeId, signedFillCloseIntent.quantity, signedFillCloseIntent.price);
 	}
 
 	/// @notice Any party can close a trade on behalf of partyB if it has the suitable signature from the partyB and partyA
@@ -46,7 +45,7 @@ contract InstantActionsCloseFacet is Accessibility, Pausable, IInstantActionsClo
 		);
 		Trade storage trade = IntentStorage.layout().trades[signedCloseIntent.tradeId];
 		emit SendCloseIntent(trade.id, intentId, signedFillCloseIntent.price, signedFillCloseIntent.quantity, signedCloseIntent.deadline);
-		emit FillCloseIntent(intentId, trade.id, trade.partyA, trade.partyB, signedFillCloseIntent.quantity, signedFillCloseIntent.price);
+		emit FillCloseIntent(intentId, trade.id, signedFillCloseIntent.quantity, signedFillCloseIntent.price);
 	}
 
 	/// @notice Any party can cancel a close intent on behalf of parties if it has the suitable signature from the partyB and partyA

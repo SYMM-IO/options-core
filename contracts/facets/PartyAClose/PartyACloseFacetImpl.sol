@@ -80,8 +80,7 @@ library PartyACloseFacetImpl {
 			appLayout.liquidationDetails[trade.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
 			"PartyAFacet: PartyB is liquidated"
 		);
-		require(intentLayout.activeTradesOf[receiver].length < appLayout.maxTradePerPartyA, "PartyAFacet: too many trades for to");
-
+		
 		trade.remove();
 		trade.partyA = receiver;
 		trade.save();

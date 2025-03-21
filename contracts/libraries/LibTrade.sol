@@ -7,6 +7,7 @@ pragma solidity >=0.8.19;
 import { AccountStorage } from "../storages/AccountStorage.sol";
 import { CloseIntent, Trade, IntentStorage, TradeStatus, IntentStatus } from "../storages/IntentStorage.sol";
 import { Symbol, SymbolStorage, OptionType } from "../storages/SymbolStorage.sol";
+import { AppStorage } from "../storages/AppStorage.sol";
 import { LibCloseIntentOps } from "./LibCloseIntent.sol";
 import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "./LibScheduledReleaseBalance.sol";
 
@@ -14,7 +15,7 @@ library LibTradeOps {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibCloseIntentOps for CloseIntent;
 
-	function tradeOpenAmount(Trade memory self) internal pure returns (uint256) {
+	function getOpenAmount(Trade memory self) internal pure returns (uint256) {
 		return self.tradeAgreements.quantity - self.closedAmountBeforeExpiration;
 	}
 
@@ -34,6 +35,12 @@ library LibTradeOps {
 
 	function save(Trade memory self) internal {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+
+		require(
+			intentLayout.activeTradesOf[self.partyA].length < AppStorage.layout().maxTradePerPartyA,
+			"LibTrade: Too many active trades for partyA"
+		);
+
 		Symbol memory symbol = SymbolStorage.layout().symbols[self.tradeAgreements.symbolId];
 		intentLayout.tradesOf[self.partyA].push(self.id);
 		intentLayout.tradesOf[self.partyB].push(self.id);
@@ -69,9 +76,11 @@ library LibTradeOps {
 	}
 
 	function close(Trade storage self, TradeStatus tradeStatus, IntentStatus intentStatus) internal {
+		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+
 		uint256 len = self.activeCloseIntentIds.length;
 		for (uint8 i = 0; i < len; i++) {
-			CloseIntent storage intent = IntentStorage.layout().closeIntents[self.activeCloseIntentIds[0]];
+			CloseIntent storage intent = intentLayout.closeIntents[self.activeCloseIntentIds[0]];
 			intent.statusModifyTimestamp = block.timestamp;
 			intent.status = intentStatus;
 			intent.remove();

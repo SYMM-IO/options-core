@@ -42,13 +42,6 @@ abstract contract Accessibility {
 		_;
 	}
 
-	modifier onlyPartyBOfCloseIntent(uint256 intentId) {
-		Trade storage trade = IntentStorage.layout().trades[IntentStorage.layout().closeIntents[intentId].tradeId];
-
-		require(trade.partyB == msg.sender, "Accessibility: Should be partyA of Intent");
-		_;
-	}
-
 	modifier notSuspended(address user) {
 		require(!AccountStorage.layout().suspendedAddresses[user], "Accessibility: Sender is Suspended");
 		_;

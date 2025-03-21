@@ -16,7 +16,7 @@ contract PartyBCloseFacet is Accessibility, Pausable, IPartyBCloseFacet {
 	 * @notice Accepts the cancellation request for the specified close intent.
 	 * @param intentId The ID of the close intent for which the cancellation request is accepted.
 	 */
-	function acceptCancelCloseIntent(uint256 intentId) external whenNotPartyBActionsPaused onlyPartyBOfCloseIntent(intentId) {
+	function acceptCancelCloseIntent(uint256 intentId) external whenNotPartyBActionsPaused {
 		PartyBCloseFacetImpl.acceptCancelCloseIntent(msg.sender, intentId);
 		emit AcceptCancelCloseIntent(intentId);
 	}
@@ -27,14 +27,8 @@ contract PartyBCloseFacet is Accessibility, Pausable, IPartyBCloseFacet {
 	 * @param quantity PartyB has the option to close the position with either the full amount requested by the user or a specific fraction of it
 	 * @param price The closed price for the trade.
 	 */
-	function fillCloseIntent(
-		uint256 intentId,
-		uint256 quantity,
-		uint256 price
-	) external whenNotPartyBActionsPaused onlyPartyBOfCloseIntent(intentId) {
+	function fillCloseIntent(uint256 intentId, uint256 quantity, uint256 price) external whenNotPartyBActionsPaused {
 		PartyBCloseFacetImpl.fillCloseIntent(msg.sender, intentId, quantity, price);
-		Trade storage trade = IntentStorage.layout().trades[IntentStorage.layout().closeIntents[intentId].tradeId];
-
-		emit FillCloseIntent(intentId, trade.id, trade.partyA, trade.partyB, quantity, price);
+		emit FillCloseIntent(intentId, IntentStorage.layout().closeIntents[intentId].tradeId, quantity, price);
 	}
 }
