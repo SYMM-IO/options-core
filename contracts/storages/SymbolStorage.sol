@@ -2,7 +2,7 @@
 // This contract is licensed under the SYMM Core Business Source License 1.1
 // Copyright (c) 2023 Symmetry Labs AG
 // For more information, see https://docs.symm.io/legal-disclaimer/license
-pragma solidity >=0.8.18;
+pragma solidity >=0.8.19;
 
 enum OptionType {
 	PUT,
@@ -24,6 +24,7 @@ struct Symbol {
 	address collateral;
 	bool isStableCoin; // true if the collateral is stablecoin and false if the collateral is same with the symbol underlying token
 	uint256 tradingFee;
+	uint256 symbolType;
 }
 
 library SymbolStorage {

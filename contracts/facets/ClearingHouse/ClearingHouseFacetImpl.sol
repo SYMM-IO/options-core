@@ -2,17 +2,18 @@
 // This contract is licensed under the SYMM Core Business Source License 1.1
 // Copyright (c) 2023 Symmetry Labs AG
 // For more information, see https://docs.symm.io/legal-disclaimer/license
-pragma solidity >=0.8.18;
+pragma solidity >=0.8.19;
 
-import "../../libraries/LibIntent.sol";
-import "../../libraries/LibMuon.sol";
-import "../../storages/AppStorage.sol";
-import "../../storages/IntentStorage.sol";
-import "../../storages/AccountStorage.sol";
-import "../../storages/SymbolStorage.sol";
+import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { LibTradeOps } from "../../libraries/LibTrade.sol";
+import { AccountStorage, Withdraw, WithdrawStatus } from "../../storages/AccountStorage.sol";
+import { AppStorage, LiquidationStatus, LiquidationDetail } from "../../storages/AppStorage.sol";
+import { Trade, IntentStorage, TradeStatus, IntentStatus } from "../../storages/IntentStorage.sol";
+import { Symbol, SymbolStorage, OptionType } from "../../storages/SymbolStorage.sol";
 
 library ClearingHouseFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
+	using LibTradeOps for Trade;
 
 	function flagLiquidation(address partyB, address collateral) internal {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
@@ -97,7 +98,7 @@ library ClearingHouseFacetImpl {
 		require(tradeIds.length == prices.length, "LiquidationFacet: Invalid length");
 		for (uint256 i = 0; i < tradeIds.length; i++) {
 			Trade storage trade = IntentStorage.layout().trades[tradeIds[i]];
-			Symbol storage symbol = SymbolStorage.layout().symbols[trade.symbolId];
+			Symbol storage symbol = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId];
 			uint256 price = prices[i];
 			require(trade.status == TradeStatus.OPENED, "LiquidationFacet: Invalid trade state");
 			require(
@@ -108,19 +109,25 @@ library ClearingHouseFacetImpl {
 
 			uint256 pnl;
 			if (symbol.optionType == OptionType.PUT) {
-				if (price < trade.strikePrice) {
-					pnl = ((trade.quantity - trade.closedAmountBeforeExpiration) * (trade.strikePrice - price)) / 1e18;
+				if (price < trade.tradeAgreements.strikePrice) {
+					pnl =
+						((trade.tradeAgreements.quantity - trade.closedAmountBeforeExpiration) * (trade.tradeAgreements.strikePrice - price)) /
+						1e18;
 				}
 			} else {
-				if (price > trade.strikePrice) {
-					pnl = ((trade.quantity - trade.closedAmountBeforeExpiration) * (price - trade.strikePrice)) / 1e18;
+				if (price > trade.tradeAgreements.strikePrice) {
+					pnl =
+						((trade.tradeAgreements.quantity - trade.closedAmountBeforeExpiration) * (price - trade.tradeAgreements.strikePrice)) /
+						1e18;
 				}
 			}
 			if (pnl > 0) {
 				uint256 exerciseFee;
 				{
-					uint256 cap = (trade.exerciseFee.cap * pnl) / 1e18;
-					uint256 fee = (trade.exerciseFee.rate * price * (trade.quantity - trade.closedAmountBeforeExpiration)) / 1e36;
+					uint256 cap = (trade.tradeAgreements.exerciseFee.cap * pnl) / 1e18;
+					uint256 fee = (trade.tradeAgreements.exerciseFee.rate *
+						price *
+						(trade.tradeAgreements.quantity - trade.closedAmountBeforeExpiration)) / 1e36;
 					exerciseFee = cap < fee ? cap : fee;
 				}
 				// TODO: handle loss factor
@@ -132,9 +139,9 @@ library ClearingHouseFacetImpl {
 				appLayout.debtsToPartyAs[trade.partyB][symbol.collateral][trade.partyA] += amountToTransfer;
 				appLayout.liquidationDetails[trade.partyB][symbol.collateral].requiredCollateral += amountToTransfer;
 
-				LibIntent.closeTrade(trade.id, TradeStatus.LIQUIDATED, IntentStatus.CANCELED);
+				trade.close(TradeStatus.LIQUIDATED, IntentStatus.CANCELED);
 			} else {
-				LibIntent.closeTrade(trade.id, TradeStatus.LIQUIDATED, IntentStatus.CANCELED);
+				trade.close(TradeStatus.LIQUIDATED, IntentStatus.CANCELED);
 			}
 		}
 	}

@@ -2,11 +2,11 @@
 // This contract is licensed under the SYMM Core Business Source License 1.1
 // Copyright (c) 2023 Symmetry Labs AG
 // For more information, see https://docs.symm.io/legal-disclaimer/license
-pragma solidity >=0.8.18;
+pragma solidity >=0.8.19;
 
 interface IAccountEvents {
 	event Deposit(address sender, address user, address collateral, uint256 amount, uint256 newBalance);
-	event InternalTransfer(address sender, address user, uint256 userNewBalance, address collateral, uint256 amount);
+	event InternalTransfer(address sender, address user, address collateral, uint256 amount, uint256 newBalance);
 	event InitiateWithdraw(uint256 id, address user, address to, address collateral, uint256 amount, uint256 newBalance);
 	event CompleteWithdraw(uint256 id);
 	event CancelWithdraw(uint256 id, address user, uint256 newBalance);

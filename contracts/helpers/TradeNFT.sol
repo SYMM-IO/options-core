@@ -2,11 +2,14 @@
 // This contract is licensed under the SYMM Core Business Source License 1.1
 // Copyright (c) 2023 Symmetry Labs AG
 // For more information, see https://docs.symm.io/legal-disclaimer/license
-pragma solidity ^0.8.18;
+pragma solidity ^0.8.19;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import { ERC721Enumerable } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import { Counters } from "@openzeppelin/contracts/utils/Counters.sol";
+
 interface ISymmio {
 	function transferTradeFromNFT(address from, address to, uint256 tradeId) external;
 }

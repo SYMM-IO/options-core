@@ -2,21 +2,20 @@
 // This contract is licensed under the SYMM Core Business Source License 1.1
 // Copyright (c) 2023 Symmetry Labs AG
 // For more information, see https://docs.symm.io/legal-disclaimer/license
-pragma solidity >=0.8.18;
+pragma solidity >=0.8.19;
 
-import "./IInterdealerEvents.sol";
-import "../../storages/AppStorage.sol";
+import { IInterdealerEvents } from "./IInterdealerEvents.sol";
 
 interface IInterdealerFacet is IInterdealerEvents {
-	function interdealerIntent(uint256 tradeId, address[] memory partyBWhitelist) external;
+	function sendTransferIntent(uint256 tradeId, address[] memory partyBWhitelist, uint256 proposedPrice, uint256 deadline) external;
 
-	function cancelInterdealerIntent(uint256 intentId) external;
+	function cancelTransferIntent(uint256 intentId) external;
 
-	function lockInterdealerIntent(uint256 intentId, uint256 tradeQuantity) external;
+	function lockTransferIntent(uint256 intentId) external;
 
-	function unlockInterdealerIntent(uint256 intentId) external;
+	function unlockTransferIntent(uint256 intentId) external;
 
-	function acceptCancelInterdealerIntent(uint256 intentId) external;
+	function acceptCancelTransferIntent(uint256 intentId) external;
 
-	function fillInterdealerIntent(uint256 intentId, uint256 price) external;
+	function finalizeTransferIntent(uint256 intentId, uint256 fillPrice, bytes calldata clearingHouseSignature) external;
 }

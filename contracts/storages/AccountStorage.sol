@@ -2,9 +2,9 @@
 // This contract is licensed under the SYMM Core Business Source License 1.1
 // Copyright (c) 2023 Symmetry Labs AG
 // For more information, see https://docs.symm.io/legal-disclaimer/license
-pragma solidity >=0.8.18;
+pragma solidity >=0.8.19;
 
-import "../libraries/LibScheduledReleaseBalance.sol";
+import { ScheduledReleaseBalance } from "../libraries/LibScheduledReleaseBalance.sol";
 
 struct Withdraw {
 	uint256 id;
@@ -44,7 +44,6 @@ library AccountStorage {
 
 	struct Layout {
 		mapping(address => mapping(address => ScheduledReleaseBalance)) balances; // user => collateral => balance
-		mapping(address => mapping(address => uint256)) lockedBalances; // user => collateral => lockedBalance
 		mapping(address => uint256) partyBReleaseIntervals;
 		uint256 maxConnectedPartyBs;
 		/////////////////////////////////////////////////////////
@@ -56,7 +55,6 @@ library AccountStorage {
 		mapping(uint256 => bool) suspendedWithdrawal;
 		/////////////////////////////////////////////////////////
 		mapping(uint256 => Withdraw) withdrawals;
-		mapping(address => uint256[]) userWithdrawals;
 		uint256 lastWithdrawId;
 		/////////////////////////////////////////////////////////
 		mapping(address => bool) instantActionsMode;

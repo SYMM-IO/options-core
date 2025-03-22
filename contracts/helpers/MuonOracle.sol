@@ -2,12 +2,13 @@
 // This contract is licensed under the SYMM Core Business Source License 1.1
 // Copyright (c) 2023 Symmetry Labs AG
 // For more information, see https://docs.symm.io/legal-disclaimer/license
-pragma solidity >=0.8.18;
+pragma solidity >=0.8.19;
 
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
-import "./SchnorrSECP256K1Verifier.sol";
-import "../interfaces/IMuonOracle.sol";
+import { IMuonOracle } from "../interfaces/IMuonOracle.sol";
+import { SchnorrSECP256K1Verifier } from "./SchnorrSECP256K1Verifier.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
+import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 contract MuonOracle is IMuonOracle, SchnorrSECP256K1Verifier, AccessControlEnumerable {
 	using ECDSA for bytes32;
@@ -24,12 +25,7 @@ contract MuonOracle is IMuonOracle, SchnorrSECP256K1Verifier, AccessControlEnume
 		_grantRole(SETTER_ROLE, admin);
 	}
 
-	function verifyTSSAndGW(
-		bytes32 _data,
-		bytes calldata _reqId,
-		SchnorrSign calldata _signature,
-		bytes calldata _gatewaySignature
-	) external view {
+	function verifyTSSAndGW(bytes32 _data, bytes calldata _reqId, SchnorrSign calldata _signature, bytes calldata _gatewaySignature) external view {
 		bytes32 hash = keccak256(abi.encodePacked(config.muonAppId, _reqId, _data));
 		require(
 			verifySignature(config.muonPublicKey.x, config.muonPublicKey.parity, _signature.signature, uint256(hash), _signature.nonce),
