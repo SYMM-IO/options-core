@@ -10,8 +10,8 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/interfaces/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "../interfaces/ISymmio.sol"; //TODO: rename
-import "../interfaces/ISymmioPartyA.sol"; //TODO: rename
+import "../interfaces/ISymmio.sol"; //TODO: rename?
+import "../interfaces/ISymmioPartyA.sol"; //TODO: rename?
 import "../interfaces/IMultiAccount.sol";
 
 contract MultiAccount is IMultiAccount, Initializable, PausableUpgradeable, AccessControlUpgradeable {
@@ -26,7 +26,7 @@ contract MultiAccount is IMultiAccount, Initializable, PausableUpgradeable, Acce
     mapping(address => address) public owners; // Account to its owner mapping
 
     address public accountsAdmin; // Admin address for the accounts
-    address public symmioAddress; // Address of the Symmio platform //TODO: refactor name
+    address public symmioAddress; // Address of the Symmio platform
     uint256 public saltCounter; // Counter for generating unique addresses with create2
     bytes public accountImplementation;
 
@@ -236,18 +236,6 @@ contract MultiAccount is IMultiAccount, Initializable, PausableUpgradeable, Acce
     }
 
     /**
-     * @dev Initiates withdrawal funds from the specified account and collateral.
-	 * @param collateral The address of the collateral.
-	 * @param account The address of the account to withdraw funds from.
-	 * @param amount The amount of funds to withdraw.
-	 */
-    function initiateWithdrawFromAccount(address collateral, uint256 amount, address account) external onlyOwner(account, msg.sender) whenNotPaused {
-        bytes memory _callData = abi.encodeWithSignature("initiateWithdraw(address,uint256,address)", collateral, amount, owners[account]);
-        emit InitiateWithdrawFromAccount(collateral, msg.sender, account, amount);
-        innerCall(account, _callData);
-    }
-    //TODO: check whether two following functions should be called from account or multiAccount(innerCall or normal call)
-    /**
      * @dev Completes specific withdrawal request.
 	 * @param id The id of the withdrawal request.
 	 * @param account The address of the account that send this request to the protocol.
@@ -259,16 +247,10 @@ contract MultiAccount is IMultiAccount, Initializable, PausableUpgradeable, Acce
     }
 
     /**
-     * @dev Cancels uncompleted withdrawal request.
-	 * @param id The id of the withdrawal request.
-	 * @param account The address of the account that send this request to the protocol.
+     * @dev send a call to symmio from partyA account.
+	 * @param account The address of the account to execute the calls on behalf of.
+	 * @param _callData The input calldata to pass by the call.
 	 */
-    function cancelWithdrawFromAccount(uint256 id, address account) external onlyOwner(account, msg.sender) whenNotPaused {
-        bytes memory _callData = abi.encodeWithSignature("cancelWithdraw(uint256)", id);
-        emit CancelWithdrawFromAccount(id, account);
-        innerCall(account, _callData);
-    }
-
     function innerCall(address account, bytes memory _callData) internal {
         (bool _success, bytes memory _resultData) = ISymmioPartyA(account)._call(_callData);
         emit Call(msg.sender, account, _callData, _success, _resultData);
