@@ -33,7 +33,6 @@ contract PartyBOpenFacet is Accessibility, Pausable, IPartyBOpenFacet {
 	 * @dev The intent may be marked as expired if its deadline has passed or returned to pending state
 	 *      Only the PartyB who locked the intent can unlock it
 	 * @param intentId The unique identifier of the open intent to be unlocked
-	 * @return finalStatus The resulting status of the intent after unlocking (EXPIRED or PENDING)
 	 */
 	function unlockOpenIntent(uint256 intentId) external whenNotPartyBActionsPaused {
 		IntentStatus finalStatus = PartyBOpenFacetImpl.unlockOpenIntent(msg.sender, intentId);
@@ -63,8 +62,6 @@ contract PartyBOpenFacet is Accessibility, Pausable, IPartyBOpenFacet {
 	 * @param intentId The unique identifier of the open intent to be filled
 	 * @param quantity The amount to be filled, which can be equal to or less than the original requested quantity
 	 * @param price The price at which the trade is being opened
-	 * @return tradeId The unique identifier of the newly created trade
-	 * @return newIntentId The identifier of a new intent created for any unfilled quantity (0 if fully filled)
 	 */
 	function fillOpenIntent(uint256 intentId, uint256 quantity, uint256 price) external whenNotPartyBActionsPaused {
 		(uint256 tradeId, uint256 newIntentId) = PartyBOpenFacetImpl.fillOpenIntent(msg.sender, intentId, quantity, price);

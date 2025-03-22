@@ -13,10 +13,21 @@ import { IPartyBOpenEvents } from "../PartyBOpen/IPartyBOpenEvents.sol";
 import { IInstantActionsOpenFacet } from "./IInstantActionsOpenFacet.sol";
 import { InstantActionsOpenFacetImpl } from "./InstantActionsOpenFacetImpl.sol";
 
+/**
+ * @title InstantActionsOpenFacet
+ * @notice Enables meta-transaction functionality for open intent operations
+ * @dev Allows third parties to execute actions on behalf of PartyA and PartyB using cryptographic signatures
+ *      This facilitates gas-efficient operations and improves UX by allowing actions to be performed
+ *      without requiring direct blockchain interaction from either party
+ */
 contract InstantActionsOpenFacet is Accessibility, Pausable, IInstantActionsOpenFacet {
-	/// @notice Any party can lock an open intent on behalf of partyB if it has the suitable signature from the partyB
-	/// @param signedLockIntent The pure data of intent that is going to be locked
-	/// @param partyBSignature The signature of partyB
+	/**
+	 * @notice Locks an open intent on behalf of PartyB using their cryptographic signature
+	 * @dev Verifies the signature against the provided intent data before executing the lock
+	 *      Equivalent to PartyB calling lockOpenIntent directly but can be executed by anyone
+	 * @param signedLockIntent The intent data structure containing the intent ID
+	 * @param partyBSignature Cryptographic signature from PartyB authorizing this action
+	 */
 	function instantLock(
 		SignedSimpleActionIntent calldata signedLockIntent,
 		bytes calldata partyBSignature
@@ -25,9 +36,13 @@ contract InstantActionsOpenFacet is Accessibility, Pausable, IInstantActionsOpen
 		emit LockOpenIntent(signedLockIntent.intentId, signedLockIntent.signer);
 	}
 
-	/// @notice Any party can unlock an open intent on behalf of partyB if it has the suitable signature from the partyB
-	/// @param signedUnlockIntent The pure data of intent that is going to be unlocked
-	/// @param partyBSignature The signature of partyB
+	/**
+	 * @notice Unlocks a previously locked open intent on behalf of PartyB using their signature
+	 * @dev Verifies the signature before executing the unlock action
+	 *      The intent may transition to EXPIRED or PENDING state depending on its deadline
+	 * @param signedUnlockIntent The intent data structure containing the intent ID
+	 * @param partyBSignature Cryptographic signature from PartyB authorizing this action
+	 */
 	function instantUnlock(
 		SignedSimpleActionIntent calldata signedUnlockIntent,
 		bytes calldata partyBSignature
@@ -40,11 +55,16 @@ contract InstantActionsOpenFacet is Accessibility, Pausable, IInstantActionsOpen
 		}
 	}
 
-	/// @notice Any party can cancel an open intent on behalf of parties if it has the suitable signature from the partyB and partyA
-	/// @param signedCancelOpenIntent The pure data of open intent that partyA wants to cancel
-	/// @param partyASignature The signature of partyA
-	/// @param signedAcceptCancelOpenIntent The pure data of signature that partyB wants to accept the cancel open intent
-	/// @param partyBSignature The signature of partyB
+	/**
+	 * @notice Cancels an open intent using signatures from both PartyA and PartyB
+	 * @dev Requires signatures from both parties to execute the cancellation in a single transaction
+	 *      This atomic operation replaces the two-step process of PartyA requesting cancellation
+	 *      and PartyB accepting it (partyB signature is not needed if quote is not locked)
+	 * @param signedCancelOpenIntent The intent data for PartyA's cancellation request
+	 * @param partyASignature Cryptographic signature from PartyA authorizing cancellation
+	 * @param signedAcceptCancelOpenIntent The intent data for PartyB's acceptance of cancellation
+	 * @param partyBSignature Cryptographic signature from PartyB authorizing acceptance
+	 */
 	function instantCancelOpenIntent(
 		SignedSimpleActionIntent calldata signedCancelOpenIntent,
 		bytes calldata partyASignature,
@@ -64,9 +84,13 @@ contract InstantActionsOpenFacet is Accessibility, Pausable, IInstantActionsOpen
 		}
 	}
 
-	/// @notice Any party can fill the existing open intent on behalf of partyB if it has the suitable signature from the partyB
-	/// @param signedFillOpenIntent The pure data of signature that partyB wants to fill the open order
-	/// @param partyBSignature The signature of partyB
+	/**
+	 * @notice Fills an existing open intent on behalf of PartyB using their signature
+	 * @dev Executes the trade creation based on the intent and PartyB's signed parameters
+	 *      May create a new intent for any unfilled quantity (partial fill)
+	 * @param signedFillOpenIntent The fill data including intent ID, quantity, and price
+	 * @param partyBSignature Cryptographic signature from PartyB authorizing the fill
+	 */
 	function instantFillOpenIntent(
 		SignedFillIntentById calldata signedFillOpenIntent,
 		bytes calldata partyBSignature
@@ -83,11 +107,15 @@ contract InstantActionsOpenFacet is Accessibility, Pausable, IInstantActionsOpen
 		}
 	}
 
-	/// @notice Any party can fill an open intent on behalf of partyB if it has the suitable signature from the partyB and partyA
-	/// @param signedOpenIntent The pure data of intent that partyA wants to broadcast
-	/// @param partyASignature The signature of partyA
-	/// @param signedFillOpenIntent The pure data of signature that partyB wants to fill the open order
-	/// @param partyBSignature The signature of partyB
+	/**
+	 * @notice Creates and fills an open intent in a single transaction
+	 * @dev Combines the creation of an intent by PartyA and its immediate lock and filling by PartyB
+	 *      All actions are authorized through signatures, allowing execution by any third party
+	 * @param signedOpenIntent The complete open intent data structure from PartyA
+	 * @param partyASignature Cryptographic signature from PartyA authorizing intent creation
+	 * @param signedFillOpenIntent The fill parameters from PartyB (quantity and price)
+	 * @param partyBSignature Cryptographic signature from PartyB authorizing the fill
+	 */
 	function instantCreateAndFillOpenIntent(
 		SignedOpenIntent calldata signedOpenIntent,
 		bytes calldata partyASignature,
@@ -108,8 +136,11 @@ contract InstantActionsOpenFacet is Accessibility, Pausable, IInstantActionsOpen
 		}
 	}
 
-	/// @notice Internal helper function to emit the SendOpenIntent event
-	/// @param intent The OpenIntent storage pointer to emit the event for
+	/**
+	 * @notice Helper function to emit the SendOpenIntent event with all required parameters
+	 * @dev Extracts all necessary data from the OpenIntent struct and packs it for the event
+	 * @param intent Reference to the OpenIntent storage struct containing the intent data
+	 */
 	function _emitSendOpenIntent(OpenIntent storage intent) private {
 		emit SendOpenIntent(
 			intent.partyA,
