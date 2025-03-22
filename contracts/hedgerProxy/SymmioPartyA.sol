@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 
 contract SymmioPartyA is AccessControl {
     bytes32 public constant MULTIACCOUNT_ROLE = keccak256("MULTIACCOUNT_ROLE");
-    address public optionsAddress;//TODO: better name
+    address public symmioAddress;
 
     /**
      * @dev Constructor to initialize the contract with roles and Symmio address.
@@ -16,10 +16,10 @@ contract SymmioPartyA is AccessControl {
 	 * @param multiAccountAddress The address assigned the MULTIACCOUNT_ROLE.
 	 * @param symmioAddress_ The address of the Symmio contract.
 	 */
-    constructor(address admin, address multiAccountAddress, address optionsAddress) {
+    constructor(address admin, address multiAccountAddress, address symmioAddress_) {
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(MULTIACCOUNT_ROLE, multiAccountAddress);
-        optionsAddress = optionsAddress;
+        symmioAddress = symmioAddress_;
     }
 
     /**
@@ -34,8 +34,8 @@ contract SymmioPartyA is AccessControl {
 	 * @param symmioAddress_ The new address of the Symmio contract.
 	 */
     function setSymmioAddress(address symmioAddress_) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        emit SetSymmioAddress(optionsAddress, symmioAddress_);
-        optionsAddress = symmioAddress_;
+        emit SetSymmioAddress(symmioAddress, symmioAddress_);
+        symmioAddress = symmioAddress_;
     }
 
     /**
@@ -45,6 +45,6 @@ contract SymmioPartyA is AccessControl {
 	 * @return _resultData The result data returned by the function call.
 	 */
     function _call(bytes memory _callData) external onlyRole(MULTIACCOUNT_ROLE) returns (bool _success, bytes memory _resultData) {
-        return optionsAddress.call{ value: 0 }(_callData);
+        return symmioAddress.call{ value: 0 }(_callData);
     }
 }
