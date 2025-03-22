@@ -83,7 +83,6 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @param collateral The address of the collateral token to withdraw
 	 * @param amount The precise amount of collateral to be withdrawn, specified in 18 decimals
 	 * @param to The address that will receive the collateral upon completion
-	 * @return id The unique identifier for the withdrawal request
 	 */
 	function initiateWithdraw(
 		address collateral,

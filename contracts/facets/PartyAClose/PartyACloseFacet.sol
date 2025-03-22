@@ -29,7 +29,6 @@ contract PartyACloseFacet is Accessibility, Pausable, IPartyACloseFacet {
 	 *              (e.g., for a market price of $1000, PartyA might accept prices down to $990)
 	 * @param quantity The amount of the trade to be closed, allowing for partial closures
 	 * @param deadline Timestamp after which the close intent expires if not filled by PartyB
-	 * @return intentId The unique identifier assigned to the newly created close intent
 	 */
 	function sendCloseIntent(
 		uint256 tradeId,

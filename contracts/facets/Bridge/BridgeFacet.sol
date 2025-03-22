@@ -24,7 +24,6 @@ contract BridgeFacet is Accessibility, Pausable, IBridgeFacet {
 	 * @param amount The precise amount to be transferred, specified in collateral decimals
 	 * @param bridgeAddress The address of the bridge contract
 	 * @param receiver The address on the destination chain that will receive the collateral
-	 * @return transactionId The unique identifier assigned to this bridge transaction
 	 */
 	function transferToBridge(
 		address collateral,
