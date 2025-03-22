@@ -56,7 +56,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		address collateral,
 		address user,
 		uint256 amount
-	) external whenNotDepositingPaused onlyRole(LibAccessibility.SECURED_DEPOSITOR_ROLE) {
+	) external whenNotDepositingPaused notSuspended(user) onlyRole(LibAccessibility.SECURED_DEPOSITOR_ROLE) {
 		AccountFacetImpl.securedDepositFor(collateral, user, amount);
 		emit Deposit(msg.sender, user, collateral, amount, AccountStorage.layout().balances[user][collateral].available);
 	}
