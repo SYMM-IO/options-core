@@ -55,7 +55,7 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 		address feeToken,
 		address affiliate,
 		bytes memory userData
-	) external whenNotPartyAActionsPaused notSuspended(msg.sender) inactiveInstantMode(msg.sender) returns (uint256 intentId) {
+	) external whenNotPartyAActionsPaused inactiveInstantMode(msg.sender) returns (uint256 intentId) {
 		intentId = PartyAOpenFacetImpl.sendOpenIntent(
 			msg.sender,
 			partyBsWhiteList,

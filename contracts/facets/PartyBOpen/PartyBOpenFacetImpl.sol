@@ -26,6 +26,8 @@ library PartyBOpenFacetImpl {
 		OpenIntent storage intent = intentLayout.openIntents[intentId];
 		Symbol storage symbol = SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId];
 
+		require(!AccountStorage.layout().suspendedAddresses[sender], "PartyBFacet: Sender is Suspended");
+		require(!appLayout.partyBEmergencyStatus[sender], "PartyBFacet: Sender is in emergency mode");
 		require(intent.partyA != sender, "PartyBFacet: User can't be on both sides");
 		require(intentId <= intentLayout.lastOpenIntentId, "PartyBFacet: Invalid intentId");
 		require(intent.status == IntentStatus.PENDING, "PartyBFacet: Invalid state");
