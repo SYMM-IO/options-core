@@ -2,12 +2,14 @@
 // This contract is licensed under the SYMM Core Business Source License 1.1
 // Copyright (c) 2023 Symmetry Labs AG
 // For more information, see https://docs.symm.io/legal-disclaimer/license
-pragma solidity >=0.8.18;
+pragma solidity >=0.8.19;
 
-import "../../storages/AccountStorage.sol";
-
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { AccountStorage, BridgeTransaction, BridgeTransactionStatus } from "../../storages/AccountStorage.sol";
+import { AppStorage } from "../../storages/AppStorage.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 library BridgeFacetImpl {
 	using SafeERC20 for IERC20;
@@ -20,10 +22,7 @@ library BridgeFacetImpl {
 		require(bridge != msg.sender, "BridgeFacet: Bridge and sender can't be the same");
 
 		uint256 amountWith18Decimals = (amount * 1e18) / (10 ** IERC20Metadata(collateral).decimals());
-		require(
-			accountLayout.balances[msg.sender][collateral].available - accountLayout.lockedBalances[msg.sender][collateral] >= amount,
-			"BridgeFacet: Insufficient balance"
-		);
+		require(accountLayout.balances[msg.sender][collateral].available >= amount, "BridgeFacet: Insufficient balance");
 
 		currentId = ++accountLayout.lastBridgeId;
 		BridgeTransaction memory bridgeTransaction = BridgeTransaction({

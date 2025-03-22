@@ -3,10 +3,10 @@
 // Copyright (c) 2023 Symmetry Labs AG
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 
-pragma solidity >=0.8.18;
+pragma solidity >=0.8.19;
 
-import "../storages/AccountStorage.sol";
-import "../storages/AppStorage.sol";
+import { AccountStorage } from "../storages/AccountStorage.sol";
+import { AppStorage, LiquidationStatus } from "../storages/AppStorage.sol";
 
 // ScheduledReleaseEntry implements a two-stage fund release system:
 // - Funds start in 'scheduled' stage

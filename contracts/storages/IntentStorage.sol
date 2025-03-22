@@ -2,7 +2,7 @@
 // This contract is licensed under the SYMM Core Business Source License 1.1
 // Copyright (c) 2023 Symmetry Labs AG
 // For more information, see https://docs.symm.io/legal-disclaimer/license
-pragma solidity >=0.8.18;
+pragma solidity >=0.8.19;
 
 enum IntentStatus {
 	PENDING,
@@ -21,6 +21,16 @@ enum TradeStatus {
 	LIQUIDATED
 }
 
+enum TradeSide {
+	LONG,
+	SHORT
+}
+
+enum MarginType {
+	ISOLATED,
+	CROSS
+}
+
 struct ExerciseFee {
 	uint256 rate;
 	uint256 cap;
@@ -32,18 +42,26 @@ struct TradingFee {
 	uint256 platformFee;
 }
 
-struct Trade {
-	uint256 id;
-	uint256 openIntentId;
-	uint256[] activeCloseIntentIds;
+struct TradeAgreements {
 	uint256 symbolId;
 	uint256 quantity;
 	uint256 strikePrice;
 	uint256 expirationTimestamp;
-	uint256 settledPrice;
+	uint256 penalty;
+	TradeSide tradeSide;
+	MarginType marginType;
 	ExerciseFee exerciseFee;
+}
+
+struct Trade {
+	uint256 id;
+	uint256 openIntentId;
+	TradeAgreements tradeAgreements;
 	address partyA;
 	address partyB;
+	uint256[] activeCloseIntentIds;
+	address[] penaltyParticipants;
+	uint256 settledPrice;
 	uint256 openedPrice;
 	uint256 closedAmountBeforeExpiration;
 	uint256 closePendingAmount;
@@ -56,15 +74,11 @@ struct Trade {
 struct OpenIntent {
 	uint256 id;
 	uint256 tradeId;
-	address[] partyBsWhiteList;
-	uint256 symbolId;
+	TradeAgreements tradeAgreements;
 	uint256 price;
-	uint256 quantity;
-	uint256 strikePrice;
-	uint256 expirationTimestamp;
-	ExerciseFee exerciseFee;
 	address partyA;
 	address partyB;
+	address[] partyBsWhiteList;
 	IntentStatus status;
 	uint256 parentId;
 	uint256 createTimestamp;
@@ -72,7 +86,7 @@ struct OpenIntent {
 	uint256 deadline;
 	TradingFee tradingFee;
 	address affiliate;
-	bytes32 userData;
+	bytes userData;
 }
 
 struct CloseIntent {
@@ -95,11 +109,14 @@ struct SignedOpenIntent {
 	uint256 quantity;
 	uint256 strikePrice;
 	uint256 expirationTimestamp;
+	uint256 penalty;
+	TradeSide tradeSide;
+	MarginType marginType;
 	ExerciseFee exerciseFee;
 	uint256 deadline;
 	address affiliate;
 	address feeToken;
-	bytes32 userData;
+	bytes userData;
 	uint256 salt;
 }
 
@@ -137,6 +154,25 @@ struct SignedSimpleActionIntent {
 	uint256 salt;
 }
 
+enum TransferIntentStatus {
+	PENDING,
+	LOCKED,
+	CANCEL_PENDING,
+	CANCELED,
+	FINALIZED
+}
+
+struct TransferIntent {
+	uint256 id;
+	uint256 tradeId;
+	uint256 deadline;
+	address sender;
+	address[] whitelist;
+	address receiver;
+	uint256 proposedPrice;
+	TransferIntentStatus status;
+}
+
 library IntentStorage {
 	bytes32 internal constant INTENT_STORAGE_SLOT = keccak256("diamond.standard.storage.intent");
 
@@ -164,6 +200,9 @@ library IntentStorage {
 		/////////////////////////////////////////////////
 		mapping(bytes32 => bool) isSigUsed;
 		address signatureVerifier;
+		/////////////////////////////////////////////////
+		mapping(uint256 => TransferIntent) transferIntents;
+		uint256 lastTransferIntentId;
 	}
 
 	function layout() internal pure returns (Layout storage l) {
