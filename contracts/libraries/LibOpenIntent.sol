@@ -105,13 +105,11 @@ library LibOpenIntentOps {
 
 		if (self.partyBsWhiteList.length == 1) {
 			if (isGetting) {
-				partyAFeeBalance.syncAll(block.timestamp);
-				partyABalance.syncAll(block.timestamp);
 				partyAFeeBalance.subForPartyB(self.partyBsWhiteList[0], tradingFee + affiliateFee);
 				partyABalance.subForPartyB(self.partyBsWhiteList[0], premium);
 			} else {
-				partyAFeeBalance.scheduledAdd(self.partyBsWhiteList[0], tradingFee + affiliateFee, block.timestamp);
-				partyABalance.scheduledAdd(self.partyBsWhiteList[0], premium, block.timestamp);
+				partyAFeeBalance.scheduledAdd(self.partyBsWhiteList[0], tradingFee + affiliateFee);
+				partyABalance.scheduledAdd(self.partyBsWhiteList[0], premium);
 			}
 		} else {
 			if (isGetting) {

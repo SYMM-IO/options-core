@@ -38,41 +38,35 @@ struct ScheduledReleaseBalance {
 library ScheduledReleaseBalanceOps {
 	// @notice Adds funds to release schedule
 	// @dev Initializes entry if needed, syncs state before adding
-	function scheduledAdd(
-		ScheduledReleaseBalance storage self,
-		address partyB,
-		uint256 value,
-		uint256 timestamp
-	) internal returns (ScheduledReleaseBalance storage) {
-		ScheduledReleaseEntry storage entry = self.partyBSchedules[partyB];
+	function scheduledAdd(ScheduledReleaseBalance storage self, address partyB, uint256 value) internal returns (ScheduledReleaseBalance storage) {
+		_sync(self, partyB, false);
 
-		if (self.partyBAddresses.length == 0 || self.partyBAddresses[self.partyBIndexes[partyB]] != partyB) {
-			addPartyB(self, partyB, timestamp);
-		} else {
-			sync(self, partyB, timestamp);
-		}
-
-		if (entry.releaseInterval == 0) {
+		if (AccountStorage.layout().partyBReleaseIntervals[partyB] == 0) {
 			return instantAdd(self, self.collateral, value);
 		}
 
-		entry.scheduled += value;
+		addPartyB(self, partyB);
+		self.partyBSchedules[partyB].scheduled += value;
 		return self;
 	}
 
 	// @notice Adds a partyB to the scheduled release entries without adding funds
 	// @dev Initializes entry with default release interval if not already present
-	function addPartyB(ScheduledReleaseBalance storage self, address partyB, uint256 timestamp) internal returns (ScheduledReleaseBalance storage) {
+	function addPartyB(ScheduledReleaseBalance storage self, address partyB) internal returns (ScheduledReleaseBalance storage) {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+
 		// Check if partyB is already added
 		if (self.partyBAddresses.length > 0 && self.partyBAddresses[self.partyBIndexes[partyB]] == partyB) return self;
 
 		ScheduledReleaseEntry storage entry = self.partyBSchedules[partyB];
 
-		require(self.partyBAddresses.length < AccountStorage.layout().maxConnectedPartyBs, "StagedReleaseBalance: Max partyB connections reached");
-		entry.releaseInterval = AccountStorage.layout().partyBReleaseIntervals[partyB];
+		require(self.partyBAddresses.length < accountLayout.maxConnectedPartyBs, "StagedReleaseBalance: Max partyB connections reached");
+		entry.releaseInterval = accountLayout.partyBReleaseIntervals[partyB];
 		entry.transitioning = 0;
 		entry.scheduled = 0;
-		entry.lastTransitionTimestamp = entry.releaseInterval == 0 ? timestamp : (timestamp / entry.releaseInterval) * entry.releaseInterval;
+		entry.lastTransitionTimestamp = entry.releaseInterval == 0
+			? block.timestamp
+			: (block.timestamp / entry.releaseInterval) * entry.releaseInterval;
 
 		// Add to tracking arrays
 		self.partyBIndexes[partyB] = self.partyBAddresses.length;
@@ -103,7 +97,7 @@ library ScheduledReleaseBalanceOps {
 	// @notice Deducts funds from available, transitioning, then scheduled balances for a specific partyB
 	function subForPartyB(ScheduledReleaseBalance storage self, address partyB, uint256 value) internal returns (ScheduledReleaseBalance storage) {
 		require(partyB != address(0), "StagedReleaseBalance: Invalid partyB address");
-		sync(self, partyB, block.timestamp);
+		sync(self, partyB);
 		ScheduledReleaseEntry storage entry = self.partyBSchedules[partyB];
 		if (entry.releaseInterval == 0) {
 			return sub(self, value);
@@ -149,27 +143,46 @@ library ScheduledReleaseBalanceOps {
 
 	// @notice Updates fund states based on elapsed time intervals
 	// @dev Moves funds through stages based on timestamp checkpoints
-	function sync(ScheduledReleaseBalance storage self, address partyB, uint256 timestamp) internal returns (ScheduledReleaseBalance storage) {
+	function sync(ScheduledReleaseBalance storage self, address partyB) internal returns (ScheduledReleaseBalance storage) {
+		return _sync(self, partyB, true);
+	}
+
+	// @notice Updates fund states based on elapsed time intervals
+	// @dev Moves funds through stages based on timestamp checkpoints
+	function _sync(
+		ScheduledReleaseBalance storage self,
+		address partyB,
+		bool removePartyBOnEmpty
+	) internal returns (ScheduledReleaseBalance storage) {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+
+		if (AppStorage.layout().liquidationDetails[partyB][self.collateral].status != LiquidationStatus.SOLVENT) {
+			return self;
+		}
+
+		if (self.partyBAddresses.length == 0 || self.partyBAddresses[self.partyBIndexes[partyB]] != partyB) {
+			return self;
+		}
+
 		ScheduledReleaseEntry storage entry = self.partyBSchedules[partyB];
-		if (entry.releaseInterval != AccountStorage.layout().partyBReleaseIntervals[partyB]) {
+		if (entry.releaseInterval != accountLayout.partyBReleaseIntervals[partyB]) {
 			// release interval changed
-			entry.releaseInterval = AccountStorage.layout().partyBReleaseIntervals[partyB];
-			entry.lastTransitionTimestamp = entry.releaseInterval == 0 ? timestamp : (timestamp / entry.releaseInterval) * entry.releaseInterval;
+			entry.releaseInterval = accountLayout.partyBReleaseIntervals[partyB];
+			entry.lastTransitionTimestamp = entry.releaseInterval == 0
+				? block.timestamp
+				: (block.timestamp / entry.releaseInterval) * entry.releaseInterval;
 			entry.scheduled += entry.transitioning;
 			entry.transitioning = 0;
 			return self;
 		}
 		if (entry.releaseInterval == 0) return self;
-		require(timestamp >= entry.lastTransitionTimestamp, "StagedReleaseBalance: Invalid sync timestamp");
-		if (AppStorage.layout().liquidationDetails[partyB][self.collateral].status != LiquidationStatus.SOLVENT) {
-			return self;
-		}
+		require(block.timestamp >= entry.lastTransitionTimestamp, "StagedReleaseBalance: Invalid sync timestamp");
 		uint256 thisTransitionTimestamp = entry.lastTransitionTimestamp + entry.releaseInterval;
 		uint256 nextTransitionTimestamp = entry.lastTransitionTimestamp + (entry.releaseInterval * 2);
 
-		if (timestamp >= thisTransitionTimestamp) {
+		if (block.timestamp >= thisTransitionTimestamp) {
 			self.available += entry.transitioning;
-			if (timestamp < nextTransitionTimestamp) {
+			if (block.timestamp < nextTransitionTimestamp) {
 				entry.transitioning = entry.scheduled;
 				entry.scheduled = 0;
 			} else {
@@ -177,19 +190,24 @@ library ScheduledReleaseBalanceOps {
 			}
 		}
 
-		if (timestamp >= nextTransitionTimestamp) {
+		if (block.timestamp >= nextTransitionTimestamp) {
 			self.available += entry.scheduled;
 			entry.scheduled = 0;
 		}
 
-		entry.lastTransitionTimestamp = (timestamp / entry.releaseInterval) * entry.releaseInterval;
+		entry.lastTransitionTimestamp = (block.timestamp / entry.releaseInterval) * entry.releaseInterval;
+
+		if (removePartyBOnEmpty && entry.transitioning == 0 && entry.scheduled == 0) {
+			removePartyB(self, partyB);
+		}
+
 		return self;
 	}
 
 	// @notice Syncs all partyB balances
-	function syncAll(ScheduledReleaseBalance storage self, uint256 timestamp) internal returns (ScheduledReleaseBalance storage) {
+	function syncAll(ScheduledReleaseBalance storage self) internal returns (ScheduledReleaseBalance storage) {
 		for (uint256 i = 0; i < self.partyBAddresses.length; i++) {
-			sync(self, self.partyBAddresses[i], timestamp);
+			sync(self, self.partyBAddresses[i]);
 		}
 		return self;
 	}

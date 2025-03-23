@@ -50,7 +50,7 @@ library LibTradeOps {
 		intentLayout.partyATradesIndex[self.id] = intentLayout.activeTradesOf[self.partyA].length - 1;
 		intentLayout.partyBTradesIndex[self.id] = intentLayout.activeTradesOfPartyB[self.partyB][symbol.collateral].length - 1;
 
-		AccountStorage.layout().balances[self.partyA][symbol.collateral].addPartyB(self.partyB, block.timestamp);
+		AccountStorage.layout().balances[self.partyA][symbol.collateral].addPartyB(self.partyB);
 	}
 
 	function remove(Trade memory self) internal {
