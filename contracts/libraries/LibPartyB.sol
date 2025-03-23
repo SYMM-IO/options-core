@@ -4,13 +4,29 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { AppStorage, LiquidationStatus } from "../storages/AppStorage.sol";
+import { AppStorage, LiquidationStatus, LiquidationState, LiquidationDetail } from "../storages/AppStorage.sol";
 
 library LibPartyB {
-	function requireNotLiquidatedPartyB(address partyB, address collateral) internal view {
+	function requireSolvent(address self, address collateral) internal view {
+		require(isSolvent(self, collateral), "LibPartyB: PartyB is not solvent");
+	}
+
+	function requireInProgressLiquidation(address self, address collateral) internal view {
 		require(
-			AppStorage.layout().liquidationDetails[partyB][collateral].status == LiquidationStatus.SOLVENT,
-			"Accessibility: PartyB is in the liquidation process"
+			AppStorage.layout().liquidationStates[self][collateral].status == LiquidationStatus.IN_PROGRESS,
+			"LibPartyB: Invalid liquidation state"
 		);
+	}
+
+	function isSolvent(address self, address collateral) internal view returns (bool) {
+		return AppStorage.layout().liquidationStates[self][collateral].status == LiquidationStatus.SOLVENT;
+	}
+
+	function getLiquidationState(address self, address collateral) internal view returns (LiquidationState storage) {
+		return AppStorage.layout().liquidationStates[self][collateral];
+	}
+
+	function getInProgressLiquidationDetail(address self, address collateral) internal view returns (LiquidationDetail storage) {
+		return AppStorage.layout().liquidationDetails[getLiquidationState(self, collateral).inProgressLiquidationId];
 	}
 }

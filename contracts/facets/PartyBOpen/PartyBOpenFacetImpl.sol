@@ -18,6 +18,7 @@ library PartyBOpenFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibOpenIntentOps for OpenIntent;
 	using LibTradeOps for Trade;
+	using LibPartyB for address;
 
 	function lockOpenIntent(address sender, uint256 intentId) internal {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
@@ -49,7 +50,7 @@ library PartyBOpenFacetImpl {
 		}
 		require(isValidPartyB, "PartyBFacet: Sender isn't whitelisted");
 
-		LibPartyB.requireNotLiquidatedPartyB(sender, symbol.collateral);
+		sender.requireSolvent(symbol.collateral);
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = IntentStatus.LOCKED;
 		intent.partyB = sender;
@@ -62,7 +63,7 @@ library PartyBOpenFacetImpl {
 
 		require(intent.partyB == sender, "PartyBFacet: Invalid sender");
 		require(intent.status == IntentStatus.LOCKED, "PartyBFacet: Invalid state");
-		LibPartyB.requireNotLiquidatedPartyB(sender, SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId].collateral);
+		sender.requireSolvent(SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId].collateral);
 
 		if (block.timestamp > intent.deadline) {
 			intent.expire();
@@ -80,7 +81,7 @@ library PartyBOpenFacetImpl {
 		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
 		require(intent.status == IntentStatus.CANCEL_PENDING, "PartyBFacet: Invalid state");
 		require(intent.partyB == sender, "PartyBFacet: Invalid sender");
-		LibPartyB.requireNotLiquidatedPartyB(sender, SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId].collateral);
+		sender.requireSolvent(SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId].collateral);
 
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = IntentStatus.CANCELED;
@@ -109,7 +110,8 @@ library PartyBOpenFacetImpl {
 		require(symbol.isValid, "PartyBFacet: Symbol is not valid");
 		require(appLayout.partyBConfigs[intent.partyB].symbolType == symbol.symbolType, "PartyBFacet: Mismatched symbol type");
 		require(intent.status == IntentStatus.LOCKED || intent.status == IntentStatus.CANCEL_PENDING, "PartyBFacet: Invalid state");
-		LibPartyB.requireNotLiquidatedPartyB(intent.partyB, symbol.collateral);
+		intent.partyB.requireSolvent(symbol.collateral);
+
 		require(block.timestamp <= intent.deadline, "PartyBFacet: Intent is expired");
 		require(block.timestamp <= intent.tradeAgreements.expirationTimestamp, "PartyBFacet: Requested expiration has been passed");
 		require(intent.tradeAgreements.quantity >= quantity && quantity > 0, "PartyBFacet: Invalid quantity");

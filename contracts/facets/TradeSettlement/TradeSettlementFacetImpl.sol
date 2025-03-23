@@ -16,13 +16,14 @@ import { Symbol, SymbolStorage, OptionType } from "../../storages/SymbolStorage.
 library TradeSettlementFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibTradeOps for Trade;
+	using LibPartyB for address;
 
 	function expireTrade(uint256 tradeId, SettlementPriceSig memory sig) internal {
 		Trade storage trade = IntentStorage.layout().trades[tradeId];
 		Symbol storage symbol = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId];
 		LibMuon.verifySettlementPriceSig(sig);
 
-		LibPartyB.requireNotLiquidatedPartyB(trade.partyB, symbol.collateral);
+		trade.partyB.requireSolvent(symbol.collateral);
 		require(sig.symbolId == trade.tradeAgreements.symbolId, "PartyBFacet: Invalid symbolId");
 		require(trade.status == TradeStatus.OPENED, "PartyBFacet: Invalid trade state");
 		require(block.timestamp > trade.tradeAgreements.expirationTimestamp, "PartyBFacet: Trade isn't expired");
@@ -50,10 +51,10 @@ library TradeSettlementFacetImpl {
 		Symbol storage symbol = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId];
 		LibMuon.verifySettlementPriceSig(sig);
 
+		trade.partyB.requireSolvent(symbol.collateral);
 		require(sig.symbolId == trade.tradeAgreements.symbolId, "PartyBFacet: Invalid symbolId");
 		require(trade.status == TradeStatus.OPENED, "PartyBFacet: Invalid trade state");
 		require(block.timestamp > trade.tradeAgreements.expirationTimestamp, "PartyBFacet: Trade isn't expired");
-		LibPartyB.requireNotLiquidatedPartyB(trade.partyB, symbol.collateral);
 
 		if (msg.sender != trade.partyB) {
 			require(

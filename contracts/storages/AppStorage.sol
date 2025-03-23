@@ -12,9 +12,13 @@ struct SettlementState {
 	bool pending;
 }
 
-struct LiquidationDetail {
-	bytes liquidationId;
+struct LiquidationState {
+	uint256 inProgressLiquidationId;
 	LiquidationStatus status;
+}
+
+struct LiquidationDetail {
+	bytes clearingHouseLiquidationId;
 	int256 upnl;
 	uint256 flagTimestamp;
 	uint256 liquidationTimestamp;
@@ -109,9 +113,12 @@ library AppStorage {
 		///////////////////////////////////
 		uint16 version;
 		///////////////////////////////////
-		mapping(address => mapping(address => LiquidationDetail)) liquidationDetails; // partyBAddress => collateral => detail
-		mapping(address => mapping(address => mapping(address => uint256))) debtsToPartyAs; // partyB => collatearl => partyA => amount
-		mapping(address => mapping(address => uint256)) connectedPartyAs; // partyB => collateral => number of connected partyAs
+		mapping(address => mapping(address => LiquidationState)) liquidationStates; // partyBAddress => collateral => liquidationState
+		mapping(uint256 => LiquidationDetail) liquidationDetails; // liquidationId => detail
+		mapping(address => mapping(address => mapping(address => uint256))) liquidationDebtsToPartyAs; // partyB => collateral => partyA => amount
+		mapping(address => mapping(address => uint256)) involvedPartyAsCountInLiquidation; // partyB => collateral => number of connected partyAs
+		uint256 lastLiquidationId;
+		///////////////////////////////////
 		mapping(address => mapping(uint256 => uint256)) affiliateFees; // affiliate address => symbolId => fee
 	}
 

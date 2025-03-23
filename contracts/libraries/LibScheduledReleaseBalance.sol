@@ -7,6 +7,7 @@ pragma solidity >=0.8.19;
 
 import { AccountStorage } from "../storages/AccountStorage.sol";
 import { AppStorage, LiquidationStatus } from "../storages/AppStorage.sol";
+import { LibPartyB } from "../libraries/LibPartyB.sol";
 
 // ScheduledReleaseEntry implements a two-stage fund release system:
 // - Funds start in 'scheduled' stage
@@ -36,6 +37,8 @@ struct ScheduledReleaseBalance {
 // @title ScheduledReleaseBalanceOps
 // @notice Operations for managing scheduled release balances
 library ScheduledReleaseBalanceOps {
+	using LibPartyB for address;
+
 	// @notice Adds funds to release schedule
 	// @dev Initializes entry if needed, syncs state before adding
 	function scheduledAdd(ScheduledReleaseBalance storage self, address partyB, uint256 value) internal returns (ScheduledReleaseBalance storage) {
@@ -156,7 +159,7 @@ library ScheduledReleaseBalanceOps {
 	) internal returns (ScheduledReleaseBalance storage) {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
-		if (AppStorage.layout().liquidationDetails[partyB][self.collateral].status != LiquidationStatus.SOLVENT) {
+		if (!partyB.isSolvent(self.collateral)) {
 			return self;
 		}
 

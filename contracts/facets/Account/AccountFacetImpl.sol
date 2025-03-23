@@ -5,6 +5,7 @@
 pragma solidity >=0.8.19;
 
 import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { LibPartyB } from "../../libraries/LibPartyB.sol";
 import { AccountStorage, Withdraw, WithdrawStatus } from "../../storages/AccountStorage.sol";
 import { AppStorage, LiquidationStatus } from "../../storages/AppStorage.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -14,6 +15,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 library AccountFacetImpl {
 	using SafeERC20 for IERC20;
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
+	using LibPartyB for address;
 
 	// Constants
 	uint256 private constant PRECISION_FACTOR = 1e18;
@@ -59,10 +61,7 @@ library AccountFacetImpl {
 
 		require(accountLayout.balances[msg.sender][collateral].available >= amount, "AccountFacet: Insufficient balance");
 		require(!accountLayout.instantActionsMode[msg.sender], "AccountFacet: Instant action mode is activated");
-		require(
-			appLayout.liquidationDetails[msg.sender][collateral].status == LiquidationStatus.SOLVENT,
-			"AccountFacet: User is in the liquidation process"
-		);
+		msg.sender.requireSolvent(collateral);
 
 		accountLayout.balances[msg.sender][collateral].sub(amount);
 
@@ -88,10 +87,7 @@ library AccountFacetImpl {
 
 		Withdraw storage withdrawal = accountLayout.withdrawals[id];
 
-		require(
-			appLayout.liquidationDetails[withdrawal.user][withdrawal.collateral].status == LiquidationStatus.SOLVENT,
-			"AccountFacet: PartyB is in the liquidation process"
-		);
+		withdrawal.user.requireSolvent(withdrawal.collateral);
 		require(withdrawal.status == WithdrawStatus.INITIATED, "AccountFacet: Invalid state");
 
 		uint256 cooldownPeriod;

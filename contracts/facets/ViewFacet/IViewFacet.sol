@@ -6,7 +6,7 @@ pragma solidity >=0.8.19;
 
 import { ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { Withdraw, BridgeTransaction } from "../../storages/AccountStorage.sol";
-import { PartyBConfig, LiquidationDetail } from "../../storages/AppStorage.sol";
+import { PartyBConfig, LiquidationDetail, LiquidationState } from "../../storages/AppStorage.sol";
 import { OpenIntent, TransferIntent, Trade, CloseIntent } from "../../storages/IntentStorage.sol";
 import { Symbol, Oracle } from "../../storages/SymbolStorage.sol";
 
@@ -192,11 +192,13 @@ interface IViewFacet {
 
 	function version() external view returns (uint16);
 
-	function liquidationDetails(address partyBAddress, address collateral) external view returns (LiquidationDetail memory);
+	function liquidationStates(address partyBAddress, address collateral) external view returns (LiquidationState memory);
 
-	function debtsToPartyAs(address partyB, address collateral, address partyA) external view returns (uint256);
+	function liquidationDetail(uint256 liquidationId) external view returns (LiquidationDetail memory);
 
-	function connectedPartyAs(address partyB, address collateral) external view returns (uint256);
+	function liquidationDebtsToPartyAs(address partyB, address collateral, address partyA) external view returns (uint256);
+
+	function involvedPartyAsCountInLiquidation(address partyB, address collateral) external view returns (uint256);
 
 	function affiliateFees(address affiliate, uint256 symbolId) external view returns (uint256);
 

@@ -6,7 +6,7 @@ pragma solidity >=0.8.19;
 
 import { ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { AccountStorage, Withdraw, BridgeTransaction } from "../../storages/AccountStorage.sol";
-import { AppStorage, PartyBConfig, LiquidationDetail } from "../../storages/AppStorage.sol";
+import { AppStorage, PartyBConfig, LiquidationDetail, LiquidationState } from "../../storages/AppStorage.sol";
 import { IntentStorage, OpenIntent, TransferIntent, Trade, CloseIntent } from "../../storages/IntentStorage.sol";
 import { SymbolStorage, Symbol, Oracle } from "../../storages/SymbolStorage.sol";
 import { IViewFacet } from "./IViewFacet.sol";
@@ -772,16 +772,20 @@ contract ViewFacet is IViewFacet {
 		return AppStorage.layout().version;
 	}
 
-	function liquidationDetails(address partyBAddress, address collateral) external view returns (LiquidationDetail memory) {
-		return AppStorage.layout().liquidationDetails[partyBAddress][collateral];
+	function liquidationStates(address partyBAddress, address collateral) external view returns (LiquidationState memory) {
+		return AppStorage.layout().liquidationStates[partyBAddress][collateral];
 	}
 
-	function debtsToPartyAs(address partyB, address collateral, address partyA) external view returns (uint256) {
-		return AppStorage.layout().debtsToPartyAs[partyB][collateral][partyA];
+	function liquidationDetail(uint256 liquidationId) external view returns (LiquidationDetail memory) {
+		return AppStorage.layout().liquidationDetails[liquidationId];
 	}
 
-	function connectedPartyAs(address partyB, address collateral) external view returns (uint256) {
-		return AppStorage.layout().connectedPartyAs[partyB][collateral];
+	function liquidationDebtsToPartyAs(address partyB, address collateral, address partyA) external view returns (uint256) {
+		return AppStorage.layout().liquidationDebtsToPartyAs[partyB][collateral][partyA];
+	}
+
+	function involvedPartyAsCountInLiquidation(address partyB, address collateral) external view returns (uint256) {
+		return AppStorage.layout().involvedPartyAsCountInLiquidation[partyB][collateral];
 	}
 
 	function affiliateFees(address affiliate, uint256 symbolId) external view returns (uint256) {
