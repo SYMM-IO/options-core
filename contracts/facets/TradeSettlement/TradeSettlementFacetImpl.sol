@@ -62,19 +62,12 @@ library TradeSettlementFacetImpl {
 			);
 		}
 
-		uint256 pnl = trade.getValueOfTradeForPartyA(sig.settlementPrice, trade.getOpenAmount());
-		if (symbol.optionType == OptionType.PUT) {
-			require(sig.settlementPrice < trade.tradeAgreements.strikePrice, "PartyBFacet: Invalid price");
-		} else {
-			require(sig.settlementPrice > trade.tradeAgreements.strikePrice, "PartyBFacet: Invalid price");
-		}
-		uint256 exerciseFee;
-		{
-			uint256 cap = (trade.tradeAgreements.exerciseFee.cap * pnl) / 1e18;
-			uint256 fee = (trade.tradeAgreements.exerciseFee.rate * sig.settlementPrice * (trade.getOpenAmount())) / 1e36;
-			exerciseFee = cap < fee ? cap : fee;
-		}
+		uint256 pnl = trade.getPnl(sig.settlementPrice, trade.getOpenAmount());
+		require(pnl > 0, "PartyBFacet: Can't exercise with this price");
+
+		uint256 exerciseFee = trade.getExerciseFee(sig.settlementPrice, pnl);
 		uint256 amountToTransfer = pnl - exerciseFee;
+
 		if (!symbol.isStableCoin) {
 			amountToTransfer = (amountToTransfer * 1e18) / sig.settlementPrice;
 		}

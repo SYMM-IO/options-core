@@ -37,7 +37,7 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 	 * @notice Liquidates Party B based on the provided signature.
 	 * @param liquidationId The Id of liquidation
 	 * @param partyB The address of Party B to be liquidated.
-	 * @param collateral The address of collatarl.
+	 * @param collateral The address of collateral.
 	 * @param upnl The upnl of partyB at the moment of liquidation
 	 * @param collateralPrice The price of collateral
 	 */
@@ -78,8 +78,6 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 		emit ConfiscatePartyBWithdrawal(partyB, withdrawId);
 	}
 
-	function unfreezePartyAs(address partyB, address collateral) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {}
-
 	function closeTrades(
 		uint256[] memory tradeIds,
 		uint256[] memory prices
@@ -103,4 +101,6 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 			emit FullyLiquidated(partyB, liquidationId);
 		}
 	}
+
+	function unfreezePartyAs(address partyB, address collateral) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {}
 }

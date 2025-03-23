@@ -23,7 +23,7 @@ library LibTradeOps {
 		return self.tradeAgreements.quantity - self.closedAmountBeforeExpiration - self.closePendingAmount;
 	}
 
-	function getValueOfTradeForPartyA(Trade memory self, uint256 currentPrice, uint256 filledAmount) internal view returns (uint256 pnl) {
+	function getPnl(Trade memory self, uint256 currentPrice, uint256 filledAmount) internal view returns (uint256 pnl) {
 		Symbol storage symbol = SymbolStorage.layout().symbols[self.tradeAgreements.symbolId];
 
 		if (currentPrice > self.tradeAgreements.strikePrice && symbol.optionType == OptionType.CALL) {
@@ -31,6 +31,12 @@ library LibTradeOps {
 		} else if (currentPrice < self.tradeAgreements.strikePrice && symbol.optionType == OptionType.PUT) {
 			pnl = ((self.tradeAgreements.strikePrice - currentPrice) * filledAmount) / 1e18;
 		}
+	}
+
+	function getExerciseFee(Trade memory self, uint256 settlementPrice, uint256 pnl) internal pure returns (uint256) {
+		uint256 cap = (self.tradeAgreements.exerciseFee.cap * pnl) / 1e18;
+		uint256 fee = (self.tradeAgreements.exerciseFee.rate * settlementPrice * (getOpenAmount(self))) / 1e36;
+		return cap < fee ? cap : fee;
 	}
 
 	function save(Trade memory self) internal {
