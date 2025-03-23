@@ -6,4 +6,5 @@ pragma solidity >=0.8.19;
 
 interface ISignatureVerifier {
 	function verifySignature(address signer, bytes32 hash, bytes calldata signature) external view returns (bool);
+	function isValidSignatureEIP1271(bytes32 hash, bytes calldata signature, address signer) external view returns (bytes4);
 }
