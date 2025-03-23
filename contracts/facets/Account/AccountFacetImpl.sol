@@ -55,7 +55,7 @@ library AccountFacetImpl {
 		require(appLayout.whiteListedCollateral[collateral], "AccountFacet: Collateral is not whitelisted");
 		require(to != address(0), "AccountFacet: Zero address");
 
-		accountLayout.balances[msg.sender][collateral].syncAll(block.timestamp);
+		accountLayout.balances[msg.sender][collateral].syncAll();
 
 		require(accountLayout.balances[msg.sender][collateral].available >= amount, "AccountFacet: Insufficient balance");
 		require(!accountLayout.instantActionsMode[msg.sender], "AccountFacet: Instant action mode is activated");
@@ -125,7 +125,7 @@ library AccountFacetImpl {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
 		for (uint256 i = 0; i < partyBs.length; i++) {
-			accountLayout.balances[partyA][collateral].sync(partyBs[i], block.timestamp);
+			accountLayout.balances[partyA][collateral].sync(partyBs[i]);
 		}
 	}
 
