@@ -6,6 +6,7 @@ pragma solidity >=0.8.19;
 
 import { ITradeNFT } from "../../interfaces/ITradeNFT.sol";
 import { LibCloseIntentOps } from "../../libraries/LibCloseIntent.sol";
+import { LibPartyB } from "../../libraries/LibPartyB.sol";
 import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { LibTradeOps } from "../../libraries/LibTrade.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
@@ -17,6 +18,7 @@ library PartyACloseFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibCloseIntentOps for CloseIntent;
 	using LibTradeOps for Trade;
+	using LibPartyB for address;
 
 	function sendCloseIntent(address sender, uint256 tradeId, uint256 price, uint256 quantity, uint256 deadline) internal returns (uint256 intentId) {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
@@ -68,7 +70,6 @@ library PartyACloseFacetImpl {
 	 */
 	function validateAndTransferTrade(address sender, address receiver, uint256 tradeId) internal {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-		AppStorage.Layout storage appLayout = AppStorage.layout();
 		Trade storage trade = intentLayout.trades[tradeId];
 		Symbol memory symbol = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId];
 
@@ -76,11 +77,8 @@ library PartyACloseFacetImpl {
 		require(trade.partyB != receiver, "PartyAFacet: PartyB can't be the receiver");
 		require(receiver != address(0), "PartyAFacet: Invalid receiver");
 		require(trade.status == TradeStatus.OPENED, "PartyAFacet: Invalid trade state");
-		require(
-			appLayout.liquidationDetails[trade.partyB][symbol.collateral].status == LiquidationStatus.SOLVENT,
-			"PartyAFacet: PartyB is liquidated"
-		);
-		
+		trade.partyB.requireSolvent(symbol.collateral);
+
 		trade.remove();
 		trade.partyA = receiver;
 		trade.save();

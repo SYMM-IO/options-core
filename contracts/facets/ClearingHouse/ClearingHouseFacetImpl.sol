@@ -6,55 +6,63 @@ pragma solidity >=0.8.19;
 
 import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { LibTradeOps } from "../../libraries/LibTrade.sol";
+import { LibPartyB } from "../../libraries/LibPartyB.sol";
 import { AccountStorage, Withdraw, WithdrawStatus } from "../../storages/AccountStorage.sol";
-import { AppStorage, LiquidationStatus, LiquidationDetail } from "../../storages/AppStorage.sol";
+import { AppStorage, LiquidationStatus, LiquidationDetail, LiquidationState } from "../../storages/AppStorage.sol";
 import { Trade, IntentStorage, TradeStatus, IntentStatus } from "../../storages/IntentStorage.sol";
 import { Symbol, SymbolStorage, OptionType } from "../../storages/SymbolStorage.sol";
 
 library ClearingHouseFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibTradeOps for Trade;
+	using LibPartyB for address;
 
-	function flagLiquidation(address partyB, address collateral) internal {
+	function flagLiquidation(address partyB, address collateral) internal returns (uint256 liquidationId) {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
-		require(
-			appLayout.liquidationDetails[partyB][collateral].status == LiquidationStatus.SOLVENT,
-			"LiquidationFacet: PartyB is in the liquidation process"
-		);
+
 		require(appLayout.partyBConfigs[partyB].lossCoverage > 0, "LiquidationFacet: Loss coverage of partyB is zero");
-		appLayout.liquidationDetails[partyB][collateral] = LiquidationDetail({
-			liquidationId: "",
-			status: LiquidationStatus.FLAGGED,
+		partyB.requireSolvent(collateral);
+
+		liquidationId = ++appLayout.lastLiquidationId;
+
+		appLayout.liquidationStates[partyB][collateral] = LiquidationState({
+			inProgressLiquidationId: liquidationId,
+			status: LiquidationStatus.FLAGGED
+		});
+		appLayout.liquidationDetails[liquidationId] = LiquidationDetail({
 			upnl: 0,
 			flagTimestamp: block.timestamp,
 			liquidationTimestamp: 0,
 			collateralPrice: 0,
 			flagger: msg.sender,
 			collectedCollateral: 0,
-			requiredCollateral: 0
+			requiredCollateral: 0,
+			clearingHouseLiquidationId: ""
 		});
 	}
 
 	function unflagLiquidation(address partyB, address collateral) internal {
-		AppStorage.Layout storage appLayout = AppStorage.layout();
-		require(appLayout.liquidationDetails[partyB][collateral].status == LiquidationStatus.FLAGGED, "LiquidationFacet: PartyB should be flagged");
-		delete appLayout.liquidationDetails[partyB][collateral];
+		LiquidationState storage state = partyB.getLiquidationState(collateral);
+
+		require(state.status == LiquidationStatus.FLAGGED, "LiquidationFacet: Invalid liquidation status");
+
+		state.inProgressLiquidationId = 0;
+		state.status = LiquidationStatus.SOLVENT;
 	}
 
-	function liquidate(bytes memory liquidationId, address partyB, address collateral, int256 upnl, uint256 collateralPrice) internal {
+	function liquidate(bytes memory clearingHouseLiquidationId, address partyB, address collateral, int256 upnl, uint256 collateralPrice) internal {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
-		require(
-			appLayout.liquidationDetails[partyB][collateral].status == LiquidationStatus.FLAGGED,
-			"LiquidationFacet: PartyB is already liquidated"
-		);
+		require(partyB.getLiquidationState(collateral).status == LiquidationStatus.FLAGGED, "LiquidationFacet: Invalid liquidation status");
+
 		require(upnl < 0, "LiquidationFacet: Invalid upnl");
+
 		int256 requiredCollateral = (-upnl * int256(appLayout.partyBConfigs[partyB].lossCoverage)) / int256(collateralPrice);
 		require(int256(accountLayout.balances[partyB][collateral].available) < requiredCollateral, "LiquidationFacet: PartyB is solvent");
-		LiquidationDetail storage detail = appLayout.liquidationDetails[partyB][collateral];
-		detail.liquidationId = liquidationId;
-		detail.status = LiquidationStatus.IN_PROGRESS;
+
+		LiquidationDetail storage detail = partyB.getInProgressLiquidationDetail(collateral);
+		detail.clearingHouseLiquidationId = clearingHouseLiquidationId;
 		detail.upnl = upnl;
 		detail.liquidationTimestamp = block.timestamp;
 		detail.collateralPrice = collateralPrice;
@@ -62,33 +70,29 @@ library ClearingHouseFacetImpl {
 	}
 
 	function confiscatePartyA(address partyB, address partyA, address collateral, uint256 amount) internal {
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		AppStorage.Layout storage appLayout = AppStorage.layout();
-		require(
-			appLayout.liquidationDetails[partyB][collateral].status == LiquidationStatus.IN_PROGRESS,
-			"LiquidationFacet: PartyB is not in liquidation process"
-		);
-		ScheduledReleaseBalance storage balance = accountLayout.balances[partyA][collateral];
+		ScheduledReleaseBalance storage balance = AccountStorage.layout().balances[partyA][collateral];
+
 		require(balance.partyBBalance(partyB) > amount, "LiquidationFacet: Insufficient funds");
+		partyB.requireInProgressLiquidation(collateral);
+
 		balance.subForPartyB(partyB, amount);
-		appLayout.liquidationDetails[partyB][collateral].collectedCollateral += amount;
+		partyB.getInProgressLiquidationDetail(collateral).collectedCollateral += amount;
 	}
 
 	function confiscatePartyBWithdrawal(address partyB, uint256 withdrawId) internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		AppStorage.Layout storage appLayout = AppStorage.layout();
 
 		require(withdrawId <= accountLayout.lastWithdrawId, "LiquidationFacet: Invalid Id");
 
-		Withdraw storage withdraw = accountLayout.withdrawals[withdrawId];
-		LiquidationDetail storage detail = appLayout.liquidationDetails[partyB][withdraw.collateral];
+		Withdraw memory withdraw = accountLayout.withdrawals[withdrawId];
 
-		require(detail.status == LiquidationStatus.IN_PROGRESS, "LiquidationFacet: PartyB is not in liquidation process");
 		require(withdraw.status == WithdrawStatus.INITIATED, "LiquidationFacet: Invalid withdrawal state");
 		require(withdraw.user == partyB, "LiquidationFacet: Invalid user for withdraw Id");
+		partyB.requireInProgressLiquidation(withdraw.collateral);
 
 		withdraw.status = WithdrawStatus.CANCELED;
-		detail.collectedCollateral += withdraw.amount;
+
+		partyB.getInProgressLiquidationDetail(withdraw.collateral).collectedCollateral += withdraw.amount;
 	}
 
 	function closeTrades(uint256[] memory tradeIds, uint256[] memory prices) internal {
@@ -102,26 +106,21 @@ library ClearingHouseFacetImpl {
 			uint256 price = prices[i];
 
 			require(trade.status == TradeStatus.OPENED, "LiquidationFacet: Invalid trade state");
-			require(
-				appLayout.liquidationDetails[trade.partyB][symbol.collateral].status == LiquidationStatus.IN_PROGRESS,
-				"LiquidationFacet: PartyB is not in liquidation process"
-			);
+			trade.partyB.requireInProgressLiquidation(symbol.collateral);
 			trade.settledPrice = price;
 
 			uint256 pnl = trade.getPnl(price, trade.tradeAgreements.quantity);
 
 			if (pnl > 0) {
-				// uint256 exerciseFee = trade.getExerciseFee(sig.settlementPrice, pnl);
-				pnl = (pnl * appLayout.partyBConfigs[trade.partyB].lossCoverage) / 1e18;
-				// uint256 amountToTransfer = pnl - exerciseFee;
-				uint256 amountToTransfer = pnl;
+				uint256 amountToTransfer = (pnl * appLayout.partyBConfigs[trade.partyB].lossCoverage) / 1e18;
+				LiquidationDetail storage detail = trade.partyB.getInProgressLiquidationDetail(symbol.collateral);
 
-				amountToTransfer = (amountToTransfer * 1e18) / appLayout.liquidationDetails[trade.partyB][symbol.collateral].collateralPrice;
-				if (appLayout.debtsToPartyAs[trade.partyB][symbol.collateral][trade.partyA] == 0) {
-					appLayout.connectedPartyAs[trade.partyB][symbol.collateral] += 1;
+				amountToTransfer = (amountToTransfer * 1e18) / detail.collateralPrice;
+				if (appLayout.liquidationDebtsToPartyAs[trade.partyB][symbol.collateral][trade.partyA] == 0) {
+					appLayout.involvedPartyAsCountInLiquidation[trade.partyB][symbol.collateral] += 1;
 				}
-				appLayout.debtsToPartyAs[trade.partyB][symbol.collateral][trade.partyA] += amountToTransfer;
-				appLayout.liquidationDetails[trade.partyB][symbol.collateral].requiredCollateral += amountToTransfer;
+				appLayout.liquidationDebtsToPartyAs[trade.partyB][symbol.collateral][trade.partyA] += amountToTransfer;
+				detail.requiredCollateral += amountToTransfer;
 
 				trade.close(TradeStatus.LIQUIDATED, IntentStatus.CANCELED);
 			} else {
@@ -130,38 +129,35 @@ library ClearingHouseFacetImpl {
 		}
 	}
 
-	// TODO: fix deadlock when the required collateral isn't equal with collected collateral
-
 	function distributeCollateral(
 		address partyB,
 		address collateral,
 		address[] memory partyAs
-	) internal returns (bool isLiquidationFinished, bytes memory liquidationId, uint256[] memory amounts) {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+	) internal returns (bool isLiquidationFinished, uint256 liquidationId, uint256[] memory amounts) {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
-		LiquidationDetail storage detail = appLayout.liquidationDetails[partyB][collateral];
+		LiquidationState storage state = partyB.getLiquidationState(collateral);
+		LiquidationDetail storage detail = partyB.getInProgressLiquidationDetail(collateral);
 
-		require(intentLayout.activeTradesOfPartyB[partyB][collateral].length == 0, "LiquidationFacet: PartyB has still open trades");
-		require(detail.status == LiquidationStatus.IN_PROGRESS, "LiquidationFacet: PartyB is not in liquidation process");
+		require(IntentStorage.layout().activeTradesOfPartyB[partyB][collateral].length == 0, "LiquidationFacet: PartyB has still open trades");
+		partyB.requireInProgressLiquidation(collateral);
 		require(detail.collectedCollateral >= detail.requiredCollateral, "LiquidationFacet: not enough collateral to pay debts");
 
-		liquidationId = detail.liquidationId;
+		liquidationId = state.inProgressLiquidationId;
 
 		amounts = new uint256[](partyAs.length);
 		for (uint256 i = 0; i < partyAs.length; i++) {
 			address partyA = partyAs[i];
-			uint256 amountToTransfer = appLayout.debtsToPartyAs[partyB][collateral][partyA];
-			// if (amountToTransfer == 0) break; //FIXME: why break?
+			uint256 amountToTransfer = appLayout.liquidationDebtsToPartyAs[partyB][collateral][partyA];
 			amounts[i] = amountToTransfer;
-			appLayout.connectedPartyAs[partyB][collateral] -= 1;
-			accountLayout.balances[partyA][collateral].instantAdd(collateral, amountToTransfer);
-			appLayout.debtsToPartyAs[partyB][collateral][partyA] = 0;
+			appLayout.involvedPartyAsCountInLiquidation[partyB][collateral] -= 1;
+			AccountStorage.layout().balances[partyA][collateral].instantAdd(collateral, amountToTransfer);
+			appLayout.liquidationDebtsToPartyAs[partyB][collateral][partyA] = 0;
 		}
-		if (appLayout.connectedPartyAs[partyB][collateral] == 0) {
+		if (appLayout.involvedPartyAsCountInLiquidation[partyB][collateral] == 0) {
 			isLiquidationFinished = true;
-			delete appLayout.liquidationDetails[partyB][collateral];
+			state.status = LiquidationStatus.SOLVENT;
+			state.inProgressLiquidationId = 0;
 		}
 	}
 }

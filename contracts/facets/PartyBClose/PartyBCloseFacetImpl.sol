@@ -17,6 +17,7 @@ library PartyBCloseFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibCloseIntentOps for CloseIntent;
 	using LibTradeOps for Trade;
+	using LibPartyB for address;
 
 	function acceptCancelCloseIntent(address sender, uint256 intentId) internal {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
@@ -26,7 +27,7 @@ library PartyBCloseFacetImpl {
 
 		require(trade.partyB == sender, "PartyBFacet: Invalid sender");
 		require(intent.status == IntentStatus.CANCEL_PENDING, "PartyBFacet: Invalid state");
-		LibPartyB.requireNotLiquidatedPartyB(trade.partyB, SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId].collateral);
+		trade.partyB.requireSolvent(SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId].collateral);
 
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = IntentStatus.CANCELED;
@@ -42,7 +43,7 @@ library PartyBCloseFacetImpl {
 		Symbol memory symbol = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId];
 
 		require(sender == trade.partyB, "PartyBFacet: Invalid sender");
-		LibPartyB.requireNotLiquidatedPartyB(trade.partyB, symbol.collateral);
+		trade.partyB.requireSolvent(symbol.collateral);
 
 		require(quantity > 0 && quantity <= intent.quantity - intent.filledAmount, "PartyBFacet: Invalid filled amount");
 		require(intent.status == IntentStatus.PENDING || intent.status == IntentStatus.CANCEL_PENDING, "PartyBFacet: Invalid state");

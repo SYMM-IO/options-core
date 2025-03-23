@@ -91,7 +91,7 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 		address collateral,
 		address[] memory partyAs
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-		(bool isLiquidationFinished, bytes memory liquidationId, uint256[] memory amounts) = ClearingHouseFacetImpl.distributeCollateral(
+		(bool isLiquidationFinished, uint256 liquidationId, uint256[] memory amounts) = ClearingHouseFacetImpl.distributeCollateral(
 			partyB,
 			collateral,
 			partyAs
