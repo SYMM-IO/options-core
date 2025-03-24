@@ -243,6 +243,22 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 		emit DepositForAccount(collateral, msg.sender, account, amount);
 	}
 
+	/**
+	 * @dev Allows the admin to execute an arbitrary admin call on a PartyA contract.
+	 * @param partyA The address of the PartyA contract.
+	 * @param data The calldata for the admin call.
+	 *
+	 * This function can be used to forward any admin-level operation to the PartyA contract.
+	 * Requirements:
+	 * - Caller must have the SETTER_ROLE.
+	 * - The call must succeed, otherwise the transaction reverts.
+	 */
+	function adminCallPartyA(address partyA, bytes calldata data) external onlyRole(SETTER_ROLE) {
+		(bool success, bytes memory returnData) = partyA.call(data);
+		require(success, "MultiAccount: admin call to PartyA failed");
+		emit AdminPartyACall(partyA, data, success, returnData);
+	}
+
 	// ================ CALL MANAGEMENT FUNCTIONS ================
 	/**
 	 * @dev Send a call to symmio from partyA account.
