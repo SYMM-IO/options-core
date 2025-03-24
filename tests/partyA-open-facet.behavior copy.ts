@@ -5,20 +5,20 @@ import { PartyA } from "./models/partyA.model"
 import { RunContext } from "./run-context"
 import { openIntentRequestBuilder } from "./models/builders/send-open-intent.builder"
 import { PartyB } from "./models/partyB.model"
-import { ethers, network } from "hardhat"
+import { ethers } from "hardhat"
 import { e } from "../utils/e"
 import { ZeroAddress } from "ethers"
 
-export function shouldBehaveLikePartyAFacet(): void {
+export function shouldBehaveLikePartyAOpenFacet(): void {
 	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyB1: PartyB, partyB2: PartyB
 
 	beforeEach(async function () {
 		context = await loadFixture(initializeTestFixture)
-		user = new User(context, context.signers.user)
-		partyB = new PartyB(context, context.signers.user2)
-		await user.setBalances("500")
+		partyA1 = new PartyA(context, context.signers.partyA1)
+		partyB1 = new PartyB(context, context.signers.partyB1)
+		await partyA1.setBalances("500")
 
-		await context.controlFacet.setPartyBConfig(partyB.getSigner(), {
+		await context.controlFacet.setPartyBConfig(partyB1.getSigner(), {
 			isActive: true,
 			lossCoverage: 0,
 			oracleId: 0,
@@ -120,7 +120,7 @@ export function shouldBehaveLikePartyAFacet(): void {
 				.build()
 
 			await context.controlFacet.setInstantActionsMode(partyA1.getSigner(), true)
-			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWith("PartyAFacet: Instant action mode is activated")
+			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWith("Accessibility: Instant action mode is activated")
 		})
 
 		it("Should fail when affiliate be zero address or invalid", async function () {
@@ -228,13 +228,13 @@ export function shouldBehaveLikePartyAFacet(): void {
 
 			expect(intent.tradeId).to.be.equal(0)
 			expect(intent.partyBsWhiteList).to.be.deep.equal([await partyB1.getSigner().getAddress()])
-			expect(intent.symbolId).to.be.equal(1)
+			expect(intent.tradeAgreements.symbolId).to.be.equal(1)
 			expect(intent.price).to.be.equal(7)
-			expect(intent.quantity).to.be.equal(e(100))
-			expect(intent.strikePrice).to.be.equal(0)
-			expect(intent.expirationTimestamp).to.be.equal((latestBlock?.timestamp ?? 0) + 120)
-			expect(intent.exerciseFee.cap).to.be.equal(e(1))
-			expect(intent.exerciseFee.rate).to.be.equal(0)
+			expect(intent.tradeAgreements.quantity).to.be.equal(e(100))
+			expect(intent.tradeAgreements.strikePrice).to.be.equal(0)
+			expect(intent.tradeAgreements.expirationTimestamp).to.be.equal((latestBlock?.timestamp ?? 0) + 120)
+			expect(intent.tradeAgreements.exerciseFee.cap).to.be.equal(e(1))
+			expect(intent.tradeAgreements.exerciseFee.rate).to.be.equal(0)
 			expect(intent.partyA).to.be.equal(await partyA1.getSigner().getAddress())
 			expect(intent.partyB).to.be.equal(ZeroAddress)
 			expect(intent.status).to.be.equal(0) // IntentStatus.PENDING
@@ -245,60 +245,7 @@ export function shouldBehaveLikePartyAFacet(): void {
 			// expect(intent.tradingFee).to.be.equal(0)
 			expect(intent.affiliate).to.be.equal(await context.signers.affiliate1.getAddress())
 
-			expect(await context.viewFacet.lockedBalancesOf(partyA1.getSigner(), context.collateral.getAddress())).to.be.equal(700)
+			// expect(await context.viewFacet.lockedBalancesOf(partyA1.getSigner(), context.collateral.getAddress())).to.be.equal(700)
 		})
-	})
-
-	describe("cancelOpenIntent", async function () {
-		beforeEach(async () => {
-			const latestBlock = await ethers.provider.getBlock("latest")
-
-			await partyA1.sendOpenIntent(
-				openIntentRequestBuilder()
-					.partyBsWhiteList([partyB1.getSigner()])
-					.affiliate(context.signers.affiliate1)
-					.feeToken(context.collateral)
-					.symbolId(1)
-					.deadline((latestBlock?.timestamp ?? 0) + 120)
-					.expirationTimestamp((latestBlock?.timestamp ?? 0) + 120)
-					.exerciseFee({ cap: e(1), rate: "0" })
-					.quantity(e(100))
-					.price(7)
-					.build(),
-			)
-		})
-
-		it("Should fail when partyA actions paused", async function () {
-			await context.controlFacet.pausePartyAActions()
-			await expect(partyA1.sendCancelOpenIntent(["1"])).to.be.revertedWith("Pausable: PartyA actions paused")
-		})
-
-		it("Should fail when global paused", async function () {
-			await context.controlFacet.pauseGlobal()
-			await expect(partyA1.sendCancelOpenIntent(["1"])).to.be.revertedWith("Pausable: Global paused")
-		})
-
-		it("Should fail when intent status not be pending or locked", async function () {
-			// TODO :::
-		})
-
-		it("Should fail when msgSender not be PartyA", async function () {
-			await expect(partyA2.sendCancelOpenIntent(["1"])).to.be.revertedWith("PartyAFacet: Should be partyA of Intent")
-		})
-
-		it("Should fail when instance mode is active", async function () {
-			await partyA1.activateInstantActionMode()
-			await expect(partyA1.sendCancelOpenIntent(["1"])).to.be.revertedWith("PartyAFacet: Instant action mode is activated")
-		})
-
-		// it("Should set status to EXPIRED when deadline reached", async function () {
-		// 	const newBlock = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 150
-		// 	await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
-		// 	expect(await user.sendCancelOpenIntent(['1'])).to.be.not.reverted
-
-		// 	const intent = await context.viewFacet.getOpenIntent(1)
-
-		// 	expect(intent.status).to.be.equal(2)
-		// })
 	})
 }

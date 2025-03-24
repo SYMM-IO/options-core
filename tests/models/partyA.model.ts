@@ -28,7 +28,7 @@ export class PartyA {
 
 	public async sendOpenIntent(request: OpenIntent = openIntentRequestBuilder().build()) {
 		await runTx(
-			this.context.partyAFacet
+			this.context.partyAOpenFacet
 				.connect(this.signer)
 				.sendOpenIntent(
 					request.partyBsWhiteList,
@@ -37,6 +37,9 @@ export class PartyA {
 					request.quantity,
 					request.strikePrice,
 					request.expirationTimestamp,
+					request.penalty,
+					request.tradeSide,
+					request.marginType,
 					request.exerciseFee,
 					request.deadline,
 					request.feeToken,
@@ -47,7 +50,7 @@ export class PartyA {
 	}
 
 	public async sendCancelOpenIntent(ids: string[]) {
-		await runTx(this.context.partyAFacet.connect(this.signer).cancelOpenIntent(ids))
+		await runTx(this.context.partyACloseFacet.connect(this.signer).cancelCloseIntent(ids))
 	}
 
 	public async activateInstantActionMode() {
