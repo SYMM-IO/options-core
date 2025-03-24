@@ -7,38 +7,48 @@ pragma solidity >=0.8.19;
 import { IMultiAccount } from "../interfaces/IMultiAccount.sol";
 import { ISymmio } from "../interfaces/ISymmio.sol";
 import { ISymmioPartyA } from "../interfaces/ISymmioPartyA.sol";
+import { SignatureVerifier } from "./SignatureVerifier.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
-contract MultiAccount is IMultiAccount, Initializable, PausableUpgradeable, AccessControlUpgradeable {
+contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, PausableUpgradeable, AccessControlUpgradeable {
 	using SafeERC20Upgradeable for IERC20Upgradeable;
 
+	// ==================== CONSTANTS ====================
 	bytes32 public constant SETTER_ROLE = keccak256("SETTER_ROLE");
 	bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 	bytes32 public constant UNPAUSER_ROLE = keccak256("UNPAUSER_ROLE");
 
+	// ==================== STATE VARIABLES ====================
+	address public symmioAddress; // Address of the Symmio platform
+	uint256 public saltCounter; // Counter for generating unique addresses with create2
+	bytes public accountImplementation;
+	uint256 public delegatedAccessRevokeCooldown;
+
+	// Account mappings
 	mapping(address => Account[]) public accounts; // User to their accounts mapping
 	mapping(address => uint256) public indexOfAccount; // Account to its index mapping
 	mapping(address => address) public owners; // Account to its owner mapping
 
-	address public accountsAdmin; // Admin address for the accounts
-	address public symmioAddress; // Address of the Symmio platform
-	uint256 public saltCounter; // Counter for generating unique addresses with create2
-	bytes public accountImplementation;
-
+	// Delegate access management
 	mapping(address => mapping(address => mapping(bytes4 => bool))) public delegatedAccesses; // account -> target -> selector -> state
-
-	uint256 public revokeCooldown;
 	mapping(address => mapping(address => mapping(bytes4 => uint256))) public revokeProposalTimestamp; // account -> target -> selector -> timestamp
 
-	// Modifier to check if the sender is the owner of the account
+	// ===================== MODIFIERS =====================
+	/**
+	 * @dev Modifier to check if the sender is the owner of the account
+	 * @param account The account address to check ownership for
+	 * @param sender The address to verify as owner
+	 */
 	modifier onlyOwner(address account, address sender) {
 		require(owners[account] == sender, "MultiAccount: Sender isn't owner of account");
 		_;
 	}
+
+	// ==================== CONSTRUCTOR & INITIALIZER ====================
 
 	/// @custom:oz-upgrades-unsafe-allow constructor
 	constructor() {
@@ -59,11 +69,11 @@ contract MultiAccount is IMultiAccount, Initializable, PausableUpgradeable, Acce
 		_grantRole(PAUSER_ROLE, admin);
 		_grantRole(UNPAUSER_ROLE, admin);
 		_grantRole(SETTER_ROLE, admin);
-		accountsAdmin = admin;
 		symmioAddress = symmioAddress_;
 		accountImplementation = accountImplementation_;
 	}
 
+	// ================ ACCESS DELEGATION FUNCTIONS ================
 	/**
 	 * @dev Allows the owner of an account to delegate access to a specific function selector of a target contract.
 	 * @param account The address of the account.
@@ -115,7 +125,7 @@ contract MultiAccount is IMultiAccount, Initializable, PausableUpgradeable, Acce
 		for (uint256 i = selector.length; i != 0; i--) {
 			require(revokeProposalTimestamp[account][target][selector[i - 1]] != 0, "MultiAccount: Revoke access not proposed");
 			require(
-				revokeProposalTimestamp[account][target][selector[i - 1]] + revokeCooldown <= block.timestamp,
+				revokeProposalTimestamp[account][target][selector[i - 1]] + delegatedAccessRevokeCooldown <= block.timestamp,
 				"MultiAccount: Cooldown not reached"
 			);
 			delegatedAccesses[account][target][selector[i - 1]] = false;
@@ -124,6 +134,7 @@ contract MultiAccount is IMultiAccount, Initializable, PausableUpgradeable, Acce
 		emit DelegateAccesses(account, target, selector, false);
 	}
 
+	// ==================== SETTER FUNCTIONS ====================
 	/**
 	 * @dev Sets the implementation contract for the account.
 	 * @param accountImplementation_ The bytecodes of the new implementation contract.
@@ -137,9 +148,9 @@ contract MultiAccount is IMultiAccount, Initializable, PausableUpgradeable, Acce
 	 * @dev Sets the revoke cooldown.
 	 * @param cooldown the new revoke cooldown.
 	 */
-	function setRevokeCooldown(uint256 cooldown) external onlyRole(SETTER_ROLE) {
-		emit SetRevokeCooldown(revokeCooldown, cooldown);
-		revokeCooldown = cooldown;
+	function setDelegateAccessRevokeCooldown(uint256 cooldown) external onlyRole(SETTER_ROLE) {
+		emit SetDelegateAccessRevokeCooldown(delegatedAccessRevokeCooldown, cooldown);
+		delegatedAccessRevokeCooldown = cooldown;
 	}
 
 	/**
@@ -151,6 +162,7 @@ contract MultiAccount is IMultiAccount, Initializable, PausableUpgradeable, Acce
 		symmioAddress = addr;
 	}
 
+	// ================ CONTRACT DEPLOYMENT FUNCTIONS ================
 	/**
 	 * @dev Internal function to deploy a new party A account contract.
 	 * @return account The address of the newly deployed account contract.
@@ -159,7 +171,7 @@ contract MultiAccount is IMultiAccount, Initializable, PausableUpgradeable, Acce
 		bytes32 salt = keccak256(abi.encodePacked("MultiAccount_", saltCounter));
 		saltCounter += 1;
 
-		bytes memory bytecode = abi.encodePacked(accountImplementation, abi.encode(accountsAdmin, address(this), symmioAddress));
+		bytes memory bytecode = abi.encodePacked(accountImplementation, abi.encode(address(this), symmioAddress));
 		account = _deployContract(bytecode, salt);
 		return account;
 	}
@@ -179,6 +191,7 @@ contract MultiAccount is IMultiAccount, Initializable, PausableUpgradeable, Acce
 		return contractAddress;
 	}
 
+	// =================== PAUSE FUNCTIONS ===================
 	/**
 	 * @dev Pauses the contract, preventing execution of transactions.
 	 */
@@ -193,8 +206,7 @@ contract MultiAccount is IMultiAccount, Initializable, PausableUpgradeable, Acce
 		_unpause();
 	}
 
-	//////////////////////////////// Account Management ////////////////////////////////////
-
+	// ================ ACCOUNT MANAGEMENT FUNCTIONS ================
 	/**
 	 * @dev Adds a new account for the caller with the specified name.
 	 * @param name The name of the new account.
@@ -231,19 +243,9 @@ contract MultiAccount is IMultiAccount, Initializable, PausableUpgradeable, Acce
 		emit DepositForAccount(collateral, msg.sender, account, amount);
 	}
 
+	// ================ CALL MANAGEMENT FUNCTIONS ================
 	/**
-	 * @dev Completes specific withdrawal request.
-	 * @param id The id of the withdrawal request.
-	 * @param account The address of the account that send this request to the protocol.
-	 */
-	function completeWithdrawFromAccount(uint256 id, address account) external onlyOwner(account, msg.sender) whenNotPaused {
-		bytes memory _callData = abi.encodeWithSignature("completeWithdraw(uint256)", id);
-		emit CompleteWithdrawFromAccount(id, account);
-		innerCall(account, _callData);
-	}
-
-	/**
-	 * @dev send a call to symmio from partyA account.
+	 * @dev Send a call to symmio from partyA account.
 	 * @param account The address of the account to execute the calls on behalf of.
 	 * @param _callData The input calldata to pass by the call.
 	 */
@@ -278,8 +280,18 @@ contract MultiAccount is IMultiAccount, Initializable, PausableUpgradeable, Acce
 		}
 	}
 
-	//////////////////////////////// VIEWS ////////////////////////////////////
+	/**
+	 * @dev Verifies the signature of an account owner.
+	 * @param account The address of the account.
+	 * @param hash The hash of the data signed.
+	 * @param signature The signature generated by the signer.
+	 * @return magic value if the signature is valid.
+	 */
+	function verifySignatureOfAccount(address account, bytes32 hash, bytes calldata signature) external view returns (bytes4) {
+		return isValidSignatureEIP1271(owners[account], hash, signature);
+	}
 
+	// ==================== VIEW FUNCTIONS ====================
 	/**
 	 * @dev Returns the number of accounts belonging to the specified user.
 	 * @param user The address of the user.
