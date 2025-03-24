@@ -4,7 +4,6 @@ import { initializeTestFixture } from "./initialize-test.fixture"
 import { PartyA } from "./models/partyA.model"
 import { RunContext } from "./run-context"
 import { ZeroAddress } from "ethers"
-import { viewFacet } from "../types/contracts/facets"
 import { ethers, network } from "hardhat"
 
 export function shouldBehaveLikeAccountFacet(): void {
