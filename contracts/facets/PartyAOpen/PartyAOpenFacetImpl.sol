@@ -32,6 +32,7 @@ library PartyAOpenFacetImpl {
 
 		Symbol memory symbol = SymbolStorage.layout().symbols[tradeAgreements.symbolId];
 
+		require(!appLayout.partyBConfigs[sender].isActive, "PartyAFacet: Sender can't be partyB");
 		require(!accountLayout.suspendedAddresses[sender], "PartyAFacet: Sender is Suspended");
 		require(symbol.isValid, "PartyAFacet: Symbol is not valid");
 		require(deadline >= block.timestamp, "PartyAFacet: Low deadline");
