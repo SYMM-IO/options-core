@@ -6,12 +6,14 @@ pragma solidity >=0.8.19;
 
 import { IPriceOracle } from "../../interfaces/IPriceOracle.sol";
 import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
+import { CommonErrors } from "../../libraries/CommonErrors.sol";
 import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { LibUserData } from "../../libraries/LibUserData.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { AppStorage } from "../../storages/AppStorage.sol";
 import { OpenIntent, ExerciseFee, IntentStorage, TradingFee, TradeSide, MarginType, IntentStatus, TradeAgreements } from "../../storages/IntentStorage.sol";
 import { Symbol, SymbolStorage } from "../../storages/SymbolStorage.sol";
+import { PartyAOpenFacetErrors } from "./PartyAOpenFacetErrors.sol";
 
 library PartyAOpenFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
@@ -32,19 +34,24 @@ library PartyAOpenFacetImpl {
 
 		Symbol memory symbol = SymbolStorage.layout().symbols[tradeAgreements.symbolId];
 
-		require(!appLayout.partyBConfigs[sender].isActive, "PartyAFacet: Sender can't be partyB");
-		require(!accountLayout.suspendedAddresses[sender], "PartyAFacet: Sender is Suspended");
-		require(symbol.isValid, "PartyAFacet: Symbol is not valid");
-		require(deadline >= block.timestamp, "PartyAFacet: Low deadline");
-		require(tradeAgreements.expirationTimestamp >= block.timestamp, "PartyAFacet: Low expiration timestamp");
-		require(tradeAgreements.exerciseFee.cap <= 1e18, "PartyAFacet: High cap for exercise fee");
-		require(appLayout.affiliateStatus[affiliate] || affiliate == address(0), "PartyAFacet: Invalid affiliate");
+		if (appLayout.partyBConfigs[sender].isActive) revert PartyAOpenFacetErrors.SenderIsPartyB(sender);
+
+		if (accountLayout.suspendedAddresses[sender]) revert CommonErrors.SuspendedAddress(sender);
+
+		if (!symbol.isValid) revert CommonErrors.InvalidSymbol(tradeAgreements.symbolId);
+
+		if (deadline < block.timestamp) revert CommonErrors.LowDeadline(deadline, block.timestamp);
+
+		if (tradeAgreements.expirationTimestamp < block.timestamp)
+			revert PartyAOpenFacetErrors.LowExpirationTimestamp(tradeAgreements.expirationTimestamp, block.timestamp);
+
+		if (tradeAgreements.exerciseFee.cap > 1e18) revert PartyAOpenFacetErrors.HighExerciseFeeCap(tradeAgreements.exerciseFee.cap, 1e18);
+
+		if (!(appLayout.affiliateStatus[affiliate] || affiliate == address(0))) revert PartyAOpenFacetErrors.InvalidAffiliate(affiliate);
 
 		if (accountLayout.boundPartyB[sender] != address(0)) {
-			require(
-				partyBsWhiteList.length == 1 && partyBsWhiteList[0] == accountLayout.boundPartyB[sender],
-				"PartyAFacet: User is bound to another PartyB"
-			);
+			if (!(partyBsWhiteList.length == 1 && partyBsWhiteList[0] == accountLayout.boundPartyB[sender]))
+				revert PartyAOpenFacetErrors.UserBoundToAnotherPartyB(sender, accountLayout.boundPartyB[sender], partyBsWhiteList);
 		}
 
 		intentId = ++IntentStorage.layout().lastOpenIntentId;
@@ -70,20 +77,32 @@ library PartyAOpenFacetImpl {
 		ScheduledReleaseBalance storage partyAFeeBalance = accountLayout.balances[sender][feeToken];
 
 		if (partyBsWhiteList.length == 1) {
-			require(
-				uint256(partyABalance.partyBBalance(partyBsWhiteList[0])) >= intent.getPremium(),
-				"PartyAFacet: insufficient available balance for premium"
-			);
-			require(
-				uint256(partyAFeeBalance.partyBBalance(partyBsWhiteList[0])) >= intent.getTradingFee() + intent.getAffiliateFee(),
-				"PartyAFacet: insufficient available balance for fee"
-			);
+			if (uint256(partyABalance.partyBBalance(partyBsWhiteList[0])) < intent.getPremium())
+				revert CommonErrors.InsufficientBalance(
+					sender,
+					symbol.collateral,
+					intent.getPremium(),
+					uint256(partyABalance.partyBBalance(partyBsWhiteList[0]))
+				);
+
+			if (uint256(partyAFeeBalance.partyBBalance(partyBsWhiteList[0])) < intent.getTradingFee() + intent.getAffiliateFee())
+				revert CommonErrors.InsufficientBalance(
+					sender,
+					feeToken,
+					intent.getTradingFee() + intent.getAffiliateFee(),
+					uint256(partyAFeeBalance.partyBBalance(partyBsWhiteList[0]))
+				);
 		} else {
-			require(uint256(partyABalance.available) >= intent.getPremium(), "PartyAFacet: insufficient available balance for premium");
-			require(
-				uint256(partyAFeeBalance.available) >= intent.getTradingFee() + intent.getAffiliateFee(),
-				"PartyAFacet: insufficient available balance for fee"
-			);
+			if (uint256(partyABalance.available) < intent.getPremium())
+				revert CommonErrors.InsufficientBalance(sender, symbol.collateral, intent.getPremium(), uint256(partyABalance.available));
+
+			if (uint256(partyAFeeBalance.available) < intent.getTradingFee() + intent.getAffiliateFee())
+				revert CommonErrors.InsufficientBalance(
+					sender,
+					feeToken,
+					intent.getTradingFee() + intent.getAffiliateFee(),
+					uint256(partyAFeeBalance.available)
+				);
 		}
 
 		intent.save();
@@ -93,8 +112,15 @@ library PartyAOpenFacetImpl {
 	function cancelOpenIntent(address sender, uint256 intentId) internal returns (IntentStatus finalStatus) {
 		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
 
-		require(intent.status == IntentStatus.PENDING || intent.status == IntentStatus.LOCKED, "PartyAFacet: Invalid state");
-		require(intent.partyA == sender, "PartyAFacet: Should be partyA of Intent");
+		if (!(intent.status == IntentStatus.PENDING || intent.status == IntentStatus.LOCKED)) {
+			uint8[] memory requiredStatuses = new uint8[](2);
+			requiredStatuses[0] = uint8(IntentStatus.PENDING);
+			requiredStatuses[1] = uint8(IntentStatus.LOCKED);
+
+			revert CommonErrors.InvalidState("intent", uint8(intent.status), requiredStatuses);
+		}
+
+		if (intent.partyA != sender) revert CommonErrors.UnauthorizedSender(sender, intent.partyA);
 
 		if (block.timestamp > intent.deadline) {
 			intent.expire();

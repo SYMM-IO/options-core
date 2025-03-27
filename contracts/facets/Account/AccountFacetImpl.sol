@@ -5,6 +5,8 @@
 pragma solidity >=0.8.19;
 
 import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { CommonErrors } from "../../libraries/CommonErrors.sol";
+import { AccountFacetErrors } from "./AccountFacetErrors.sol";
 import { LibPartyB } from "../../libraries/LibPartyB.sol";
 import { AccountStorage, Withdraw, WithdrawStatus } from "../../storages/AccountStorage.sol";
 import { AppStorage, LiquidationStatus } from "../../storages/AppStorage.sol";
@@ -24,7 +26,9 @@ library AccountFacetImpl {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
-		require(appLayout.whiteListedCollateral[collateral], "AccountFacet: Collateral is not whitelisted");
+		if (!appLayout.whiteListedCollateral[collateral]) {
+			revert AccountFacetErrors.CollateralNotWhitelisted(collateral);
+		}
 		IERC20(collateral).safeTransferFrom(msg.sender, address(this), amount);
 
 		uint256 amountWith18Decimals = _normalizeAmount(collateral, amount);
@@ -35,7 +39,9 @@ library AccountFacetImpl {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
-		require(appLayout.whiteListedCollateral[collateral], "AccountFacet: Collateral is not whitelisted");
+		if (!appLayout.whiteListedCollateral[collateral]) {
+			revert AccountFacetErrors.CollateralNotWhitelisted(collateral);
+		}
 		accountLayout.balances[user][collateral].instantAdd(collateral, amount);
 	}
 
@@ -43,8 +49,14 @@ library AccountFacetImpl {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
-		require(appLayout.whiteListedCollateral[collateral], "AccountFacet: Collateral is not whitelisted");
-		require(accountLayout.balances[msg.sender][collateral].available >= amount, "AccountFacet: Insufficient balance");
+		if (!appLayout.whiteListedCollateral[collateral]) {
+			revert AccountFacetErrors.CollateralNotWhitelisted(collateral);
+		}
+
+		uint256 available = accountLayout.balances[msg.sender][collateral].available;
+		if (available < amount) {
+			revert CommonErrors.InsufficientBalance(msg.sender, collateral, amount, available);
+		}
 
 		accountLayout.balances[msg.sender][collateral].sub(amount);
 		accountLayout.balances[user][collateral].instantAdd(collateral, amount);
@@ -54,13 +66,25 @@ library AccountFacetImpl {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
-		require(appLayout.whiteListedCollateral[collateral], "AccountFacet: Collateral is not whitelisted");
-		require(to != address(0), "AccountFacet: Zero address");
+		if (!appLayout.whiteListedCollateral[collateral]) {
+			revert AccountFacetErrors.CollateralNotWhitelisted(collateral);
+		}
+
+		if (to == address(0)) {
+			revert CommonErrors.ZeroAddress("to");
+		}
 
 		accountLayout.balances[msg.sender][collateral].syncAll();
 
-		require(accountLayout.balances[msg.sender][collateral].available >= amount, "AccountFacet: Insufficient balance");
-		require(!accountLayout.instantActionsMode[msg.sender], "AccountFacet: Instant action mode is activated");
+		uint256 available = accountLayout.balances[msg.sender][collateral].available;
+		if (available < amount) {
+			revert CommonErrors.InsufficientBalance(msg.sender, collateral, amount, available);
+		}
+
+		if (accountLayout.instantActionsMode[msg.sender]) {
+			revert AccountFacetErrors.InstantActionModeActive(msg.sender);
+		}
+
 		msg.sender.requireSolvent(collateral);
 
 		accountLayout.balances[msg.sender][collateral].sub(amount);
@@ -83,12 +107,19 @@ library AccountFacetImpl {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
-		require(id <= accountLayout.lastWithdrawId, "AccountFacet: Invalid Id");
+		if (id > accountLayout.lastWithdrawId) {
+			revert AccountFacetErrors.InvalidWithdrawId(id);
+		}
 
 		Withdraw storage withdrawal = accountLayout.withdrawals[id];
 
 		withdrawal.user.requireSolvent(withdrawal.collateral);
-		require(withdrawal.status == WithdrawStatus.INITIATED, "AccountFacet: Invalid state");
+
+		if (withdrawal.status != WithdrawStatus.INITIATED) {
+			uint8[] memory requiredStatuses = new uint8[](1);
+			requiredStatuses[0] = uint8(WithdrawStatus.INITIATED);
+			revert CommonErrors.InvalidState("WithdrawStatus", uint8(withdrawal.status), requiredStatuses);
+		}
 
 		uint256 cooldownPeriod;
 		if (appLayout.partyBConfigs[withdrawal.user].isActive) {
@@ -97,7 +128,9 @@ library AccountFacetImpl {
 			cooldownPeriod = appLayout.partyADeallocateCooldown;
 		}
 
-		require(block.timestamp >= cooldownPeriod + withdrawal.timestamp, "AccountFacet: Cooldown is not over yet");
+		if (block.timestamp < cooldownPeriod + withdrawal.timestamp) {
+			revert CommonErrors.CooldownNotOver("withdraw", block.timestamp, cooldownPeriod + withdrawal.timestamp);
+		}
 
 		withdrawal.status = WithdrawStatus.COMPLETED;
 
@@ -108,10 +141,17 @@ library AccountFacetImpl {
 	function cancelWithdraw(uint256 id) internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
-		require(id <= accountLayout.lastWithdrawId, "AccountFacet: Invalid Id");
+		if (id > accountLayout.lastWithdrawId) {
+			revert AccountFacetErrors.InvalidWithdrawId(id);
+		}
 
 		Withdraw storage withdrawal = accountLayout.withdrawals[id];
-		require(withdrawal.status == WithdrawStatus.INITIATED, "AccountFacet: Invalid state");
+
+		if (withdrawal.status != WithdrawStatus.INITIATED) {
+			uint8[] memory requiredStatuses = new uint8[](1);
+			requiredStatuses[0] = uint8(WithdrawStatus.INITIATED);
+			revert CommonErrors.InvalidState("WithdrawStatus", uint8(withdrawal.status), requiredStatuses);
+		}
 
 		withdrawal.status = WithdrawStatus.CANCELED;
 		accountLayout.balances[withdrawal.user][withdrawal.collateral].instantAdd(withdrawal.collateral, withdrawal.amount);
@@ -127,21 +167,42 @@ library AccountFacetImpl {
 
 	function activateInstantActionMode() internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		require(!accountLayout.instantActionsMode[msg.sender], "AccountFacet: Instant actions mode is already activated");
+
+		if (accountLayout.instantActionsMode[msg.sender]) {
+			revert AccountFacetErrors.InstantActionModeAlreadyActivated(msg.sender);
+		}
+
 		accountLayout.instantActionsMode[msg.sender] = true;
 	}
 
 	function proposeToDeactivateInstantActionMode() internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		require(accountLayout.instantActionsMode[msg.sender], "AccountFacet: Instant actions mode isn't activated");
+
+		if (!accountLayout.instantActionsMode[msg.sender]) {
+			revert AccountFacetErrors.InstantActionModeNotActivated(msg.sender);
+		}
+
 		accountLayout.instantActionsModeDeactivateTime[msg.sender] = block.timestamp + accountLayout.deactiveInstantActionModeCooldown;
 	}
 
 	function deactivateInstantActionMode() internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		require(accountLayout.instantActionsMode[msg.sender], "AccountFacet: Instant actions mode isn't activated");
-		require(accountLayout.instantActionsModeDeactivateTime[msg.sender] != 0, "AccountFacet: Deactivation is not proposed");
-		require(accountLayout.instantActionsModeDeactivateTime[msg.sender] <= block.timestamp, "AccountFacet: Cooldown is not over yet");
+
+		if (!accountLayout.instantActionsMode[msg.sender]) {
+			revert AccountFacetErrors.InstantActionModeNotActivated(msg.sender);
+		}
+
+		if (accountLayout.instantActionsModeDeactivateTime[msg.sender] == 0) {
+			revert AccountFacetErrors.InstantActionModeDeactivationNotProposed(msg.sender);
+		}
+
+		if (accountLayout.instantActionsModeDeactivateTime[msg.sender] > block.timestamp) {
+			revert CommonErrors.CooldownNotOver(
+				"deactiveInstantActionMode",
+				block.timestamp,
+				accountLayout.instantActionsModeDeactivateTime[msg.sender]
+			);
+		}
 
 		accountLayout.instantActionsMode[msg.sender] = false;
 		accountLayout.instantActionsModeDeactivateTime[msg.sender] = 0;
@@ -151,8 +212,13 @@ library AccountFacetImpl {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
-		require(appLayout.partyBConfigs[partyB].isActive, "ControlFacet: PartyB is not active");
-		require(accountLayout.boundPartyB[msg.sender] == address(0), "ControlFacet: Already bound");
+		if (!appLayout.partyBConfigs[partyB].isActive) {
+			revert AccountFacetErrors.PartyBNotActive(partyB);
+		}
+
+		if (accountLayout.boundPartyB[msg.sender] != address(0)) {
+			revert AccountFacetErrors.AlreadyBoundToPartyB(msg.sender, accountLayout.boundPartyB[msg.sender]);
+		}
 
 		accountLayout.boundPartyB[msg.sender] = partyB;
 	}
@@ -161,8 +227,13 @@ library AccountFacetImpl {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		address currentPartyB = accountLayout.boundPartyB[msg.sender];
 
-		require(currentPartyB != address(0), "ControlFacet: Not bound to any PartyB");
-		require(accountLayout.unbindingRequestTime[msg.sender] == 0, "ControlFacet: Unbinding already initiated");
+		if (currentPartyB == address(0)) {
+			revert AccountFacetErrors.NotBoundToAnyPartyB(msg.sender);
+		}
+
+		if (accountLayout.unbindingRequestTime[msg.sender] != 0) {
+			revert AccountFacetErrors.UnbindingAlreadyInitiated(msg.sender, accountLayout.unbindingRequestTime[msg.sender]);
+		}
 
 		accountLayout.unbindingRequestTime[msg.sender] = block.timestamp;
 	}
@@ -171,12 +242,18 @@ library AccountFacetImpl {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		address currentPartyB = accountLayout.boundPartyB[msg.sender];
 
-		require(currentPartyB != address(0), "ControlFacet: Not bound to any PartyB");
-		require(accountLayout.unbindingRequestTime[msg.sender] != 0, "ControlFacet: Unbinding not initiated");
-		require(
-			block.timestamp >= accountLayout.unbindingRequestTime[msg.sender] + accountLayout.unbindingCooldown,
-			"ControlFacet: Unbinding cooldown not reached"
-		);
+		if (currentPartyB == address(0)) {
+			revert AccountFacetErrors.NotBoundToAnyPartyB(msg.sender);
+		}
+
+		if (accountLayout.unbindingRequestTime[msg.sender] == 0) {
+			revert AccountFacetErrors.UnbindingNotInitiated(msg.sender);
+		}
+
+		uint256 requiredTime = accountLayout.unbindingRequestTime[msg.sender] + accountLayout.unbindingCooldown;
+		if (block.timestamp < requiredTime) {
+			revert CommonErrors.CooldownNotOver("unbinding", block.timestamp, requiredTime);
+		}
 
 		delete accountLayout.boundPartyB[msg.sender];
 		delete accountLayout.unbindingRequestTime[msg.sender];
@@ -184,7 +261,10 @@ library AccountFacetImpl {
 
 	function cancelUnbindingFromPartyB() internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		require(accountLayout.unbindingRequestTime[msg.sender] != 0, "ControlFacet: No pending unbinding");
+
+		if (accountLayout.unbindingRequestTime[msg.sender] == 0) {
+			revert AccountFacetErrors.NoPendingUnbinding(msg.sender);
+		}
 
 		delete accountLayout.unbindingRequestTime[msg.sender];
 	}

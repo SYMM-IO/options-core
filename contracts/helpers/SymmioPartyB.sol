@@ -25,6 +25,16 @@ contract SymmioPartyB is
 	AccessControlEnumerableUpgradeable,
 	IERC1271
 {
+	// ==================== CUSTOM ERRORS ====================
+	error InvalidSelfAddress();
+	error TokenNotApproved(address token, address spender, uint256 amount);
+	error TokenNotTransferred(address token, address recipient, uint256 amount);
+	error ArrayLengthMismatch(uint256 destinationsLength, uint256 callDatasLength);
+	error InvalidAddress(address providedAddress);
+	error InvalidCallData(uint256 dataLength);
+	error InsufficientPermissions(address sender, bytes4 selector);
+	error DestinationNotWhitelisted(address destination);
+
 	// ==================== ROLE DEFINITIONS ====================
 
 	bytes32 public constant TRUSTED_ROLE = keccak256("TRUSTED_ROLE");
@@ -120,7 +130,7 @@ contract SymmioPartyB is
 	/// @param addr Contract address to modify
 	/// @param state New whitelist state
 	function setMulticastWhitelist(address addr, bool state) external onlyRole(MANAGER_ROLE) {
-		require(addr != address(this), "SymmioPartyB: Invalid address");
+		if (addr == address(this)) revert InvalidSelfAddress();
 		multicastWhitelist[addr] = state;
 		emit SetMulticastWhitelist(addr, state);
 	}
@@ -132,7 +142,8 @@ contract SymmioPartyB is
 	/// @param token ERC20 token address
 	/// @param amount Approval amount
 	function _approve(address token, uint256 amount) external onlyRole(TRUSTED_ROLE) whenNotPaused {
-		require(IERC20Upgradeable(token).approve(symmioAddress, amount), "SymmioPartyB: Not approved");
+		bool success = IERC20Upgradeable(token).approve(symmioAddress, amount);
+		if (!success) revert TokenNotApproved(token, symmioAddress, amount);
 	}
 
 	/// @notice Withdraws ERC20 tokens from the contract
@@ -140,7 +151,8 @@ contract SymmioPartyB is
 	/// @param token ERC20 token address
 	/// @param amount Amount to withdraw
 	function withdrawERC20(address token, uint256 amount) external onlyRole(MANAGER_ROLE) {
-		require(IERC20Upgradeable(token).transfer(msg.sender, amount), "SymmioPartyB: Not transferred");
+		bool success = IERC20Upgradeable(token).transfer(msg.sender, amount);
+		if (!success) revert TokenNotTransferred(token, msg.sender, amount);
 	}
 
 	// ==================== CALL EXECUTION FUNCTIONS ====================
@@ -159,7 +171,7 @@ contract SymmioPartyB is
 	/// @param destAddresses Array of target addresses
 	/// @param _callDatas Array of function call data
 	function _multicastCall(address[] calldata destAddresses, bytes[] calldata _callDatas) external whenNotPaused nonReentrant {
-		require(destAddresses.length == _callDatas.length, "SymmioPartyB: Array length mismatch");
+		if (destAddresses.length != _callDatas.length) revert ArrayLengthMismatch(destAddresses.length, _callDatas.length);
 
 		for (uint8 i; i < _callDatas.length; i++) {
 			_executeCall(destAddresses[i], _callDatas[i]);
@@ -174,8 +186,8 @@ contract SymmioPartyB is
 	/// @param destAddress Target contract address
 	/// @param callData Function call data
 	function _executeCall(address destAddress, bytes memory callData) internal {
-		require(destAddress != address(0), "SymmioPartyB: Invalid address");
-		require(callData.length >= 4, "SymmioPartyB: Invalid call data");
+		if (destAddress == address(0)) revert InvalidAddress(destAddress);
+		if (callData.length < 4) revert InvalidCallData(callData.length);
 
 		if (destAddress == symmioAddress) {
 			bytes4 functionSelector;
@@ -187,10 +199,11 @@ contract SymmioPartyB is
 			if (restrictedSelectors[functionSelector]) {
 				_checkRole(MANAGER_ROLE, msg.sender);
 			} else {
-				require(hasRole(MANAGER_ROLE, msg.sender) || hasRole(TRUSTED_ROLE, msg.sender), "SymmioPartyB: Invalid access");
+				if (!hasRole(MANAGER_ROLE, msg.sender) && !hasRole(TRUSTED_ROLE, msg.sender))
+					revert InsufficientPermissions(msg.sender, functionSelector);
 			}
 		} else {
-			require(multicastWhitelist[destAddress], "SymmioPartyB: Destination address is not whitelisted");
+			if (!multicastWhitelist[destAddress]) revert DestinationNotWhitelisted(destAddress);
 			_checkRole(TRUSTED_ROLE, msg.sender);
 		}
 

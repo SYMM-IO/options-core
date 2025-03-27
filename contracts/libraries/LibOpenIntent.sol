@@ -9,9 +9,13 @@ import { AppStorage } from "../storages/AppStorage.sol";
 import { OpenIntent, IntentStorage, IntentStatus } from "../storages/IntentStorage.sol";
 import { Symbol, SymbolStorage } from "../storages/SymbolStorage.sol";
 import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "./LibScheduledReleaseBalance.sol";
+import { CommonErrors } from "./CommonErrors.sol";
 
 library LibOpenIntentOps {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
+
+	// Custom errors
+	error IntentNotExpired(uint256 intentId, uint256 currentTime, uint256 deadline);
 
 	function getTradingFee(OpenIntent memory self) internal pure returns (uint256) {
 		return (self.tradeAgreements.quantity * self.price * self.tradingFee.platformFee) / (self.tradingFee.tokenPrice * 1e18);
@@ -71,11 +75,16 @@ library LibOpenIntentOps {
 	}
 
 	function expire(OpenIntent storage self) internal {
-		require(block.timestamp > self.deadline, "LibIntent: intent isn't expired");
-		require(
-			self.status == IntentStatus.PENDING || self.status == IntentStatus.CANCEL_PENDING || self.status == IntentStatus.LOCKED,
-			"LibIntent: Invalid state"
-		);
+		if (block.timestamp <= self.deadline) revert IntentNotExpired(self.id, block.timestamp, self.deadline);
+
+		if (!(self.status == IntentStatus.PENDING || self.status == IntentStatus.CANCEL_PENDING || self.status == IntentStatus.LOCKED)) {
+			uint8[] memory requiredStatuses = new uint8[](3);
+			requiredStatuses[0] = uint8(IntentStatus.PENDING);
+			requiredStatuses[1] = uint8(IntentStatus.CANCEL_PENDING);
+			requiredStatuses[2] = uint8(IntentStatus.LOCKED);
+
+			revert CommonErrors.InvalidState("IntentStatus", uint8(self.status), requiredStatuses);
+		}
 
 		self.status = IntentStatus.EXPIRED;
 		self.statusModifyTimestamp = block.timestamp;

@@ -13,8 +13,11 @@ import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 contract MuonOracle is IMuonOracle, SchnorrSECP256K1Verifier, AccessControlEnumerable {
 	using ECDSA for bytes32;
 
-	bytes32 public constant SETTER_ROLE = keccak256("SETTER_ROLE");
+	// Custom errors
+	error InvalidSignature();
+	error InvalidGatewaySignature(address signer, address expectedGateway);
 
+	bytes32 public constant SETTER_ROLE = keccak256("SETTER_ROLE");
 	MuonConfig public config;
 	bool public checkGatewaySignature;
 
@@ -27,14 +30,14 @@ contract MuonOracle is IMuonOracle, SchnorrSECP256K1Verifier, AccessControlEnume
 
 	function verifyTSSAndGW(bytes32 _data, bytes calldata _reqId, SchnorrSign calldata _signature, bytes calldata _gatewaySignature) external view {
 		bytes32 hash = keccak256(abi.encodePacked(config.muonAppId, _reqId, _data));
-		require(
-			verifySignature(config.muonPublicKey.x, config.muonPublicKey.parity, _signature.signature, uint256(hash), _signature.nonce),
-			"Invalid signature"
-		);
+
+		if (!verifySignature(config.muonPublicKey.x, config.muonPublicKey.parity, _signature.signature, uint256(hash), _signature.nonce))
+			revert InvalidSignature();
 
 		hash = hash.toEthSignedMessageHash();
 		address gatewaySignatureSigner = hash.recover(_gatewaySignature);
-		require(gatewaySignatureSigner == config.validGateway, "Invalid gateway signature");
+
+		if (gatewaySignatureSigner != config.validGateway) revert InvalidGatewaySignature(gatewaySignatureSigner, config.validGateway);
 	}
 
 	function setConfig(MuonConfig memory _config) external onlyRole(SETTER_ROLE) {

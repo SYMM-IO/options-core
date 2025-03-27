@@ -5,11 +5,13 @@
 pragma solidity >=0.8.19;
 
 import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { CommonErrors } from "../../libraries/CommonErrors.sol";
 import { AccountStorage, BridgeTransaction, BridgeTransactionStatus } from "../../storages/AccountStorage.sol";
 import { AppStorage } from "../../storages/AppStorage.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { BridgeFacetErrors } from "./BridgeFacetErrors.sol";
 
 library BridgeFacetImpl {
 	using SafeERC20 for IERC20;
@@ -18,11 +20,12 @@ library BridgeFacetImpl {
 	function transferToBridge(address collateral, uint256 amount, address bridge, address receiver) internal returns (uint256 currentId) {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
-		require(accountLayout.bridges[bridge], "BridgeFacet: Invalid bridge");
-		require(bridge != msg.sender, "BridgeFacet: Bridge and sender can't be the same");
+		if (!accountLayout.bridges[bridge]) revert BridgeFacetErrors.InvalidBridge(bridge);
+		if (bridge == msg.sender) revert BridgeFacetErrors.SameBridgeAndSender(bridge);
 
 		uint256 amountWith18Decimals = (amount * 1e18) / (10 ** IERC20Metadata(collateral).decimals());
-		require(accountLayout.balances[msg.sender][collateral].available >= amount, "BridgeFacet: Insufficient balance");
+		if (accountLayout.balances[msg.sender][collateral].available < amount)
+			revert CommonErrors.InsufficientBalance(msg.sender, collateral, amount, accountLayout.balances[msg.sender][collateral].available);
 
 		currentId = ++accountLayout.lastBridgeId;
 		BridgeTransaction memory bridgeTransaction = BridgeTransaction({
@@ -44,18 +47,31 @@ library BridgeFacetImpl {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
 		uint256 totalAmount = 0;
-		require(transactionIds.length > 0, "BridgeFacet: Empty list");
+		if (transactionIds.length == 0) revert CommonErrors.EmptyList();
+
 		address collateral = accountLayout.bridgeTransactions[transactionIds[0]].collateral;
 		for (uint256 i = transactionIds.length; i != 0; i--) {
-			require(transactionIds[i - 1] <= accountLayout.lastBridgeId, "BridgeFacet: Invalid transactionId");
+			if (transactionIds[i - 1] > accountLayout.lastBridgeId) revert BridgeFacetErrors.InvalidBridgeTransactionId(transactionIds[i - 1]);
+
 			BridgeTransaction storage bridgeTransaction = accountLayout.bridgeTransactions[transactionIds[i - 1]];
-			require(collateral == bridgeTransaction.collateral, "BridgeFacet: Can't batch transactions with different collateral");
-			require(bridgeTransaction.status == BridgeTransactionStatus.RECEIVED, "BridgeFacet: Already withdrawn");
-			require(
-				block.timestamp >= AppStorage.layout().partyADeallocateCooldown + bridgeTransaction.timestamp,
-				"BridgeFacet: Cooldown hasn't reached"
-			);
-			require(bridgeTransaction.bridge == msg.sender, "BridgeFacet: Sender is not the transaction's bridge");
+
+			if (collateral != bridgeTransaction.collateral)
+				revert BridgeFacetErrors.DifferentCollateralInOneBridgeWithdrawTx(collateral, bridgeTransaction.collateral);
+
+			if (bridgeTransaction.status != BridgeTransactionStatus.RECEIVED) {
+				uint8[] memory requiredStatuses = new uint8[](1);
+				requiredStatuses[0] = uint8(BridgeTransactionStatus.RECEIVED);
+				revert CommonErrors.InvalidState("BridgeTransactionStatus", uint8(bridgeTransaction.status), requiredStatuses);
+			}
+
+			if (block.timestamp < AppStorage.layout().partyADeallocateCooldown + bridgeTransaction.timestamp)
+				revert CommonErrors.CooldownNotOver(
+					"withdraw",
+					block.timestamp,
+					AppStorage.layout().partyADeallocateCooldown + bridgeTransaction.timestamp
+				);
+
+			if (bridgeTransaction.bridge != msg.sender) revert CommonErrors.UnauthorizedSender(msg.sender, bridgeTransaction.bridge);
 
 			totalAmount += bridgeTransaction.amount;
 			bridgeTransaction.status = BridgeTransactionStatus.WITHDRAWN;
@@ -68,8 +84,14 @@ library BridgeFacetImpl {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		BridgeTransaction storage bridgeTransaction = accountLayout.bridgeTransactions[transactionId];
 
-		require(transactionId <= accountLayout.lastBridgeId, "BridgeFacet: Invalid transactionId");
-		require(bridgeTransaction.status == BridgeTransactionStatus.RECEIVED, "BridgeFacet: Invalid status");
+		if (transactionId > accountLayout.lastBridgeId) revert BridgeFacetErrors.InvalidBridgeTransactionId(transactionId);
+
+		if (bridgeTransaction.status != BridgeTransactionStatus.RECEIVED) {
+			uint8[] memory requiredStatuses = new uint8[](1);
+			requiredStatuses[0] = uint8(BridgeTransactionStatus.RECEIVED);
+			revert CommonErrors.InvalidState("BridgeTransactionStatus", uint8(bridgeTransaction.status), requiredStatuses);
+		}
+
 		bridgeTransaction.status = BridgeTransactionStatus.SUSPENDED;
 	}
 
@@ -77,9 +99,15 @@ library BridgeFacetImpl {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		BridgeTransaction storage bridgeTransaction = accountLayout.bridgeTransactions[transactionId];
 
-		require(bridgeTransaction.status == BridgeTransactionStatus.SUSPENDED, "BridgeFacet: Invalid status");
-		require(accountLayout.invalidBridgedAmountsPool != address(0), "BridgeFacet: Zero address");
-		require(validAmount <= bridgeTransaction.amount, "BridgeFacet: High valid amount");
+		if (bridgeTransaction.status != BridgeTransactionStatus.SUSPENDED) {
+			uint8[] memory requiredStatuses = new uint8[](1);
+			requiredStatuses[0] = uint8(BridgeTransactionStatus.RECEIVED);
+			revert CommonErrors.InvalidState("BridgeTransactionStatus", uint8(bridgeTransaction.status), requiredStatuses);
+		}
+
+		if (accountLayout.invalidBridgedAmountsPool == address(0)) revert CommonErrors.ZeroAddress("invalidBridgedAmountsPool");
+
+		if (validAmount > bridgeTransaction.amount) revert CommonErrors.InvalidAmount("validAmount", validAmount, 0, bridgeTransaction.amount);
 
 		AccountStorage.layout().balances[bridgeTransaction.collateral][accountLayout.invalidBridgedAmountsPool].instantAdd(
 			bridgeTransaction.collateral,

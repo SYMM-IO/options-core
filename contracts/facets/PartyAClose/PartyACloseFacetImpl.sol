@@ -13,6 +13,8 @@ import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { AppStorage, LiquidationStatus } from "../../storages/AppStorage.sol";
 import { CloseIntent, Trade, IntentStorage, IntentStatus, TradeStatus } from "../../storages/IntentStorage.sol";
 import { Symbol, SymbolStorage } from "../../storages/SymbolStorage.sol";
+import { PartyACloseFacetErrors } from "./PartyACloseFacetErrors.sol";
+import { CommonErrors } from "../../libraries/CommonErrors.sol";
 
 library PartyACloseFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
@@ -24,11 +26,20 @@ library PartyACloseFacetImpl {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		Trade storage trade = intentLayout.trades[tradeId];
 
-		require(sender == trade.partyA, "PartyAFacet: Invalid sender");
-		require(trade.status == TradeStatus.OPENED, "PartyAFacet: Invalid state");
-		require(deadline >= block.timestamp, "PartyAFacet: Low deadline");
-		require(trade.getAvailableAmountToClose() >= quantity, "PartyAFacet: Invalid quantity");
-		require(trade.activeCloseIntentIds.length < AppStorage.layout().maxCloseOrdersLength, "PartyAFacet: Too many close orders");
+		if (sender != trade.partyA) revert CommonErrors.UnauthorizedSender(sender, trade.partyA);
+
+		if (trade.status != TradeStatus.OPENED) {
+			uint8[] memory requiredStatuses = new uint8[](1);
+			requiredStatuses[0] = uint8(TradeStatus.OPENED);
+			revert CommonErrors.InvalidState("TradeStatus", uint8(trade.status), requiredStatuses);
+		}
+
+		if (deadline < block.timestamp) revert PartyACloseFacetErrors.LowDeadline(deadline, block.timestamp);
+
+		if (trade.getAvailableAmountToClose() < quantity) revert PartyACloseFacetErrors.InvalidQuantity(quantity, trade.getAvailableAmountToClose());
+
+		if (trade.activeCloseIntentIds.length >= AppStorage.layout().maxCloseOrdersLength)
+			revert PartyACloseFacetErrors.TooManyCloseOrders(trade.activeCloseIntentIds.length, AppStorage.layout().maxCloseOrdersLength);
 
 		intentId = ++intentLayout.lastCloseIntentId;
 		CloseIntent memory intent = CloseIntent({
@@ -52,8 +63,13 @@ library PartyACloseFacetImpl {
 		CloseIntent storage intent = intentLayout.closeIntents[intentId];
 		Trade storage trade = intentLayout.trades[intent.tradeId];
 
-		require(trade.partyA == sender, "PartyAFacet: Invalid sender");
-		require(intent.status == IntentStatus.PENDING, "PartyAFacet: Invalid state");
+		if (trade.partyA != sender) revert CommonErrors.UnauthorizedSender(sender, trade.partyA);
+
+		if (intent.status != IntentStatus.PENDING) {
+			uint8[] memory requiredStatuses = new uint8[](1);
+			requiredStatuses[0] = uint8(IntentStatus.PENDING);
+			revert CommonErrors.InvalidState("IntentStatus", uint8(intent.status), requiredStatuses);
+		}
 
 		if (block.timestamp > intent.deadline) {
 			intent.expire();
@@ -73,10 +89,18 @@ library PartyACloseFacetImpl {
 		Trade storage trade = intentLayout.trades[tradeId];
 		Symbol memory symbol = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId];
 
-		require(trade.partyA == sender, "PartyAFacet: Only partyA of trade can transfer it");
-		require(trade.partyB != receiver, "PartyAFacet: PartyB can't be the receiver");
-		require(receiver != address(0), "PartyAFacet: Invalid receiver");
-		require(trade.status == TradeStatus.OPENED, "PartyAFacet: Invalid trade state");
+		if (trade.partyA != sender) revert PartyACloseFacetErrors.OnlyPartyACanTransfer(sender, trade.partyA);
+
+		if (trade.partyB == receiver) revert PartyACloseFacetErrors.ReceiverIsPartyB(receiver, trade.partyB);
+
+		if (receiver == address(0)) revert CommonErrors.ZeroAddress("receiver");
+
+		if (trade.status != TradeStatus.OPENED) {
+			uint8[] memory requiredStatuses = new uint8[](1);
+			requiredStatuses[0] = uint8(TradeStatus.OPENED);
+			revert CommonErrors.InvalidState("TradeStatus", uint8(trade.status), requiredStatuses);
+		}
+
 		trade.partyB.requireSolvent(symbol.collateral);
 
 		trade.remove();
@@ -90,7 +114,9 @@ library PartyACloseFacetImpl {
 	}
 
 	function transferTradeFromNFT(address sender, address receiver, uint256 tradeId) internal {
-		require(msg.sender == AppStorage.layout().tradeNftAddress, "PartyAFacet: Sender should be the NFT contract");
+		if (msg.sender != AppStorage.layout().tradeNftAddress)
+			revert CommonErrors.UnauthorizedSender(msg.sender, AppStorage.layout().tradeNftAddress);
+
 		validateAndTransferTrade(sender, receiver, tradeId);
 	}
 }

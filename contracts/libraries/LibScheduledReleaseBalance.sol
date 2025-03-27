@@ -8,6 +8,7 @@ pragma solidity >=0.8.19;
 import { AccountStorage } from "../storages/AccountStorage.sol";
 import { AppStorage, LiquidationStatus } from "../storages/AppStorage.sol";
 import { LibPartyB } from "../libraries/LibPartyB.sol";
+import { CommonErrors } from "./CommonErrors.sol";
 
 // ScheduledReleaseEntry implements a two-stage fund release system:
 // - Funds start in 'scheduled' stage
@@ -39,6 +40,12 @@ struct ScheduledReleaseBalance {
 library ScheduledReleaseBalanceOps {
 	using LibPartyB for address;
 
+	// Custom errors
+	error MaxPartyBConnectionsReached(uint256 current, uint256 maximum);
+	error CollateralMismatch(address expected, address provided);
+	error InvalidSyncTimestamp(uint256 currentTime, uint256 lastTransitionTimestamp);
+	error NonZeroBalancePartyB(address partyB, uint256 balance);
+
 	// @notice Adds funds to release schedule
 	// @dev Initializes entry if needed, syncs state before adding
 	function scheduledAdd(ScheduledReleaseBalance storage self, address partyB, uint256 value) internal returns (ScheduledReleaseBalance storage) {
@@ -63,7 +70,9 @@ library ScheduledReleaseBalanceOps {
 
 		ScheduledReleaseEntry storage entry = self.partyBSchedules[partyB];
 
-		require(self.partyBAddresses.length < accountLayout.maxConnectedPartyBs, "StagedReleaseBalance: Max partyB connections reached");
+		if (self.partyBAddresses.length >= accountLayout.maxConnectedPartyBs)
+			revert MaxPartyBConnectionsReached(self.partyBAddresses.length, accountLayout.maxConnectedPartyBs);
+
 		entry.releaseInterval = accountLayout.partyBReleaseIntervals[partyB];
 		entry.transitioning = 0;
 		entry.scheduled = 0;
@@ -84,7 +93,7 @@ library ScheduledReleaseBalanceOps {
 		if (self.collateral == address(0)) {
 			self.collateral = collateral;
 		} else {
-			require(self.collateral == collateral, "ScheduledReleaseBalance: Collateral mismatch");
+			if (self.collateral != collateral) revert CollateralMismatch(self.collateral, collateral);
 		}
 		self.available += value;
 		return self;
@@ -92,14 +101,16 @@ library ScheduledReleaseBalanceOps {
 
 	// @notice Deducts funds from available balance only
 	function sub(ScheduledReleaseBalance storage self, uint256 value) internal returns (ScheduledReleaseBalance storage) {
-		require(self.available >= value, "StagedReleaseBalance: Insufficient balance");
+		if (self.available < value) revert CommonErrors.InsufficientBalance(address(0), self.collateral, value, self.available); //FIXME: user?
+
 		self.available -= value;
 		return self;
 	}
 
 	// @notice Deducts funds from available, transitioning, then scheduled balances for a specific partyB
 	function subForPartyB(ScheduledReleaseBalance storage self, address partyB, uint256 value) internal returns (ScheduledReleaseBalance storage) {
-		require(partyB != address(0), "StagedReleaseBalance: Invalid partyB address");
+		if (partyB == address(0)) revert CommonErrors.ZeroAddress("partyB");
+
 		sync(self, partyB);
 		ScheduledReleaseEntry storage entry = self.partyBSchedules[partyB];
 		if (entry.releaseInterval == 0) {
@@ -107,7 +118,7 @@ library ScheduledReleaseBalanceOps {
 		}
 
 		uint256 totalBalance = self.available + entry.transitioning + entry.scheduled;
-		require(totalBalance >= value, "StagedReleaseBalance: Insufficient balance");
+		if (totalBalance < value) revert CommonErrors.InsufficientBalance(address(0), self.collateral, value, totalBalance); //FIXME: user?
 
 		uint256 remaining = value;
 
@@ -179,7 +190,9 @@ library ScheduledReleaseBalanceOps {
 			return self;
 		}
 		if (entry.releaseInterval == 0) return self;
-		require(block.timestamp >= entry.lastTransitionTimestamp, "StagedReleaseBalance: Invalid sync timestamp");
+
+		if (block.timestamp < entry.lastTransitionTimestamp) revert InvalidSyncTimestamp(block.timestamp, entry.lastTransitionTimestamp);
+
 		uint256 thisTransitionTimestamp = entry.lastTransitionTimestamp + entry.releaseInterval;
 		uint256 nextTransitionTimestamp = entry.lastTransitionTimestamp + (entry.releaseInterval * 2);
 
@@ -217,8 +230,10 @@ library ScheduledReleaseBalanceOps {
 
 	// @notice Removes a partyB from tracking when they have no balance
 	function removePartyB(ScheduledReleaseBalance storage self, address partyB) internal returns (ScheduledReleaseBalance storage) {
-		require(partyB != address(0), "StagedReleaseBalance: Invalid partyB address");
-		require(partyBBalance(self, partyB) == 0, "StagedReleaseBalance: Cannot clear slot with non-zero balance");
+		if (partyB == address(0)) revert CommonErrors.ZeroAddress("partyB");
+
+		uint256 balance = partyBBalance(self, partyB);
+		if (balance != 0) revert NonZeroBalancePartyB(partyB, balance);
 
 		uint256 index = self.partyBIndexes[partyB];
 		uint256 lastIndex = self.partyBAddresses.length - 1;

@@ -5,17 +5,26 @@
 pragma solidity >=0.8.19;
 
 import { AppStorage, LiquidationStatus, LiquidationState, LiquidationDetail } from "../storages/AppStorage.sol";
+import { CommonErrors } from "./CommonErrors.sol";
 
 library LibPartyB {
+	// Custom errors
+	error PartyBNotSolvent(address partyB, address collateral);
+
 	function requireSolvent(address self, address collateral) internal view {
-		require(isSolvent(self, collateral), "LibPartyB: PartyB is not solvent");
+		if (!isSolvent(self, collateral)) revert PartyBNotSolvent(self, collateral);
 	}
 
 	function requireInProgressLiquidation(address self, address collateral) internal view {
-		require(
-			AppStorage.layout().liquidationStates[self][collateral].status == LiquidationStatus.IN_PROGRESS,
-			"LibPartyB: Invalid liquidation state"
-		);
+		if (AppStorage.layout().liquidationStates[self][collateral].status != LiquidationStatus.IN_PROGRESS) {
+			uint8[] memory requiredStatuses = new uint8[](1);
+			requiredStatuses[0] = uint8(LiquidationStatus.IN_PROGRESS);
+			revert CommonErrors.InvalidState(
+				"LiquidationStatus",
+				uint8(AppStorage.layout().liquidationStates[self][collateral].status),
+				requiredStatuses
+			);
+		}
 	}
 
 	function isSolvent(address self, address collateral) internal view returns (bool) {

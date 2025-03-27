@@ -7,62 +7,74 @@ pragma solidity >=0.8.19;
 import { AppStorage } from "../storages/AppStorage.sol";
 
 abstract contract Pausable {
+	// Custom errors
+	error GlobalPaused();
+	error BridgePaused();
+	error BridgeWithdrawPaused();
+	error DepositingPaused();
+	error InternalTransferPaused();
+	error WithdrawingPaused();
+	error PartyAActionsPaused();
+	error PartyBActionsPaused();
+	error ThirdPartyActionsPaused();
+	error LiquidatingPaused();
+
 	modifier whenNotGlobalPaused() {
-		require(!AppStorage.layout().globalPaused, "Pausable: Global paused");
+		if (AppStorage.layout().globalPaused) revert GlobalPaused();
 		_;
 	}
 
 	modifier whenNotBridgePaused() {
-		require(!AppStorage.layout().globalPaused, "Pausable: Global paused");
-		require(!AppStorage.layout().bridgePaused, "Pausable: Bridge paused");
+		if (AppStorage.layout().globalPaused) revert GlobalPaused();
+		if (AppStorage.layout().bridgePaused) revert BridgePaused();
 		_;
 	}
 
 	modifier whenNotBridgeWithdrawPaused() {
-		require(!AppStorage.layout().globalPaused, "Pausable: Global paused");
-		require(!AppStorage.layout().bridgeWithdrawPaused, "Pausable: Bridge withdraw paused");
+		if (AppStorage.layout().globalPaused) revert GlobalPaused();
+		if (AppStorage.layout().bridgeWithdrawPaused) revert BridgeWithdrawPaused();
 		_;
 	}
 
 	modifier whenNotDepositingPaused() {
-		require(!AppStorage.layout().globalPaused, "Pausable: Global paused");
-		require(!AppStorage.layout().depositingPaused, "Pausable: Depositing paused");
+		if (AppStorage.layout().globalPaused) revert GlobalPaused();
+		if (AppStorage.layout().depositingPaused) revert DepositingPaused();
 		_;
 	}
 
 	modifier whenNotInternalTransferPaused() {
-		require(!AppStorage.layout().globalPaused, "Pausable: Global paused");
-		require(!AppStorage.layout().internalTransferPaused, "Pausable: Internal transfer paused");
+		if (AppStorage.layout().globalPaused) revert GlobalPaused();
+		if (AppStorage.layout().internalTransferPaused) revert InternalTransferPaused();
 		_;
 	}
 
 	modifier whenNotWithdrawingPaused() {
-		require(!AppStorage.layout().globalPaused, "Pausable: Global paused");
-		require(!AppStorage.layout().withdrawingPaused, "Pausable: Withdrawing paused");
+		if (AppStorage.layout().globalPaused) revert GlobalPaused();
+		if (AppStorage.layout().withdrawingPaused) revert WithdrawingPaused();
 		_;
 	}
 
 	modifier whenNotPartyAActionsPaused() {
-		require(!AppStorage.layout().globalPaused, "Pausable: Global paused");
-		require(!AppStorage.layout().partyAActionsPaused, "Pausable: PartyA actions paused");
+		if (AppStorage.layout().globalPaused) revert GlobalPaused();
+		if (AppStorage.layout().partyAActionsPaused) revert PartyAActionsPaused();
 		_;
 	}
 
 	modifier whenNotPartyBActionsPaused() {
-		require(!AppStorage.layout().globalPaused, "Pausable: Global paused");
-		require(!AppStorage.layout().partyBActionsPaused, "Pausable: PartyB actions paused");
+		if (AppStorage.layout().globalPaused) revert GlobalPaused();
+		if (AppStorage.layout().partyBActionsPaused) revert PartyBActionsPaused();
 		_;
 	}
 
 	modifier whenNotThirdPartyActionsPaused() {
-		require(!AppStorage.layout().globalPaused, "Pausable: Global paused");
-		require(!AppStorage.layout().thirdPartyActionsPaused, "Pausable: Third party actions paused");
+		if (AppStorage.layout().globalPaused) revert GlobalPaused();
+		if (AppStorage.layout().thirdPartyActionsPaused) revert ThirdPartyActionsPaused();
 		_;
 	}
 
 	modifier whenNotLiquidationPaused() {
-		require(!AppStorage.layout().globalPaused, "Pausable: Global paused");
-		require(!AppStorage.layout().liquidatingPaused, "Pausable: Liquidating paused");
+		if (AppStorage.layout().globalPaused) revert GlobalPaused();
+		if (AppStorage.layout().liquidatingPaused) revert LiquidatingPaused();
 		_;
 	}
 }
