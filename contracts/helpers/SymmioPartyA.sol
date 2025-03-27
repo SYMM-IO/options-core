@@ -13,6 +13,9 @@ import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 /// @notice Account implementation for symmio platform
 /// @dev Implements the ERC-1271 standard for contract-based signature validation
 contract SymmioPartyA is AccessControl, IERC1271 {
+	// Custom errors
+	error OnlyMultiAccount(address sender, address expectedMultiAccount);
+
 	// ==================== STATE VARIABLES ====================
 
 	/// @notice Address of the Symmio protocol contract
@@ -33,7 +36,7 @@ contract SymmioPartyA is AccessControl, IERC1271 {
 	/// @notice Ensures only the MultiAccount contract can call the function
 	/// @param sender The address attempting to access the method
 	modifier onlyMultiAccount(address sender) {
-		require(multiAccountAddress == sender, "SymmioPartyA: only multiAccount can access this method");
+		if (multiAccountAddress != sender) revert OnlyMultiAccount(sender, multiAccountAddress);
 		_;
 	}
 

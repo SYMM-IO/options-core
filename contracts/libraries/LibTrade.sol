@@ -10,10 +10,14 @@ import { Symbol, SymbolStorage, OptionType } from "../storages/SymbolStorage.sol
 import { AppStorage } from "../storages/AppStorage.sol";
 import { LibCloseIntentOps } from "./LibCloseIntent.sol";
 import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "./LibScheduledReleaseBalance.sol";
+import { CommonErrors } from "./CommonErrors.sol";
 
 library LibTradeOps {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibCloseIntentOps for CloseIntent;
+
+	// Custom errors
+	error TooManyActiveTradesForPartyA(address partyA, uint256 currentCount, uint256 maxCount);
 
 	function getOpenAmount(Trade memory self) internal pure returns (uint256) {
 		return self.tradeAgreements.quantity - self.closedAmountBeforeExpiration;
@@ -42,10 +46,8 @@ library LibTradeOps {
 	function save(Trade memory self) internal {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 
-		require(
-			intentLayout.activeTradesOf[self.partyA].length < AppStorage.layout().maxTradePerPartyA,
-			"LibTrade: Too many active trades for partyA"
-		);
+		if (intentLayout.activeTradesOf[self.partyA].length >= AppStorage.layout().maxTradePerPartyA)
+			revert TooManyActiveTradesForPartyA(self.partyA, intentLayout.activeTradesOf[self.partyA].length, AppStorage.layout().maxTradePerPartyA);
 
 		Symbol memory symbol = SymbolStorage.layout().symbols[self.tradeAgreements.symbolId];
 		intentLayout.tradesOf[self.partyA].push(self.id);

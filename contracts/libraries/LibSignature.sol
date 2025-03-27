@@ -6,12 +6,21 @@ pragma solidity >=0.8.19;
 
 import { IntentStorage } from "../storages/IntentStorage.sol";
 import { ISignatureVerifier } from "../interfaces/ISignatureVerifier.sol";
+import { CommonErrors } from "./CommonErrors.sol";
 
 library LibSignature {
+	// Custom errors
+	error InvalidSignature(address signer, bytes32 hashValue);
+	error SignatureAlreadyUsed(bytes32 hashValue);
+
 	function verifySignature(bytes32 hashValue, bytes calldata signature, address signer) internal {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-		require(ISignatureVerifier(intentLayout.signatureVerifier).verifySignature(signer, hashValue, signature), "LibSignature: Invalid signature");
-		require(!intentLayout.isSigUsed[hashValue], "LibSignature: Signature is already used");
+
+		if (!ISignatureVerifier(intentLayout.signatureVerifier).verifySignature(signer, hashValue, signature))
+			revert InvalidSignature(signer, hashValue);
+
+		if (intentLayout.isSigUsed[hashValue]) revert SignatureAlreadyUsed(hashValue);
+
 		intentLayout.isSigUsed[hashValue] = true;
 	}
 }

@@ -17,6 +17,16 @@ import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/
 contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, PausableUpgradeable, AccessControlUpgradeable {
 	using SafeERC20Upgradeable for IERC20Upgradeable;
 
+	// ==================== CUSTOM ERRORS ====================
+	error NotOwnerOfAccount(address sender, address account, address owner);
+	error InvalidTarget(address target, address sender, address account);
+	error RevokeAccessNotProposed(address account, address target, bytes4 selector);
+	error CooldownNotReached(address account, address target, bytes4 selector, uint256 current, uint256 required);
+	error Create2Failed();
+	error PartyACallFailed(bytes returnData);
+	error InvalidCallData(bytes callData);
+	error UnauthorizedAccess(address account, address sender, bytes4 selector);
+
 	// ==================== CONSTANTS ====================
 	bytes32 public constant SETTER_ROLE = keccak256("SETTER_ROLE");
 	bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
@@ -44,7 +54,7 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 	 * @param sender The address to verify as owner
 	 */
 	modifier onlyOwner(address account, address sender) {
-		require(owners[account] == sender, "MultiAccount: Sender isn't owner of account");
+		if (owners[account] != sender) revert NotOwnerOfAccount(sender, account, owners[account]);
 		_;
 	}
 
@@ -81,7 +91,7 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 	 * @param selector The function selector.
 	 */
 	function delegateAccess(address account, address target, bytes4 selector) external onlyOwner(account, msg.sender) {
-		require(target != msg.sender && target != account, "MultiAccount: Invalid target");
+		if (target == msg.sender || target == account) revert InvalidTarget(target, msg.sender, account);
 		emit DelegateAccess(account, target, selector, true);
 		delegatedAccesses[account][target][selector] = true;
 	}
@@ -93,7 +103,7 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 	 * @param selector An array of function selectors.
 	 */
 	function delegateAccesses(address account, address target, bytes4[] memory selector) external onlyOwner(account, msg.sender) {
-		require(target != msg.sender && target != account, "MultiAccount: Invalid target");
+		if (target == msg.sender || target == account) revert InvalidTarget(target, msg.sender, account);
 		for (uint256 i = selector.length; i != 0; i--) {
 			delegatedAccesses[account][target][selector[i - 1]] = true;
 		}
@@ -107,7 +117,7 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 	 * @param selector An array of function selectors.
 	 */
 	function proposeToRevokeAccesses(address account, address target, bytes4[] memory selector) external onlyOwner(account, msg.sender) {
-		require(target != msg.sender && target != account, "MultiAccount: Invalid target");
+		if (target == msg.sender || target == account) revert InvalidTarget(target, msg.sender, account);
 		for (uint256 i = selector.length; i != 0; i--) {
 			revokeProposalTimestamp[account][target][selector[i - 1]] = block.timestamp;
 		}
@@ -121,13 +131,13 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 	 * @param selector An array of function selectors.
 	 */
 	function revokeAccesses(address account, address target, bytes4[] memory selector) external onlyOwner(account, msg.sender) {
-		require(target != msg.sender && target != account, "MultiAccount: Invalid target");
+		if (target == msg.sender || target == account) revert InvalidTarget(target, msg.sender, account);
 		for (uint256 i = selector.length; i != 0; i--) {
-			require(revokeProposalTimestamp[account][target][selector[i - 1]] != 0, "MultiAccount: Revoke access not proposed");
-			require(
-				revokeProposalTimestamp[account][target][selector[i - 1]] + delegatedAccessRevokeCooldown <= block.timestamp,
-				"MultiAccount: Cooldown not reached"
-			);
+			if (revokeProposalTimestamp[account][target][selector[i - 1]] == 0) revert RevokeAccessNotProposed(account, target, selector[i - 1]);
+
+			uint256 requiredTime = revokeProposalTimestamp[account][target][selector[i - 1]] + delegatedAccessRevokeCooldown;
+			if (block.timestamp < requiredTime) revert CooldownNotReached(account, target, selector[i - 1], block.timestamp, requiredTime);
+
 			delegatedAccesses[account][target][selector[i - 1]] = false;
 			revokeProposalTimestamp[account][target][selector[i - 1]] = 0;
 		}
@@ -186,7 +196,7 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 		assembly {
 			contractAddress := create2(0, add(bytecode, 32), mload(bytecode), salt)
 		}
-		require(contractAddress != address(0), "MultiAccount: create2 failed");
+		if (contractAddress == address(0)) revert Create2Failed();
 		emit DeployContract(msg.sender, contractAddress);
 		return contractAddress;
 	}
@@ -255,7 +265,7 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 	 */
 	function adminCallPartyA(address partyA, bytes calldata data) external onlyRole(SETTER_ROLE) {
 		(bool success, bytes memory returnData) = partyA.call(data);
-		require(success, "MultiAccount: admin call to PartyA failed");
+		if (!success) revert PartyACallFailed(returnData);
 		emit AdminPartyACall(partyA, data, success, returnData);
 	}
 
@@ -285,12 +295,14 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 		for (uint8 i; i < _callDatas.length; i++) {
 			bytes memory _callData = _callDatas[i];
 			if (!isOwner) {
-				require(_callData.length >= 4, "MultiAccount: Invalid call data");
+				if (_callData.length < 4) revert InvalidCallData(_callData);
+
 				bytes4 functionSelector;
 				assembly {
 					functionSelector := mload(add(_callData, 0x20))
 				}
-				require(delegatedAccesses[account][msg.sender][functionSelector], "MultiAccount: Unauthorized access");
+
+				if (!delegatedAccesses[account][msg.sender][functionSelector]) revert UnauthorizedAccess(account, msg.sender, functionSelector);
 			}
 			innerCall(account, _callData);
 		}

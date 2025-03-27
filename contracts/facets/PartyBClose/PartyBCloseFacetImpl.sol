@@ -12,6 +12,8 @@ import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { AppStorage, LiquidationStatus } from "../../storages/AppStorage.sol";
 import { CloseIntent, Trade, IntentStorage, IntentStatus, TradeStatus } from "../../storages/IntentStorage.sol";
 import { SymbolStorage, Symbol } from "../../storages/SymbolStorage.sol";
+import { PartyBCloseFacetErrors } from "./PartyBCloseFacetErrors.sol";
+import { CommonErrors } from "../../libraries/CommonErrors.sol";
 
 library PartyBCloseFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
@@ -21,14 +23,18 @@ library PartyBCloseFacetImpl {
 
 	function acceptCancelCloseIntent(address sender, uint256 intentId) internal {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-
 		CloseIntent storage intent = intentLayout.closeIntents[intentId];
 		Trade storage trade = intentLayout.trades[intent.tradeId];
 
-		require(trade.partyB == sender, "PartyBFacet: Invalid sender");
-		require(intent.status == IntentStatus.CANCEL_PENDING, "PartyBFacet: Invalid state");
-		trade.partyB.requireSolvent(SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId].collateral);
+		if (trade.partyB != sender) revert CommonErrors.UnauthorizedSender(sender, trade.partyB);
 
+		if (intent.status != IntentStatus.CANCEL_PENDING) {
+			uint8[] memory requiredStatuses = new uint8[](1);
+			requiredStatuses[0] = uint8(IntentStatus.CANCEL_PENDING);
+			revert CommonErrors.InvalidState("IntentStatus", uint8(intent.status), requiredStatuses);
+		}
+
+		trade.partyB.requireSolvent(SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId].collateral);
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = IntentStatus.CANCELED;
 		intent.remove();
@@ -37,29 +43,43 @@ library PartyBCloseFacetImpl {
 	function fillCloseIntent(address sender, uint256 intentId, uint256 quantity, uint256 price) internal {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-
 		CloseIntent storage intent = intentLayout.closeIntents[intentId];
 		Trade storage trade = intentLayout.trades[intent.tradeId];
 		Symbol memory symbol = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId];
 
-		require(sender == trade.partyB, "PartyBFacet: Invalid sender");
+		if (sender != trade.partyB) revert CommonErrors.UnauthorizedSender(sender, trade.partyB);
+
 		trade.partyB.requireSolvent(symbol.collateral);
 
-		require(quantity > 0 && quantity <= intent.quantity - intent.filledAmount, "PartyBFacet: Invalid filled amount");
-		require(intent.status == IntentStatus.PENDING || intent.status == IntentStatus.CANCEL_PENDING, "PartyBFacet: Invalid state");
-		require(trade.status == TradeStatus.OPENED, "PartyBFacet: Invalid trade state");
-		require(block.timestamp <= intent.deadline, "PartyBFacet: Intent is expired");
-		require(block.timestamp < trade.tradeAgreements.expirationTimestamp, "PartyBFacet: Trade is expired");
-		require(price >= intent.price, "PartyBFacet: Closed price isn't valid");
+		if (quantity == 0 || quantity > intent.quantity - intent.filledAmount)
+			revert PartyBCloseFacetErrors.InvalidFilledAmount(quantity, intent.quantity - intent.filledAmount);
+
+		if (!(intent.status == IntentStatus.PENDING || intent.status == IntentStatus.CANCEL_PENDING)) {
+			uint8[] memory requiredStatuses = new uint8[](2);
+			requiredStatuses[0] = uint8(IntentStatus.PENDING);
+			requiredStatuses[1] = uint8(IntentStatus.CANCEL_PENDING);
+			revert CommonErrors.InvalidState("IntentStatus", uint8(intent.status), requiredStatuses);
+		}
+
+		if (trade.status != TradeStatus.OPENED) {
+			uint8[] memory requiredStatuses = new uint8[](1);
+			requiredStatuses[0] = uint8(TradeStatus.OPENED);
+			revert CommonErrors.InvalidState("TradeStatus", uint8(trade.status), requiredStatuses);
+		}
+
+		if (block.timestamp > intent.deadline) revert PartyBCloseFacetErrors.IntentExpired(intentId, block.timestamp, intent.deadline);
+
+		if (block.timestamp >= trade.tradeAgreements.expirationTimestamp)
+			revert PartyBCloseFacetErrors.TradeExpired(intent.tradeId, block.timestamp, trade.tradeAgreements.expirationTimestamp);
+
+		if (price < intent.price) revert PartyBCloseFacetErrors.InvalidClosedPrice(price, intent.price);
 
 		uint256 premium = (quantity * price) / 1e18;
 		accountLayout.balances[trade.partyA][symbol.collateral].instantAdd(symbol.collateral, premium);
 		accountLayout.balances[trade.partyB][symbol.collateral].sub(premium);
-
 		trade.avgClosedPriceBeforeExpiration =
 			(trade.avgClosedPriceBeforeExpiration * trade.closedAmountBeforeExpiration + quantity * price) /
 			(trade.closedAmountBeforeExpiration + quantity);
-
 		trade.closedAmountBeforeExpiration += quantity;
 		intent.filledAmount += quantity;
 

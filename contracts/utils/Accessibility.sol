@@ -10,53 +10,65 @@ import { AppStorage } from "../storages/AppStorage.sol";
 import { Trade, IntentStorage, OpenIntent } from "../storages/IntentStorage.sol";
 
 abstract contract Accessibility {
+	// Custom errors
+	error NotPartyB(address sender);
+	error IsPartyB(address sender);
+	error UserIsPartyB(address user);
+	error MissingRole(address sender, bytes32 role);
+	error NotPartyAOfTrade(address sender, uint256 tradeId, address partyA);
+	error NotPartyBOfTrade(address sender, uint256 tradeId, address partyB);
+	error UserSuspended(address user);
+	error ReceiverSuspended(address receiver);
+	error SuspendedWithdrawal(uint256 withdrawId);
+	error InstantActionModeActive(address sender);
+
 	modifier onlyPartyB() {
-		require(AppStorage.layout().partyBConfigs[msg.sender].isActive, "Accessibility: Should be partyB");
+		if (!AppStorage.layout().partyBConfigs[msg.sender].isActive) revert NotPartyB(msg.sender);
 		_;
 	}
 
 	modifier notPartyB() {
-		require(!AppStorage.layout().partyBConfigs[msg.sender].isActive, "Accessibility: Shouldn't be partyB");
+		if (AppStorage.layout().partyBConfigs[msg.sender].isActive) revert IsPartyB(msg.sender);
 		_;
 	}
 
 	modifier userNotPartyB(address user) {
-		require(!AppStorage.layout().partyBConfigs[user].isActive, "Accessibility: Shouldn't be partyB");
+		if (AppStorage.layout().partyBConfigs[user].isActive) revert UserIsPartyB(user);
 		_;
 	}
 
 	modifier onlyRole(bytes32 role) {
-		require(LibAccessibility.hasRole(msg.sender, role), "Accessibility: Must has role");
+		if (!LibAccessibility.hasRole(msg.sender, role)) revert MissingRole(msg.sender, role);
 		_;
 	}
 
 	modifier onlyPartyAOfTrade(uint256 tradeId) {
 		Trade storage trade = IntentStorage.layout().trades[tradeId];
-		require(trade.partyA == msg.sender, "Accessibility: Should be partyA of Trade");
+		if (trade.partyA != msg.sender) revert NotPartyAOfTrade(msg.sender, tradeId, trade.partyA);
 		_;
 	}
 
 	modifier onlyPartyBOfTrade(uint256 tradeId) {
 		Trade storage trade = IntentStorage.layout().trades[tradeId];
-		require(trade.partyB == msg.sender, "Accessibility: Should be partyB of Trade");
+		if (trade.partyB != msg.sender) revert NotPartyBOfTrade(msg.sender, tradeId, trade.partyB);
 		_;
 	}
 
 	modifier notSuspended(address user) {
-		require(!AccountStorage.layout().suspendedAddresses[user], "Accessibility: Sender is Suspended");
+		if (AccountStorage.layout().suspendedAddresses[user]) revert UserSuspended(user);
 		_;
 	}
 
 	modifier notSuspendedWithdrawal(uint256 withdrawId) {
 		Withdraw storage withdrawObject = AccountStorage.layout().withdrawals[withdrawId];
-		require(!AccountStorage.layout().suspendedAddresses[withdrawObject.user], "Accessibility: User is Suspended");
-		require(!AccountStorage.layout().suspendedAddresses[withdrawObject.to], "Accessibility: Receiver is Suspended");
-		require(!AccountStorage.layout().suspendedWithdrawal[withdrawId], "Accessibility: Withdrawal is Suspended");
+		if (AccountStorage.layout().suspendedAddresses[withdrawObject.user]) revert UserSuspended(withdrawObject.user);
+		if (AccountStorage.layout().suspendedAddresses[withdrawObject.to]) revert ReceiverSuspended(withdrawObject.to);
+		if (AccountStorage.layout().suspendedWithdrawal[withdrawId]) revert SuspendedWithdrawal(withdrawId);
 		_;
 	}
 
 	modifier inactiveInstantMode(address sender) {
-		require(!AccountStorage.layout().instantActionsMode[sender], "Accessibility: Instant action mode is activated");
+		if (AccountStorage.layout().instantActionsMode[sender]) revert InstantActionModeActive(sender);
 		_;
 	}
 }

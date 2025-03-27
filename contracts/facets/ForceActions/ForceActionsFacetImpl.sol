@@ -6,8 +6,10 @@ pragma solidity >=0.8.19;
 
 import { LibCloseIntentOps } from "../../libraries/LibCloseIntent.sol";
 import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
+import { CommonErrors } from "../../libraries/CommonErrors.sol";
 import { AppStorage } from "../../storages/AppStorage.sol";
 import { OpenIntent, CloseIntent, IntentStorage, IntentStatus } from "../../storages/IntentStorage.sol";
+import { ForceActionsFacetErrors } from "./ForceActionsFacetErrors.sol";
 
 library ForceActionsFacetImpl {
 	using LibOpenIntentOps for OpenIntent;
@@ -15,11 +17,19 @@ library ForceActionsFacetImpl {
 
 	function forceCancelOpenIntent(uint256 intentId) internal {
 		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
-		require(intent.status == IntentStatus.CANCEL_PENDING, "PartyAFacet: Invalid state");
-		require(
-			block.timestamp > intent.statusModifyTimestamp + AppStorage.layout().forceCancelOpenIntentTimeout,
-			"PartyAFacet: Cooldown not reached"
-		);
+
+		if (intent.status != IntentStatus.CANCEL_PENDING) {
+			uint8[] memory requiredStatuses = new uint8[](1);
+			requiredStatuses[0] = uint8(IntentStatus.CANCEL_PENDING);
+			revert CommonErrors.InvalidState("IntentStatus", uint8(intent.status), requiredStatuses);
+		}
+
+		if (block.timestamp <= intent.statusModifyTimestamp + AppStorage.layout().forceCancelOpenIntentTimeout)
+			revert CommonErrors.CooldownNotOver(
+				"forceCancelOpenIntentTimeout",
+				block.timestamp,
+				intent.statusModifyTimestamp + AppStorage.layout().forceCancelOpenIntentTimeout
+			);
 
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = IntentStatus.CANCELED;
@@ -29,11 +39,19 @@ library ForceActionsFacetImpl {
 
 	function forceCancelCloseIntent(uint256 intentId) internal {
 		CloseIntent storage intent = IntentStorage.layout().closeIntents[intentId];
-		require(intent.status == IntentStatus.CANCEL_PENDING, "PartyAFacet: Invalid state");
-		require(
-			block.timestamp > intent.statusModifyTimestamp + AppStorage.layout().forceCancelCloseIntentTimeout,
-			"PartyAFacet: Cooldown not reached"
-		);
+
+		if (intent.status != IntentStatus.CANCEL_PENDING) {
+			uint8[] memory requiredStatuses = new uint8[](1);
+			requiredStatuses[0] = uint8(IntentStatus.CANCEL_PENDING);
+			revert CommonErrors.InvalidState("IntentStatus", uint8(intent.status), requiredStatuses);
+		}
+
+		if (block.timestamp <= intent.statusModifyTimestamp + AppStorage.layout().forceCancelCloseIntentTimeout)
+			revert CommonErrors.CooldownNotOver(
+				"forceCancelCloseIntentTimeout",
+				block.timestamp,
+				intent.statusModifyTimestamp + AppStorage.layout().forceCancelCloseIntentTimeout
+			);
 
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = IntentStatus.CANCELED;

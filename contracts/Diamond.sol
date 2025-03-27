@@ -5,11 +5,13 @@ pragma solidity >=0.8.19;
 * Author: Nick Mudge <nick@perfectabstractions.com> (https://twitter.com/mudgen)
 * EIP-2535 Diamonds: https://eips.ethereum.org/EIPS/eip-2535
 /******************************************************************************/
-
 import { LibDiamond } from "./libraries/LibDiamond.sol";
 import { IDiamondCut } from "./facets/DiamondCut/IDiamondCut.sol";
 
 contract Diamond {
+	// Custom errors
+	error FunctionDoesNotExist(bytes4 functionSelector);
+
 	receive() external payable {}
 
 	constructor(address _contractOwner, address _diamondCutFacet) payable {
@@ -38,7 +40,8 @@ contract Diamond {
 		}
 		// get facet from function selector
 		address facet = ds.facetAddressAndSelectorPosition[msg.sig].facetAddress;
-		require(facet != address(0), "Diamond: Function does not exist");
+		if (facet == address(0)) revert FunctionDoesNotExist(msg.sig);
+
 		// Execute external function from facet using delegatecall and return any value.
 		assembly {
 			// copy function selector and any arguments

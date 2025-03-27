@@ -5,6 +5,7 @@
 pragma solidity >=0.8.19;
 
 import { LibAccessibility } from "../../libraries/LibAccessibility.sol";
+import { CommonErrors } from "../../libraries/CommonErrors.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { AppStorage, PartyBConfig } from "../../storages/AppStorage.sol";
 import { SymbolStorage, Symbol, Oracle, OptionType } from "../../storages/SymbolStorage.sol";
@@ -12,19 +13,20 @@ import { Accessibility } from "../../utils/Accessibility.sol";
 import { Ownable } from "../../utils/Ownable.sol";
 import { IControlEvents } from "./IControlEvents.sol";
 import { IControlFacet } from "./IControlFacet.sol";
+import { ControlFacetErrors } from "./ControlFacetErrors.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	using EnumerableSet for EnumerableSet.AddressSet;
 
 	function setAdmin(address _admin) external onlyOwner {
-		require(_admin != address(0), "ControlFacet: Zero address");
+		if (_admin == address(0)) revert CommonErrors.ZeroAddress("admin");
 		AppStorage.layout().hasRole[_admin][LibAccessibility.DEFAULT_ADMIN_ROLE] = true;
 		emit RoleGranted(LibAccessibility.DEFAULT_ADMIN_ROLE, _admin);
 	}
 
 	function grantRole(address _user, bytes32 _role) external onlyRole(LibAccessibility.DEFAULT_ADMIN_ROLE) {
-		require(_user != address(0), "ControlFacet: Zero address");
+		if (_user == address(0)) revert CommonErrors.ZeroAddress("user");
 		AppStorage.Layout storage appStorageLayout = AppStorage.layout();
 		if (!appStorageLayout.hasRole[_user][_role]) {
 			appStorageLayout.hasRole[_user][_role] = true;
@@ -34,7 +36,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	}
 
 	function revokeRole(address _user, bytes32 _role) external onlyRole(LibAccessibility.DEFAULT_ADMIN_ROLE) {
-		require(_user != address(0), "ControlFacet: Zero address");
+		if (_user == address(0)) revert CommonErrors.ZeroAddress("user");
 		AppStorage.Layout storage appStorageLayout = AppStorage.layout();
 		if (appStorageLayout.hasRole[_user][_role]) {
 			appStorageLayout.hasRole[_user][_role] = false;
@@ -44,7 +46,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	}
 
 	function whiteListCollateral(address _collateral) external onlyRole(LibAccessibility.SETTER_ROLE) {
-		require(_collateral != address(0), "ControlFacet: zero address");
+		if (_collateral == address(0)) revert CommonErrors.ZeroAddress("collateral");
 		AppStorage.layout().whiteListedCollateral[_collateral] = true;
 		emit CollateralWhitelisted(_collateral);
 	}
@@ -90,7 +92,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	}
 
 	function setDefaultFeeCollector(address _collector) external onlyRole(LibAccessibility.SETTER_ROLE) {
-		require(_collector != address(0), "ControlFacet: zero address");
+		if (_collector == address(0)) revert CommonErrors.ZeroAddress("collector");
 		AppStorage.layout().defaultFeeCollector = _collector;
 		emit DefaultFeeCollectorUpdated(_collector);
 	}
@@ -101,7 +103,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	}
 
 	function setAffiliateFeeCollector(address _affiliate, address _collector) external onlyRole(LibAccessibility.SETTER_ROLE) {
-		require(_collector != address(0), "ControlFacet: zero address");
+		if (_collector == address(0)) revert CommonErrors.ZeroAddress("collector");
 		AppStorage.layout().affiliateFeeCollector[_affiliate] = _collector;
 		emit AffiliateFeeCollectorUpdated(_affiliate, _collector);
 	}
@@ -244,7 +246,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	}
 
 	function addOracle(string calldata _name, address _contractAddress) external onlyRole(LibAccessibility.SETTER_ROLE) {
-		require(_contractAddress != address(0), "ControlFacet: zero address");
+		if (_contractAddress == address(0)) revert CommonErrors.ZeroAddress("contractAddress");
 		SymbolStorage.Layout storage s = SymbolStorage.layout();
 		s.lastOracleId++;
 		s.oracles[s.lastOracleId] = Oracle({ id: s.lastOracleId, name: _name, contractAddress: _contractAddress });
@@ -260,10 +262,11 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		uint256 _tradingFee,
 		uint256 _symbolType
 	) external onlyRole(LibAccessibility.SETTER_ROLE) {
-		require(_collateral != address(0), "ControlFacet: zero address");
+		if (_collateral == address(0)) revert CommonErrors.ZeroAddress("collateral");
 		SymbolStorage.Layout storage s = SymbolStorage.layout();
-		require(s.oracles[_oracleId].contractAddress != address(0), "ControlFacet: invalid oracle");
-		require(s.lastOracleId >= _oracleId, "ControlFacet: invalid oracle");
+		if (s.oracles[_oracleId].contractAddress == address(0) || s.lastOracleId < _oracleId)
+			revert ControlFacetErrors.InvalidOracle(_oracleId, s.lastOracleId);
+
 		s.lastSymbolId++;
 		s.symbols[s.lastSymbolId] = Symbol({
 			symbolId: s.lastSymbolId,

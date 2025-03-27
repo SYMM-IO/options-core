@@ -13,6 +13,8 @@ import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { AppStorage, LiquidationStatus } from "../../storages/AppStorage.sol";
 import { OpenIntent, Trade, IntentStorage, TradeAgreements, IntentStatus, TradeStatus } from "../../storages/IntentStorage.sol";
 import { Symbol, SymbolStorage } from "../../storages/SymbolStorage.sol";
+import { PartyBOpenFacetErrors } from "./PartyBOpenFacetErrors.sol";
+import { CommonErrors } from "../../libraries/CommonErrors.sol";
 
 library PartyBOpenFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
@@ -27,15 +29,29 @@ library PartyBOpenFacetImpl {
 		OpenIntent storage intent = intentLayout.openIntents[intentId];
 		Symbol storage symbol = SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId];
 
-		require(!AccountStorage.layout().suspendedAddresses[sender], "PartyBFacet: Sender is Suspended");
-		require(!appLayout.partyBEmergencyStatus[sender], "PartyBFacet: Sender is in emergency mode");
-		require(intent.partyA != sender, "PartyBFacet: User can't be on both sides");
-		require(intentId <= intentLayout.lastOpenIntentId, "PartyBFacet: Invalid intentId");
-		require(intent.status == IntentStatus.PENDING, "PartyBFacet: Invalid state");
-		require(block.timestamp <= intent.deadline, "PartyBFacet: Intent is expired");
-		require(symbol.isValid, "PartyBFacet: Symbol is not valid");
-		require(block.timestamp <= intent.tradeAgreements.expirationTimestamp, "PartyBFacet: Requested expiration has been passed");
-		require(appLayout.partyBConfigs[sender].oracleId == symbol.oracleId, "PartyBFacet: Oracle not matched");
+		if (AccountStorage.layout().suspendedAddresses[sender]) revert CommonErrors.SuspendedAddress(sender);
+
+		if (appLayout.partyBEmergencyStatus[sender]) revert PartyBOpenFacetErrors.PartyBInEmergencyMode(sender);
+
+		if (intent.partyA == sender) revert PartyBOpenFacetErrors.UserOnBothSides(sender);
+
+		if (intentId > intentLayout.lastOpenIntentId) revert PartyBOpenFacetErrors.InvalidIntentId(intentId, intentLayout.lastOpenIntentId);
+
+		if (intent.status != IntentStatus.PENDING) {
+			uint8[] memory requiredStatuses = new uint8[](1);
+			requiredStatuses[0] = uint8(IntentStatus.PENDING);
+			revert CommonErrors.InvalidState("IntentStatus", uint8(intent.status), requiredStatuses);
+		}
+
+		if (block.timestamp > intent.deadline) revert PartyBOpenFacetErrors.IntentExpired(intentId, block.timestamp, intent.deadline);
+
+		if (!symbol.isValid) revert CommonErrors.InvalidSymbol(intent.tradeAgreements.symbolId);
+
+		if (block.timestamp > intent.tradeAgreements.expirationTimestamp)
+			revert PartyBOpenFacetErrors.ExpirationTimestampPassed(intentId, block.timestamp, intent.tradeAgreements.expirationTimestamp);
+
+		if (appLayout.partyBConfigs[sender].oracleId != symbol.oracleId)
+			revert PartyBOpenFacetErrors.OracleNotMatched(sender, appLayout.partyBConfigs[sender].oracleId, symbol.oracleId);
 
 		bool isValidPartyB;
 		if (intent.partyBsWhiteList.length == 0) {
@@ -48,7 +64,8 @@ library PartyBOpenFacetImpl {
 				}
 			}
 		}
-		require(isValidPartyB, "PartyBFacet: Sender isn't whitelisted");
+
+		if (!isValidPartyB) revert PartyBOpenFacetErrors.NotWhitelistedPartyB(sender, intent.partyBsWhiteList);
 
 		sender.requireSolvent(symbol.collateral);
 		intent.statusModifyTimestamp = block.timestamp;
@@ -61,8 +78,14 @@ library PartyBOpenFacetImpl {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		OpenIntent storage intent = intentLayout.openIntents[intentId];
 
-		require(intent.partyB == sender, "PartyBFacet: Invalid sender");
-		require(intent.status == IntentStatus.LOCKED, "PartyBFacet: Invalid state");
+		if (intent.partyB != sender) revert CommonErrors.UnauthorizedSender(sender, intent.partyB);
+
+		if (intent.status != IntentStatus.LOCKED) {
+			uint8[] memory requiredStatuses = new uint8[](1);
+			requiredStatuses[0] = uint8(IntentStatus.LOCKED);
+			revert CommonErrors.InvalidState("IntentStatus", uint8(intent.status), requiredStatuses);
+		}
+
 		sender.requireSolvent(SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId].collateral);
 
 		if (block.timestamp > intent.deadline) {
@@ -79,8 +102,15 @@ library PartyBOpenFacetImpl {
 
 	function acceptCancelOpenIntent(address sender, uint256 intentId) internal {
 		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
-		require(intent.status == IntentStatus.CANCEL_PENDING, "PartyBFacet: Invalid state");
-		require(intent.partyB == sender, "PartyBFacet: Invalid sender");
+
+		if (intent.status != IntentStatus.CANCEL_PENDING) {
+			uint8[] memory requiredStatuses = new uint8[](1);
+			requiredStatuses[0] = uint8(IntentStatus.CANCEL_PENDING);
+			revert CommonErrors.InvalidState("IntentStatus", uint8(intent.status), requiredStatuses);
+		}
+
+		if (intent.partyB != sender) revert CommonErrors.UnauthorizedSender(sender, intent.partyB);
+
 		sender.requireSolvent(SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId].collateral);
 
 		intent.statusModifyTimestamp = block.timestamp;
@@ -102,20 +132,44 @@ library PartyBOpenFacetImpl {
 		OpenIntent storage intent = intentLayout.openIntents[intentId];
 		Symbol memory symbol = SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId];
 
-		require(sender == intent.partyB, "PartyBFacet: Invalid sender");
-		require(accountLayout.suspendedAddresses[intent.partyA] == false, "PartyBFacet: PartyA is suspended");
-		require(!accountLayout.suspendedAddresses[intent.partyB], "PartyBFacet: Sender is Suspended");
-		require(!appLayout.partyBEmergencyStatus[intent.partyB], "PartyBFacet: PartyB is in emergency mode");
-		require(!appLayout.emergencyMode, "PartyBFacet: System is in emergency mode");
-		require(symbol.isValid, "PartyBFacet: Symbol is not valid");
-		require(appLayout.partyBConfigs[intent.partyB].symbolType == symbol.symbolType, "PartyBFacet: Mismatched symbol type");
-		require(intent.status == IntentStatus.LOCKED || intent.status == IntentStatus.CANCEL_PENDING, "PartyBFacet: Invalid state");
+		if (sender != intent.partyB) revert CommonErrors.UnauthorizedSender(sender, intent.partyB);
+
+		if (accountLayout.suspendedAddresses[intent.partyA]) revert CommonErrors.SuspendedAddress(intent.partyA);
+
+		if (accountLayout.suspendedAddresses[intent.partyB]) revert CommonErrors.SuspendedAddress(intent.partyB);
+
+		if (appLayout.partyBEmergencyStatus[intent.partyB]) revert PartyBOpenFacetErrors.PartyBInEmergencyMode(intent.partyB);
+
+		if (appLayout.emergencyMode) revert PartyBOpenFacetErrors.SystemInEmergencyMode();
+
+		if (!symbol.isValid) revert CommonErrors.InvalidSymbol(intent.tradeAgreements.symbolId);
+
+		if (appLayout.partyBConfigs[intent.partyB].symbolType != symbol.symbolType)
+			revert PartyBOpenFacetErrors.MismatchedSymbolType(intent.partyB, appLayout.partyBConfigs[intent.partyB].symbolType, symbol.symbolType);
+
+		if (intent.status != IntentStatus.LOCKED && intent.status != IntentStatus.CANCEL_PENDING) {
+			uint8[] memory requiredStatuses = new uint8[](2);
+			requiredStatuses[0] = uint8(IntentStatus.LOCKED);
+			requiredStatuses[1] = uint8(IntentStatus.CANCEL_PENDING);
+			revert CommonErrors.InvalidState("IntentStatus", uint8(intent.status), requiredStatuses);
+		}
+
 		intent.partyB.requireSolvent(symbol.collateral);
 
-		require(block.timestamp <= intent.deadline, "PartyBFacet: Intent is expired");
-		require(block.timestamp <= intent.tradeAgreements.expirationTimestamp, "PartyBFacet: Requested expiration has been passed");
-		require(intent.tradeAgreements.quantity >= quantity && quantity > 0, "PartyBFacet: Invalid quantity");
-		require(price <= intent.price, "PartyBFacet: Opened price isn't valid");
+		if (block.timestamp > intent.deadline) revert PartyBOpenFacetErrors.IntentExpired(intentId, block.timestamp, intent.deadline);
+
+		if (block.timestamp > intent.tradeAgreements.expirationTimestamp)
+			revert PartyBOpenFacetErrors.ExpirationTimestampPassed(intentId, block.timestamp, intent.tradeAgreements.expirationTimestamp);
+
+		if (intent.tradeAgreements.quantity < quantity || quantity == 0)
+			revert CommonErrors.InvalidAmount(
+				"quantity",
+				quantity,
+				quantity == 0 ? 2 : 1, // 2 for equality check (not equal to 0), 1 for less than check
+				intent.tradeAgreements.quantity
+			);
+
+		if (price > intent.price) revert PartyBOpenFacetErrors.InvalidOpenPrice(price, intent.price);
 
 		address feeCollector = appLayout.affiliateFeeCollector[intent.affiliate] == address(0)
 			? appLayout.defaultFeeCollector

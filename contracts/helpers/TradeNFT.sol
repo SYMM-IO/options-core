@@ -33,6 +33,10 @@ interface ISymmio {
 contract TradeNFT is ERC721Enumerable, Ownable {
 	using Counters for Counters.Counter;
 
+	// Custom errors
+	error InvalidSymmioAddress();
+	error CallerNotSymmio(address caller, address symmioAddress);
+
 	// ==================== STATE VARIABLES ====================
 	/// @dev Counter used to generate unique token identifiers. Token IDs start at 1.
 	Counters.Counter private _tokenIdCounter;
@@ -66,7 +70,7 @@ contract TradeNFT is ERC721Enumerable, Ownable {
 	 * @dev Reverts if `symmio_` is the zero address. The token ID counter starts at 1 to avoid using token ID 0.
 	 */
 	constructor(address symmio_) ERC721("Trade Ownership NFT", "TRNFT") {
-		require(symmio_ != address(0), "TradeNFT: Invalid Symmio address");
+		if (symmio_ == address(0)) revert InvalidSymmioAddress();
 		symmio = ISymmio(symmio_);
 		_tokenIdCounter.increment();
 	}
@@ -77,7 +81,7 @@ contract TradeNFT is ERC721Enumerable, Ownable {
 	 * @dev Reverts if called by an address other than the Symmio contract.
 	 */
 	modifier onlySymmio() {
-		require(msg.sender == address(symmio), "TradeNFT: Caller is not Symmio");
+		if (msg.sender != address(symmio)) revert CallerNotSymmio(msg.sender, address(symmio));
 		_;
 	}
 
