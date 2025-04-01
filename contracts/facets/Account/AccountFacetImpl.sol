@@ -108,7 +108,7 @@ library AccountFacetImpl {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
 		if (id > accountLayout.lastWithdrawId) {
-			revert AccountFacetErrors.InvalidWithdrawId(id);
+			revert AccountFacetErrors.InvalidWithdrawId(id, accountLayout.lastWithdrawId);
 		}
 
 		Withdraw storage withdrawal = accountLayout.withdrawals[id];
@@ -142,7 +142,7 @@ library AccountFacetImpl {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
 		if (id > accountLayout.lastWithdrawId) {
-			revert AccountFacetErrors.InvalidWithdrawId(id);
+			revert AccountFacetErrors.InvalidWithdrawId(id, accountLayout.lastWithdrawId);
 		}
 
 		Withdraw storage withdrawal = accountLayout.withdrawals[id];

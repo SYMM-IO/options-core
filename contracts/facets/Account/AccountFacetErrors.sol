@@ -15,7 +15,7 @@ library AccountFacetErrors {
 	error InstantActionModeDeactivationNotProposed(address user);
 
 	// Withdraw errors
-	error InvalidWithdrawId(uint256 id);
+	error InvalidWithdrawId(uint256 id, uint256 lastWithdrawId);
 
 	// PartyB binding errors
 	error PartyBNotActive(address partyB);
