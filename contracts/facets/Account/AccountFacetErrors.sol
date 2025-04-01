@@ -24,5 +24,4 @@ library AccountFacetErrors {
 	error UnbindingAlreadyInitiated(address user, uint256 requestTime);
 	error UnbindingNotInitiated(address user);
 	error UnbindingCooldownNotReached(address user, uint256 currentTime, uint256 requiredTime);
-	error NoPendingUnbinding(address user);
 }

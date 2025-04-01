@@ -11,5 +11,5 @@ library BridgeFacetErrors {
 
 	// Transaction validation errors
 	error InvalidBridgeTransactionId(uint256 transactionId);
-	error DifferentCollateralInOneBridgeWithdrawTx(address expectedCollateral, address transactionCollateral);
+	error BridgeCollateralMismatch(address expectedCollateral, address transactionCollateral);
 }

@@ -9,7 +9,6 @@ import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
 import { CommonErrors } from "../../libraries/CommonErrors.sol";
 import { AppStorage } from "../../storages/AppStorage.sol";
 import { OpenIntent, CloseIntent, IntentStorage, IntentStatus } from "../../storages/IntentStorage.sol";
-import { ForceActionsFacetErrors } from "./ForceActionsFacetErrors.sol";
 
 library ForceActionsFacetImpl {
 	using LibOpenIntentOps for OpenIntent;

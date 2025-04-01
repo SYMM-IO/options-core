@@ -19,11 +19,11 @@ library LibDiamond {
 	error IncorrectFacetCutAction(uint8 action);
 	error NoSelectorsInFacet();
 	error CannotAddExistingFunction(bytes4 selector);
-	error CannotRemoveNonExistingFunction(bytes4 selector);
+	error NoRemoveTarget(bytes4 selector);
 	error CannotRemoveImmutableFunction(bytes4 selector);
-	error CannotReplaceWithSameFunction(bytes4 selector, address facetAddress);
-	error CannotReplaceNonExistingFunction(bytes4 selector);
-	error CannotReplaceImmutableFunction(bytes4 selector);
+	error IdenticalReplace(bytes4 selector, address facetAddress);
+	error NoReplaceTarget(bytes4 selector);
+	error ImmutableReplace(bytes4 selector);
 	error ZeroAddressWithNonemptyCalldata();
 	error NonZeroAddressWithEmptyCalldata();
 	error InitFunctionReverted();
@@ -150,11 +150,11 @@ library LibDiamond {
 			address oldFacetAddress = ds.facetAddressAndSelectorPosition[selector].facetAddress;
 
 			// can't replace immutable functions -- functions defined directly in the diamond
-			if (oldFacetAddress == address(this)) revert CannotReplaceImmutableFunction(selector);
+			if (oldFacetAddress == address(this)) revert ImmutableReplace(selector);
 
-			if (oldFacetAddress == _facetAddress) revert CannotReplaceWithSameFunction(selector, _facetAddress);
+			if (oldFacetAddress == _facetAddress) revert IdenticalReplace(selector, _facetAddress);
 
-			if (oldFacetAddress == address(0)) revert CannotReplaceNonExistingFunction(selector);
+			if (oldFacetAddress == address(0)) revert NoReplaceTarget(selector);
 
 			// replace old facet address
 			ds.facetAddressAndSelectorPosition[selector].facetAddress = _facetAddress;
@@ -173,7 +173,7 @@ library LibDiamond {
 			bytes4 selector = _functionSelectors[selectorIndex];
 			FacetAddressAndSelectorPosition memory oldFacetAddressAndSelectorPosition = ds.facetAddressAndSelectorPosition[selector];
 
-			if (oldFacetAddressAndSelectorPosition.facetAddress == address(0)) revert CannotRemoveNonExistingFunction(selector);
+			if (oldFacetAddressAndSelectorPosition.facetAddress == address(0)) revert NoRemoveTarget(selector);
 
 			// can't remove immutable functions -- functions defined directly in the diamond
 			if (oldFacetAddressAndSelectorPosition.facetAddress == address(this)) revert CannotRemoveImmutableFunction(selector);

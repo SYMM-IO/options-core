@@ -263,7 +263,7 @@ library AccountFacetImpl {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
 		if (accountLayout.unbindingRequestTime[msg.sender] == 0) {
-			revert AccountFacetErrors.NoPendingUnbinding(msg.sender);
+			revert AccountFacetErrors.UnbindingNotInitiated(msg.sender);
 		}
 
 		delete accountLayout.unbindingRequestTime[msg.sender];
