@@ -56,7 +56,7 @@ library BridgeFacetImpl {
 			BridgeTransaction storage bridgeTransaction = accountLayout.bridgeTransactions[transactionIds[i - 1]];
 
 			if (collateral != bridgeTransaction.collateral)
-				revert BridgeFacetErrors.DifferentCollateralInOneBridgeWithdrawTx(collateral, bridgeTransaction.collateral);
+				revert BridgeFacetErrors.BridgeCollateralMismatch(collateral, bridgeTransaction.collateral);
 
 			if (bridgeTransaction.status != BridgeTransactionStatus.RECEIVED) {
 				uint8[] memory requiredStatuses = new uint8[](1);
@@ -101,7 +101,7 @@ library BridgeFacetImpl {
 
 		if (bridgeTransaction.status != BridgeTransactionStatus.SUSPENDED) {
 			uint8[] memory requiredStatuses = new uint8[](1);
-			requiredStatuses[0] = uint8(BridgeTransactionStatus.RECEIVED);
+			requiredStatuses[0] = uint8(BridgeTransactionStatus.SUSPENDED);
 			revert CommonErrors.InvalidState("BridgeTransactionStatus", uint8(bridgeTransaction.status), requiredStatuses);
 		}
 

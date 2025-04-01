@@ -45,6 +45,7 @@ library ScheduledReleaseBalanceOps {
 	error CollateralMismatch(address expected, address provided);
 	error InvalidSyncTimestamp(uint256 currentTime, uint256 lastTransitionTimestamp);
 	error NonZeroBalancePartyB(address partyB, uint256 balance);
+	error InsufficientBalance(address token, uint256 requested, uint256 available);
 
 	// @notice Adds funds to release schedule
 	// @dev Initializes entry if needed, syncs state before adding
@@ -101,7 +102,7 @@ library ScheduledReleaseBalanceOps {
 
 	// @notice Deducts funds from available balance only
 	function sub(ScheduledReleaseBalance storage self, uint256 value) internal returns (ScheduledReleaseBalance storage) {
-		if (self.available < value) revert CommonErrors.InsufficientBalance(address(0), self.collateral, value, self.available); //FIXME: user?
+		if (self.available < value) revert InsufficientBalance(self.collateral, value, self.available);
 
 		self.available -= value;
 		return self;
@@ -118,7 +119,7 @@ library ScheduledReleaseBalanceOps {
 		}
 
 		uint256 totalBalance = self.available + entry.transitioning + entry.scheduled;
-		if (totalBalance < value) revert CommonErrors.InsufficientBalance(address(0), self.collateral, value, totalBalance); //FIXME: user?
+		if (totalBalance < value) revert InsufficientBalance(self.collateral, value, totalBalance);
 
 		uint256 remaining = value;
 

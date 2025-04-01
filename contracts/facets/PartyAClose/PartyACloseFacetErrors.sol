@@ -5,9 +5,6 @@
 pragma solidity >=0.8.19;
 
 library PartyACloseFacetErrors {
-	// Timestamp errors
-	error LowDeadline(uint256 provided, uint256 current);
-
 	// Quantity errors
 	error InvalidQuantity(uint256 requested, uint256 available);
 
