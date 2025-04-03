@@ -280,7 +280,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 			symbolType: _symbolType
 		});
 		s.lastSymbolId = s.lastSymbolId;
-		emit SymbolAdded(s.lastSymbolId, _name, _optionType, _collateral);
+		emit SymbolAdded(s.lastSymbolId, _name, _optionType, _oracleId, _collateral, _isStableCoin, _tradingFee, _symbolType);
 	}
 
 	function setPriceOracleAddress(address _oracle) external onlyRole(LibAccessibility.SETTER_ROLE) {
