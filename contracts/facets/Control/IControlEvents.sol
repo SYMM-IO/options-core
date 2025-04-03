@@ -53,6 +53,6 @@ interface IControlEvents {
 	event InstantActionsModeUpdated(address indexed user, bool status);
 	event InstantActionsModeDeactivateTimeUpdated(address indexed user, uint256 time);
 	event OracleAdded(uint256 indexed oracleId, string name, address contractAddress);
-	event SymbolAdded(uint256 indexed symbolId, string name, OptionType optionType, address collateral);
+	event SymbolAdded(uint256 indexed symbolId, string name, OptionType optionType, uint256 oracleId, address collateral, bool isStableCoin, uint256 tradingFee, uint256 symbolType);
 	event PriceOracleAddressUpdated(address indexed oracle);
 }
