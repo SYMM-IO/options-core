@@ -22,7 +22,7 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 	error InvalidTarget(address target, address sender, address account);
 	error RevokeAccessNotProposed(address account, address target, bytes4 selector);
 	error CooldownNotReached(address account, address target, bytes4 selector, uint256 current, uint256 required);
-	error Create2Failed();
+	error ContractDeploymentFailed();
 	error PartyACallFailed(bytes returnData);
 	error InvalidCallData(bytes callData);
 	error UnauthorizedAccess(address account, address sender, bytes4 selector);
@@ -196,7 +196,7 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 		assembly {
 			contractAddress := create2(0, add(bytecode, 32), mload(bytecode), salt)
 		}
-		if (contractAddress == address(0)) revert Create2Failed();
+		if (contractAddress == address(0)) revert ContractDeploymentFailed();
 		emit DeployContract(msg.sender, contractAddress);
 		return contractAddress;
 	}

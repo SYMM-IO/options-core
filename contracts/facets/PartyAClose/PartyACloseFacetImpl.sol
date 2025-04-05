@@ -34,7 +34,7 @@ library PartyACloseFacetImpl {
 			revert CommonErrors.InvalidState("TradeStatus", uint8(trade.status), requiredStatuses);
 		}
 
-		if (deadline < block.timestamp) revert PartyACloseFacetErrors.LowDeadline(deadline, block.timestamp);
+		if (deadline < block.timestamp) revert CommonErrors.LowDeadline(deadline, block.timestamp);
 
 		if (trade.getAvailableAmountToClose() < quantity) revert PartyACloseFacetErrors.InvalidQuantity(quantity, trade.getAvailableAmountToClose());
 

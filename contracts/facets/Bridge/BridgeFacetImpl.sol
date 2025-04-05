@@ -23,7 +23,7 @@ library BridgeFacetImpl {
 		if (!accountLayout.bridges[bridge]) revert BridgeFacetErrors.InvalidBridge(bridge);
 		if (bridge == msg.sender) revert BridgeFacetErrors.SameBridgeAndSender(bridge);
 
-		uint256 amountWith18Decimals = (amount * 1e18) / (10 ** IERC20Metadata(collateral).decimals());
+		uint256 amountWith18Decimals = (amount * 1e18) / (10 ** IERC20Metadata(collateral).decimals()); //TODO: 1.utilize `normalize` and `denormalize` methods in `accountFacetImlp` and use'em here
 		if (accountLayout.balances[msg.sender][collateral].available < amount)
 			revert CommonErrors.InsufficientBalance(msg.sender, collateral, amount, accountLayout.balances[msg.sender][collateral].available);
 
@@ -56,7 +56,7 @@ library BridgeFacetImpl {
 			BridgeTransaction storage bridgeTransaction = accountLayout.bridgeTransactions[transactionIds[i - 1]];
 
 			if (collateral != bridgeTransaction.collateral)
-				revert BridgeFacetErrors.DifferentCollateralInOneBridgeWithdrawTx(collateral, bridgeTransaction.collateral);
+				revert BridgeFacetErrors.BridgeCollateralMismatch(collateral, bridgeTransaction.collateral);
 
 			if (bridgeTransaction.status != BridgeTransactionStatus.RECEIVED) {
 				uint8[] memory requiredStatuses = new uint8[](1);
@@ -101,17 +101,17 @@ library BridgeFacetImpl {
 
 		if (bridgeTransaction.status != BridgeTransactionStatus.SUSPENDED) {
 			uint8[] memory requiredStatuses = new uint8[](1);
-			requiredStatuses[0] = uint8(BridgeTransactionStatus.RECEIVED);
+			requiredStatuses[0] = uint8(BridgeTransactionStatus.SUSPENDED);
 			revert CommonErrors.InvalidState("BridgeTransactionStatus", uint8(bridgeTransaction.status), requiredStatuses);
 		}
 
 		if (accountLayout.invalidBridgedAmountsPool == address(0)) revert CommonErrors.ZeroAddress("invalidBridgedAmountsPool");
 
-		if (validAmount > bridgeTransaction.amount) revert CommonErrors.InvalidAmount("validAmount", validAmount, 0, bridgeTransaction.amount);
+		if (validAmount > bridgeTransaction.amount) revert BridgeFacetErrors.HighValidAmount(validAmount, bridgeTransaction.amount);
 
 		AccountStorage.layout().balances[bridgeTransaction.collateral][accountLayout.invalidBridgedAmountsPool].instantAdd(
 			bridgeTransaction.collateral,
-			((bridgeTransaction.amount - validAmount) * (10 ** 18)) / (10 ** IERC20Metadata(bridgeTransaction.collateral).decimals())
+			((bridgeTransaction.amount - validAmount) * (10 ** 18)) / (10 ** IERC20Metadata(bridgeTransaction.collateral).decimals()) //TODO: 1.
 		);
 		bridgeTransaction.status = BridgeTransactionStatus.RECEIVED;
 		bridgeTransaction.amount = validAmount;
