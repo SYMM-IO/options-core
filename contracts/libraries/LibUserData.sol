@@ -6,7 +6,7 @@ pragma solidity >=0.8.19;
 
 library LibUserData {
 	// Custom errors
-	error InsufficientBytes(uint256 providedLength, uint256 requiredLength);
+	error InsufficientBytes(uint256 providedLength, uint256 minimumLength);
 
 	function addCounter(bytes memory _data, uint256 _counter) internal pure returns (bytes memory) {
 		bytes32 counterBytes = bytes32(uint256(_counter));

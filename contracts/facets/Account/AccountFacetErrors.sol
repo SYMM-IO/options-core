@@ -15,7 +15,7 @@ library AccountFacetErrors {
 	error InstantActionModeDeactivationNotProposed(address user);
 
 	// Withdraw errors
-	error InvalidWithdrawId(uint256 id);
+	error InvalidWithdrawId(uint256 id, uint256 lastWithdrawId);
 
 	// PartyB binding errors
 	error PartyBNotActive(address partyB);
@@ -24,5 +24,4 @@ library AccountFacetErrors {
 	error UnbindingAlreadyInitiated(address user, uint256 requestTime);
 	error UnbindingNotInitiated(address user);
 	error UnbindingCooldownNotReached(address user, uint256 currentTime, uint256 requiredTime);
-	error NoPendingUnbinding(address user);
 }
