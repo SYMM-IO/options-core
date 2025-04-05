@@ -26,7 +26,7 @@ contract SymmioPartyB is
 	IERC1271
 {
 	// ==================== CUSTOM ERRORS ====================
-	error InvalidSelfAddress(address self);
+	error InvalidTargetAddress(address self);
 	error TokenNotApproved(address token, address spender, uint256 amount);
 	error TokenNotTransferred(address token, address recipient, uint256 amount);
 	error ArrayLengthMismatch(uint256 destinationsLength, uint256 callDatasLength);
@@ -130,7 +130,7 @@ contract SymmioPartyB is
 	/// @param addr Contract address to modify
 	/// @param state New whitelist state
 	function setMulticastWhitelist(address addr, bool state) external onlyRole(MANAGER_ROLE) {
-		if (addr == address(this)) revert InvalidSelfAddress(address(this));
+		if (addr == address(this)) revert InvalidTargetAddress(address(this));
 		multicastWhitelist[addr] = state;
 		emit SetMulticastWhitelist(addr, state);
 	}
