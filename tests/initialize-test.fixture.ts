@@ -34,17 +34,19 @@ export async function initializeTestFixture(): Promise<RunContext> {
 		isActive: true,
 		lossCoverage: 0,
 		oracleId: 1,
+		symbolType: 0,
 	})
 
 	await context.controlFacet.setPartyBConfig(context.signers.partyB2, {
 		isActive: true,
 		lossCoverage: 0,
 		oracleId: 1,
+		symbolType: 0,
 	})
 
 	await context.controlFacet.addOracle("test oracel", context.signers.oracle1)
 	await context.controlFacet.setPriceOracleAddress(context.oracle)
-	await context.controlFacet.addSymbol("BTC", 0, 1, context.collateral, true, 0)
+	await context.controlFacet.addSymbol("BTC", 0, 1, context.collateral, true, 0, 0)
 	await context.controlFacet.setAffiliateStatus(context.signers.affiliate1, true)
 
 	return context
