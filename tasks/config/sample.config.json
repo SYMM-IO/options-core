@@ -1,0 +1,53 @@
+{
+    "configTitle": "unit-test",
+    "version": "1.0.0",
+    "admin": "",
+    "roles": {
+      "grant": [{ "address": "", "role": "" }],
+      "revoke": [{ "address": "", "role": "" }]
+    },
+    "collateral": {
+      "whiteList": [""],
+      "removeFromWhitelist": [""]
+    },
+    "pause": {
+      "global": true
+    },
+    "deactiveInstantActionModeCooldown": 120,
+    "unbindingCooldown": 120,
+    "maxConnectedPartyBs": 120,
+    "priceOracleAddress": "",
+    "partyB": [
+      {
+        "address": "",
+        "isActive": true,
+        "lossCoverage": 0,
+        "oracleId": 1,
+        "symbolType": 0
+      }
+    ],
+    "oracles": [
+      {
+        "name": "",
+        "address": ""
+      }
+    ],
+    "affiliates": [
+      {
+        "address": "",
+        "status": ""
+      }
+    ],
+    "symbols": [
+      {
+        "address": "",
+        "name": "",
+        "optionType": "",
+        "oracleId": "",
+        "isStableCoin": true,
+        "tradingFee": "",
+        "type": ""
+      }
+    ]
+  }
+  

@@ -1,11 +1,10 @@
 import { task, types } from "hardhat/config"
 
-import { FacetCutAction, getSelectors } from "./utils/diamond-cut"
-import { writeData } from "./utils/fs"
+import { FacetCutAction, getSelectors } from "../utils/diamond-cut"
+import { writeData } from "../utils/fs"
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers"
 import { ContractTransactionReceipt } from "ethers"
-import { DEPLOYMENT_LOG_FILE, FacetNames } from "../common/constants"
-import { generateGasReport } from "./utils/gas"
+import { DEPLOYMENT_LOG_FILE, FacetNames } from "../../common/constants"
 
 task("deploy:diamond", "Deploys the Diamond contract")
 	.addParam("logData", "Write the deployed addresses to a data file", true, types.boolean)
@@ -87,8 +86,6 @@ task("deploy:diamond", "Deploys the Diamond contract")
 
 		// Call Initializer
 		totalGasUsed = totalGasUsed + BigInt(receipt.gasUsed.toString())
-
-		console.log("Completed Diamond Cut")
 
 		// Write addresses to JSON file for etherscan verification
 		if (logData) {
