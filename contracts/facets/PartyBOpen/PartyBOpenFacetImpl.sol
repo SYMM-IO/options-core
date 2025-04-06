@@ -5,7 +5,7 @@
 pragma solidity >=0.8.19;
 
 import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
-import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, IncreaseBalanceType, DecreaseBalanceType } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { LibTradeOps } from "../../libraries/LibTrade.sol";
 import { LibUserData } from "../../libraries/LibUserData.sol";
 import { LibPartyB } from "../../libraries/LibPartyB.sol";
@@ -176,8 +176,12 @@ library PartyBOpenFacetImpl {
 			: appLayout.affiliateFeeCollector[intent.affiliate];
 
 		address feeToken = intent.tradingFee.feeToken;
-		accountLayout.balances[appLayout.defaultFeeCollector][feeToken].instantAdd(feeToken, intent.getTradingFee());
-		accountLayout.balances[feeCollector][feeToken].instantAdd(feeToken, intent.getAffiliateFee());
+
+		accountLayout.balances[appLayout.defaultFeeCollector][feeToken].setup(appLayout.defaultFeeCollector, feeToken);
+		accountLayout.balances[appLayout.defaultFeeCollector][feeToken].instantAdd(intent.getTradingFee(), IncreaseBalanceType.FEE);
+
+		accountLayout.balances[feeCollector][feeToken].setup(feeCollector, feeToken);
+		accountLayout.balances[feeCollector][feeToken].instantAdd(intent.getAffiliateFee(), IncreaseBalanceType.FEE);
 
 		tradeId = ++intentLayout.lastTradeId;
 		Trade memory trade = Trade({
@@ -259,6 +263,7 @@ library PartyBOpenFacetImpl {
 			intent.tradeAgreements.quantity = quantity;
 		}
 		trade.save();
-		accountLayout.balances[trade.partyB][symbol.collateral].instantAdd(symbol.collateral, intent.getPremium());
+		accountLayout.balances[trade.partyB][symbol.collateral].setup(trade.partyB, symbol.collateral);
+		accountLayout.balances[trade.partyB][symbol.collateral].instantAdd(intent.getPremium(), IncreaseBalanceType.FEE);
 	}
 }

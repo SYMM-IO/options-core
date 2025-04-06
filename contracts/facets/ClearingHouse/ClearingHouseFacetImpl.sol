@@ -4,7 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, IncreaseBalanceType, DecreaseBalanceType } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { LibTradeOps } from "../../libraries/LibTrade.sol";
 import { LibPartyB } from "../../libraries/LibPartyB.sol";
 import { AccountStorage, Withdraw, WithdrawStatus } from "../../storages/AccountStorage.sol";
@@ -94,7 +94,7 @@ library ClearingHouseFacetImpl {
 
 		partyB.requireInProgressLiquidation(collateral);
 
-		balance.subForPartyB(partyB, amount);
+		balance.subForPartyB(partyB, amount, DecreaseBalanceType.CONFISCATE);
 		partyB.getInProgressLiquidationDetail(collateral).collectedCollateral += amount;
 	}
 
@@ -195,7 +195,7 @@ library ClearingHouseFacetImpl {
 			uint256 amountToTransfer = appLayout.liquidationDebtsToPartyAs[partyB][collateral][partyA];
 			amounts[i] = amountToTransfer;
 			appLayout.involvedPartyAsCountInLiquidation[partyB][collateral] -= 1;
-			AccountStorage.layout().balances[partyA][collateral].instantAdd(collateral, amountToTransfer);
+			AccountStorage.layout().balances[partyA][collateral].instantAdd(amountToTransfer, IncreaseBalanceType.LIQUIDATION);
 			appLayout.liquidationDebtsToPartyAs[partyB][collateral][partyA] = 0;
 		}
 		if (appLayout.involvedPartyAsCountInLiquidation[partyB][collateral] == 0) {

@@ -30,9 +30,30 @@ struct ScheduledReleaseEntry {
 struct ScheduledReleaseBalance {
 	uint256 available; // Immediately accessible funds
 	address collateral; // Address of the collateral asset
+	address user; // Address of the user
 	mapping(address => ScheduledReleaseEntry) partyBSchedules; // Scheduled entries per partyB
 	mapping(address => uint256) partyBIndexes; // Index of partyB in the addresses array
 	address[] partyBAddresses; // List of all partyB addresses
+}
+
+enum IncreaseBalanceType {
+	DEPOSIT,
+	INTERNAL_TRANSFER,
+	BRIDGE,
+	FEE,
+	PREMIUM,
+	REALIZED_PNL,
+	LIQUIDATION
+}
+
+enum DecreaseBalanceType {
+	WITHDRAW,
+	INTERNAL_TRANSFER,
+	BRIDGE,
+	FEE,
+	PREMIUM,
+	REALIZED_PNL,
+	CONFISCATE
 }
 
 // @title ScheduledReleaseBalanceOps
@@ -40,82 +61,85 @@ struct ScheduledReleaseBalance {
 library ScheduledReleaseBalanceOps {
 	using LibPartyB for address;
 
+	event IncreaseBalance(address user, address collateral, uint256 amount, IncreaseBalanceType _type, bool isInstant);
+	event DecreaseBalance(address user, address partyB, address collateral, uint256 amount, DecreaseBalanceType _type);
+	event SyncBalance(address user, address partyB, address collateral);
+
 	// Custom errors
 	error MaxPartyBConnectionsReached(uint256 current, uint256 maximum);
-	error CollateralMismatch(address expected, address provided);
 	error InvalidSyncTimestamp(uint256 currentTime, uint256 lastTransitionTimestamp);
 	error NonZeroBalancePartyB(address partyB, uint256 balance);
 	error InsufficientBalance(address token, uint256 requested, uint256 available);
+	error BalanceSetupRequired();
+
+	modifier checkSetup(ScheduledReleaseBalance storage self) {
+		if (self.collateral == address(0) || self.user == address(0)) revert BalanceSetupRequired();
+		_;
+	}
+
+	function setup(
+		ScheduledReleaseBalance storage self,
+		address _user,
+		address collateral
+	) internal checkSetup(self) returns (ScheduledReleaseBalance storage) {
+		self.collateral = collateral;
+		self.user = _user;
+		return self;
+	}
 
 	// @notice Adds funds to release schedule
 	// @dev Initializes entry if needed, syncs state before adding
-	function scheduledAdd(ScheduledReleaseBalance storage self, address partyB, uint256 value) internal returns (ScheduledReleaseBalance storage) {
+	function scheduledAdd(
+		ScheduledReleaseBalance storage self,
+		address partyB,
+		uint256 value,
+		IncreaseBalanceType _type
+	) internal checkSetup(self) returns (ScheduledReleaseBalance storage) {
 		_sync(self, partyB, false);
 
 		if (AccountStorage.layout().partyBReleaseIntervals[partyB] == 0) {
-			return instantAdd(self, self.collateral, value);
+			return instantAdd(self, value, _type);
 		}
 
 		addPartyB(self, partyB);
 		self.partyBSchedules[partyB].scheduled += value;
-		return self;
-	}
-
-	// @notice Adds a partyB to the scheduled release entries without adding funds
-	// @dev Initializes entry with default release interval if not already present
-	function addPartyB(ScheduledReleaseBalance storage self, address partyB) internal returns (ScheduledReleaseBalance storage) {
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-
-		// Check if partyB is already added
-		if (self.partyBAddresses.length > 0 && self.partyBAddresses[self.partyBIndexes[partyB]] == partyB) return self;
-
-		ScheduledReleaseEntry storage entry = self.partyBSchedules[partyB];
-
-		if (self.partyBAddresses.length >= accountLayout.maxConnectedPartyBs)
-			revert MaxPartyBConnectionsReached(self.partyBAddresses.length, accountLayout.maxConnectedPartyBs);
-
-		entry.releaseInterval = accountLayout.partyBReleaseIntervals[partyB];
-		entry.transitioning = 0;
-		entry.scheduled = 0;
-		entry.lastTransitionTimestamp = entry.releaseInterval == 0
-			? block.timestamp
-			: (block.timestamp / entry.releaseInterval) * entry.releaseInterval;
-
-		// Add to tracking arrays
-		self.partyBIndexes[partyB] = self.partyBAddresses.length;
-		self.partyBAddresses.push(partyB);
-
+		emit IncreaseBalance(self.user, self.collateral, value, _type, false);
 		return self;
 	}
 
 	// @notice Adds funds directly to available balance
-	function instantAdd(ScheduledReleaseBalance storage self, address collateral, uint256 value) internal returns (ScheduledReleaseBalance storage) {
-		// Initialize collateral if it's the first usage
-		if (self.collateral == address(0)) {
-			self.collateral = collateral;
-		} else {
-			if (self.collateral != collateral) revert CollateralMismatch(self.collateral, collateral);
-		}
+	function instantAdd(
+		ScheduledReleaseBalance storage self,
+		uint256 value,
+		IncreaseBalanceType _type
+	) internal returns (ScheduledReleaseBalance storage) {
 		self.available += value;
+		emit IncreaseBalance(self.user, self.collateral, value, _type, true);
 		return self;
 	}
 
 	// @notice Deducts funds from available balance only
-	function sub(ScheduledReleaseBalance storage self, uint256 value) internal returns (ScheduledReleaseBalance storage) {
+	function sub(ScheduledReleaseBalance storage self, uint256 value, DecreaseBalanceType _type) internal returns (ScheduledReleaseBalance storage) {
 		if (self.available < value) revert InsufficientBalance(self.collateral, value, self.available);
 
 		self.available -= value;
+		emit DecreaseBalance(self.user, address(0), self.collateral, value, _type);
 		return self;
 	}
 
 	// @notice Deducts funds from available, transitioning, then scheduled balances for a specific partyB
-	function subForPartyB(ScheduledReleaseBalance storage self, address partyB, uint256 value) internal returns (ScheduledReleaseBalance storage) {
+	function subForPartyB(
+		ScheduledReleaseBalance storage self,
+		address partyB,
+		uint256 value,
+		DecreaseBalanceType _type
+	) internal returns (ScheduledReleaseBalance storage) {
 		if (partyB == address(0)) revert CommonErrors.ZeroAddress("partyB");
 
 		sync(self, partyB);
 		ScheduledReleaseEntry storage entry = self.partyBSchedules[partyB];
 		if (entry.releaseInterval == 0) {
-			return sub(self, value);
+			return sub(self, value, _type);
 		}
 
 		uint256 totalBalance = self.available + entry.transitioning + entry.scheduled;
@@ -147,6 +171,7 @@ library ScheduledReleaseBalanceOps {
 
 		// Finally use available funds
 		self.available -= remaining;
+		emit DecreaseBalance(self.user, partyB, self.collateral, value, _type);
 		return self;
 	}
 
@@ -188,6 +213,7 @@ library ScheduledReleaseBalanceOps {
 				: (block.timestamp / entry.releaseInterval) * entry.releaseInterval;
 			entry.scheduled += entry.transitioning;
 			entry.transitioning = 0;
+			emit SyncBalance(self.user, partyB, self.collateral);
 			return self;
 		}
 		if (entry.releaseInterval == 0) return self;
@@ -217,7 +243,7 @@ library ScheduledReleaseBalanceOps {
 		if (removePartyBOnEmpty && entry.transitioning == 0 && entry.scheduled == 0) {
 			removePartyB(self, partyB);
 		}
-
+		emit SyncBalance(self.user, partyB, self.collateral);
 		return self;
 	}
 
@@ -226,6 +252,33 @@ library ScheduledReleaseBalanceOps {
 		for (uint256 i = 0; i < self.partyBAddresses.length; i++) {
 			sync(self, self.partyBAddresses[i]);
 		}
+		return self;
+	}
+
+	// @notice Adds a partyB to the scheduled release entries without adding funds
+	// @dev Initializes entry with default release interval if not already present
+	function addPartyB(ScheduledReleaseBalance storage self, address partyB) internal returns (ScheduledReleaseBalance storage) {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+
+		// Check if partyB is already added
+		if (self.partyBAddresses.length > 0 && self.partyBAddresses[self.partyBIndexes[partyB]] == partyB) return self;
+
+		ScheduledReleaseEntry storage entry = self.partyBSchedules[partyB];
+
+		if (self.partyBAddresses.length >= accountLayout.maxConnectedPartyBs)
+			revert MaxPartyBConnectionsReached(self.partyBAddresses.length, accountLayout.maxConnectedPartyBs);
+
+		entry.releaseInterval = accountLayout.partyBReleaseIntervals[partyB];
+		entry.transitioning = 0;
+		entry.scheduled = 0;
+		entry.lastTransitionTimestamp = entry.releaseInterval == 0
+			? block.timestamp
+			: (block.timestamp / entry.releaseInterval) * entry.releaseInterval;
+
+		// Add to tracking arrays
+		self.partyBIndexes[partyB] = self.partyBAddresses.length;
+		self.partyBAddresses.push(partyB);
+
 		return self;
 	}
 

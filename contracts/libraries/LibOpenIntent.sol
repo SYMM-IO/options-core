@@ -8,7 +8,7 @@ import { AccountStorage } from "../storages/AccountStorage.sol";
 import { AppStorage } from "../storages/AppStorage.sol";
 import { OpenIntent, IntentStorage, IntentStatus } from "../storages/IntentStorage.sol";
 import { Symbol, SymbolStorage } from "../storages/SymbolStorage.sol";
-import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "./LibScheduledReleaseBalance.sol";
+import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, IncreaseBalanceType, DecreaseBalanceType } from "./LibScheduledReleaseBalance.sol";
 import { CommonErrors } from "./CommonErrors.sol";
 
 library LibOpenIntentOps {
@@ -114,19 +114,19 @@ library LibOpenIntentOps {
 
 		if (self.partyBsWhiteList.length == 1) {
 			if (isGetting) {
-				partyAFeeBalance.subForPartyB(self.partyBsWhiteList[0], tradingFee + affiliateFee);
-				partyABalance.subForPartyB(self.partyBsWhiteList[0], premium);
+				partyAFeeBalance.subForPartyB(self.partyBsWhiteList[0], tradingFee + affiliateFee, DecreaseBalanceType.FEE);
+				partyABalance.subForPartyB(self.partyBsWhiteList[0], premium, DecreaseBalanceType.PREMIUM);
 			} else {
-				partyAFeeBalance.scheduledAdd(self.partyBsWhiteList[0], tradingFee + affiliateFee);
-				partyABalance.scheduledAdd(self.partyBsWhiteList[0], premium);
+				partyAFeeBalance.scheduledAdd(self.partyBsWhiteList[0], tradingFee + affiliateFee, IncreaseBalanceType.FEE);
+				partyABalance.scheduledAdd(self.partyBsWhiteList[0], premium, IncreaseBalanceType.PREMIUM);
 			}
 		} else {
 			if (isGetting) {
-				partyAFeeBalance.sub(tradingFee + affiliateFee);
-				partyABalance.sub(premium);
+				partyAFeeBalance.sub(tradingFee + affiliateFee, DecreaseBalanceType.FEE);
+				partyABalance.sub(premium, DecreaseBalanceType.PREMIUM);
 			} else {
-				partyAFeeBalance.instantAdd(self.tradingFee.feeToken, tradingFee + affiliateFee);
-				partyABalance.instantAdd(symbol.collateral, premium);
+				partyAFeeBalance.instantAdd(tradingFee + affiliateFee, IncreaseBalanceType.FEE);
+				partyABalance.instantAdd(premium, IncreaseBalanceType.PREMIUM);
 			}
 		}
 	}

@@ -4,7 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, IncreaseBalanceType, DecreaseBalanceType } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { CommonErrors } from "../../libraries/CommonErrors.sol";
 import { AccountFacetErrors } from "./AccountFacetErrors.sol";
 import { LibPartyB } from "../../libraries/LibPartyB.sol";
@@ -32,7 +32,8 @@ library AccountFacetImpl {
 		IERC20(collateral).safeTransferFrom(msg.sender, address(this), amount);
 
 		uint256 amountWith18Decimals = _normalizeAmount(collateral, amount);
-		accountLayout.balances[user][collateral].instantAdd(collateral, amountWith18Decimals);
+		accountLayout.balances[user][collateral].setup(user, collateral);
+		accountLayout.balances[user][collateral].instantAdd(amountWith18Decimals, IncreaseBalanceType.DEPOSIT);
 	}
 
 	function securedDepositFor(address collateral, address user, uint256 amount) internal {
@@ -42,7 +43,8 @@ library AccountFacetImpl {
 		if (!appLayout.whiteListedCollateral[collateral]) {
 			revert AccountFacetErrors.CollateralNotWhitelisted(collateral);
 		}
-		accountLayout.balances[user][collateral].instantAdd(collateral, amount);
+		accountLayout.balances[user][collateral].setup(user, collateral);
+		accountLayout.balances[user][collateral].instantAdd(amount, IncreaseBalanceType.DEPOSIT);
 	}
 
 	function internalTransfer(address collateral, address user, uint256 amount) internal {
@@ -58,8 +60,9 @@ library AccountFacetImpl {
 			revert CommonErrors.InsufficientBalance(msg.sender, collateral, amount, available);
 		}
 
-		accountLayout.balances[msg.sender][collateral].sub(amount);
-		accountLayout.balances[user][collateral].instantAdd(collateral, amount);
+		accountLayout.balances[msg.sender][collateral].sub(amount, DecreaseBalanceType.INTERNAL_TRANSFER);
+		accountLayout.balances[user][collateral].setup(user, collateral);
+		accountLayout.balances[user][collateral].instantAdd(amount, IncreaseBalanceType.INTERNAL_TRANSFER);
 	}
 
 	function initiateWithdraw(address collateral, uint256 amount, address to) internal returns (uint256 currentId) {
@@ -87,7 +90,7 @@ library AccountFacetImpl {
 
 		msg.sender.requireSolvent(collateral);
 
-		accountLayout.balances[msg.sender][collateral].sub(amount);
+		accountLayout.balances[msg.sender][collateral].sub(amount, DecreaseBalanceType.WITHDRAW);
 
 		currentId = ++accountLayout.lastWithdrawId;
 		Withdraw memory withdrawObject = Withdraw({
@@ -154,7 +157,7 @@ library AccountFacetImpl {
 		}
 
 		withdrawal.status = WithdrawStatus.CANCELED;
-		accountLayout.balances[withdrawal.user][withdrawal.collateral].instantAdd(withdrawal.collateral, withdrawal.amount);
+		accountLayout.balances[withdrawal.user][withdrawal.collateral].instantAdd(withdrawal.amount, IncreaseBalanceType.DEPOSIT);
 	}
 
 	function syncBalances(address collateral, address partyA, address[] calldata partyBs) internal {
