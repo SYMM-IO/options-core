@@ -48,6 +48,7 @@ contract InstantActionsCloseFacet is Accessibility, Pausable, IInstantActionsClo
 			emit ExpireCloseIntent(signedCancelCloseIntent.intentId);
 		} else {
 			emit CancelCloseIntent(signedCancelCloseIntent.intentId);
+			emit AcceptCancelCloseIntent(signedCancelCloseIntent.intentId);
 		}
 	}
 

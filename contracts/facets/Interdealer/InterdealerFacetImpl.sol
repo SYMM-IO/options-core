@@ -4,7 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, IncreaseBalanceType, DecreaseBalanceType } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { TransferIntentOps } from "../../libraries/LibTransferIntent.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { TransferIntent, IntentStorage, Trade, TransferIntentStatus } from "../../storages/IntentStorage.sol";
@@ -35,7 +35,7 @@ library InterdealerFacetImpl {
 		});
 		intentLayout.transferIntents[intentId] = intent;
 
-		accountLayout.balances[intent.sender][intent.getSymbol().collateral].sub(intent.getPremium());
+		accountLayout.balances[intent.sender][intent.getSymbol().collateral].sub(intent.getPremium(), DecreaseBalanceType.PREMIUM);
 	}
 
 	function cancelTransferIntent(uint256 intentId) internal {
@@ -49,7 +49,7 @@ library InterdealerFacetImpl {
 		} else if (intent.status == TransferIntentStatus.PENDING) {
 			intent.status = TransferIntentStatus.CANCELED;
 			address collateral = intent.getSymbol().collateral;
-			accountLayout.balances[intent.sender][collateral].instantAdd(collateral, intent.getPremium());
+			accountLayout.balances[intent.sender][collateral].instantAdd(intent.getPremium(), IncreaseBalanceType.PREMIUM);
 		} else {
 			revert("InterdealerFacet: Invalid state");
 		}
@@ -86,7 +86,7 @@ library InterdealerFacetImpl {
 		require(intent.receiver == msg.sender, "InterdealerFacet: Intent is locked by another partyB");
 
 		address collateral = intent.getSymbol().collateral;
-		accountLayout.balances[intent.sender][collateral].instantAdd(collateral, intent.getPremium());
+		accountLayout.balances[intent.sender][collateral].instantAdd(intent.getPremium(), IncreaseBalanceType.PREMIUM);
 
 		intent.status = TransferIntentStatus.CANCELED;
 	}
@@ -103,9 +103,9 @@ library InterdealerFacetImpl {
 		uint256 filledPremium = intent.getPremiumWithPrice(fillPrice);
 
 		address collateral = intent.getSymbol().collateral;
-		accountLayout.balances[intent.receiver][collateral].instantAdd(collateral, filledPremium);
+		accountLayout.balances[intent.receiver][collateral].instantAdd(filledPremium, IncreaseBalanceType.PREMIUM);
 		if (proposedPremium - filledPremium > 0) {
-			accountLayout.balances[intent.sender][collateral].instantAdd(collateral, proposedPremium - filledPremium);
+			accountLayout.balances[intent.sender][collateral].instantAdd(proposedPremium - filledPremium, IncreaseBalanceType.PREMIUM);
 		}
 
 		intent.status = TransferIntentStatus.FINALIZED;

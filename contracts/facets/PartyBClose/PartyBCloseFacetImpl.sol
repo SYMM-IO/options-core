@@ -5,7 +5,7 @@
 pragma solidity >=0.8.19;
 
 import { LibCloseIntentOps } from "../../libraries/LibCloseIntent.sol";
-import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, IncreaseBalanceType, DecreaseBalanceType } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { LibTradeOps } from "../../libraries/LibTrade.sol";
 import { LibPartyB } from "../../libraries/LibPartyB.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
@@ -75,8 +75,8 @@ library PartyBCloseFacetImpl {
 		if (price < intent.price) revert PartyBCloseFacetErrors.InvalidClosedPrice(price, intent.price);
 
 		uint256 premium = (quantity * price) / 1e18;
-		accountLayout.balances[trade.partyA][symbol.collateral].instantAdd(symbol.collateral, premium);
-		accountLayout.balances[trade.partyB][symbol.collateral].sub(premium);
+		accountLayout.balances[trade.partyA][symbol.collateral].instantAdd(premium, IncreaseBalanceType.PREMIUM);
+		accountLayout.balances[trade.partyB][symbol.collateral].sub(premium, DecreaseBalanceType.PREMIUM);
 		trade.avgClosedPriceBeforeExpiration =
 			(trade.avgClosedPriceBeforeExpiration * trade.closedAmountBeforeExpiration + quantity * price) /
 			(trade.closedAmountBeforeExpiration + quantity);

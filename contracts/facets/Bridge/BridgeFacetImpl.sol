@@ -4,7 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, IncreaseBalanceType, DecreaseBalanceType } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { CommonErrors } from "../../libraries/CommonErrors.sol";
 import { AccountStorage, BridgeTransaction, BridgeTransactionStatus } from "../../storages/AccountStorage.sol";
 import { AppStorage } from "../../storages/AppStorage.sol";
@@ -38,7 +38,7 @@ library BridgeFacetImpl {
 			timestamp: block.timestamp,
 			status: BridgeTransactionStatus.RECEIVED
 		});
-		accountLayout.balances[collateral][msg.sender].sub(amountWith18Decimals);
+		accountLayout.balances[collateral][msg.sender].sub(amountWith18Decimals, DecreaseBalanceType.BRIDGE);
 		accountLayout.bridgeTransactions[currentId] = bridgeTransaction;
 		accountLayout.bridgeTransactionIds[bridge].push(currentId);
 	}
@@ -109,9 +109,13 @@ library BridgeFacetImpl {
 
 		if (validAmount > bridgeTransaction.amount) revert BridgeFacetErrors.HighValidAmount(validAmount, bridgeTransaction.amount);
 
-		AccountStorage.layout().balances[bridgeTransaction.collateral][accountLayout.invalidBridgedAmountsPool].instantAdd(
-			bridgeTransaction.collateral,
-			((bridgeTransaction.amount - validAmount) * (10 ** 18)) / (10 ** IERC20Metadata(bridgeTransaction.collateral).decimals()) //TODO: 1.
+		accountLayout.balances[bridgeTransaction.collateral][accountLayout.invalidBridgedAmountsPool].setup(
+			accountLayout.invalidBridgedAmountsPool,
+			bridgeTransaction.collateral
+		);
+		accountLayout.balances[bridgeTransaction.collateral][accountLayout.invalidBridgedAmountsPool].instantAdd(
+			((bridgeTransaction.amount - validAmount) * (10 ** 18)) / (10 ** IERC20Metadata(bridgeTransaction.collateral).decimals()), //TODO: 1.
+			IncreaseBalanceType.BRIDGE
 		);
 		bridgeTransaction.status = BridgeTransactionStatus.RECEIVED;
 		bridgeTransaction.amount = validAmount;
