@@ -192,9 +192,9 @@ task("setup:deployment", "Setup Deployed Facets").setAction(async ({}, { ethers 
 	}
 
 	if (config.partyBReleaseInterval?.length) {
-		for (const { address, time } of config.partyBReleaseInterval) {
-			await controlFacet.connect(owner).setPartyBReleaseInterval(address, time)
-			console.log(`partyB Release Interval set successfully. address: ${address} :: time: ${time}`)
+		for (const { partyB, interval } of config.partyBReleaseInterval) {
+			await controlFacet.connect(owner).setPartyBReleaseInterval(partyB, interval)
+			console.log(`partyB Release Interval set successfully. partyB: ${partyB} :: interval: ${interval}`)
 		}
 	}
 
@@ -249,6 +249,31 @@ task("setup:deployment", "Setup Deployed Facets").setAction(async ({}, { ethers 
 		if (p.withdraw !== undefined) {
 			await controlFacet.connect(owner)[p.withdraw ? "pauseWithdraw" : "unpauseWithdraw"]()
 			console.log(`${p.withdraw ? "pauseWithdraw" : "unpauseWithdraw"} successfully.`)
+		}
+	}
+
+	if (config.symbols?.length) {
+		const BATCH_SIZE = 150
+
+		if (config.symbols.length > BATCH_SIZE) {
+			for (let i = 0; i < config.symbols.length; i += BATCH_SIZE) {
+				const batch = config.symbols.slice(i, i + BATCH_SIZE)
+				console.log(`Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(config.symbols.length / BATCH_SIZE)}`)
+
+				await controlFacet.connect(owner).addSymbols(batch)
+				console.log(`Added batch of ${batch.length} symbols successfully`)
+			}
+			console.log(`All ${config.symbols.length} symbols added successfully in ${Math.ceil(config.symbols.length / BATCH_SIZE)} batches`)
+		} else {
+			await controlFacet.connect(owner).addSymbols(config.symbols)
+			console.log(`All ${config.symbols.length} symbols added successfully in a single batch`)
+		}
+
+		for (const symbol of config.symbols) {
+			if (symbol.symbolId !== undefined && symbol.isValid !== undefined) {
+				await controlFacet.connect(owner).setSymbolValidationState(symbol.symbolId, symbol.isValid)
+				console.log(`Symbol validation state set. Symbol ID: ${symbol.id}, Validation Status: ${symbol.isValid}`)
+			}
 		}
 	}
 

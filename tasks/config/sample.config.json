@@ -62,13 +62,15 @@
 
 	"symbols": [
 		{
-			"address": "",
 			"name": "",
+			"symbolId": "",
+			"isValid": true,
+			"collateral": "",
 			"optionType": "",
 			"oracleId": "",
 			"isStableCoin": true,
 			"tradingFee": "",
-			"type": ""
+			"symbolType": ""
 		}
 	],
 

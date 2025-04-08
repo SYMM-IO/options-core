@@ -63,13 +63,15 @@ export interface IConfig {
 	}>
 
 	symbols?: Array<{
-		address: string
 		name: string
+		symbolId: string
+		isValid:boolean
+		collateral: string
 		optionType: string
 		oracleId: string
 		isStableCoin: boolean
 		tradingFee: string
-		type: string
+		symbolType: string
 	}>
 
 	affiliates?: Array<{
