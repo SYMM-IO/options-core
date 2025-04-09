@@ -7,6 +7,5 @@ pragma solidity >=0.8.19;
 import { IPartiesEvents } from "../../interfaces/IPartiesEvents.sol";
 
 interface ITradeSettlementEvents is IPartiesEvents {
-	event ExpireTrade(address operator, uint256 tradeId, uint256 settlementPrice);
-	event ExerciseTrade(address operator, uint256 tradeId, uint256 settlementPrice);
+	event ExecuteTrade(address operator, uint256 tradeId, uint256 settlementPrice, uint256 collateralPrice, bool isExpired);
 }
