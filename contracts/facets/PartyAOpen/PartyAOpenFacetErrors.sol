@@ -7,6 +7,7 @@ pragma solidity >=0.8.19;
 library PartyAOpenFacetErrors {
 	// Sender validation errors
 	error SenderIsPartyB(address sender);
+	error ShortTradeInIsolatedMode();
 
 	// Timestamp errors
 	error LowExpirationTimestamp(uint256 provided, uint256 current);

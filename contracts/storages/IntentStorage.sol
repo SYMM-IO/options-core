@@ -28,7 +28,7 @@ enum TradeSide {
 
 enum MarginType {
 	ISOLATED,
-	CROSS
+	CROSS // trades are in cross with a specific partyB
 }
 
 struct ExerciseFee {

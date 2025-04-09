@@ -53,6 +53,9 @@ library PartyAOpenFacetImpl {
 			if (!(partyBsWhiteList.length == 1 && partyBsWhiteList[0] == accountLayout.boundPartyB[sender]))
 				revert PartyAOpenFacetErrors.UserBoundToAnotherPartyB(sender, accountLayout.boundPartyB[sender], partyBsWhiteList);
 		}
+		if (tradeAgreements.tradeSide == TradeSide.SHORT && tradeAgreements.marginType == MarginType.ISOLATED) {
+			revert PartyAOpenFacetErrors.ShortTradeInIsolatedMode();
+		}
 
 		intentId = ++IntentStorage.layout().lastOpenIntentId;
 		OpenIntent memory intent = OpenIntent({
