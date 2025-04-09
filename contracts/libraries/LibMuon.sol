@@ -37,7 +37,7 @@ library LibMuon {
 		Oracle storage oracle = symbolLayout.oracles[symbol.oracleId];
 
 		bytes32 hash = keccak256(
-			abi.encodePacked(sig.reqId, address(this), sig.timestamp, sig.symbolId, sig.settlementPrice, sig.settlementTimestamp, getChainId())
+			abi.encodePacked(sig.reqId, address(this), sig.timestamp, sig.symbolId, sig.settlementPrice, sig.settlementTimestamp, sig.collateralPrice, getChainId())
 		);
 
 		IMuonOracle(oracle.contractAddress).verifyTSSAndGW(hash, sig.reqId, sig.sigs, sig.gatewaySignature);
