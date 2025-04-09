@@ -258,7 +258,6 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		OptionType _optionType,
 		uint256 _oracleId,
 		address _collateral,
-		bool _isStableCoin,
 		uint256 _tradingFee,
 		uint256 _symbolType
 	) external onlyRole(LibAccessibility.SETTER_ROLE) {
@@ -275,12 +274,11 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 			optionType: _optionType,
 			oracleId: _oracleId,
 			collateral: _collateral,
-			isStableCoin: _isStableCoin,
 			tradingFee: _tradingFee,
 			symbolType: _symbolType
 		});
 		s.lastSymbolId = s.lastSymbolId;
-		emit SymbolAdded(s.lastSymbolId, _name, _optionType, _oracleId, _collateral, _isStableCoin, _tradingFee, _symbolType);
+		emit SymbolAdded(s.lastSymbolId, _name, _optionType, _oracleId, _collateral, _tradingFee, _symbolType);
 	}
 
 	function setPriceOracleAddress(address _oracle) external onlyRole(LibAccessibility.SETTER_ROLE) {

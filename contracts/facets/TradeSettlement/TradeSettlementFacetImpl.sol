@@ -46,14 +46,6 @@ library TradeSettlementFacetImpl {
 				revert TradeSettlementFacetErrors.InvalidSettlementPrice(sig.settlementPrice, trade.tradeAgreements.strikePrice, false);
 		}
 
-		if (msg.sender != trade.partyB) {
-			if (trade.tradeAgreements.expirationTimestamp + AppStorage.layout().ownerExclusiveWindow > block.timestamp)
-				revert TradeSettlementFacetErrors.OwnerExclusiveWindowActive(
-					block.timestamp,
-					trade.tradeAgreements.expirationTimestamp + AppStorage.layout().ownerExclusiveWindow
-				);
-		}
-
 		trade.settledPrice = sig.settlementPrice;
 		trade.close(TradeStatus.EXPIRED, IntentStatus.CANCELED);
 	}
@@ -91,9 +83,7 @@ library TradeSettlementFacetImpl {
 
 		uint256 exerciseFee = trade.getExerciseFee(sig.settlementPrice, pnl);
 		uint256 amountToTransfer = pnl - exerciseFee;
-		if (!symbol.isStableCoin) {
-			amountToTransfer = (amountToTransfer * 1e18) / sig.settlementPrice;
-		}
+		amountToTransfer = (amountToTransfer * 1e18) / sig.collateralPrice;
 
 		trade.settledPrice = sig.settlementPrice;
 		accountLayout.balances[trade.partyA][symbol.collateral].instantAdd(amountToTransfer, IncreaseBalanceType.REALIZED_PNL); //TODO: instantAdd or add?

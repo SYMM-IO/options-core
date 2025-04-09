@@ -84,7 +84,6 @@ interface IControlFacet is IControlEvents {
 		OptionType _optionType,
 		uint256 _oracleId,
 		address _collateral,
-		bool _isStableCoin,
 		uint256 _tradingFee,
 		uint256 _symbolType
 	) external;

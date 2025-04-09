@@ -46,6 +46,7 @@ struct SettlementPriceSig {
 	uint256 symbolId;
 	uint256 settlementPrice;
 	uint256 settlementTimestamp;
+	uint256 collateralPrice;
 	bytes gatewaySignature;
 	IMuonOracle.SchnorrSign sigs;
 }
