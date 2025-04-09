@@ -8,7 +8,5 @@ import { SettlementPriceSig } from "../../storages/AppStorage.sol";
 import { ITradeSettlementEvents } from "./ITradeSettlementEvents.sol";
 
 interface ITradeSettlementFacet is ITradeSettlementEvents {
-	function expireTrade(uint256 tradeId, SettlementPriceSig memory settlementPriceSig) external;
-
-	function exerciseTrade(uint256 tradeId, SettlementPriceSig memory settlementPriceSig) external;
+	function executeTrade(uint256 tradeId, SettlementPriceSig memory settlementPriceSig) external;
 }

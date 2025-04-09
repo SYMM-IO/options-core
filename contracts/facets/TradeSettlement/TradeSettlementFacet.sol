@@ -19,34 +19,17 @@ import { TradeSettlementFacetImpl } from "./TradeSettlementFacetImpl.sol";
  */
 contract TradeSettlementFacet is Accessibility, Pausable, ITradeSettlementFacet {
 	/**
-	 * @notice Settles a trade that has reached its expiration timestamp
+	 * @notice Executes a trade that has reached its expiration timestamp
 	 * @dev Can be called by either PartyB or authorized third parties
 	 * @param tradeId The unique identifier of the trade being expired
 	 * @param settlementPriceSig Cryptographically signed data from Muon oracle containing
 	 *                          the verified settlement price of the symbol at expiration time
 	 */
-	function expireTrade(
+	function executeTrade(
 		uint256 tradeId,
 		SettlementPriceSig memory settlementPriceSig
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		TradeSettlementFacetImpl.expireTrade(tradeId, settlementPriceSig);
-		emit ExpireTrade(msg.sender, tradeId, settlementPriceSig.settlementPrice);
-	}
-
-	/**
-	 * @notice Settles a trade that has reached its expiration timestamp
-	 * @dev Differs from expiration by potentially including exercise fees and accounting for potential PNLs.
-	 *      Settlement occurs using the current market price verified by Muon oracle
-	 *      Can be called by either PartyB or authorized third parties
-	 * @param tradeId The unique identifier of the trade being exercised
-	 * @param settlementPriceSig Cryptographically signed data from Muon oracle containing
-	 *                          the verified current market price for settlement
-	 */
-	function exerciseTrade(
-		uint256 tradeId,
-		SettlementPriceSig memory settlementPriceSig
-	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		TradeSettlementFacetImpl.exerciseTrade(tradeId, settlementPriceSig);
-		emit ExerciseTrade(msg.sender, tradeId, settlementPriceSig.settlementPrice);
+		bool isExpired = TradeSettlementFacetImpl.executeTrade(tradeId, settlementPriceSig);
+		emit ExecuteTrade(msg.sender, tradeId, settlementPriceSig.settlementPrice, settlementPriceSig.collateralPrice, isExpired);
 	}
 }
