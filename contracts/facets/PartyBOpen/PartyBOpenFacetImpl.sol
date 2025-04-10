@@ -212,11 +212,6 @@ library PartyBOpenFacetImpl {
 		});
 
 		trade.penaltyParticipants[0] = intent.partyB;
-		intent.tradeId = tradeId;
-		intent.status = IntentStatus.FILLED;
-		intent.statusModifyTimestamp = block.timestamp;
-
-		intent.remove(false);
 
 		// partially fill
 		if (intent.tradeAgreements.quantity > quantity) {
@@ -262,6 +257,12 @@ library PartyBOpenFacetImpl {
 			}
 			intent.tradeAgreements.quantity = quantity;
 		}
+		intent.tradeId = tradeId;
+		intent.status = IntentStatus.FILLED;
+		intent.statusModifyTimestamp = block.timestamp;
+
+		intent.remove(false);
+
 		trade.save();
 		accountLayout.balances[trade.partyB][symbol.collateral].setup(trade.partyB, symbol.collateral);
 		accountLayout.balances[trade.partyB][symbol.collateral].instantAdd(intent.getPremium(), IncreaseBalanceType.FEE);
