@@ -99,9 +99,9 @@ contract InstantActionsOpenFacet is Accessibility, Pausable, IInstantActionsOpen
 		emit FillOpenIntent(signedFillOpenIntent.intentId, tradeId, signedFillOpenIntent.quantity, signedFillOpenIntent.price);
 		if (newIntentId != 0) {
 			OpenIntent storage newIntent = IntentStorage.layout().openIntents[newIntentId];
-			if (newIntent.status == IntentStatus.PENDING) {
-				_emitSendOpenIntent(newIntent);
-			} else if (newIntent.status == IntentStatus.CANCELED) {
+			_emitSendOpenIntent(newIntent);
+			if (newIntent.status == IntentStatus.CANCELED) {
+				emit CancelOpenIntent(newIntentId, IntentStatus.CANCEL_PENDING);
 				emit AcceptCancelOpenIntent(newIntent.id);
 			}
 		}
