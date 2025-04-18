@@ -54,7 +54,7 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 			msg.sender,
 			partyB,
 			collateral,
-			AccountStorage.layout().balances[partyB][collateral].available,
+			AccountStorage.layout().balances[partyB][collateral].isolatedBalance,
 			upnl,
 			collateralPrice
 		);

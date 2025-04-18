@@ -8,7 +8,7 @@ import { AccountStorage } from "../storages/AccountStorage.sol";
 import { AppStorage } from "../storages/AppStorage.sol";
 import { OpenIntent, IntentStorage, IntentStatus } from "../storages/IntentStorage.sol";
 import { Symbol, SymbolStorage } from "../storages/SymbolStorage.sol";
-import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, IncreaseBalanceType, DecreaseBalanceType } from "./LibScheduledReleaseBalance.sol";
+import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "./LibScheduledReleaseBalance.sol";
 import { CommonErrors } from "./CommonErrors.sol";
 
 library LibOpenIntentOps {
@@ -114,19 +114,29 @@ library LibOpenIntentOps {
 
 		if (self.partyBsWhiteList.length == 1) {
 			if (isGetting) {
-				partyAFeeBalance.subForPartyB(self.partyBsWhiteList[0], tradingFee + affiliateFee, DecreaseBalanceType.FEE);
-				partyABalance.subForPartyB(self.partyBsWhiteList[0], premium, DecreaseBalanceType.PREMIUM);
+				partyAFeeBalance.subForCounterParty(
+					self.partyBsWhiteList[0],
+					tradingFee + affiliateFee,
+					self.tradeAgreements.marginType,
+					DecreaseBalanceReason.FEE
+				);
+				partyABalance.subForCounterParty(self.partyBsWhiteList[0], premium, self.tradeAgreements.marginType, DecreaseBalanceReason.PREMIUM);
 			} else {
-				partyAFeeBalance.scheduledAdd(self.partyBsWhiteList[0], tradingFee + affiliateFee, IncreaseBalanceType.FEE);
-				partyABalance.scheduledAdd(self.partyBsWhiteList[0], premium, IncreaseBalanceType.PREMIUM);
+				partyAFeeBalance.scheduledAdd(
+					self.partyBsWhiteList[0],
+					tradingFee + affiliateFee,
+					self.tradeAgreements.marginType,
+					IncreaseBalanceReason.FEE
+				);
+				partyABalance.scheduledAdd(self.partyBsWhiteList[0], premium, self.tradeAgreements.marginType, IncreaseBalanceReason.PREMIUM);
 			}
 		} else {
 			if (isGetting) {
-				partyAFeeBalance.sub(tradingFee + affiliateFee, DecreaseBalanceType.FEE);
-				partyABalance.sub(premium, DecreaseBalanceType.PREMIUM);
+				partyAFeeBalance.isolatedSub(tradingFee + affiliateFee, DecreaseBalanceReason.FEE);
+				partyABalance.isolatedSub(premium, DecreaseBalanceReason.PREMIUM);
 			} else {
-				partyAFeeBalance.instantAdd(tradingFee + affiliateFee, IncreaseBalanceType.FEE);
-				partyABalance.instantAdd(premium, IncreaseBalanceType.PREMIUM);
+				partyAFeeBalance.instantIsolatedAdd(tradingFee + affiliateFee, IncreaseBalanceReason.FEE);
+				partyABalance.instantIsolatedAdd(premium, IncreaseBalanceReason.PREMIUM);
 			}
 		}
 	}

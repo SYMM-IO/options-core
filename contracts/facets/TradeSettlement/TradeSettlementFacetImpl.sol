@@ -5,7 +5,7 @@
 pragma solidity >=0.8.19;
 
 import { LibMuon } from "../../libraries/LibMuon.sol";
-import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, IncreaseBalanceType, DecreaseBalanceType } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { LibTradeOps } from "../../libraries/LibTrade.sol";
 import { LibPartyB } from "../../libraries/LibPartyB.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
@@ -74,8 +74,8 @@ library TradeSettlementFacetImpl {
 			amountToTransfer = (amountToTransfer * 1e18) / sig.collateralPrice;
 
 			trade.settledPrice = sig.settlementPrice;
-			accountLayout.balances[trade.partyA][symbol.collateral].instantAdd(amountToTransfer, IncreaseBalanceType.REALIZED_PNL); //TODO: instantAdd or add?
-			accountLayout.balances[trade.partyB][symbol.collateral].sub(amountToTransfer, DecreaseBalanceType.REALIZED_PNL);
+			accountLayout.balances[trade.partyA][symbol.collateral].instantIsolatedAdd(amountToTransfer, IncreaseBalanceReason.REALIZED_PNL); //TODO: instantIsolatedAdd or add?
+			accountLayout.balances[trade.partyB][symbol.collateral].isolatedSub(amountToTransfer, DecreaseBalanceReason.REALIZED_PNL);
 			trade.close(TradeStatus.EXERCISED, IntentStatus.CANCELED);
 		}
 	}

@@ -5,6 +5,7 @@
 pragma solidity >=0.8.19;
 
 import { LibAccessibility } from "../../libraries/LibAccessibility.sol";
+import { MarginType } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { AccountStorage, Withdraw } from "../../storages/AccountStorage.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
 import { Pausable } from "../../utils/Pausable.sol";
@@ -26,7 +27,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 */
 	function deposit(address collateral, uint256 amount) external whenNotDepositingPaused notSuspended(msg.sender) {
 		AccountFacetImpl.deposit(collateral, msg.sender, amount);
-		emit Deposit(msg.sender, msg.sender, collateral, amount, AccountStorage.layout().balances[msg.sender][collateral].available);
+		emit Deposit(msg.sender, msg.sender, collateral, amount, AccountStorage.layout().balances[msg.sender][collateral].isolatedBalance);
 	}
 
 	/**
@@ -42,7 +43,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		uint256 amount
 	) external whenNotInternalTransferPaused notSuspended(msg.sender) notSuspended(user) {
 		AccountFacetImpl.internalTransfer(collateral, user, amount);
-		emit InternalTransfer(msg.sender, user, collateral, amount, AccountStorage.layout().balances[collateral][user].available);
+		emit InternalTransfer(msg.sender, user, collateral, amount, AccountStorage.layout().balances[collateral][user].isolatedBalance);
 	}
 
 	/**
@@ -58,7 +59,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		uint256 amount
 	) external whenNotDepositingPaused notSuspended(user) onlyRole(LibAccessibility.SECURED_DEPOSITOR_ROLE) {
 		AccountFacetImpl.securedDepositFor(collateral, user, amount);
-		emit Deposit(msg.sender, user, collateral, amount, AccountStorage.layout().balances[user][collateral].available);
+		emit Deposit(msg.sender, user, collateral, amount, AccountStorage.layout().balances[user][collateral].isolatedBalance);
 	}
 
 	/**
@@ -74,7 +75,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		uint256 amount
 	) external whenNotDepositingPaused notSuspended(msg.sender) notSuspended(user) {
 		AccountFacetImpl.deposit(collateral, user, amount);
-		emit Deposit(msg.sender, user, collateral, amount, AccountStorage.layout().balances[user][collateral].available);
+		emit Deposit(msg.sender, user, collateral, amount, AccountStorage.layout().balances[user][collateral].isolatedBalance);
 	}
 
 	/**
@@ -90,7 +91,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		address to
 	) external whenNotWithdrawingPaused notSuspended(msg.sender) notSuspended(to) {
 		uint256 id = AccountFacetImpl.initiateWithdraw(collateral, amount, to);
-		emit InitiateWithdraw(id, msg.sender, to, collateral, amount, AccountStorage.layout().balances[msg.sender][collateral].available);
+		emit InitiateWithdraw(id, msg.sender, to, collateral, amount, AccountStorage.layout().balances[msg.sender][collateral].isolatedBalance);
 	}
 
 	/**
@@ -111,7 +112,11 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	function cancelWithdraw(uint256 id) external whenNotWithdrawingPaused notSuspendedWithdrawal(id) {
 		Withdraw storage withdrawObject = AccountStorage.layout().withdrawals[id];
 		AccountFacetImpl.cancelWithdraw(id);
-		emit CancelWithdraw(id, withdrawObject.user, AccountStorage.layout().balances[withdrawObject.user][withdrawObject.collateral].available);
+		emit CancelWithdraw(
+			id,
+			withdrawObject.user,
+			AccountStorage.layout().balances[withdrawObject.user][withdrawObject.collateral].isolatedBalance
+		);
 	}
 
 	/**
@@ -121,8 +126,8 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @param partyA The PartyA address whose balance will be synchronized
 	 * @param partyBs Array of PartyB addresses with which to synchronize balances
 	 */
-	function syncBalances(address collateral, address partyA, address[] calldata partyBs) external {
-		AccountFacetImpl.syncBalances(collateral, partyA, partyBs);
+	function syncBalances(address collateral, address partyA, address[] calldata partyBs, MarginType marginType) external {
+		AccountFacetImpl.syncBalances(collateral, partyA, partyBs, marginType);
 		emit SyncBalances(collateral, partyA, partyBs);
 	}
 

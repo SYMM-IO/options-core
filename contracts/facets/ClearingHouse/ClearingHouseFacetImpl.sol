@@ -4,7 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, IncreaseBalanceType, DecreaseBalanceType } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason, MarginType } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { LibTradeOps } from "../../libraries/LibTrade.sol";
 import { LibPartyB } from "../../libraries/LibPartyB.sol";
 import { AccountStorage, Withdraw, WithdrawStatus } from "../../storages/AccountStorage.sol";
@@ -70,11 +70,11 @@ library ClearingHouseFacetImpl {
 		if (upnl >= 0) revert ClearingHouseFacetErrors.InvalidUpnl(upnl);
 
 		int256 requiredCollateral = (-upnl * int256(appLayout.partyBConfigs[partyB].lossCoverage)) / int256(collateralPrice);
-		if (int256(accountLayout.balances[partyB][collateral].available) >= requiredCollateral)
+		if (int256(accountLayout.balances[partyB][collateral].isolatedBalance) >= requiredCollateral)
 			revert ClearingHouseFacetErrors.PartyBIsSolvent(
 				partyB,
 				collateral,
-				int256(accountLayout.balances[partyB][collateral].available),
+				int256(accountLayout.balances[partyB][collateral].isolatedBalance),
 				requiredCollateral
 			);
 
@@ -83,18 +83,18 @@ library ClearingHouseFacetImpl {
 		detail.upnl = upnl;
 		detail.liquidationTimestamp = block.timestamp;
 		detail.collateralPrice = collateralPrice;
-		detail.collectedCollateral = accountLayout.balances[partyB][collateral].available;
+		detail.collectedCollateral = accountLayout.balances[partyB][collateral].isolatedBalance;
 	}
 
 	function confiscatePartyA(address partyB, address partyA, address collateral, uint256 amount) internal {
 		ScheduledReleaseBalance storage balance = AccountStorage.layout().balances[partyA][collateral];
 
-		if (balance.partyBBalance(partyB) <= amount)
-			revert CommonErrors.InsufficientBalance(partyA, collateral, amount, balance.partyBBalance(partyB));
+		int256 b = balance.counterPartyBalance(partyB, MarginType.ISOLATED);
+		if (b <= int256(amount)) revert CommonErrors.InsufficientBalance(partyA, collateral, amount, uint256(b));
 
 		partyB.requireInProgressLiquidation(collateral);
 
-		balance.subForPartyB(partyB, amount, DecreaseBalanceType.CONFISCATE);
+		balance.subForCounterParty(partyB, amount, MarginType.ISOLATED, DecreaseBalanceReason.CONFISCATE);
 		partyB.getInProgressLiquidationDetail(collateral).collectedCollateral += amount;
 	}
 
@@ -195,7 +195,7 @@ library ClearingHouseFacetImpl {
 			uint256 amountToTransfer = appLayout.liquidationDebtsToPartyAs[partyB][collateral][partyA];
 			amounts[i] = amountToTransfer;
 			appLayout.involvedPartyAsCountInLiquidation[partyB][collateral] -= 1;
-			AccountStorage.layout().balances[partyA][collateral].instantAdd(amountToTransfer, IncreaseBalanceType.LIQUIDATION);
+			AccountStorage.layout().balances[partyA][collateral].instantIsolatedAdd(amountToTransfer, IncreaseBalanceReason.LIQUIDATION);
 			appLayout.liquidationDebtsToPartyAs[partyB][collateral][partyA] = 0;
 		}
 		if (appLayout.involvedPartyAsCountInLiquidation[partyB][collateral] == 0) {

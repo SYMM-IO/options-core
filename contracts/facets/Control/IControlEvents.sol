@@ -45,7 +45,7 @@ interface IControlEvents {
 	event RoleGranted(bytes32 indexed role, address indexed user);
 	event RoleRevoked(bytes32 indexed role, address indexed user);
 	event PartyBReleaseIntervalUpdated(address indexed partyB, uint256 interval);
-	event MaxConnectedPartyBsUpdated(uint256 max);
+	event MaxConnectedCounterPariesUpdated(uint256 max);
 	event UnbindingCooldownUpdated(uint256 cooldown);
 	event AddressSuspended(address indexed user, bool status);
 	event WithdrawalSuspended(uint256 indexed withdrawId, bool status);

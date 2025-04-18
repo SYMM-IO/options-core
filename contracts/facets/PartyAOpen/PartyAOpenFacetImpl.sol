@@ -7,11 +7,11 @@ pragma solidity >=0.8.19;
 import { IPriceOracle } from "../../interfaces/IPriceOracle.sol";
 import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
 import { CommonErrors } from "../../libraries/CommonErrors.sol";
-import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, MarginType } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { LibUserData } from "../../libraries/LibUserData.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { AppStorage } from "../../storages/AppStorage.sol";
-import { OpenIntent, ExerciseFee, IntentStorage, TradingFee, TradeSide, MarginType, IntentStatus, TradeAgreements } from "../../storages/IntentStorage.sol";
+import { OpenIntent, ExerciseFee, IntentStorage, TradingFee, TradeSide, IntentStatus, TradeAgreements } from "../../storages/IntentStorage.sol";
 import { Symbol, SymbolStorage } from "../../storages/SymbolStorage.sol";
 import { PartyAOpenFacetErrors } from "./PartyAOpenFacetErrors.sol";
 
@@ -80,31 +80,34 @@ library PartyAOpenFacetImpl {
 		ScheduledReleaseBalance storage partyAFeeBalance = accountLayout.balances[sender][feeToken];
 
 		if (partyBsWhiteList.length == 1) {
-			if (uint256(partyABalance.partyBBalance(partyBsWhiteList[0])) < intent.getPremium())
+			if (uint256(partyABalance.counterPartyBalance(partyBsWhiteList[0], tradeAgreements.marginType)) < intent.getPremium())
 				revert CommonErrors.InsufficientBalance(
 					sender,
 					symbol.collateral,
 					intent.getPremium(),
-					uint256(partyABalance.partyBBalance(partyBsWhiteList[0]))
+					uint256(partyABalance.counterPartyBalance(partyBsWhiteList[0], tradeAgreements.marginType))
 				);
 
-			if (uint256(partyAFeeBalance.partyBBalance(partyBsWhiteList[0])) < intent.getTradingFee() + intent.getAffiliateFee())
+			if (
+				uint256(partyAFeeBalance.counterPartyBalance(partyBsWhiteList[0], tradeAgreements.marginType)) <
+				intent.getTradingFee() + intent.getAffiliateFee()
+			)
 				revert CommonErrors.InsufficientBalance(
 					sender,
 					feeToken,
 					intent.getTradingFee() + intent.getAffiliateFee(),
-					uint256(partyAFeeBalance.partyBBalance(partyBsWhiteList[0]))
+					uint256(partyAFeeBalance.counterPartyBalance(partyBsWhiteList[0], tradeAgreements.marginType))
 				);
 		} else {
-			if (uint256(partyABalance.available) < intent.getPremium())
-				revert CommonErrors.InsufficientBalance(sender, symbol.collateral, intent.getPremium(), uint256(partyABalance.available));
+			if (uint256(partyABalance.isolatedBalance) < intent.getPremium())
+				revert CommonErrors.InsufficientBalance(sender, symbol.collateral, intent.getPremium(), uint256(partyABalance.isolatedBalance));
 
-			if (uint256(partyAFeeBalance.available) < intent.getTradingFee() + intent.getAffiliateFee())
+			if (uint256(partyAFeeBalance.isolatedBalance) < intent.getTradingFee() + intent.getAffiliateFee())
 				revert CommonErrors.InsufficientBalance(
 					sender,
 					feeToken,
 					intent.getTradingFee() + intent.getAffiliateFee(),
-					uint256(partyAFeeBalance.available)
+					uint256(partyAFeeBalance.isolatedBalance)
 				);
 		}
 

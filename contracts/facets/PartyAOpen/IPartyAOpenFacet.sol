@@ -5,7 +5,8 @@
 pragma solidity >=0.8.19;
 
 import { IPartyAOpenEvents } from "./IPartyAOpenEvents.sol";
-import { TradeSide, MarginType, ExerciseFee } from "../../storages/IntentStorage.sol";
+import { TradeSide, ExerciseFee } from "../../storages/IntentStorage.sol";
+import { MarginType } from "../../libraries/LibScheduledReleaseBalance.sol";
 
 interface IPartyAOpenFacet is IPartyAOpenEvents {
 	function sendOpenIntent(

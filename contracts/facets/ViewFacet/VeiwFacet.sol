@@ -22,19 +22,19 @@ contract ViewFacet is IViewFacet {
 	 * @return balance The balance of the user and specific collateral type.
 	 */
 	function balanceOf(address user, address collateral) external view returns (uint256) {
-		return AccountStorage.layout().balances[user][collateral].available;
+		return AccountStorage.layout().balances[user][collateral].isolatedBalance;
 	}
 
 	/**
 	 * @notice Returns max connected partyBs.
 	 * @return max connected partyBs.
 	 */
-	function getMaxConnectedPartyBs() external view returns (uint256) {
-		return AccountStorage.layout().maxConnectedPartyBs;
+	function getMaxConnectedCounterParties() external view returns (uint256) {
+		return AccountStorage.layout().maxConnectedCounterParties;
 	}
 
 	function getPartyBReleaseIntervals(address partyB) external view returns (uint256) {
-		return AccountStorage.layout().partyBReleaseIntervals[partyB];
+		return AccountStorage.layout().releaseIntervals[partyB];
 	}
 
 	/**
@@ -53,7 +53,7 @@ contract ViewFacet is IViewFacet {
 		return (
 			// maLayout.liquidationStatus[partyA], #TODO 1
 			accountLayout.suspendedAddresses[partyA],
-			accountLayout.balances[partyA][collateral].available,
+			accountLayout.balances[partyA][collateral].isolatedBalance,
 			//TODO 2: consider adding AppStorage:partyAReimbursement after it's used
 			intentLayout.openIntentsOf[partyA],
 			intentLayout.tradesOf[partyA]

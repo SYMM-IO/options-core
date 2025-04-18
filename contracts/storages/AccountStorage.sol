@@ -44,8 +44,9 @@ library AccountStorage {
 
 	struct Layout {
 		mapping(address => mapping(address => ScheduledReleaseBalance)) balances; // user => collateral => balance
-		mapping(address => uint256) partyBReleaseIntervals;
-		uint256 maxConnectedPartyBs;
+		mapping(address => uint256) releaseIntervals;
+		uint256 maxConnectedCounterParties;
+		mapping(address => bool) manualSync; // allows unlimited counter parties but require user to manual sync their balances (should be set to true for partyBs)
 		/////////////////////////////////////////////////////////
 		mapping(address => address) boundPartyB; // partyA => Address of partyB
 		mapping(address => uint256) unbindingRequestTime; // partyA => time when unbinding was requested
