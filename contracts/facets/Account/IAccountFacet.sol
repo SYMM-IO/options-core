@@ -5,6 +5,7 @@
 pragma solidity >=0.8.19;
 
 import { IAccountEvents } from "./IAccountEvents.sol";
+import { MarginType } from "../../libraries/LibScheduledReleaseBalance.sol";
 
 interface IAccountFacet is IAccountEvents {
 	function deposit(address collateral, uint256 amount) external;
@@ -19,7 +20,7 @@ interface IAccountFacet is IAccountEvents {
 
 	function activateInstantActionMode() external;
 
-	function syncBalances(address collateral, address partyA, address[] calldata partyBs) external;
+	function syncBalances(address collateral, address partyA, address[] calldata partyBs, MarginType marginType) external;
 
 	function proposeToDeactivateInstantActionMode() external;
 

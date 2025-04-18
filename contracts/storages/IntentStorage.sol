@@ -4,6 +4,8 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
+import { MarginType } from "../libraries/LibScheduledReleaseBalance.sol";
+
 enum IntentStatus {
 	PENDING,
 	LOCKED,
@@ -24,11 +26,6 @@ enum TradeStatus {
 enum TradeSide {
 	LONG,
 	SHORT
-}
-
-enum MarginType {
-	ISOLATED,
-	CROSS // trades are in cross with a specific partyB
 }
 
 struct ExerciseFee {

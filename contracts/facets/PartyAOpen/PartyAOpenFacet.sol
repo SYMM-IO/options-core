@@ -5,8 +5,9 @@
 pragma solidity >=0.8.19;
 
 import { IPartiesEvents } from "../../interfaces/IPartiesEvents.sol";
+import { MarginType } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
-import { OpenIntent, ExerciseFee, IntentStorage, TradeSide, MarginType, IntentStatus, TradeAgreements } from "../../storages/IntentStorage.sol";
+import { OpenIntent, ExerciseFee, IntentStorage, TradeSide, IntentStatus, TradeAgreements } from "../../storages/IntentStorage.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
 import { Pausable } from "../../utils/Pausable.sol";
 import { IPartyAOpenEvents } from "./IPartyAOpenEvents.sol";

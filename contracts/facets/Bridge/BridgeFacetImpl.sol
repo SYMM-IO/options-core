@@ -4,7 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, IncreaseBalanceType, DecreaseBalanceType } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { CommonErrors } from "../../libraries/CommonErrors.sol";
 import { AccountStorage, BridgeTransaction, BridgeTransactionStatus } from "../../storages/AccountStorage.sol";
 import { AppStorage } from "../../storages/AppStorage.sol";
@@ -24,8 +24,8 @@ library BridgeFacetImpl {
 		if (bridge == msg.sender) revert BridgeFacetErrors.SameBridgeAndSender(bridge);
 
 		uint256 amountWith18Decimals = (amount * 1e18) / (10 ** IERC20Metadata(collateral).decimals()); //TODO: 1.utilize `normalize` and `denormalize` methods in `accountFacetImlp` and use'em here
-		if (accountLayout.balances[msg.sender][collateral].available < amount)
-			revert CommonErrors.InsufficientBalance(msg.sender, collateral, amount, accountLayout.balances[msg.sender][collateral].available);
+		if (accountLayout.balances[msg.sender][collateral].isolatedBalance < amount)
+			revert CommonErrors.InsufficientBalance(msg.sender, collateral, amount, accountLayout.balances[msg.sender][collateral].isolatedBalance);
 
 		currentId = ++accountLayout.lastBridgeId;
 		BridgeTransaction memory bridgeTransaction = BridgeTransaction({
@@ -38,7 +38,7 @@ library BridgeFacetImpl {
 			timestamp: block.timestamp,
 			status: BridgeTransactionStatus.RECEIVED
 		});
-		accountLayout.balances[collateral][msg.sender].sub(amountWith18Decimals, DecreaseBalanceType.BRIDGE);
+		accountLayout.balances[collateral][msg.sender].isolatedSub(amountWith18Decimals, DecreaseBalanceReason.BRIDGE);
 		accountLayout.bridgeTransactions[currentId] = bridgeTransaction;
 		accountLayout.bridgeTransactionIds[bridge].push(currentId);
 	}
@@ -113,9 +113,9 @@ library BridgeFacetImpl {
 			accountLayout.invalidBridgedAmountsPool,
 			bridgeTransaction.collateral
 		);
-		accountLayout.balances[bridgeTransaction.collateral][accountLayout.invalidBridgedAmountsPool].instantAdd(
+		accountLayout.balances[bridgeTransaction.collateral][accountLayout.invalidBridgedAmountsPool].instantIsolatedAdd(
 			((bridgeTransaction.amount - validAmount) * (10 ** 18)) / (10 ** IERC20Metadata(bridgeTransaction.collateral).decimals()), //TODO: 1.
-			IncreaseBalanceType.BRIDGE
+			IncreaseBalanceReason.BRIDGE
 		);
 		bridgeTransaction.status = BridgeTransactionStatus.RECEIVED;
 		bridgeTransaction.amount = validAmount;

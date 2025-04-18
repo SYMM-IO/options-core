@@ -28,7 +28,7 @@ interface IViewFacet {
 
 	function getPartyBReleaseIntervals(address partyB) external view returns (uint256);
 
-	function getMaxConnectedPartyBs() external view returns (uint256);
+	function getMaxConnectedCounterParties() external view returns (uint256);
 
 	function getWithdraw(uint256 id) external view returns (Withdraw memory);
 

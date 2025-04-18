@@ -4,7 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, IncreaseBalanceType, DecreaseBalanceType } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason, MarginType } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { CommonErrors } from "../../libraries/CommonErrors.sol";
 import { AccountFacetErrors } from "./AccountFacetErrors.sol";
 import { LibPartyB } from "../../libraries/LibPartyB.sol";
@@ -33,7 +33,7 @@ library AccountFacetImpl {
 
 		uint256 amountWith18Decimals = _normalizeAmount(collateral, amount);
 		accountLayout.balances[user][collateral].setup(user, collateral);
-		accountLayout.balances[user][collateral].instantAdd(amountWith18Decimals, IncreaseBalanceType.DEPOSIT);
+		accountLayout.balances[user][collateral].instantIsolatedAdd(amountWith18Decimals, IncreaseBalanceReason.DEPOSIT);
 	}
 
 	function securedDepositFor(address collateral, address user, uint256 amount) internal {
@@ -44,7 +44,7 @@ library AccountFacetImpl {
 			revert AccountFacetErrors.CollateralNotWhitelisted(collateral);
 		}
 		accountLayout.balances[user][collateral].setup(user, collateral);
-		accountLayout.balances[user][collateral].instantAdd(amount, IncreaseBalanceType.DEPOSIT);
+		accountLayout.balances[user][collateral].instantIsolatedAdd(amount, IncreaseBalanceReason.DEPOSIT);
 	}
 
 	function internalTransfer(address collateral, address user, uint256 amount) internal {
@@ -55,14 +55,14 @@ library AccountFacetImpl {
 			revert AccountFacetErrors.CollateralNotWhitelisted(collateral);
 		}
 
-		uint256 available = accountLayout.balances[msg.sender][collateral].available;
+		uint256 available = accountLayout.balances[msg.sender][collateral].isolatedBalance;
 		if (available < amount) {
 			revert CommonErrors.InsufficientBalance(msg.sender, collateral, amount, available);
 		}
 
-		accountLayout.balances[msg.sender][collateral].sub(amount, DecreaseBalanceType.INTERNAL_TRANSFER);
+		accountLayout.balances[msg.sender][collateral].isolatedSub(amount, DecreaseBalanceReason.INTERNAL_TRANSFER);
 		accountLayout.balances[user][collateral].setup(user, collateral);
-		accountLayout.balances[user][collateral].instantAdd(amount, IncreaseBalanceType.INTERNAL_TRANSFER);
+		accountLayout.balances[user][collateral].instantIsolatedAdd(amount, IncreaseBalanceReason.INTERNAL_TRANSFER);
 	}
 
 	function initiateWithdraw(address collateral, uint256 amount, address to) internal returns (uint256 currentId) {
@@ -77,9 +77,9 @@ library AccountFacetImpl {
 			revert CommonErrors.ZeroAddress("to");
 		}
 
-		accountLayout.balances[msg.sender][collateral].syncAll();
+		accountLayout.balances[msg.sender][collateral].syncAll(MarginType.ISOLATED);
 
-		uint256 available = accountLayout.balances[msg.sender][collateral].available;
+		uint256 available = accountLayout.balances[msg.sender][collateral].isolatedBalance;
 		if (available < amount) {
 			revert CommonErrors.InsufficientBalance(msg.sender, collateral, amount, available);
 		}
@@ -90,7 +90,7 @@ library AccountFacetImpl {
 
 		msg.sender.requireSolvent(collateral);
 
-		accountLayout.balances[msg.sender][collateral].sub(amount, DecreaseBalanceType.WITHDRAW);
+		accountLayout.balances[msg.sender][collateral].isolatedSub(amount, DecreaseBalanceReason.WITHDRAW);
 
 		currentId = ++accountLayout.lastWithdrawId;
 		Withdraw memory withdrawObject = Withdraw({
@@ -157,14 +157,14 @@ library AccountFacetImpl {
 		}
 
 		withdrawal.status = WithdrawStatus.CANCELED;
-		accountLayout.balances[withdrawal.user][withdrawal.collateral].instantAdd(withdrawal.amount, IncreaseBalanceType.DEPOSIT);
+		accountLayout.balances[withdrawal.user][withdrawal.collateral].instantIsolatedAdd(withdrawal.amount, IncreaseBalanceReason.DEPOSIT);
 	}
 
-	function syncBalances(address collateral, address partyA, address[] calldata partyBs) internal {
+	function syncBalances(address collateral, address partyA, address[] calldata partyBs, MarginType marginType) internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
 		for (uint256 i = 0; i < partyBs.length; i++) {
-			accountLayout.balances[partyA][collateral].sync(partyBs[i]);
+			accountLayout.balances[partyA][collateral].sync(partyBs[i], marginType);
 		}
 	}
 

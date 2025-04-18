@@ -88,5 +88,5 @@ interface IControlFacet is IControlEvents {
 		uint256 _symbolType
 	) external;
 
-	function setMaxConnectedPartyBs(uint256 _max) external;
+	function setMaxConnectedCounterParties(uint256 _max) external;
 }

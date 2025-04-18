@@ -206,13 +206,13 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	}
 
 	function setPartyBReleaseInterval(address _partyB, uint256 _interval) external onlyRole(LibAccessibility.SETTER_ROLE) {
-		AccountStorage.layout().partyBReleaseIntervals[_partyB] = _interval;
+		AccountStorage.layout().releaseIntervals[_partyB] = _interval;
 		emit PartyBReleaseIntervalUpdated(_partyB, _interval);
 	}
 
-	function setMaxConnectedPartyBs(uint256 _max) external onlyRole(LibAccessibility.SETTER_ROLE) {
-		AccountStorage.layout().maxConnectedPartyBs = _max;
-		emit MaxConnectedPartyBsUpdated(_max);
+	function setMaxConnectedCounterParties(uint256 _max) external onlyRole(LibAccessibility.SETTER_ROLE) {
+		AccountStorage.layout().maxConnectedCounterParties = _max;
+		emit MaxConnectedCounterPariesUpdated(_max);
 	}
 
 	function setUnbindingCooldown(uint256 _cooldown) external onlyRole(LibAccessibility.SETTER_ROLE) {
