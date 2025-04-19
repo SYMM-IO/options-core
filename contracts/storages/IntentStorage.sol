@@ -24,8 +24,8 @@ enum TradeStatus {
 }
 
 enum TradeSide {
-	LONG,
-	SHORT
+	BUY,
+	SELL
 }
 
 struct ExerciseFee {

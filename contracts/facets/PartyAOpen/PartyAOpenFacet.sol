@@ -32,7 +32,7 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 	 * @param strikePrice The strike price for the options contract
 	 * @param expirationTimestamp The timestamp when the options contract expires
 	 * @param penalty The amount PartyB would pay to PartyA if the position gets liquidated
-	 * @param tradeSide Direction of the trade (LONG or SHORT)
+	 * @param tradeSide Direction of the trade (BUY or SELL)
 	 * @param marginType Type of margin used for the trade (e.g., ISOLATED, CROSS)
 	 * @param exerciseFee The fee structure applied during option exercise
 	 * @param deadline Timestamp after which the intent expires if no PartyB takes action

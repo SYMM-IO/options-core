@@ -53,7 +53,7 @@ library PartyAOpenFacetImpl {
 			if (!(partyBsWhiteList.length == 1 && partyBsWhiteList[0] == accountLayout.boundPartyB[sender]))
 				revert PartyAOpenFacetErrors.UserBoundToAnotherPartyB(sender, accountLayout.boundPartyB[sender], partyBsWhiteList);
 		}
-		if (tradeAgreements.tradeSide == TradeSide.SHORT && tradeAgreements.marginType == MarginType.ISOLATED) {
+		if (tradeAgreements.tradeSide == TradeSide.SELL && tradeAgreements.marginType == MarginType.ISOLATED) {
 			revert PartyAOpenFacetErrors.ShortTradeInIsolatedMode();
 		}
 
@@ -80,24 +80,21 @@ library PartyAOpenFacetImpl {
 		ScheduledReleaseBalance storage partyAFeeBalance = accountLayout.balances[sender][feeToken];
 
 		if (partyBsWhiteList.length == 1) {
-			if (uint256(partyABalance.counterPartyBalance(partyBsWhiteList[0], tradeAgreements.marginType)) < intent.getPremium())
-				revert CommonErrors.InsufficientBalance(
-					sender,
-					symbol.collateral,
-					intent.getPremium(),
-					uint256(partyABalance.counterPartyBalance(partyBsWhiteList[0], tradeAgreements.marginType))
-				);
-
-			if (
-				uint256(partyAFeeBalance.counterPartyBalance(partyBsWhiteList[0], tradeAgreements.marginType)) <
-				intent.getTradingFee() + intent.getAffiliateFee()
-			)
-				revert CommonErrors.InsufficientBalance(
-					sender,
-					feeToken,
-					intent.getTradingFee() + intent.getAffiliateFee(),
-					uint256(partyAFeeBalance.counterPartyBalance(partyBsWhiteList[0], tradeAgreements.marginType))
-				);
+			if (tradeAgreements.marginType == MarginType.ISOLATED) {
+				int256 b = partyABalance.counterPartyBalance(partyBsWhiteList[0], tradeAgreements.marginType);
+				if (b < int256(intent.getPremium()))
+					revert CommonErrors.InsufficientBalance(sender, symbol.collateral, intent.getPremium(), uint256(b));
+				if (
+					partyAFeeBalance.counterPartyBalance(partyBsWhiteList[0], tradeAgreements.marginType) <
+					int256(intent.getTradingFee() + intent.getAffiliateFee())
+				)
+					revert CommonErrors.InsufficientBalance(
+						sender,
+						feeToken,
+						intent.getTradingFee() + intent.getAffiliateFee(),
+						uint256(partyAFeeBalance.counterPartyBalance(partyBsWhiteList[0], tradeAgreements.marginType))
+					);
+			}
 		} else {
 			if (uint256(partyABalance.isolatedBalance) < intent.getPremium())
 				revert CommonErrors.InsufficientBalance(sender, symbol.collateral, intent.getPremium(), uint256(partyABalance.isolatedBalance));
