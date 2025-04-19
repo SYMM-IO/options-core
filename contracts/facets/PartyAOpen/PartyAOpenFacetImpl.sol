@@ -71,7 +71,12 @@ library PartyAOpenFacetImpl {
 			createTimestamp: block.timestamp,
 			statusModifyTimestamp: block.timestamp,
 			deadline: deadline,
-			tradingFee: TradingFee(feeToken, IPriceOracle(appLayout.priceOracleAddress).getPrice(feeToken), symbol.tradingFee),
+			tradingFee: TradingFee(
+				feeToken,
+				IPriceOracle(appLayout.priceOracleAddress).getPrice(feeToken),
+				symbol.tradingFee,
+				appLayout.affiliateFees[affiliate][tradeAgreements.symbolId]
+			),
 			affiliate: affiliate,
 			userData: LibUserData.addCounter(userData, 0)
 		});
@@ -79,6 +84,7 @@ library PartyAOpenFacetImpl {
 		ScheduledReleaseBalance storage partyABalance = accountLayout.balances[sender][symbol.collateral];
 		ScheduledReleaseBalance storage partyAFeeBalance = accountLayout.balances[sender][feeToken];
 
+		// TODO: check if collateral and fee token is same
 		if (partyBsWhiteList.length == 1) {
 			if (tradeAgreements.marginType == MarginType.ISOLATED) {
 				int256 b = partyABalance.counterPartyBalance(partyBsWhiteList[0], tradeAgreements.marginType);
@@ -109,7 +115,7 @@ library PartyAOpenFacetImpl {
 		}
 
 		intent.save();
-		intent.getFeesAndPremium();
+		intent.handleFeesAndPremium(true);
 	}
 
 	function cancelOpenIntent(address sender, uint256 intentId) internal returns (IntentStatus finalStatus) {
