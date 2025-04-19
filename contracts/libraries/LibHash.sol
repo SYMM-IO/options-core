@@ -15,7 +15,7 @@ library LibHash {
 			req.partyA,
 			req.partyB,
 			req.price,
-			abi.encode(req.symbolId, req.quantity, req.strikePrice, req.expirationTimestamp, req.penalty, req.exerciseFee.rate, req.exerciseFee.cap),
+			abi.encode(req.symbolId, req.quantity, req.strikePrice, req.expirationTimestamp, req.mm, req.exerciseFee.rate, req.exerciseFee.cap),
 			req.marginType,
 			req.deadline,
 			req.feeToken,

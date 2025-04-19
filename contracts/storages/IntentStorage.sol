@@ -45,7 +45,7 @@ struct TradeAgreements {
 	uint256 quantity;
 	uint256 strikePrice;
 	uint256 expirationTimestamp;
-	uint256 penalty;
+	uint256 mm;
 	TradeSide tradeSide;
 	MarginType marginType;
 	ExerciseFee exerciseFee;
@@ -58,7 +58,6 @@ struct Trade {
 	address partyA;
 	address partyB;
 	uint256[] activeCloseIntentIds;
-	address[] penaltyParticipants;
 	uint256 settledPrice;
 	uint256 openedPrice;
 	uint256 closedAmountBeforeExpiration;
@@ -107,7 +106,7 @@ struct SignedOpenIntent {
 	uint256 quantity;
 	uint256 strikePrice;
 	uint256 expirationTimestamp;
-	uint256 penalty;
+	uint256 mm;
 	TradeSide tradeSide;
 	MarginType marginType;
 	ExerciseFee exerciseFee;

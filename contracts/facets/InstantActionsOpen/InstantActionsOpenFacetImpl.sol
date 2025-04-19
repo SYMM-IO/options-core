@@ -63,7 +63,7 @@ library InstantActionsOpenFacetImpl {
 				quantity: signedOpenIntent.quantity,
 				strikePrice: signedOpenIntent.strikePrice,
 				expirationTimestamp: signedOpenIntent.expirationTimestamp,
-				penalty: signedOpenIntent.penalty,
+				mm: signedOpenIntent.mm,
 				tradeSide: signedOpenIntent.tradeSide,
 				marginType: signedOpenIntent.marginType,
 				exerciseFee: signedOpenIntent.exerciseFee
