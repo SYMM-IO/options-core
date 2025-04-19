@@ -21,9 +21,8 @@ library LibOpenIntentOps {
 		return (self.tradeAgreements.quantity * self.price * self.tradingFee.platformFee) / (self.tradingFee.tokenPrice * 1e18);
 	}
 
-	function getAffiliateFee(OpenIntent memory self) internal view returns (uint256) {
-		uint256 affiliateFee = AppStorage.layout().affiliateFees[self.affiliate][self.tradeAgreements.symbolId];
-		return (self.tradeAgreements.quantity * self.price * affiliateFee) / (self.tradingFee.tokenPrice * 1e18);
+	function getAffiliateFee(OpenIntent memory self) internal pure returns (uint256) {
+		return (self.tradeAgreements.quantity * self.price * self.tradingFee.affiliateFee) / (self.tradingFee.tokenPrice * 1e18);
 	}
 
 	function getPremium(OpenIntent memory self) internal pure returns (uint256) {
@@ -91,10 +90,6 @@ library LibOpenIntentOps {
 
 		returnFeesAndPremium(self);
 		remove(self, false);
-	}
-
-	function getFeesAndPremium(OpenIntent memory self) internal {
-		handleFeesAndPremium(self, true);
 	}
 
 	function returnFeesAndPremium(OpenIntent memory self) internal {

@@ -37,6 +37,7 @@ struct TradingFee {
 	address feeToken;
 	uint256 tokenPrice;
 	uint256 platformFee;
+	uint256 affiliateFee;
 }
 
 struct TradeAgreements {
