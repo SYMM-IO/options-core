@@ -192,7 +192,7 @@ library PartyBOpenFacetImpl {
 				quantity: quantity,
 				strikePrice: intent.tradeAgreements.strikePrice,
 				expirationTimestamp: intent.tradeAgreements.expirationTimestamp,
-				penalty: (intent.tradeAgreements.penalty * quantity) / intent.tradeAgreements.quantity,
+				mm: (intent.tradeAgreements.mm * quantity) / intent.tradeAgreements.quantity,
 				tradeSide: intent.tradeAgreements.tradeSide,
 				marginType: intent.tradeAgreements.marginType,
 				exerciseFee: intent.tradeAgreements.exerciseFee
@@ -200,7 +200,6 @@ library PartyBOpenFacetImpl {
 			partyA: intent.partyA,
 			partyB: intent.partyB,
 			activeCloseIntentIds: new uint256[](0),
-			penaltyParticipants: new address[](1),
 			settledPrice: 0,
 			openedPrice: price,
 			closedAmountBeforeExpiration: 0,
@@ -210,8 +209,6 @@ library PartyBOpenFacetImpl {
 			createTimestamp: block.timestamp,
 			statusModifyTimestamp: block.timestamp
 		});
-
-		trade.penaltyParticipants[0] = intent.partyB;
 
 		// partially fill
 		if (intent.tradeAgreements.quantity > quantity) {
@@ -231,7 +228,7 @@ library PartyBOpenFacetImpl {
 					quantity: intent.tradeAgreements.quantity - quantity,
 					strikePrice: intent.tradeAgreements.strikePrice,
 					expirationTimestamp: intent.tradeAgreements.expirationTimestamp,
-					penalty: intent.tradeAgreements.penalty - trade.tradeAgreements.penalty,
+					mm: intent.tradeAgreements.mm - trade.tradeAgreements.mm,
 					tradeSide: intent.tradeAgreements.tradeSide,
 					marginType: intent.tradeAgreements.marginType,
 					exerciseFee: intent.tradeAgreements.exerciseFee

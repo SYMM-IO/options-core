@@ -9,7 +9,7 @@ interface IPartiesEvents {
 		address partyA,
 		uint256 intentId,
 		address[] partyBsWhiteList,
-		bytes requestedParams // encodePacked (symbolId, price, quantity, strikePrice, expirationTimestamp, penalty, tradeSide, marginType, exerciseFee.rate, exerciseFee.cap, deadline)
+		bytes requestedParams // encodePacked (symbolId, price, quantity, strikePrice, expirationTimestamp, mm, tradeSide, marginType, exerciseFee.rate, exerciseFee.cap, deadline)
 	);
 	event ExpireOpenIntent(uint256 intentId);
 	event ExpireCloseIntent(uint256 intentId);

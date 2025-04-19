@@ -152,7 +152,7 @@ contract InstantActionsOpenFacet is Accessibility, Pausable, IInstantActionsOpen
 				intent.tradeAgreements.quantity,
 				intent.tradeAgreements.strikePrice,
 				intent.tradeAgreements.expirationTimestamp,
-				intent.tradeAgreements.penalty,
+				intent.tradeAgreements.mm,
 				intent.tradeAgreements.tradeSide,
 				intent.tradeAgreements.marginType,
 				intent.tradeAgreements.exerciseFee.rate,

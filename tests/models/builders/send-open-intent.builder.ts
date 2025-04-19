@@ -9,7 +9,7 @@ export interface OpenIntent {
 	quantity: BigNumberish
 	strikePrice: BigNumberish
 	expirationTimestamp: BigNumberish
-	penalty: BigNumberish
+	mm: BigNumberish
 	deadline: BigNumberish
 	tradeSide: BigNumberish
 	marginType: BigNumberish
@@ -32,7 +32,7 @@ const openIntentRequest: OpenIntent = {
 	},
 	deadline: 0,
 	marginType: 0,
-	penalty: 0,
+	mm: 0,
 	tradeSide: 0,
 	feeToken: "",
 	affiliate: "",

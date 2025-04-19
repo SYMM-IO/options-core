@@ -31,7 +31,7 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 	 * @param quantity Size of the trade in base units
 	 * @param strikePrice The strike price for the options contract
 	 * @param expirationTimestamp The timestamp when the options contract expires
-	 * @param penalty The amount PartyB would pay to PartyA if the position gets liquidated
+	 * @param mm The amount PartyA would pay to PartyB if the position gets liquidated as a liquidation margin
 	 * @param tradeSide Direction of the trade (BUY or SELL)
 	 * @param marginType Type of margin used for the trade (e.g., ISOLATED, CROSS)
 	 * @param exerciseFee The fee structure applied during option exercise
@@ -48,7 +48,7 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 		uint256 quantity,
 		uint256 strikePrice,
 		uint256 expirationTimestamp,
-		uint256 penalty,
+		uint256 mm,
 		TradeSide tradeSide,
 		MarginType marginType,
 		ExerciseFee memory exerciseFee,
@@ -65,7 +65,7 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 				quantity: quantity,
 				strikePrice: strikePrice,
 				expirationTimestamp: expirationTimestamp,
-				penalty: penalty,
+				mm: mm,
 				tradeSide: tradeSide,
 				marginType: marginType,
 				exerciseFee: exerciseFee
@@ -87,7 +87,7 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 				quantity,
 				strikePrice,
 				expirationTimestamp,
-				penalty,
+				mm,
 				tradeSide,
 				marginType,
 				exerciseFee.rate,

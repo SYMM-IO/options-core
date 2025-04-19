@@ -37,7 +37,7 @@ export class PartyA {
 					request.quantity,
 					request.strikePrice,
 					request.expirationTimestamp,
-					request.penalty,
+					request.mm,
 					request.tradeSide,
 					request.marginType,
 					request.exerciseFee,

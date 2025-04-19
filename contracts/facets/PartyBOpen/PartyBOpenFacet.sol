@@ -79,7 +79,7 @@ contract PartyBOpenFacet is Accessibility, Pausable, IPartyBOpenFacet {
 						newIntent.tradeAgreements.quantity,
 						newIntent.tradeAgreements.strikePrice,
 						newIntent.tradeAgreements.expirationTimestamp,
-						newIntent.tradeAgreements.penalty,
+						newIntent.tradeAgreements.mm,
 						newIntent.tradeAgreements.tradeSide,
 						newIntent.tradeAgreements.marginType,
 						newIntent.tradeAgreements.exerciseFee.rate,
