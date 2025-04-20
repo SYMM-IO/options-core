@@ -83,11 +83,10 @@ library PartyAOpenFacetImpl {
 			userData: LibUserData.addCounter(userData, 0)
 		});
 
-		ScheduledReleaseBalance storage partyABalance = accountLayout.balances[sender][symbol.collateral];
-		ScheduledReleaseBalance storage partyAFeeBalance = accountLayout.balances[sender][feeToken];
-
 		// TODO: check if collateral and fee token is same
 		// TODO maybe we can ignore this check
+		// ScheduledReleaseBalance storage partyABalance = accountLayout.balances[sender][symbol.collateral];
+		// ScheduledReleaseBalance storage partyAFeeBalance = accountLayout.balances[sender][feeToken];
 		// if (partyBsWhiteList.length == 1) {
 		// 	if (tradeAgreements.marginType == MarginType.ISOLATED) {
 		// 		int256 b = partyABalance.counterPartyBalance(partyBsWhiteList[0], tradeAgreements.marginType);
@@ -138,7 +137,7 @@ library PartyAOpenFacetImpl {
 			intent.expire();
 		} else if (intent.status == IntentStatus.PENDING) {
 			intent.status = IntentStatus.CANCELED;
-			intent.returnFeesAndPremium();
+			intent.handleFeesAndPremium(false);
 			intent.remove(false);
 		} else {
 			// LOCKED

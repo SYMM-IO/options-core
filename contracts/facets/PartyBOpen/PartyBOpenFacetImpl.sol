@@ -115,7 +115,7 @@ library PartyBOpenFacetImpl {
 
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = IntentStatus.CANCELED;
-		intent.returnFeesAndPremium();
+		intent.handleFeesAndPremium(false);
 		intent.remove(false);
 	}
 
@@ -250,7 +250,7 @@ library PartyBOpenFacetImpl {
 			newIntent.save();
 
 			if (newStatus == IntentStatus.CANCELED) {
-				newIntent.returnFeesAndPremium();
+				newIntent.handleFeesAndPremium(false);
 			}
 			intent.tradeAgreements.quantity = quantity;
 		}
