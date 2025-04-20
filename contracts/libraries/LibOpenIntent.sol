@@ -88,12 +88,8 @@ library LibOpenIntentOps {
 		self.status = IntentStatus.EXPIRED;
 		self.statusModifyTimestamp = block.timestamp;
 
-		returnFeesAndPremium(self);
-		remove(self, false);
-	}
-
-	function returnFeesAndPremium(OpenIntent memory self) internal {
 		handleFeesAndPremium(self, false);
+		remove(self, false);
 	}
 
 	function handleFeesAndPremium(OpenIntent memory self, bool isGetting) internal {

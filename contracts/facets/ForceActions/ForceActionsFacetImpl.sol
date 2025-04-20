@@ -32,7 +32,7 @@ library ForceActionsFacetImpl {
 
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = IntentStatus.CANCELED;
-		intent.returnFeesAndPremium();
+		intent.handleFeesAndPremium(false);
 		intent.remove(false);
 	}
 
