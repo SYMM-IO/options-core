@@ -9,6 +9,8 @@ library PartyAOpenFacetErrors {
 	error SenderIsPartyB(address sender);
 	error ShortTradeInIsolatedMode();
 
+	error PartyAInPartyBWhitelist(address partyA);
+
 	// Timestamp errors
 	error LowExpirationTimestamp(uint256 provided, uint256 current);
 

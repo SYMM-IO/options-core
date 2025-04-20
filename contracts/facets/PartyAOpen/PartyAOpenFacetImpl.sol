@@ -34,27 +34,29 @@ library PartyAOpenFacetImpl {
 
 		Symbol memory symbol = SymbolStorage.layout().symbols[tradeAgreements.symbolId];
 
+		// validate sender
 		if (appLayout.partyBConfigs[sender].isActive) revert PartyAOpenFacetErrors.SenderIsPartyB(sender);
-
 		if (accountLayout.suspendedAddresses[sender]) revert CommonErrors.SuspendedAddress(sender);
-
+		// validate partyB whitelist
+		for (uint8 i = 0; i < partyBsWhiteList.length; i++) {
+			if (partyBsWhiteList[i] == msg.sender) revert PartyAOpenFacetErrors.PartyAInPartyBWhitelist(msg.sender);
+		}
+		// validate trade agreements
 		if (!symbol.isValid) revert CommonErrors.InvalidSymbol(tradeAgreements.symbolId);
-
-		if (deadline < block.timestamp) revert CommonErrors.LowDeadline(deadline, block.timestamp);
-
 		if (tradeAgreements.expirationTimestamp < block.timestamp)
 			revert PartyAOpenFacetErrors.LowExpirationTimestamp(tradeAgreements.expirationTimestamp, block.timestamp);
-
 		if (tradeAgreements.exerciseFee.cap > 1e18) revert PartyAOpenFacetErrors.HighExerciseFeeCap(tradeAgreements.exerciseFee.cap, 1e18);
-
+		if (tradeAgreements.tradeSide == TradeSide.SELL && tradeAgreements.marginType == MarginType.ISOLATED) {
+			revert PartyAOpenFacetErrors.ShortTradeInIsolatedMode();
+		}
+		// validate deadline
+		if (deadline < block.timestamp) revert CommonErrors.LowDeadline(deadline, block.timestamp);
+		// validate affiliate
 		if (!(appLayout.affiliateStatus[affiliate] || affiliate == address(0))) revert PartyAOpenFacetErrors.InvalidAffiliate(affiliate);
-
+		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		if (accountLayout.boundPartyB[sender] != address(0)) {
 			if (!(partyBsWhiteList.length == 1 && partyBsWhiteList[0] == accountLayout.boundPartyB[sender]))
 				revert PartyAOpenFacetErrors.UserBoundToAnotherPartyB(sender, accountLayout.boundPartyB[sender], partyBsWhiteList);
-		}
-		if (tradeAgreements.tradeSide == TradeSide.SELL && tradeAgreements.marginType == MarginType.ISOLATED) {
-			revert PartyAOpenFacetErrors.ShortTradeInIsolatedMode();
 		}
 
 		intentId = ++IntentStorage.layout().lastOpenIntentId;
@@ -85,34 +87,35 @@ library PartyAOpenFacetImpl {
 		ScheduledReleaseBalance storage partyAFeeBalance = accountLayout.balances[sender][feeToken];
 
 		// TODO: check if collateral and fee token is same
-		if (partyBsWhiteList.length == 1) {
-			if (tradeAgreements.marginType == MarginType.ISOLATED) {
-				int256 b = partyABalance.counterPartyBalance(partyBsWhiteList[0], tradeAgreements.marginType);
-				if (b < int256(intent.getPremium()))
-					revert CommonErrors.InsufficientBalance(sender, symbol.collateral, intent.getPremium(), uint256(b));
-				if (
-					partyAFeeBalance.counterPartyBalance(partyBsWhiteList[0], tradeAgreements.marginType) <
-					int256(intent.getTradingFee() + intent.getAffiliateFee())
-				)
-					revert CommonErrors.InsufficientBalance(
-						sender,
-						feeToken,
-						intent.getTradingFee() + intent.getAffiliateFee(),
-						uint256(partyAFeeBalance.counterPartyBalance(partyBsWhiteList[0], tradeAgreements.marginType))
-					);
-			}
-		} else {
-			if (uint256(partyABalance.isolatedBalance) < intent.getPremium())
-				revert CommonErrors.InsufficientBalance(sender, symbol.collateral, intent.getPremium(), uint256(partyABalance.isolatedBalance));
+		// TODO maybe we can ignore this check
+		// if (partyBsWhiteList.length == 1) {
+		// 	if (tradeAgreements.marginType == MarginType.ISOLATED) {
+		// 		int256 b = partyABalance.counterPartyBalance(partyBsWhiteList[0], tradeAgreements.marginType);
+		// 		if (b < int256(intent.getPremium()))
+		// 			revert CommonErrors.InsufficientBalance(sender, symbol.collateral, intent.getPremium(), uint256(b));
+		// 		if (
+		// 			partyAFeeBalance.counterPartyBalance(partyBsWhiteList[0], tradeAgreements.marginType) <
+		// 			int256(intent.getTradingFee() + intent.getAffiliateFee())
+		// 		)
+		// 			revert CommonErrors.InsufficientBalance(
+		// 				sender,
+		// 				feeToken,
+		// 				intent.getTradingFee() + intent.getAffiliateFee(),
+		// 				uint256(partyAFeeBalance.counterPartyBalance(partyBsWhiteList[0], tradeAgreements.marginType))
+		// 			);
+		// 	}
+		// } else {
+		// 	if (uint256(partyABalance.isolatedBalance) < intent.getPremium())
+		// 		revert CommonErrors.InsufficientBalance(sender, symbol.collateral, intent.getPremium(), uint256(partyABalance.isolatedBalance));
 
-			if (uint256(partyAFeeBalance.isolatedBalance) < intent.getTradingFee() + intent.getAffiliateFee())
-				revert CommonErrors.InsufficientBalance(
-					sender,
-					feeToken,
-					intent.getTradingFee() + intent.getAffiliateFee(),
-					uint256(partyAFeeBalance.isolatedBalance)
-				);
-		}
+		// 	if (uint256(partyAFeeBalance.isolatedBalance) < intent.getTradingFee() + intent.getAffiliateFee())
+		// 		revert CommonErrors.InsufficientBalance(
+		// 			sender,
+		// 			feeToken,
+		// 			intent.getTradingFee() + intent.getAffiliateFee(),
+		// 			uint256(partyAFeeBalance.isolatedBalance)
+		// 		);
+		// }
 
 		intent.save();
 		intent.handleFeesAndPremium(true);

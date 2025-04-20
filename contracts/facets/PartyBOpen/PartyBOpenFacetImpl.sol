@@ -262,6 +262,10 @@ library PartyBOpenFacetImpl {
 
 		trade.save();
 		accountLayout.balances[trade.partyB][symbol.collateral].setup(trade.partyB, symbol.collateral);
-		accountLayout.balances[trade.partyB][symbol.collateral].instantIsolatedAdd(intent.getPremium(), IncreaseBalanceReason.FEE);
+		// pay back the extra locked premium
+		accountLayout.balances[trade.partyA][symbol.collateral].instantIsolatedAdd(
+			intent.getPremium() - trade.getPremium(),
+			IncreaseBalanceReason.FEE
+		);
 	}
 }

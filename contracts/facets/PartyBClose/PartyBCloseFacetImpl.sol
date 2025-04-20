@@ -74,9 +74,19 @@ library PartyBCloseFacetImpl {
 
 		if (price < intent.price) revert PartyBCloseFacetErrors.InvalidClosedPrice(price, intent.price);
 
-		uint256 premium = (quantity * price) / 1e18;
-		accountLayout.balances[trade.partyA][symbol.collateral].instantIsolatedAdd(premium, IncreaseBalanceReason.PREMIUM);
-		accountLayout.balances[trade.partyB][symbol.collateral].isolatedSub(premium, DecreaseBalanceReason.PREMIUM);
+		// uint256 premium = (quantity * price) / 1e18;
+		// accountLayout.balances[trade.partyA][symbol.collateral].instantIsolatedAdd(premium, IncreaseBalanceReason.PREMIUM);
+		// accountLayout.balances[trade.partyB][symbol.collateral].isolatedSub(premium, DecreaseBalanceReason.PREMIUM);
+
+		// TODO: should be double checked. to see if the premium value is correct
+		accountLayout.balances[trade.partyB][symbol.collateral].instantIsolatedAdd(
+			(trade.getPremium() * quantity) / trade.tradeAgreements.quantity,
+			IncreaseBalanceReason.PREMIUM
+		);
+		uint256 pnl = (quantity * price) / 1e18;
+		accountLayout.balances[trade.partyA][symbol.collateral].instantIsolatedAdd(pnl, IncreaseBalanceReason.PREMIUM);
+		accountLayout.balances[trade.partyB][symbol.collateral].isolatedSub(pnl, DecreaseBalanceReason.PREMIUM);
+
 		trade.avgClosedPriceBeforeExpiration =
 			(trade.avgClosedPriceBeforeExpiration * trade.closedAmountBeforeExpiration + quantity * price) /
 			(trade.closedAmountBeforeExpiration + quantity);
