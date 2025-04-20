@@ -44,6 +44,7 @@ library AccountStorage {
 
 	struct Layout {
 		mapping(address => mapping(address => ScheduledReleaseBalance)) balances; // user => collateral => balance
+		mapping(address => mapping(address => uint256)) lockedBalances; // user => collateral => lockedBalance
 		mapping(address => uint256) releaseIntervals;
 		uint256 maxConnectedCounterParties;
 		mapping(address => bool) manualSync; // allows unlimited counter parties but require user to manual sync their balances (should be set to true for partyBs)

@@ -277,7 +277,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 			tradingFee: _tradingFee,
 			symbolType: _symbolType
 		});
-		s.lastSymbolId = s.lastSymbolId;
+		AppStorage.layout().affiliateFees[address(0)][s.lastSymbolId] = 0;
 		emit SymbolAdded(s.lastSymbolId, _name, _optionType, _oracleId, _collateral, _tradingFee, _symbolType);
 	}
 

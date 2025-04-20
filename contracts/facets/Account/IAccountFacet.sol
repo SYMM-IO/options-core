@@ -20,11 +20,11 @@ interface IAccountFacet is IAccountEvents {
 
 	function activateInstantActionMode() external;
 
-	function syncBalances(address collateral, address partyA, address[] calldata partyBs, MarginType marginType) external;
-
 	function proposeToDeactivateInstantActionMode() external;
 
 	function deactivateInstantActionMode() external;
+
+	function syncBalances(address collateral, address partyA, address[] calldata partyBs, MarginType marginType) external;
 
 	function bindToPartyB(address partyB) external;
 
