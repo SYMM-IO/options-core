@@ -28,6 +28,8 @@ import { CommonErrors } from "./CommonErrors.sol";
  *                                 processed interval.
  */
 struct ScheduledReleaseEntry {
+	uint256 locked;
+	uint256 totalMM;
 	uint256 releaseInterval;
 	uint256 transitioning;
 	uint256 scheduled;
@@ -55,6 +57,7 @@ struct ScheduledReleaseBalance {
 	address user; // owner of this slot
 	// ─── free balances ────────────────────────────────────────────────────────
 	uint256 isolatedBalance; // free isolated funds
+	uint256 isolatedLockedBalance; // free isolated funds
 	mapping(address => int256) crossBalance; // free cross funds
 	// ─── delayed balances ─────────────────────────────────────────────────────
 	mapping(address => mapping(MarginType => ScheduledReleaseEntry)) counterPartySchedules;
@@ -131,8 +134,9 @@ library ScheduledReleaseBalanceOps {
 	error InvalidSyncTimestamp(uint256 currentTime, uint256 lastTransitionTimestamp);
 	error NonZeroBalanceCounterParty(address counterParty, int256 balance);
 	error InsufficientBalance(address token, uint256 requested, int256 balance);
+	error InsufficientLockedBalance(address token, uint256 requested, uint256 balance);
+	error InsufficientMMBalance(address token, uint256 requested, uint256 balance);
 	error BalanceSetupRequired();
-	error BalanceAlreadySetup();
 
 	// ─── modifiers ────────────────────────────────────────────────────────────
 
@@ -153,7 +157,7 @@ library ScheduledReleaseBalanceOps {
 	 * @param _collateral    ERC20 address of the collateral token
 	 */
 	function setup(ScheduledReleaseBalance storage self, address _user, address _collateral) internal {
-		if (self.collateral != address(0) || self.user != address(0)) revert BalanceAlreadySetup();
+		if (self.collateral != address(0) || self.user != address(0)) return;
 		self.collateral = _collateral;
 		self.user = _user;
 	}
@@ -505,5 +509,37 @@ library ScheduledReleaseBalanceOps {
 		self.counterPartyAddresses[marginType].pop();
 		delete self.counterPartyIndexes[counterParty][marginType];
 		delete self.counterPartySchedules[counterParty][marginType];
+	}
+
+	function isolatedLock(ScheduledReleaseBalance storage self, uint256 amount) internal {
+		if (self.isolatedBalance < amount) revert InsufficientBalance(self.collateral, amount, int256(self.isolatedBalance));
+		self.isolatedLockedBalance += amount;
+	}
+
+	function isolatedUnlock(ScheduledReleaseBalance storage self, uint256 amount) internal {
+		if (self.isolatedLockedBalance < amount) revert InsufficientLockedBalance(self.collateral, amount, self.isolatedLockedBalance);
+		self.isolatedLockedBalance -= amount;
+	}
+
+	function crossLock(ScheduledReleaseBalance storage self, address counterParty, uint256 amount) internal {
+		ScheduledReleaseEntry storage entry = self.counterPartySchedules[counterParty][MarginType.CROSS];
+		entry.locked += amount;
+	}
+
+	function crossUnlock(ScheduledReleaseBalance storage self, address counterParty, uint256 amount) internal {
+		ScheduledReleaseEntry storage entry = self.counterPartySchedules[counterParty][MarginType.CROSS];
+		if (entry.locked < amount) revert InsufficientLockedBalance(self.collateral, amount, entry.locked);
+		entry.locked -= amount;
+	}
+
+	function increaseMM(ScheduledReleaseBalance storage self, address counterParty, uint256 amount) internal {
+		ScheduledReleaseEntry storage entry = self.counterPartySchedules[counterParty][MarginType.CROSS];
+		entry.totalMM += amount;
+	}
+
+	function decreaseMM(ScheduledReleaseBalance storage self, address counterParty, uint256 amount) internal {
+		ScheduledReleaseEntry storage entry = self.counterPartySchedules[counterParty][MarginType.CROSS];
+		if (entry.totalMM < amount) revert InsufficientMMBalance(self.collateral, amount, entry.totalMM);
+		entry.totalMM -= amount;
 	}
 }
