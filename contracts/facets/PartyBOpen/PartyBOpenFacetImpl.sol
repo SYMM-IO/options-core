@@ -5,13 +5,13 @@
 pragma solidity >=0.8.19;
 
 import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
-import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason, MarginType } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { LibTradeOps } from "../../libraries/LibTrade.sol";
 import { LibUserData } from "../../libraries/LibUserData.sol";
 import { LibPartyB } from "../../libraries/LibPartyB.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { AppStorage, LiquidationStatus } from "../../storages/AppStorage.sol";
-import { OpenIntent, Trade, IntentStorage, TradeAgreements, IntentStatus, TradeStatus } from "../../storages/IntentStorage.sol";
+import { OpenIntent, Trade, IntentStorage, TradeAgreements, IntentStatus, TradeStatus, TradeSide } from "../../storages/IntentStorage.sol";
 import { Symbol, SymbolStorage } from "../../storages/SymbolStorage.sol";
 import { PartyBOpenFacetErrors } from "./PartyBOpenFacetErrors.sol";
 import { CommonErrors } from "../../libraries/CommonErrors.sol";
@@ -66,6 +66,9 @@ library PartyBOpenFacetImpl {
 		}
 
 		if (!isValidPartyB) revert PartyBOpenFacetErrors.NotWhitelistedPartyB(sender, intent.partyBsWhiteList);
+
+		if (appLayout.partyBConfigs[sender].symbolType != symbol.symbolType)
+			revert PartyBOpenFacetErrors.MismatchedSymbolType(sender, appLayout.partyBConfigs[sender].symbolType, symbol.symbolType);
 
 		sender.requireSolvent(symbol.collateral);
 		intent.statusModifyTimestamp = block.timestamp;
@@ -144,9 +147,6 @@ library PartyBOpenFacetImpl {
 
 		if (!symbol.isValid) revert CommonErrors.InvalidSymbol(intent.tradeAgreements.symbolId);
 
-		if (appLayout.partyBConfigs[intent.partyB].symbolType != symbol.symbolType)
-			revert PartyBOpenFacetErrors.MismatchedSymbolType(intent.partyB, appLayout.partyBConfigs[intent.partyB].symbolType, symbol.symbolType);
-
 		if (intent.status != IntentStatus.LOCKED && intent.status != IntentStatus.CANCEL_PENDING) {
 			uint8[] memory requiredStatuses = new uint8[](2);
 			requiredStatuses[0] = uint8(IntentStatus.LOCKED);
@@ -169,9 +169,12 @@ library PartyBOpenFacetImpl {
 				intent.tradeAgreements.quantity
 			);
 
-		if (price > intent.price) revert PartyBOpenFacetErrors.InvalidOpenPrice(price, intent.price);
+		if (
+			(intent.tradeAgreements.tradeSide == TradeSide.BUY && price > intent.price) ||
+			(intent.tradeAgreements.tradeSide == TradeSide.SELL && price < intent.price)
+		) revert PartyBOpenFacetErrors.InvalidOpenPrice(price, intent.price);
 
-		address feeCollector = appLayout.affiliateFeeCollector[intent.affiliate] == address(0)
+		address affiliateFeeCollector = appLayout.affiliateFeeCollector[intent.affiliate] == address(0)
 			? appLayout.defaultFeeCollector
 			: appLayout.affiliateFeeCollector[intent.affiliate];
 
@@ -180,8 +183,8 @@ library PartyBOpenFacetImpl {
 		accountLayout.balances[appLayout.defaultFeeCollector][feeToken].setup(appLayout.defaultFeeCollector, feeToken);
 		accountLayout.balances[appLayout.defaultFeeCollector][feeToken].instantIsolatedAdd(intent.getTradingFee(), IncreaseBalanceReason.FEE);
 
-		accountLayout.balances[feeCollector][feeToken].setup(feeCollector, feeToken);
-		accountLayout.balances[feeCollector][feeToken].instantIsolatedAdd(intent.getAffiliateFee(), IncreaseBalanceReason.FEE);
+		accountLayout.balances[affiliateFeeCollector][feeToken].setup(affiliateFeeCollector, feeToken);
+		accountLayout.balances[affiliateFeeCollector][feeToken].instantIsolatedAdd(intent.getAffiliateFee(), IncreaseBalanceReason.FEE);
 
 		tradeId = ++intentLayout.lastTradeId;
 		Trade memory trade = Trade({
@@ -252,8 +255,10 @@ library PartyBOpenFacetImpl {
 			if (newStatus == IntentStatus.CANCELED) {
 				newIntent.handleFeesAndPremium(false);
 			}
+
 			intent.tradeAgreements.quantity = quantity;
 		}
+
 		intent.tradeId = tradeId;
 		intent.status = IntentStatus.FILLED;
 		intent.statusModifyTimestamp = block.timestamp;
@@ -262,10 +267,23 @@ library PartyBOpenFacetImpl {
 
 		trade.save();
 		accountLayout.balances[trade.partyB][symbol.collateral].setup(trade.partyB, symbol.collateral);
-		// pay back the extra locked premium
-		accountLayout.balances[trade.partyA][symbol.collateral].instantIsolatedAdd(
-			intent.getPremium() - trade.getPremium(),
-			IncreaseBalanceReason.FEE
-		);
+
+		if (intent.tradeAgreements.tradeSide == TradeSide.BUY) {
+			if (intent.tradeAgreements.marginType == MarginType.CROSS) {
+				accountLayout.balances[trade.partyA][symbol.collateral].crossUnlock(trade.partyB, intent.getPremium());
+				accountLayout.balances[trade.partyA][symbol.collateral].crossSub(trade.getPremium(), trade.partyB, DecreaseBalanceReason.PREMIUM);
+			} else {
+				accountLayout.balances[trade.partyA][symbol.collateral].isolatedUnlock(intent.getPremium());
+				accountLayout.balances[trade.partyA][symbol.collateral].isolatedSub(trade.getPremium(), DecreaseBalanceReason.PREMIUM);
+			}
+		} else {
+			//TODO: get premium from partyB on partyA selling
+			accountLayout.balances[trade.partyA][symbol.collateral].scheduledAdd(
+				trade.partyB,
+				trade.getPremium(),
+				MarginType.CROSS,
+				IncreaseBalanceReason.PREMIUM
+			);
+		}
 	}
 }

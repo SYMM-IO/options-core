@@ -6,9 +6,9 @@ pragma solidity >=0.8.19;
 
 import { AccountStorage } from "../storages/AccountStorage.sol";
 import { AppStorage } from "../storages/AppStorage.sol";
-import { OpenIntent, IntentStorage, IntentStatus } from "../storages/IntentStorage.sol";
+import { OpenIntent, IntentStorage, IntentStatus, TradeSide } from "../storages/IntentStorage.sol";
 import { Symbol, SymbolStorage } from "../storages/SymbolStorage.sol";
-import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "./LibScheduledReleaseBalance.sol";
+import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason, MarginType } from "./LibScheduledReleaseBalance.sol";
 import { CommonErrors } from "./CommonErrors.sol";
 
 library LibOpenIntentOps {
@@ -92,7 +92,7 @@ library LibOpenIntentOps {
 		remove(self, false);
 	}
 
-	function handleFeesAndPremium(OpenIntent memory self, bool isGetting) internal {
+	function handleFeesAndPremium(OpenIntent memory self, bool isUserPaying) internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
 		Symbol memory symbol = SymbolStorage.layout().symbols[self.tradeAgreements.symbolId];
@@ -103,15 +103,24 @@ library LibOpenIntentOps {
 		uint256 affiliateFee = getAffiliateFee(self);
 		uint256 premium = getPremium(self);
 
-		if (self.partyBsWhiteList.length == 1) {
-			if (isGetting) {
+		if (self.tradeAgreements.marginType == MarginType.ISOLATED) {
+			if (isUserPaying) {
+				partyAFeeBalance.isolatedSub(tradingFee + affiliateFee, DecreaseBalanceReason.FEE);
+				if (self.tradeAgreements.tradeSide == TradeSide.BUY) partyABalance.isolatedLock(premium);
+			} else {
+				partyAFeeBalance.instantIsolatedAdd(tradingFee + affiliateFee, IncreaseBalanceReason.FEE);
+				if (self.tradeAgreements.tradeSide == TradeSide.BUY) partyABalance.isolatedUnlock(premium);
+			}
+		} else {
+			if (isUserPaying) {
 				partyAFeeBalance.subForCounterParty(
 					self.partyBsWhiteList[0],
 					tradingFee + affiliateFee,
 					self.tradeAgreements.marginType,
 					DecreaseBalanceReason.FEE
 				);
-				partyABalance.subForCounterParty(self.partyBsWhiteList[0], premium, self.tradeAgreements.marginType, DecreaseBalanceReason.PREMIUM);
+				if (self.tradeAgreements.tradeSide == TradeSide.BUY) partyABalance.crossLock(self.partyBsWhiteList[0], premium);
+				else partyABalance.increaseMM(self.partyBsWhiteList[0], self.tradeAgreements.mm);
 			} else {
 				partyAFeeBalance.scheduledAdd(
 					self.partyBsWhiteList[0],
@@ -119,15 +128,8 @@ library LibOpenIntentOps {
 					self.tradeAgreements.marginType,
 					IncreaseBalanceReason.FEE
 				);
-				partyABalance.scheduledAdd(self.partyBsWhiteList[0], premium, self.tradeAgreements.marginType, IncreaseBalanceReason.PREMIUM);
-			}
-		} else {
-			if (isGetting) {
-				partyAFeeBalance.isolatedSub(tradingFee + affiliateFee, DecreaseBalanceReason.FEE);
-				partyABalance.isolatedSub(premium, DecreaseBalanceReason.PREMIUM);
-			} else {
-				partyAFeeBalance.instantIsolatedAdd(tradingFee + affiliateFee, IncreaseBalanceReason.FEE);
-				partyABalance.instantIsolatedAdd(premium, IncreaseBalanceReason.PREMIUM);
+				if (self.tradeAgreements.tradeSide == TradeSide.BUY) partyABalance.crossUnlock(self.partyBsWhiteList[0], premium);
+				else partyABalance.decreaseMM(self.partyBsWhiteList[0], self.tradeAgreements.mm);
 			}
 		}
 	}

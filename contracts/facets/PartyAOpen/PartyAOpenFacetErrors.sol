@@ -22,4 +22,6 @@ library PartyAOpenFacetErrors {
 
 	// PartyB binding errors
 	error UserBoundToAnotherPartyB(address user, address boundPartyB, address[] requestedPartyBs);
+
+	error OnlyOnePartyBIsAllowedInCrossMode();
 }
