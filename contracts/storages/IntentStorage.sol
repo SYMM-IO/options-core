@@ -134,6 +134,7 @@ struct SignedFillIntent {
 	uint256 quantity;
 	uint256 deadline;
 	uint256 salt;
+	MarginType marginType;
 }
 
 struct SignedFillIntentById {
@@ -143,6 +144,7 @@ struct SignedFillIntentById {
 	uint256 quantity;
 	uint256 deadline;
 	uint256 salt;
+	MarginType marginType;
 }
 
 struct SignedSimpleActionIntent {

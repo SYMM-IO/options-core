@@ -6,6 +6,7 @@ pragma solidity >=0.8.19;
 
 import { IPartiesEvents } from "../../interfaces/IPartiesEvents.sol";
 import { OpenIntent, IntentStorage, IntentStatus } from "../../storages/IntentStorage.sol";
+import { MarginType } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
 import { Pausable } from "../../utils/Pausable.sol";
 import { IPartyBOpenEvents } from "./IPartyBOpenEvents.sol";
@@ -63,9 +64,9 @@ contract PartyBOpenFacet is Accessibility, Pausable, IPartyBOpenFacet {
 	 * @param quantity The amount to be filled, which can be equal to or less than the original requested quantity
 	 * @param price The price at which the trade is being opened
 	 */
-	function fillOpenIntent(uint256 intentId, uint256 quantity, uint256 price) external whenNotPartyBActionsPaused {
-		(uint256 tradeId, uint256 newIntentId) = PartyBOpenFacetImpl.fillOpenIntent(msg.sender, intentId, quantity, price);
-		emit FillOpenIntent(intentId, tradeId, quantity, price);
+	function fillOpenIntent(uint256 intentId, uint256 quantity, uint256 price, MarginType marginType) external whenNotPartyBActionsPaused {
+		(uint256 tradeId, uint256 newIntentId) = PartyBOpenFacetImpl.fillOpenIntent(msg.sender, marginType, intentId, quantity, price);
+		emit FillOpenIntent(intentId, tradeId, quantity, price, marginType);
 		if (newIntentId != 0) {
 			OpenIntent storage newIntent = IntentStorage.layout().openIntents[newIntentId];
 			if (newIntent.status == IntentStatus.PENDING) {
