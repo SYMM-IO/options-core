@@ -5,6 +5,7 @@
 pragma solidity >=0.8.19;
 
 import { ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { LibParty } from "../../libraries/LibParty.sol";
 import { AccountStorage, Withdraw, BridgeTransaction } from "../../storages/AccountStorage.sol";
 import { AppStorage, PartyBConfig, LiquidationDetail, LiquidationState } from "../../storages/AppStorage.sol";
 import { IntentStorage, OpenIntent, TransferIntent, Trade, CloseIntent } from "../../storages/IntentStorage.sol";
@@ -14,6 +15,7 @@ import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableS
 
 contract ViewFacet is IViewFacet {
 	using EnumerableSet for EnumerableSet.AddressSet;
+	using LibParty for address;
 
 	/**
 	 * @notice Returns the balance for a specified user and collateral type.
@@ -33,8 +35,8 @@ contract ViewFacet is IViewFacet {
 		return AccountStorage.layout().maxConnectedCounterParties;
 	}
 
-	function getPartyBReleaseIntervals(address partyB) external view returns (uint256) {
-		return AccountStorage.layout().releaseIntervals[partyB];
+	function getReleaseInterval(address user) external view returns (uint256) {
+		return user.getReleaseInterval();
 	}
 
 	/**

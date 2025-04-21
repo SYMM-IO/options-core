@@ -7,7 +7,7 @@ pragma solidity >=0.8.19;
 
 import { AccountStorage } from "../storages/AccountStorage.sol";
 import { AppStorage, LiquidationStatus } from "../storages/AppStorage.sol";
-import { LibPartyB } from "../libraries/LibPartyB.sol";
+import { LibParty } from "../libraries/LibParty.sol";
 import { CommonErrors } from "./CommonErrors.sol";
 
 // ────────────────────────────────────────────────────────────────────────────────
@@ -101,7 +101,7 @@ enum DecreaseBalanceReason {
 ///         The library emits granular events so that indexers can recreate the
 ///         full margin state without loading contract storage.
 library ScheduledReleaseBalanceOps {
-	using LibPartyB for address;
+	using LibParty for address;
 
 	// ─── events ───────────────────────────────────────────────────────────────
 
@@ -186,7 +186,7 @@ library ScheduledReleaseBalanceOps {
 		_sync(self, counterParty, marginType, false);
 
 		// zero interval ⇒ treat as instant add
-		if (accountLayout.releaseIntervals[counterParty] == 0) {
+		if (counterParty.getReleaseInterval() == 0) {
 			return marginType == MarginType.CROSS ? instantCrossAdd(self, value, counterParty, reason) : instantIsolatedAdd(self, value, reason);
 		}
 
@@ -377,7 +377,7 @@ library ScheduledReleaseBalanceOps {
 			return;
 		}
 
-		uint256 extReleaseInterval = accountLayout.releaseIntervals[counterParty];
+		uint256 extReleaseInterval = counterParty.getReleaseInterval();
 
 		ScheduledReleaseEntry storage entry = self.counterPartySchedules[counterParty][marginType];
 
@@ -472,7 +472,7 @@ library ScheduledReleaseBalanceOps {
 		}
 
 		ScheduledReleaseEntry storage entry = self.counterPartySchedules[counterParty][marginType];
-		entry.releaseInterval = accountLayout.releaseIntervals[counterParty];
+		entry.releaseInterval = counterParty.getReleaseInterval();
 		entry.lastTransitionTimestamp = entry.releaseInterval == 0
 			? block.timestamp
 			: (block.timestamp / entry.releaseInterval) * entry.releaseInterval;

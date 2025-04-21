@@ -26,7 +26,7 @@ interface IViewFacet {
 
 	function partyAStats(address partyA, address collateral) external view returns (bool, uint256, uint256[] memory, uint256[] memory);
 
-	function getPartyBReleaseIntervals(address partyB) external view returns (uint256);
+	function getReleaseInterval(address user) external view returns (uint256);
 
 	function getMaxConnectedCounterParties() external view returns (uint256);
 

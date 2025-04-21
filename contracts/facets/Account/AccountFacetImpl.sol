@@ -7,7 +7,7 @@ pragma solidity >=0.8.19;
 import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason, MarginType } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { CommonErrors } from "../../libraries/CommonErrors.sol";
 import { AccountFacetErrors } from "./AccountFacetErrors.sol";
-import { LibPartyB } from "../../libraries/LibPartyB.sol";
+import { LibParty } from "../../libraries/LibParty.sol";
 import { AccountStorage, Withdraw, WithdrawStatus } from "../../storages/AccountStorage.sol";
 import { AppStorage, LiquidationStatus } from "../../storages/AppStorage.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -17,7 +17,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 library AccountFacetImpl {
 	using SafeERC20 for IERC20;
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
-	using LibPartyB for address;
+	using LibParty for address;
 
 	// Constants
 	uint256 private constant PRECISION_FACTOR = 1e18;

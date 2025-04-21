@@ -5,14 +5,15 @@
 pragma solidity >=0.8.19;
 
 import { AppStorage, LiquidationStatus, LiquidationState, LiquidationDetail } from "../storages/AppStorage.sol";
+import { AccountStorage } from "../storages/AccountStorage.sol";
 import { CommonErrors } from "./CommonErrors.sol";
 
-library LibPartyB {
+library LibParty {
 	// Custom errors
-	error PartyBNotSolvent(address partyB, address collateral);
+	error NotSolvent(address user, address collateral);
 
 	function requireSolvent(address self, address collateral) internal view {
-		if (!isSolvent(self, collateral)) revert PartyBNotSolvent(self, collateral);
+		if (!isSolvent(self, collateral)) revert NotSolvent(self, collateral);
 	}
 
 	function requireInProgressLiquidation(address self, address collateral) internal view {
@@ -37,5 +38,10 @@ library LibPartyB {
 
 	function getInProgressLiquidationDetail(address self, address collateral) internal view returns (LiquidationDetail storage) {
 		return AppStorage.layout().liquidationDetails[getLiquidationState(self, collateral).inProgressLiquidationId];
+	}
+
+	function getReleaseInterval(address user) external view returns (uint256) {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		return accountLayout.hasConfiguredInterval[user] ? accountLayout.releaseIntervals[user] : accountLayout.defaultReleaseInterval;
 	}
 }
