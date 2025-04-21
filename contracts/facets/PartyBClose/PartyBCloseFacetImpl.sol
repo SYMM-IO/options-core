@@ -7,7 +7,7 @@ pragma solidity >=0.8.19;
 import { LibCloseIntentOps } from "../../libraries/LibCloseIntent.sol";
 import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { LibTradeOps } from "../../libraries/LibTrade.sol";
-import { LibPartyB } from "../../libraries/LibPartyB.sol";
+import { LibParty } from "../../libraries/LibParty.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { AppStorage, LiquidationStatus } from "../../storages/AppStorage.sol";
 import { CloseIntent, Trade, IntentStorage, IntentStatus, TradeStatus, TradeSide } from "../../storages/IntentStorage.sol";
@@ -19,7 +19,7 @@ library PartyBCloseFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibCloseIntentOps for CloseIntent;
 	using LibTradeOps for Trade;
-	using LibPartyB for address;
+	using LibParty for address;
 
 	function acceptCancelCloseIntent(address sender, uint256 intentId) internal {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();

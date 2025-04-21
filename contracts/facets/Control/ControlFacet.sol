@@ -206,6 +206,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	}
 
 	function setPartyBReleaseInterval(address _partyB, uint256 _interval) external onlyRole(LibAccessibility.SETTER_ROLE) {
+		AccountStorage.layout().hasConfiguredInterval[_partyB] = true;
 		AccountStorage.layout().releaseIntervals[_partyB] = _interval;
 		emit PartyBReleaseIntervalUpdated(_partyB, _interval);
 	}

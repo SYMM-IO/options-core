@@ -7,7 +7,7 @@ pragma solidity >=0.8.19;
 import { LibMuon } from "../../libraries/LibMuon.sol";
 import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { LibTradeOps } from "../../libraries/LibTrade.sol";
-import { LibPartyB } from "../../libraries/LibPartyB.sol";
+import { LibParty } from "../../libraries/LibParty.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { SettlementPriceSig, AppStorage, LiquidationStatus } from "../../storages/AppStorage.sol";
 import { Trade, IntentStorage, TradeStatus, IntentStatus, TradeSide } from "../../storages/IntentStorage.sol";
@@ -18,7 +18,7 @@ import { TradeSettlementFacetErrors } from "./TradeSettlementFacetErrors.sol";
 library TradeSettlementFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibTradeOps for Trade;
-	using LibPartyB for address;
+	using LibParty for address;
 
 	function executeTrade(uint256 tradeId, SettlementPriceSig memory sig) internal returns (bool isExpired) {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();

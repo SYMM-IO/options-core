@@ -6,7 +6,7 @@ pragma solidity >=0.8.19;
 
 import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason, MarginType } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { LibTradeOps } from "../../libraries/LibTrade.sol";
-import { LibPartyB } from "../../libraries/LibPartyB.sol";
+import { LibParty } from "../../libraries/LibParty.sol";
 import { AccountStorage, Withdraw, WithdrawStatus } from "../../storages/AccountStorage.sol";
 import { AppStorage, LiquidationStatus, LiquidationDetail, LiquidationState } from "../../storages/AppStorage.sol";
 import { Trade, IntentStorage, TradeStatus, IntentStatus } from "../../storages/IntentStorage.sol";
@@ -17,7 +17,7 @@ import { CommonErrors } from "../../libraries/CommonErrors.sol";
 library ClearingHouseFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibTradeOps for Trade;
-	using LibPartyB for address;
+	using LibParty for address;
 
 	function flagLiquidation(address partyB, address collateral) internal returns (uint256 liquidationId) {
 		AppStorage.Layout storage appLayout = AppStorage.layout();

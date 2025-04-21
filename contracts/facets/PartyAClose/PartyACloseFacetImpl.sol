@@ -6,7 +6,7 @@ pragma solidity >=0.8.19;
 
 import { ITradeNFT } from "../../interfaces/ITradeNFT.sol";
 import { LibCloseIntentOps } from "../../libraries/LibCloseIntent.sol";
-import { LibPartyB } from "../../libraries/LibPartyB.sol";
+import { LibParty } from "../../libraries/LibParty.sol";
 import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { LibTradeOps } from "../../libraries/LibTrade.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
@@ -20,7 +20,7 @@ library PartyACloseFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibCloseIntentOps for CloseIntent;
 	using LibTradeOps for Trade;
-	using LibPartyB for address;
+	using LibParty for address;
 
 	function sendCloseIntent(address sender, uint256 tradeId, uint256 price, uint256 quantity, uint256 deadline) internal returns (uint256 intentId) {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();

@@ -8,7 +8,7 @@ import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
 import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason, MarginType } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { LibTradeOps } from "../../libraries/LibTrade.sol";
 import { LibUserData } from "../../libraries/LibUserData.sol";
-import { LibPartyB } from "../../libraries/LibPartyB.sol";
+import { LibParty } from "../../libraries/LibParty.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { AppStorage, LiquidationStatus } from "../../storages/AppStorage.sol";
 import { OpenIntent, Trade, IntentStorage, TradeAgreements, IntentStatus, TradeStatus, TradeSide } from "../../storages/IntentStorage.sol";
@@ -20,7 +20,7 @@ library PartyBOpenFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibOpenIntentOps for OpenIntent;
 	using LibTradeOps for Trade;
-	using LibPartyB for address;
+	using LibParty for address;
 
 	function lockOpenIntent(address sender, uint256 intentId) internal {
 		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
