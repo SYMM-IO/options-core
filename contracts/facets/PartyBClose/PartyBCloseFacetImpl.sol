@@ -10,7 +10,7 @@ import { LibTradeOps } from "../../libraries/LibTrade.sol";
 import { LibPartyB } from "../../libraries/LibPartyB.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { AppStorage, LiquidationStatus } from "../../storages/AppStorage.sol";
-import { CloseIntent, Trade, IntentStorage, IntentStatus, TradeStatus } from "../../storages/IntentStorage.sol";
+import { CloseIntent, Trade, IntentStorage, IntentStatus, TradeStatus, TradeSide } from "../../storages/IntentStorage.sol";
 import { SymbolStorage, Symbol } from "../../storages/SymbolStorage.sol";
 import { PartyBCloseFacetErrors } from "./PartyBCloseFacetErrors.sol";
 import { CommonErrors } from "../../libraries/CommonErrors.sol";
@@ -72,20 +72,45 @@ library PartyBCloseFacetImpl {
 		if (block.timestamp >= trade.tradeAgreements.expirationTimestamp)
 			revert PartyBCloseFacetErrors.TradeExpired(intent.tradeId, block.timestamp, trade.tradeAgreements.expirationTimestamp);
 
-		if (price < intent.price) revert PartyBCloseFacetErrors.InvalidClosedPrice(price, intent.price);
+		if (
+			(trade.tradeAgreements.tradeSide == TradeSide.BUY && price < intent.price) ||
+			(trade.tradeAgreements.tradeSide == TradeSide.SELL && price > intent.price)
+		) revert PartyBCloseFacetErrors.InvalidClosedPrice(price, intent.price);
 
-		// uint256 premium = (quantity * price) / 1e18;
-		// accountLayout.balances[trade.partyA][symbol.collateral].instantIsolatedAdd(premium, IncreaseBalanceReason.PREMIUM);
-		// accountLayout.balances[trade.partyB][symbol.collateral].isolatedSub(premium, DecreaseBalanceReason.PREMIUM);
-
-		// TODO: should be double checked. to see if the premium value is correct
-		accountLayout.balances[trade.partyB][symbol.collateral].instantIsolatedAdd(
-			(trade.getPremium() * quantity) / trade.tradeAgreements.quantity,
-			IncreaseBalanceReason.PREMIUM
-		);
 		uint256 pnl = (quantity * price) / 1e18;
-		accountLayout.balances[trade.partyA][symbol.collateral].instantIsolatedAdd(pnl, IncreaseBalanceReason.PREMIUM);
-		accountLayout.balances[trade.partyB][symbol.collateral].isolatedSub(pnl, DecreaseBalanceReason.PREMIUM);
+		if (trade.tradeAgreements.tradeSide == TradeSide.BUY) {
+			accountLayout.balances[trade.partyB][symbol.collateral].scheduledAdd(
+				trade.partyA,
+				(trade.getPremium() * quantity) / trade.tradeAgreements.quantity,
+				trade.partyBMarginType,
+				IncreaseBalanceReason.PREMIUM
+			);
+			accountLayout.balances[trade.partyB][symbol.collateral].subForCounterParty(
+				trade.partyA,
+				pnl,
+				trade.partyBMarginType,
+				DecreaseBalanceReason.REALIZED_PNL
+			);
+			accountLayout.balances[trade.partyA][symbol.collateral].scheduledAdd(
+				trade.partyB,
+				pnl,
+				trade.tradeAgreements.marginType,
+				IncreaseBalanceReason.REALIZED_PNL
+			);
+		} else {
+			accountLayout.balances[trade.partyA][symbol.collateral].subForCounterParty(
+				trade.partyB,
+				pnl,
+				trade.tradeAgreements.marginType,
+				DecreaseBalanceReason.REALIZED_PNL
+			);
+			accountLayout.balances[trade.partyB][symbol.collateral].scheduledAdd(
+				trade.partyA,
+				pnl,
+				trade.partyBMarginType,
+				IncreaseBalanceReason.REALIZED_PNL
+			);
+		}
 
 		trade.avgClosedPriceBeforeExpiration =
 			(trade.avgClosedPriceBeforeExpiration * trade.closedAmountBeforeExpiration + quantity * price) /

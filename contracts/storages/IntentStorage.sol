@@ -64,6 +64,7 @@ struct Trade {
 	uint256 closePendingAmount;
 	uint256 avgClosedPriceBeforeExpiration;
 	TradeStatus status;
+	MarginType partyBMarginType;
 	uint256 createTimestamp;
 	uint256 statusModifyTimestamp;
 }

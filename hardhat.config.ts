@@ -26,6 +26,10 @@ const config: HardhatUserConfig = {
 		hardhat: {
 			allowUnlimitedContractSize: false,
 		},
+		polygon: {
+			url: "https://polygon-rpc.com",
+			accounts: [privateKey],
+		},
 	},
 	paths: {
 		artifacts: "./artifacts",

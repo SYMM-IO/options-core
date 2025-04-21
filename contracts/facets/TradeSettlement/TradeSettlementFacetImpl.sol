@@ -10,7 +10,7 @@ import { LibTradeOps } from "../../libraries/LibTrade.sol";
 import { LibPartyB } from "../../libraries/LibPartyB.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { SettlementPriceSig, AppStorage, LiquidationStatus } from "../../storages/AppStorage.sol";
-import { Trade, IntentStorage, TradeStatus, IntentStatus } from "../../storages/IntentStorage.sol";
+import { Trade, IntentStorage, TradeStatus, IntentStatus, TradeSide } from "../../storages/IntentStorage.sol";
 import { Symbol, SymbolStorage, OptionType } from "../../storages/SymbolStorage.sol";
 import { CommonErrors } from "../../libraries/CommonErrors.sol";
 import { TradeSettlementFacetErrors } from "./TradeSettlementFacetErrors.sol";
@@ -69,13 +69,42 @@ library TradeSettlementFacetImpl {
 			}
 
 			uint256 pnl = trade.getPnl(sig.settlementPrice, trade.getOpenAmount());
+
 			uint256 exerciseFee = trade.getExerciseFee(sig.settlementPrice, pnl);
 			uint256 amountToTransfer = pnl - exerciseFee;
+
 			amountToTransfer = (amountToTransfer * 1e18) / sig.collateralPrice;
 
 			trade.settledPrice = sig.settlementPrice;
-			accountLayout.balances[trade.partyA][symbol.collateral].instantIsolatedAdd(amountToTransfer, IncreaseBalanceReason.REALIZED_PNL); //TODO: instantIsolatedAdd or add?
-			accountLayout.balances[trade.partyB][symbol.collateral].isolatedSub(amountToTransfer, DecreaseBalanceReason.REALIZED_PNL);
+
+			if (trade.tradeAgreements.tradeSide == TradeSide.BUY) {
+				accountLayout.balances[trade.partyB][symbol.collateral].subForCounterParty(
+					trade.partyA,
+					amountToTransfer,
+					trade.partyBMarginType,
+					DecreaseBalanceReason.REALIZED_PNL
+				);
+				accountLayout.balances[trade.partyA][symbol.collateral].scheduledAdd(
+					trade.partyA,
+					amountToTransfer,
+					trade.tradeAgreements.marginType,
+					IncreaseBalanceReason.REALIZED_PNL
+				);
+			} else {
+				accountLayout.balances[trade.partyA][symbol.collateral].subForCounterParty(
+					trade.partyB,
+					amountToTransfer,
+					trade.tradeAgreements.marginType,
+					DecreaseBalanceReason.REALIZED_PNL
+				);
+				accountLayout.balances[trade.partyB][symbol.collateral].scheduledAdd(
+					trade.partyB,
+					amountToTransfer,
+					trade.partyBMarginType,
+					IncreaseBalanceReason.REALIZED_PNL
+				);
+			}
+
 			trade.close(TradeStatus.EXERCISED, IntentStatus.CANCELED);
 		}
 	}
