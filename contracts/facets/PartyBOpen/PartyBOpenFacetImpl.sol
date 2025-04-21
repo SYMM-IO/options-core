@@ -124,6 +124,7 @@ library PartyBOpenFacetImpl {
 
 	function fillOpenIntent(
 		address sender,
+		MarginType partyBMarginType,
 		uint256 intentId,
 		uint256 quantity,
 		uint256 price
@@ -209,6 +210,7 @@ library PartyBOpenFacetImpl {
 			closePendingAmount: 0,
 			avgClosedPriceBeforeExpiration: 0,
 			status: TradeStatus.OPENED,
+			partyBMarginType: partyBMarginType,
 			createTimestamp: block.timestamp,
 			statusModifyTimestamp: block.timestamp
 		});
@@ -271,13 +273,22 @@ library PartyBOpenFacetImpl {
 		if (intent.tradeAgreements.tradeSide == TradeSide.BUY) {
 			if (intent.tradeAgreements.marginType == MarginType.CROSS) {
 				accountLayout.balances[trade.partyA][symbol.collateral].crossUnlock(trade.partyB, intent.getPremium());
-				accountLayout.balances[trade.partyA][symbol.collateral].crossSub(trade.getPremium(), trade.partyB, DecreaseBalanceReason.PREMIUM);
 			} else {
 				accountLayout.balances[trade.partyA][symbol.collateral].isolatedUnlock(intent.getPremium());
-				accountLayout.balances[trade.partyA][symbol.collateral].isolatedSub(trade.getPremium(), DecreaseBalanceReason.PREMIUM);
 			}
+			accountLayout.balances[trade.partyA][symbol.collateral].subForCounterParty(
+				trade.partyB,
+				trade.getPremium(),
+				intent.tradeAgreements.marginType,
+				DecreaseBalanceReason.PREMIUM
+			);
 		} else {
-			//TODO: get premium from partyB on partyA selling
+			accountLayout.balances[trade.partyB][symbol.collateral].subForCounterParty(
+				trade.partyA,
+				trade.getPremium(),
+				partyBMarginType,
+				DecreaseBalanceReason.PREMIUM
+			);
 			accountLayout.balances[trade.partyA][symbol.collateral].scheduledAdd(
 				trade.partyB,
 				trade.getPremium(),
