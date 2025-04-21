@@ -96,7 +96,13 @@ contract InstantActionsOpenFacet is Accessibility, Pausable, IInstantActionsOpen
 		bytes calldata partyBSignature
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
 		(uint256 tradeId, uint256 newIntentId) = InstantActionsOpenFacetImpl.instantFillOpenIntent(signedFillOpenIntent, partyBSignature);
-		emit FillOpenIntent(signedFillOpenIntent.intentId, tradeId, signedFillOpenIntent.quantity, signedFillOpenIntent.price);
+		emit FillOpenIntent(
+			signedFillOpenIntent.intentId,
+			tradeId,
+			signedFillOpenIntent.quantity,
+			signedFillOpenIntent.price,
+			signedFillOpenIntent.marginType
+		);
 		if (newIntentId != 0) {
 			OpenIntent storage newIntent = IntentStorage.layout().openIntents[newIntentId];
 			_emitSendOpenIntent(newIntent);
@@ -130,7 +136,7 @@ contract InstantActionsOpenFacet is Accessibility, Pausable, IInstantActionsOpen
 		);
 		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
 		_emitSendOpenIntent(intent);
-		emit FillOpenIntent(intent.id, tradeId, signedFillOpenIntent.quantity, signedFillOpenIntent.price);
+		emit FillOpenIntent(intent.id, tradeId, signedFillOpenIntent.quantity, signedFillOpenIntent.price, signedFillOpenIntent.marginType);
 		if (newIntentId != 0) {
 			_emitSendOpenIntent(IntentStorage.layout().openIntents[newIntentId]);
 		}

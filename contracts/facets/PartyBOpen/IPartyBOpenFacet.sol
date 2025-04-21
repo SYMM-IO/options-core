@@ -5,6 +5,7 @@
 pragma solidity >=0.8.19;
 
 import { IPartyBOpenEvents } from "./IPartyBOpenEvents.sol";
+import { MarginType } from "../../libraries/LibScheduledReleaseBalance.sol";
 
 interface IPartyBOpenFacet is IPartyBOpenEvents {
 	function lockOpenIntent(uint256 intentId) external;
@@ -13,5 +14,5 @@ interface IPartyBOpenFacet is IPartyBOpenEvents {
 
 	function acceptCancelOpenIntent(uint256 intentId) external;
 
-	function fillOpenIntent(uint256 intentId, uint256 quantity, uint256 price) external;
+	function fillOpenIntent(uint256 intentId, uint256 quantity, uint256 price, MarginType marginType) external;
 }
