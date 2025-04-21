@@ -168,6 +168,14 @@ library AccountFacetImpl {
 		}
 	}
 
+	function allocate(address collateral, address counterParty, uint256 amount) internal {
+		AccountStorage.layout().balances[msg.sender][collateral].allocateBalance(counterParty, amount);
+	}
+
+	function deallocate(address collateral, address counterParty, uint256 amount) internal {
+		AccountStorage.layout().balances[msg.sender][collateral].deallocateBalance(counterParty, amount);
+	}
+
 	function activateInstantActionMode() internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 

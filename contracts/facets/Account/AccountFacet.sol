@@ -133,6 +133,40 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	}
 
 	/**
+	 * @notice Allocates tokens from a user's isolated balance to their cross balance with a counterparty
+	 * @param collateral The address of the collateral token to allocate
+	 * @param counterParty The address of the counterparty
+	 * @param amount The amount of collateral to be allocated, specified in collateral decimals
+	 */
+	function allocate(address collateral, address counterParty, uint256 amount) external notSuspended(msg.sender) {
+		AccountFacetImpl.allocate(collateral, counterParty, amount);
+		emit Allocate(
+			msg.sender,
+			collateral,
+			counterParty,
+			amount,
+			AccountStorage.layout().balances[msg.sender][collateral].crossBalance[counterParty]
+		);
+	}
+
+	/**
+	 * @notice Deallocates tokens, returning them to a user's isolated balance
+	 * @param collateral The address of the collateral token to deallocate
+	 * @param counterParty The address of the counterparty
+	 * @param amount The amount of collateral to be deallocated, specified in collateral decimals
+	 */
+	function deallocate(address collateral, address counterParty, uint256 amount) external notSuspended(msg.sender) {
+		AccountFacetImpl.deallocate(collateral, counterParty, amount);
+		emit Deallocate(
+			msg.sender,
+			collateral,
+			counterParty,
+			amount,
+			AccountStorage.layout().balances[msg.sender][collateral].crossBalance[counterParty]
+		);
+	}
+
+	/**
 	 * @notice Enables the instant action mode for a PartyA
 	 * @dev Only callable by PartyA accounts, not PartyB
 	 */
