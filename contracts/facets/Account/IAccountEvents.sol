@@ -18,4 +18,6 @@ interface IAccountEvents {
 	event InitiateUnbindingFromPartyB(address indexed partyA, address indexed partyB, uint256 initiationTime);
 	event CompleteUnbindingFromPartyB(address indexed partyA, address indexed partyB);
 	event CancelUnbindingFromPartyB(address indexed partyA, address indexed partyB);
+	event Allocate(address indexed user, address indexed collateral, address indexed counterParty, uint256 amount, int256 newAllocatedBalance);
+	event Deallocate(address indexed user, address indexed collateral, address indexed counterParty, uint256 amount, int256 newAllocatedBalance);
 }
