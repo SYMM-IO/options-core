@@ -8,6 +8,8 @@ import { LibCloseIntentOps } from "../../libraries/LibCloseIntent.sol";
 import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
 import { CommonErrors } from "../../libraries/CommonErrors.sol";
 import { AppStorage } from "../../storages/AppStorage.sol";
+import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
+import { CloseIntentStorage } from "../../storages/CloseIntentStorage.sol";
 import { IntentStatus } from "../../types/IntentTypes.sol";
 import { OpenIntent, CloseIntent } from "../../types/IntentTypes.sol";
 
@@ -16,7 +18,7 @@ library ForceActionsFacetImpl {
 	using LibCloseIntentOps for CloseIntent;
 
 	function forceCancelOpenIntent(uint256 intentId) internal {
-		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
+		OpenIntent storage intent = OpenIntentStorage.layout().openIntents[intentId];
 
 		if (intent.status != IntentStatus.CANCEL_PENDING) {
 			uint8[] memory requiredStatuses = new uint8[](1);
@@ -38,7 +40,7 @@ library ForceActionsFacetImpl {
 	}
 
 	function forceCancelCloseIntent(uint256 intentId) internal {
-		CloseIntent storage intent = IntentStorage.layout().closeIntents[intentId];
+		CloseIntent storage intent = CloseIntentStorage.layout().closeIntents[intentId];
 
 		if (intent.status != IntentStatus.CANCEL_PENDING) {
 			uint8[] memory requiredStatuses = new uint8[](1);

@@ -14,6 +14,8 @@ import { TradeSide } from "../../types/BaseTypes.sol";
 import { Trade, TradeStatus } from "../../types/TradeTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 import { SymbolStorage, Symbol } from "../../storages/SymbolStorage.sol";
+import { CloseIntentStorage } from "../../storages/CloseIntentStorage.sol";
+import { TradeStorage } from "../../storages/TradeStorage.sol";
 import { PartyBCloseFacetErrors } from "./PartyBCloseFacetErrors.sol";
 import { CommonErrors } from "../../libraries/CommonErrors.sol";
 
@@ -24,9 +26,9 @@ library PartyBCloseFacetImpl {
 	using LibParty for address;
 
 	function acceptCancelCloseIntent(address sender, uint256 intentId) internal {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-		CloseIntent storage intent = intentLayout.closeIntents[intentId];
-		Trade storage trade = intentLayout.trades[intent.tradeId];
+		CloseIntentStorage.Layout storage closeIntentLayout = CloseIntentStorage.layout();
+		CloseIntent storage intent = closeIntentLayout.closeIntents[intentId];
+		Trade storage trade = TradeStorage.layout().trades[intent.tradeId];
 
 		if (trade.partyB != sender) revert CommonErrors.UnauthorizedSender(sender, trade.partyB);
 
@@ -43,10 +45,10 @@ library PartyBCloseFacetImpl {
 	}
 
 	function fillCloseIntent(address sender, uint256 intentId, uint256 quantity, uint256 price) internal {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		CloseIntentStorage.Layout storage closeIntentLayout = CloseIntentStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		CloseIntent storage intent = intentLayout.closeIntents[intentId];
-		Trade storage trade = intentLayout.trades[intent.tradeId];
+		CloseIntent storage intent = closeIntentLayout.closeIntents[intentId];
+		Trade storage trade = TradeStorage.layout().trades[intent.tradeId];
 		Symbol memory symbol = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId];
 
 		if (sender != trade.partyB) revert CommonErrors.UnauthorizedSender(sender, trade.partyB);

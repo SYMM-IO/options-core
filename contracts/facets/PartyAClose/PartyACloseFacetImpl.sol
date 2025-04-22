@@ -13,6 +13,9 @@ import { CloseIntent, IntentStatus } from "../../types/IntentTypes.sol";
 import { Trade, TradeStatus } from "../../types/TradeTypes.sol";
 import { ScheduledReleaseBalance } from "../../types/BalanceTypes.sol";
 import { Symbol, SymbolStorage } from "../../storages/SymbolStorage.sol";
+import { TradeStorage } from "../../storages/TradeStorage.sol";
+import { CloseIntentStorage } from "../../storages/CloseIntentStorage.sol";
+import { AppStorage } from "../../storages/AppStorage.sol";
 import { PartyACloseFacetErrors } from "./PartyACloseFacetErrors.sol";
 import { CommonErrors } from "../../libraries/CommonErrors.sol";
 
@@ -23,8 +26,8 @@ library PartyACloseFacetImpl {
 	using LibParty for address;
 
 	function sendCloseIntent(address sender, uint256 tradeId, uint256 price, uint256 quantity, uint256 deadline) internal returns (uint256 intentId) {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-		Trade storage trade = intentLayout.trades[tradeId];
+		TradeStorage.Layout storage tradeLayout = TradeStorage.layout();
+		Trade storage trade = tradeLayout.trades[tradeId];
 
 		if (sender != trade.partyA) revert CommonErrors.UnauthorizedSender(sender, trade.partyA);
 
@@ -41,7 +44,7 @@ library PartyACloseFacetImpl {
 		if (trade.activeCloseIntentIds.length >= AppStorage.layout().maxCloseOrdersLength)
 			revert PartyACloseFacetErrors.TooManyCloseOrders(trade.activeCloseIntentIds.length, AppStorage.layout().maxCloseOrdersLength);
 
-		intentId = ++intentLayout.lastCloseIntentId;
+		intentId = ++CloseIntentStorage.layout().lastCloseIntentId;
 		CloseIntent memory intent = CloseIntent({
 			id: intentId,
 			tradeId: tradeId,
@@ -58,10 +61,8 @@ library PartyACloseFacetImpl {
 	}
 
 	function cancelCloseIntent(address sender, uint256 intentId) internal returns (IntentStatus) {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-
-		CloseIntent storage intent = intentLayout.closeIntents[intentId];
-		Trade storage trade = intentLayout.trades[intent.tradeId];
+		CloseIntent storage intent = CloseIntentStorage.layout().closeIntents[intentId];
+		Trade storage trade = TradeStorage.layout().trades[intent.tradeId];
 
 		if (trade.partyA != sender) revert CommonErrors.UnauthorizedSender(sender, trade.partyA);
 
@@ -85,8 +86,7 @@ library PartyACloseFacetImpl {
 	 * @dev Shared logic for both diamond-initiated and NFT-initiated trade transfers.
 	 */
 	function validateAndTransferTrade(address sender, address receiver, uint256 tradeId) internal {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-		Trade storage trade = intentLayout.trades[tradeId];
+		Trade storage trade = TradeStorage.layout().trades[tradeId];
 		Symbol memory symbol = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId];
 
 		if (trade.partyA != sender) revert PartyACloseFacetErrors.OnlyPartyACanTransfer(sender, trade.partyA);

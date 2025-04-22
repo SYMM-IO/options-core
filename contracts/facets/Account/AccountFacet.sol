@@ -7,6 +7,7 @@ pragma solidity >=0.8.19;
 import { LibAccessibility } from "../../libraries/LibAccessibility.sol";
 import { MarginType } from "../../types/BaseTypes.sol";
 import { AccountStorage, Withdraw } from "../../storages/AccountStorage.sol";
+import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
 import { Pausable } from "../../utils/Pausable.sol";
 import { AccountFacetImpl } from "./AccountFacetImpl.sol";
@@ -208,9 +209,8 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @dev Starts a cooldown period before the unbinding can be completed
 	 */
 	function initiateUnbindingFromPartyB() external notPartyB whenNotPartyAActionsPaused {
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		AccountFacetImpl.initiateUnbindingFromPartyB();
-		emit InitiateUnbindingFromPartyB(msg.sender, accountLayout.boundPartyB[msg.sender], block.timestamp);
+		emit InitiateUnbindingFromPartyB(msg.sender, CounterPartyRelationsStorage.layout().boundPartyB[msg.sender], block.timestamp);
 	}
 
 	/**
@@ -218,8 +218,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @dev Only callable after the required waiting period from initiation has passed
 	 */
 	function completeUnbindingFromPartyB() external notPartyB whenNotPartyAActionsPaused {
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		address previousPartyB = accountLayout.boundPartyB[msg.sender];
+		address previousPartyB = CounterPartyRelationsStorage.layout().boundPartyB[msg.sender];
 		AccountFacetImpl.completeUnbindingFromPartyB();
 		emit CompleteUnbindingFromPartyB(msg.sender, previousPartyB);
 	}
@@ -229,8 +228,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @dev Can only be called during the cooldown period after initiation
 	 */
 	function cancelUnbindingFromPartyB() external notPartyB whenNotPartyAActionsPaused {
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		AccountFacetImpl.cancelUnbindingFromPartyB();
-		emit CancelUnbindingFromPartyB(msg.sender, accountLayout.boundPartyB[msg.sender]);
+		emit CancelUnbindingFromPartyB(msg.sender, CounterPartyRelationsStorage.layout().boundPartyB[msg.sender]);
 	}
 }

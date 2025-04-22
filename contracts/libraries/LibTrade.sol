@@ -11,6 +11,7 @@ import { SymbolStorage } from "../storages/SymbolStorage.sol";
 import { Symbol, OptionType } from "../types/SymbolTypes.sol";
 import { AppStorage } from "../storages/AppStorage.sol";
 import { TradeStorage } from "../storages/TradeStorage.sol";
+import { CloseIntentStorage } from "../storages/CloseIntentStorage.sol";
 import { LibCloseIntentOps } from "./LibCloseIntent.sol";
 import { ScheduledReleaseBalanceOps } from "./LibScheduledReleaseBalance.sol";
 import { ScheduledReleaseBalance } from "../types/BalanceTypes.sol";
@@ -91,11 +92,9 @@ library LibTradeOps {
 	}
 
 	function close(Trade storage self, TradeStatus tradeStatus, IntentStatus intentStatus) internal {
-		TradeStorage.Layout storage tradeLayout = TradeStorage.layout();
-
 		uint256 len = self.activeCloseIntentIds.length;
 		for (uint8 i = 0; i < len; i++) {
-			CloseIntent storage intent = tradeLayout.closeIntents[self.activeCloseIntentIds[0]];
+			CloseIntent storage intent = CloseIntentStorage.layout().closeIntents[self.activeCloseIntentIds[0]];
 			intent.statusModifyTimestamp = block.timestamp;
 			intent.status = intentStatus;
 			intent.remove();

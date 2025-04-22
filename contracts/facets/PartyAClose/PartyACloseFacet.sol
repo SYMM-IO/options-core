@@ -9,6 +9,7 @@ import { LibCloseIntentOps } from "../../libraries/LibCloseIntent.sol";
 import { CloseIntent, IntentStatus } from "../../types/IntentTypes.sol";
 import { Trade } from "../../types/TradeTypes.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
+import { CloseIntentStorage } from "../../storages/CloseIntentStorage.sol";
 import { Pausable } from "../../utils/Pausable.sol";
 import { IPartyACloseEvents } from "./IPartyACloseEvents.sol";
 import { IPartyACloseFacet } from "./IPartyACloseFacet.sol";
@@ -47,7 +48,7 @@ contract PartyACloseFacet is Accessibility, Pausable, IPartyACloseFacet {
 	 * @param expiredIntentIds Array of close intent IDs to be marked as expired
 	 */
 	function expireCloseIntent(uint256[] memory expiredIntentIds) external whenNotPartyAActionsPaused {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		CloseIntentStorage.Layout storage intentLayout = CloseIntentStorage.layout();
 
 		for (uint256 i; i < expiredIntentIds.length; i++) {
 			intentLayout.closeIntents[expiredIntentIds[i]].expire();

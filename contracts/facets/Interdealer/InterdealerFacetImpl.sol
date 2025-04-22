@@ -7,6 +7,7 @@ pragma solidity >=0.8.19;
 import { ScheduledReleaseBalanceOps } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { TransferIntentOps } from "../../libraries/LibTransferIntent.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
+import { TransferIntentStorage } from "../../storages/TransferIntentStorage.sol";
 import { TransferIntent, TransferIntentStatus } from "../../types/TransferIntentTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 import { Trade } from "../../types/TradeTypes.sol";
@@ -21,10 +22,10 @@ library InterdealerFacetImpl {
 		uint256 proposedPrice,
 		uint256 deadline
 	) internal returns (uint256 intentId) {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		TransferIntentStorage.Layout storage transferIntentLayout = TransferIntentStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
-		intentId = ++intentLayout.lastTransferIntentId;
+		intentId = ++transferIntentLayout.lastTransferIntentId;
 		TransferIntent memory intent = TransferIntent({
 			id: intentId,
 			tradeId: tradeId,
@@ -35,16 +36,16 @@ library InterdealerFacetImpl {
 			proposedPrice: proposedPrice,
 			status: TransferIntentStatus.PENDING
 		});
-		intentLayout.transferIntents[intentId] = intent;
+		transferIntentLayout.transferIntents[intentId] = intent;
 
 		accountLayout.balances[intent.sender][intent.getSymbol().collateral].isolatedSub(intent.getPremium(), DecreaseBalanceReason.PREMIUM);
 	}
 
 	function cancelTransferIntent(uint256 intentId) internal {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		TransferIntentStorage.Layout storage transferIntentLayout = TransferIntentStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
-		TransferIntent storage intent = intentLayout.transferIntents[intentId];
+		TransferIntent storage intent = transferIntentLayout.transferIntents[intentId];
 
 		if (intent.status == TransferIntentStatus.LOCKED) {
 			intent.status = TransferIntentStatus.CANCEL_PENDING;
@@ -58,8 +59,7 @@ library InterdealerFacetImpl {
 	}
 
 	function lockTransferIntent(uint256 intentId) internal {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-		TransferIntent storage intent = intentLayout.transferIntents[intentId];
+		TransferIntent storage intent = TransferIntentStorage.layout().transferIntents[intentId];
 
 		require(intent.status == TransferIntentStatus.PENDING, "InterdealerFacet: Invalid state");
 
@@ -68,8 +68,7 @@ library InterdealerFacetImpl {
 	}
 
 	function unlockTransferIntent(uint256 intentId) internal {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-		TransferIntent storage intent = intentLayout.transferIntents[intentId];
+		TransferIntent storage intent = TransferIntentStorage.layout().transferIntents[intentId];
 
 		require(intent.status == TransferIntentStatus.LOCKED, "InterdealerFacet: Invalid state");
 		require(intent.receiver == msg.sender, "InterdealerFacet: Intent is locked by another partyB");
@@ -79,10 +78,8 @@ library InterdealerFacetImpl {
 	}
 
 	function acceptCancelTransferIntent(uint256 intentId) internal {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		TransferIntent storage intent = TransferIntentStorage.layout().transferIntents[intentId];
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-
-		TransferIntent storage intent = intentLayout.transferIntents[intentId];
 
 		require(intent.status == TransferIntentStatus.CANCEL_PENDING, "InterdealerFacet: Invalid state");
 		require(intent.receiver == msg.sender, "InterdealerFacet: Intent is locked by another partyB");
@@ -94,9 +91,8 @@ library InterdealerFacetImpl {
 	}
 
 	function finalizeTransferIntent(uint256 intentId, uint256 fillPrice, bytes calldata clearingHouseSignature) internal {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		TransferIntent storage intent = intentLayout.transferIntents[intentId];
+		TransferIntent storage intent = TransferIntentStorage.layout().transferIntents[intentId];
 
 		require(intent.status == TransferIntentStatus.LOCKED, "InterdealerFacet: Invalid state");
 		require(intent.receiver == msg.sender, "InterdealerFacet: Intent is locked by another partyB");

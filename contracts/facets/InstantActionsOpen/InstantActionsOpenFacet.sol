@@ -9,6 +9,7 @@ import { SignedFillIntentById, SignedSimpleActionIntent, SignedOpenIntent, Signe
 import { OpenIntent, IntentStatus } from "../../types/IntentTypes.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
 import { Pausable } from "../../utils/Pausable.sol";
+import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
 import { IPartyAOpenEvents } from "../PartyAOpen/IPartyAOpenEvents.sol";
 import { IPartyBOpenEvents } from "../PartyBOpen/IPartyBOpenEvents.sol";
 import { IInstantActionsOpenFacet } from "./IInstantActionsOpenFacet.sol";
@@ -105,7 +106,7 @@ contract InstantActionsOpenFacet is Accessibility, Pausable, IInstantActionsOpen
 			signedFillOpenIntent.marginType
 		);
 		if (newIntentId != 0) {
-			OpenIntent storage newIntent = IntentStorage.layout().openIntents[newIntentId];
+			OpenIntent storage newIntent = OpenIntentStorage.layout().openIntents[newIntentId];
 			_emitSendOpenIntent(newIntent);
 			if (newIntent.status == IntentStatus.CANCELED) {
 				emit CancelOpenIntent(newIntentId, IntentStatus.CANCEL_PENDING);
@@ -135,11 +136,11 @@ contract InstantActionsOpenFacet is Accessibility, Pausable, IInstantActionsOpen
 			signedFillOpenIntent,
 			partyBSignature
 		);
-		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
+		OpenIntent storage intent = OpenIntentStorage.layout().openIntents[intentId];
 		_emitSendOpenIntent(intent);
 		emit FillOpenIntent(intent.id, tradeId, signedFillOpenIntent.quantity, signedFillOpenIntent.price, signedFillOpenIntent.marginType);
 		if (newIntentId != 0) {
-			_emitSendOpenIntent(IntentStorage.layout().openIntents[newIntentId]);
+			_emitSendOpenIntent(OpenIntentStorage.layout().openIntents[newIntentId]);
 		}
 	}
 

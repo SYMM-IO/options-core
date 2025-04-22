@@ -5,6 +5,7 @@
 pragma solidity >=0.8.19;
 
 import { IMuonOracle } from "../interfaces/IMuonOracle.sol";
+import { MuonConfig, SchnorrSign } from "../types/MuonTypes.sol";
 import { SchnorrSECP256K1Verifier } from "./SchnorrSECP256K1Verifier.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";

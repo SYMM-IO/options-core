@@ -9,6 +9,10 @@ import { CommonErrors } from "../../libraries/CommonErrors.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { AppStorage, PartyBConfig } from "../../storages/AppStorage.sol";
 import { SymbolStorage } from "../../storages/SymbolStorage.sol";
+import { AccessControlStorage } from "../../storages/AccessControlStorage.sol";
+import { FeeManagementStorage } from "../../storages/FeeManagementStorage.sol";
+import { StateControlStorage } from "../../storages/StateControlStorage.sol";
+import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
 import { Symbol, Oracle, OptionType } from "../../types/SymbolTypes.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
 import { Ownable } from "../../utils/Ownable.sol";
@@ -21,26 +25,26 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 
 	function setAdmin(address _admin) external onlyOwner {
 		if (_admin == address(0)) revert CommonErrors.ZeroAddress("admin");
-		AppStorage.layout().hasRole[_admin][LibAccessibility.DEFAULT_ADMIN_ROLE] = true;
+		AccessControlStorage.layout().hasRole[_admin][LibAccessibility.DEFAULT_ADMIN_ROLE] = true;
 		emit RoleGranted(LibAccessibility.DEFAULT_ADMIN_ROLE, _admin);
 	}
 
 	function grantRole(address _user, bytes32 _role) external onlyRole(LibAccessibility.DEFAULT_ADMIN_ROLE) {
 		if (_user == address(0)) revert CommonErrors.ZeroAddress("user");
-		AppStorage.Layout storage appStorageLayout = AppStorage.layout();
-		if (!appStorageLayout.hasRole[_user][_role]) {
-			appStorageLayout.hasRole[_user][_role] = true;
-			appStorageLayout.roleMembers[_role].add(_user);
+		AccessControlStorage.Layout storage layout = AccessControlStorage.layout();
+		if (!layout.hasRole[_user][_role]) {
+			layout.hasRole[_user][_role] = true;
+			layout.roleMembers[_role].add(_user);
 			emit RoleGranted(_role, _user);
 		}
 	}
 
 	function revokeRole(address _user, bytes32 _role) external onlyRole(LibAccessibility.DEFAULT_ADMIN_ROLE) {
 		if (_user == address(0)) revert CommonErrors.ZeroAddress("user");
-		AppStorage.Layout storage appStorageLayout = AppStorage.layout();
-		if (appStorageLayout.hasRole[_user][_role]) {
-			appStorageLayout.hasRole[_user][_role] = false;
-			appStorageLayout.roleMembers[_role].remove(_user);
+		AccessControlStorage.Layout storage layout = AccessControlStorage.layout();
+		if (layout.hasRole[_user][_role]) {
+			layout.hasRole[_user][_role] = false;
+			layout.roleMembers[_role].remove(_user);
 			emit RoleRevoked(_role, _user);
 		}
 	}
@@ -93,18 +97,18 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 
 	function setDefaultFeeCollector(address _collector) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		if (_collector == address(0)) revert CommonErrors.ZeroAddress("collector");
-		AppStorage.layout().defaultFeeCollector = _collector;
+		FeeManagementStorage.layout().defaultFeeCollector = _collector;
 		emit DefaultFeeCollectorUpdated(_collector);
 	}
 
 	function setAffiliateStatus(address _affiliate, bool _status) external onlyRole(LibAccessibility.SETTER_ROLE) {
-		AppStorage.layout().affiliateStatus[_affiliate] = _status;
+		FeeManagementStorage.layout().affiliateStatus[_affiliate] = _status;
 		emit AffiliateStatusUpdated(_affiliate, _status);
 	}
 
 	function setAffiliateFeeCollector(address _affiliate, address _collector) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		if (_collector == address(0)) revert CommonErrors.ZeroAddress("collector");
-		AppStorage.layout().affiliateFeeCollector[_affiliate] = _collector;
+		FeeManagementStorage.layout().affiliateFeeCollector[_affiliate] = _collector;
 		emit AffiliateFeeCollectorUpdated(_affiliate, _collector);
 	}
 
@@ -125,83 +129,83 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 
 	// pause
 	function pauseGlobal() external onlyRole(LibAccessibility.PAUSER_ROLE) {
-		AppStorage.layout().globalPaused = true;
+		StateControlStorage.layout().globalPaused = true;
 		emit GlobalPaused();
 	}
 
 	function pauseDeposit() external onlyRole(LibAccessibility.PAUSER_ROLE) {
-		AppStorage.layout().depositingPaused = true;
+		StateControlStorage.layout().depositingPaused = true;
 		emit DepositPaused();
 	}
 
 	function pauseWithdraw() external onlyRole(LibAccessibility.PAUSER_ROLE) {
-		AppStorage.layout().withdrawingPaused = true;
+		StateControlStorage.layout().withdrawingPaused = true;
 		emit WithdrawPaused();
 	}
 
 	function pausePartyBActions() external onlyRole(LibAccessibility.PAUSER_ROLE) {
-		AppStorage.layout().partyBActionsPaused = true;
+		StateControlStorage.layout().partyBActionsPaused = true;
 		emit PartyBActionsPaused();
 	}
 
 	function pausePartyAActions() external onlyRole(LibAccessibility.PAUSER_ROLE) {
-		AppStorage.layout().partyAActionsPaused = true;
+		StateControlStorage.layout().partyAActionsPaused = true;
 		emit PartyAActionsPaused();
 	}
 
 	function pauseLiquidating() external onlyRole(LibAccessibility.PAUSER_ROLE) {
-		AppStorage.layout().liquidatingPaused = true;
+		StateControlStorage.layout().liquidatingPaused = true;
 		emit LiquidatingPaused();
 	}
 
 	// unpause
 	function unpauseGlobal() external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
-		AppStorage.layout().globalPaused = false;
+		StateControlStorage.layout().globalPaused = false;
 		emit GlobalUnpaused();
 	}
 
 	function unpauseDeposit() external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
-		AppStorage.layout().depositingPaused = false;
+		StateControlStorage.layout().depositingPaused = false;
 		emit DepositUnpaused();
 	}
 
 	function unpauseWithdraw() external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
-		AppStorage.layout().withdrawingPaused = false;
+		StateControlStorage.layout().withdrawingPaused = false;
 		emit WithdrawUnpaused();
 	}
 
 	function unpausePartyBActions() external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
-		AppStorage.layout().partyBActionsPaused = false;
+		StateControlStorage.layout().partyBActionsPaused = false;
 		emit PartyBActionsUnpaused();
 	}
 
 	function unpausePartyAActions() external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
-		AppStorage.layout().partyAActionsPaused = false;
+		StateControlStorage.layout().partyAActionsPaused = false;
 		emit PartyAActionsUnpaused();
 	}
 
 	function unpauseLiquidating() external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
-		AppStorage.layout().liquidatingPaused = false;
+		StateControlStorage.layout().liquidatingPaused = false;
 		emit LiquidatingUnpaused();
 	}
 
 	function activeEmergencyMode() external onlyRole(LibAccessibility.DEFAULT_ADMIN_ROLE) {
-		AppStorage.layout().emergencyMode = true;
+		StateControlStorage.layout().emergencyMode = true;
 		emit EmergencyModeActivated();
 	}
 
 	function deactiveEmergencyMode() external onlyRole(LibAccessibility.DEFAULT_ADMIN_ROLE) {
-		AppStorage.layout().emergencyMode = false;
+		StateControlStorage.layout().emergencyMode = false;
 		emit EmergencyModeDeactivated();
 	}
 
 	function activePartyBEmergencyStatus(address _partyB) external onlyRole(LibAccessibility.DEFAULT_ADMIN_ROLE) {
-		AppStorage.layout().partyBEmergencyStatus[_partyB] = true;
+		StateControlStorage.layout().partyBEmergencyStatus[_partyB] = true;
 		emit PartyBEmergencyStatusActivated(_partyB);
 	}
 
 	function deactivePartyBEmergencyStatus(address _partyB) external onlyRole(LibAccessibility.DEFAULT_ADMIN_ROLE) {
-		AppStorage.layout().partyBEmergencyStatus[_partyB] = false;
+		StateControlStorage.layout().partyBEmergencyStatus[_partyB] = false;
 		emit PartyBEmergencyStatusDeactivated(_partyB);
 	}
 
@@ -217,32 +221,32 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	}
 
 	function setUnbindingCooldown(uint256 _cooldown) external onlyRole(LibAccessibility.SETTER_ROLE) {
-		AccountStorage.layout().unbindingCooldown = _cooldown;
+		CounterPartyRelationsStorage.layout().unbindingCooldown = _cooldown;
 		emit UnbindingCooldownUpdated(_cooldown);
 	}
 
 	function suspendAddress(address _user, bool _status) external onlyRole(LibAccessibility.SETTER_ROLE) {
-		AccountStorage.layout().suspendedAddresses[_user] = _status;
+		StateControlStorage.layout().suspendedAddresses[_user] = _status;
 		emit AddressSuspended(_user, _status);
 	}
 
 	function suspendWithdrawal(uint256 _withdrawId, bool _status) external onlyRole(LibAccessibility.SETTER_ROLE) {
-		AccountStorage.layout().suspendedWithdrawal[_withdrawId] = _status;
+		StateControlStorage.layout().suspendedWithdrawal[_withdrawId] = _status;
 		emit WithdrawalSuspended(_withdrawId, _status);
 	}
 
 	function setDeactiveInstantActionModeCooldown(uint256 _cooldown) external onlyRole(LibAccessibility.SETTER_ROLE) {
-		AccountStorage.layout().deactiveInstantActionModeCooldown = _cooldown;
+		CounterPartyRelationsStorage.layout().deactiveInstantActionModeCooldown = _cooldown;
 		emit DeactiveInstantActionModeCooldownUpdated(_cooldown);
 	}
 
 	function setInstantActionsMode(address _user, bool _status) external onlyRole(LibAccessibility.SETTER_ROLE) {
-		AccountStorage.layout().instantActionsMode[_user] = _status;
+		CounterPartyRelationsStorage.layout().instantActionsMode[_user] = _status;
 		emit InstantActionsModeUpdated(_user, _status);
 	}
 
 	function setInstantActionsModeDeactivateTime(address _user, uint256 _time) external onlyRole(LibAccessibility.SETTER_ROLE) {
-		AccountStorage.layout().instantActionsModeDeactivateTime[_user] = _time;
+		CounterPartyRelationsStorage.layout().instantActionsModeDeactivateTime[_user] = _time;
 		emit InstantActionsModeDeactivateTimeUpdated(_user, _time);
 	}
 
@@ -278,7 +282,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 			tradingFee: _tradingFee,
 			symbolType: _symbolType
 		});
-		AppStorage.layout().affiliateFees[address(0)][s.lastSymbolId] = 0;
+		FeeManagementStorage.layout().affiliateFees[address(0)][s.lastSymbolId] = 0;
 		emit SymbolAdded(s.lastSymbolId, _name, _optionType, _oracleId, _collateral, _tradingFee, _symbolType);
 	}
 
