@@ -6,6 +6,7 @@ pragma solidity >=0.8.19;
 
 import { ISignatureVerifier } from "../interfaces/ISignatureVerifier.sol";
 import { CommonErrors } from "./CommonErrors.sol";
+import { AppStorage } from "../storages/AppStorage.sol";
 
 library LibSignature {
 	// Custom errors
@@ -13,13 +14,12 @@ library LibSignature {
 	error SignatureAlreadyUsed(bytes32 hashValue);
 
 	function verifySignature(bytes32 hashValue, bytes calldata signature, address signer) internal {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		AppStorage.Layout storage layout = AppStorage.layout();
 
-		if (!ISignatureVerifier(intentLayout.signatureVerifier).verifySignature(signer, hashValue, signature))
-			revert InvalidSignature(signer, hashValue);
+		if (!ISignatureVerifier(layout.signatureVerifier).verifySignature(signer, hashValue, signature)) revert InvalidSignature(layout, hashValue);
 
-		if (intentLayout.isSigUsed[hashValue]) revert SignatureAlreadyUsed(hashValue);
+		if (layout.isSigUsed[hashValue]) revert SignatureAlreadyUsed(hashValue);
 
-		intentLayout.isSigUsed[hashValue] = true;
+		layout.isSigUsed[hashValue] = true;
 	}
 }

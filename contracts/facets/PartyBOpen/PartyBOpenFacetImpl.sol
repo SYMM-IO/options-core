@@ -15,6 +15,11 @@ import { Trade, TradeStatus } from "../../types/TradeTypes.sol";
 import { OpenIntent, IntentStatus } from "../../types/IntentTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 import { Symbol, SymbolStorage } from "../../storages/SymbolStorage.sol";
+import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
+import { AppStorage } from "../../storages/AppStorage.sol";
+import { FeeManagementStorage } from "../../storages/FeeManagementStorage.sol";
+import { StateControlStorage } from "../../storages/StateControlStorage.sol";
+import { TradeStorage } from "../../storages/TradeStorage.sol";
 import { PartyBOpenFacetErrors } from "./PartyBOpenFacetErrors.sol";
 import { CommonErrors } from "../../libraries/CommonErrors.sol";
 
@@ -25,15 +30,15 @@ library PartyBOpenFacetImpl {
 	using LibParty for address;
 
 	function lockOpenIntent(address sender, uint256 intentId) internal {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		OpenIntentStorage.Layout storage intentLayout = OpenIntentStorage.layout();
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 
 		OpenIntent storage intent = intentLayout.openIntents[intentId];
 		Symbol storage symbol = SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId];
 
-		if (AccountStorage.layout().suspendedAddresses[sender]) revert CommonErrors.SuspendedAddress(sender);
+		if (StateControlStorage.layout().suspendedAddresses[sender]) revert CommonErrors.SuspendedAddress(sender);
 
-		if (appLayout.partyBEmergencyStatus[sender]) revert PartyBOpenFacetErrors.PartyBInEmergencyMode(sender);
+		if (StateControlStorage.layout().partyBEmergencyStatus[sender]) revert PartyBOpenFacetErrors.PartyBInEmergencyMode(sender);
 
 		if (intent.partyA == sender) revert PartyBOpenFacetErrors.UserOnBothSides(sender);
 
@@ -80,7 +85,7 @@ library PartyBOpenFacetImpl {
 	}
 
 	function unlockOpenIntent(address sender, uint256 intentId) internal returns (IntentStatus) {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		OpenIntentStorage.Layout storage intentLayout = OpenIntentStorage.layout();
 		OpenIntent storage intent = intentLayout.openIntents[intentId];
 
 		if (intent.partyB != sender) revert CommonErrors.UnauthorizedSender(sender, intent.partyB);
@@ -106,7 +111,7 @@ library PartyBOpenFacetImpl {
 	}
 
 	function acceptCancelOpenIntent(address sender, uint256 intentId) internal {
-		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
+		OpenIntent storage intent = OpenIntentStorage.layout().openIntents[intentId];
 
 		if (intent.status != IntentStatus.CANCEL_PENDING) {
 			uint8[] memory requiredStatuses = new uint8[](1);
@@ -131,22 +136,22 @@ library PartyBOpenFacetImpl {
 		uint256 quantity,
 		uint256 price
 	) internal returns (uint256 tradeId, uint256 newIntentId) {
-		AppStorage.Layout storage appLayout = AppStorage.layout();
+		FeeManagementStorage.Layout storage feeLayout = FeeManagementStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		OpenIntentStorage.Layout storage intentLayout = OpenIntentStorage.layout();
 
 		OpenIntent storage intent = intentLayout.openIntents[intentId];
 		Symbol memory symbol = SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId];
 
 		if (sender != intent.partyB) revert CommonErrors.UnauthorizedSender(sender, intent.partyB);
 
-		if (accountLayout.suspendedAddresses[intent.partyA]) revert CommonErrors.SuspendedAddress(intent.partyA);
+		if (StateControlStorage.layout().suspendedAddresses[intent.partyA]) revert CommonErrors.SuspendedAddress(intent.partyA);
 
-		if (accountLayout.suspendedAddresses[intent.partyB]) revert CommonErrors.SuspendedAddress(intent.partyB);
+		if (StateControlStorage.layout().suspendedAddresses[intent.partyB]) revert CommonErrors.SuspendedAddress(intent.partyB);
 
-		if (appLayout.partyBEmergencyStatus[intent.partyB]) revert PartyBOpenFacetErrors.PartyBInEmergencyMode(intent.partyB);
+		if (StateControlStorage.layout().partyBEmergencyStatus[intent.partyB]) revert PartyBOpenFacetErrors.PartyBInEmergencyMode(intent.partyB);
 
-		if (appLayout.emergencyMode) revert PartyBOpenFacetErrors.SystemInEmergencyMode();
+		if (StateControlStorage.layout().emergencyMode) revert PartyBOpenFacetErrors.SystemInEmergencyMode();
 
 		if (!symbol.isValid) revert CommonErrors.InvalidSymbol(intent.tradeAgreements.symbolId);
 
@@ -177,19 +182,19 @@ library PartyBOpenFacetImpl {
 			(intent.tradeAgreements.tradeSide == TradeSide.SELL && price < intent.price)
 		) revert PartyBOpenFacetErrors.InvalidOpenPrice(price, intent.price);
 
-		address affiliateFeeCollector = appLayout.affiliateFeeCollector[intent.affiliate] == address(0)
-			? appLayout.defaultFeeCollector
-			: appLayout.affiliateFeeCollector[intent.affiliate];
+		address affiliateFeeCollector = feeLayout.affiliateFeeCollector[intent.affiliate] == address(0)
+			? feeLayout.defaultFeeCollector
+			: feeLayout.affiliateFeeCollector[intent.affiliate];
 
 		address feeToken = intent.tradingFee.feeToken;
 
-		accountLayout.balances[appLayout.defaultFeeCollector][feeToken].setup(appLayout.defaultFeeCollector, feeToken);
-		accountLayout.balances[appLayout.defaultFeeCollector][feeToken].instantIsolatedAdd(intent.getTradingFee(), IncreaseBalanceReason.FEE);
+		accountLayout.balances[feeLayout.defaultFeeCollector][feeToken].setup(feeLayout.defaultFeeCollector, feeToken);
+		accountLayout.balances[feeLayout.defaultFeeCollector][feeToken].instantIsolatedAdd(intent.getTradingFee(), IncreaseBalanceReason.FEE);
 
 		accountLayout.balances[affiliateFeeCollector][feeToken].setup(affiliateFeeCollector, feeToken);
 		accountLayout.balances[affiliateFeeCollector][feeToken].instantIsolatedAdd(intent.getAffiliateFee(), IncreaseBalanceReason.FEE);
 
-		tradeId = ++intentLayout.lastTradeId;
+		tradeId = ++TradeStorage.layout().lastTradeId;
 		Trade memory trade = Trade({
 			id: tradeId,
 			openIntentId: intentId,

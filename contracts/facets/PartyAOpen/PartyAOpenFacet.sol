@@ -8,6 +8,7 @@ import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
 import { OpenIntent, IntentStatus } from "../../types/IntentTypes.sol";
 import { ExerciseFee, TradeSide, TradeAgreements, MarginType } from "../../types/BaseTypes.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
+import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
 import { Pausable } from "../../utils/Pausable.sol";
 import { IPartyAOpenFacet } from "./IPartyAOpenFacet.sol";
 import { PartyAOpenFacetImpl } from "./PartyAOpenFacetImpl.sol";
@@ -74,7 +75,7 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 			affiliate,
 			userData
 		);
-		IntentStorage.layout().openIntents[intentId];
+		OpenIntentStorage.layout().openIntents[intentId];
 		emit SendOpenIntent(
 			msg.sender,
 			intentId,
@@ -101,7 +102,7 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 	 * @param expiredIntentIds Array of intent IDs to be marked as expired
 	 */
 	function expireOpenIntent(uint256[] memory expiredIntentIds) external whenNotPartyAActionsPaused {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		OpenIntentStorage.Layout storage intentLayout = OpenIntentStorage.layout();
 
 		for (uint256 i; i < expiredIntentIds.length; i++) {
 			intentLayout.openIntents[expiredIntentIds[i]].expire();

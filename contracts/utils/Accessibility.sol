@@ -6,6 +6,7 @@ pragma solidity >=0.8.19;
 
 import { LibAccessibility } from "../libraries/LibAccessibility.sol";
 import { TradeStorage } from "../storages/TradeStorage.sol";
+import { CounterPartyRelationsStorage } from "../storages/CounterPartyRelationsStorage.sol";
 import { StateControlStorage } from "../storages/StateControlStorage.sol";
 import { AppStorage } from "../storages/AppStorage.sol";
 import { AccountStorage } from "../storages/AccountStorage.sol";
@@ -72,7 +73,7 @@ abstract contract Accessibility {
 	}
 
 	modifier inactiveInstantMode(address sender) {
-		if (AccountStorage.layout().instantActionsMode[sender]) revert InstantActionModeActive(sender);
+		if (CounterPartyRelationsStorage.layout().instantActionsMode[sender]) revert InstantActionModeActive(sender);
 		_;
 	}
 }

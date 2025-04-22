@@ -8,6 +8,7 @@ import { OpenIntent, IntentStatus } from "../../types/IntentTypes.sol";
 import { MarginType } from "../../types/BaseTypes.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
 import { Pausable } from "../../utils/Pausable.sol";
+import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
 import { IPartyBOpenFacet } from "./IPartyBOpenFacet.sol";
 import { PartyBOpenFacetImpl } from "./PartyBOpenFacetImpl.sol";
 
@@ -66,7 +67,7 @@ contract PartyBOpenFacet is Accessibility, Pausable, IPartyBOpenFacet {
 		(uint256 tradeId, uint256 newIntentId) = PartyBOpenFacetImpl.fillOpenIntent(msg.sender, marginType, intentId, quantity, price);
 		emit FillOpenIntent(intentId, tradeId, quantity, price, marginType);
 		if (newIntentId != 0) {
-			OpenIntent storage newIntent = IntentStorage.layout().openIntents[newIntentId];
+			OpenIntent storage newIntent = OpenIntentStorage.layout().openIntents[newIntentId];
 			if (newIntent.status == IntentStatus.PENDING) {
 				emit SendOpenIntent(
 					newIntent.partyA,

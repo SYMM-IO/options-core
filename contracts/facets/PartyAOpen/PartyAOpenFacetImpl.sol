@@ -10,7 +10,11 @@ import { CommonErrors } from "../../libraries/CommonErrors.sol";
 import { ScheduledReleaseBalanceOps } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { LibUserData } from "../../libraries/LibUserData.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
+import { StateControlStorage } from "../../storages/StateControlStorage.sol";
+import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
 import { AppStorage } from "../../storages/AppStorage.sol";
+import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
+import { FeeManagementStorage } from "../../storages/FeeManagementStorage.sol";
 import { OpenIntent, IntentStatus } from "../../types/IntentTypes.sol";
 import { ExerciseFee, TradingFee, TradeSide, TradeAgreements, MarginType } from "../../types/BaseTypes.sol";
 import { ScheduledReleaseBalance } from "../../types/BalanceTypes.sol";
@@ -38,7 +42,7 @@ library PartyAOpenFacetImpl {
 
 		// validate sender
 		if (appLayout.partyBConfigs[sender].isActive) revert PartyAOpenFacetErrors.SenderIsPartyB(sender);
-		if (accountLayout.suspendedAddresses[sender]) revert CommonErrors.SuspendedAddress(sender);
+		if (StateControlStorage.layout().suspendedAddresses[sender]) revert CommonErrors.SuspendedAddress(sender);
 		// validate partyB whitelist
 		for (uint8 i = 0; i < partyBsWhiteList.length; i++) {
 			if (partyBsWhiteList[i] == msg.sender) revert PartyAOpenFacetErrors.PartyAInPartyBWhitelist(msg.sender);
@@ -53,17 +57,22 @@ library PartyAOpenFacetImpl {
 		// validate deadline
 		if (deadline < block.timestamp) revert CommonErrors.LowDeadline(deadline, block.timestamp);
 		// validate affiliate
-		if (!(appLayout.affiliateStatus[affiliate] || affiliate == address(0))) revert PartyAOpenFacetErrors.InvalidAffiliate(affiliate);
+		if (!(FeeManagementStorage.layout().affiliateStatus[affiliate] || affiliate == address(0)))
+			revert PartyAOpenFacetErrors.InvalidAffiliate(affiliate);
 		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		if (accountLayout.boundPartyB[sender] != address(0)) {
-			if (!(partyBsWhiteList.length == 1 && partyBsWhiteList[0] == accountLayout.boundPartyB[sender]))
-				revert PartyAOpenFacetErrors.UserBoundToAnotherPartyB(sender, accountLayout.boundPartyB[sender], partyBsWhiteList);
+		if (CounterPartyRelationsStorage.layout().boundPartyB[sender] != address(0)) {
+			if (!(partyBsWhiteList.length == 1 && partyBsWhiteList[0] == CounterPartyRelationsStorage.layout().boundPartyB[sender]))
+				revert PartyAOpenFacetErrors.UserBoundToAnotherPartyB(
+					sender,
+					CounterPartyRelationsStorage.layout().boundPartyB[sender],
+					partyBsWhiteList
+				);
 		}
 
 		if (tradeAgreements.marginType == MarginType.CROSS && partyBsWhiteList.length != 1)
 			revert PartyAOpenFacetErrors.OnlyOnePartyBIsAllowedInCrossMode();
 
-		intentId = ++IntentStorage.layout().lastOpenIntentId;
+		intentId = ++OpenIntentStorage.layout().lastOpenIntentId;
 		OpenIntent memory intent = OpenIntent({
 			id: intentId,
 			tradeId: 0,
@@ -81,7 +90,7 @@ library PartyAOpenFacetImpl {
 				feeToken,
 				IPriceOracle(appLayout.priceOracleAddress).getPrice(feeToken),
 				symbol.tradingFee,
-				appLayout.affiliateFees[affiliate][tradeAgreements.symbolId]
+				FeeManagementStorage.layout().affiliateFees[affiliate][tradeAgreements.symbolId]
 			),
 			affiliate: affiliate,
 			userData: LibUserData.addCounter(userData, 0)
@@ -92,7 +101,7 @@ library PartyAOpenFacetImpl {
 	}
 
 	function cancelOpenIntent(address sender, uint256 intentId) internal returns (IntentStatus finalStatus) {
-		OpenIntent storage intent = IntentStorage.layout().openIntents[intentId];
+		OpenIntent storage intent = OpenIntentStorage.layout().openIntents[intentId];
 
 		if (!(intent.status == IntentStatus.PENDING || intent.status == IntentStatus.LOCKED)) {
 			uint8[] memory requiredStatuses = new uint8[](2);

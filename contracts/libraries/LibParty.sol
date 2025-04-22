@@ -24,22 +24,22 @@ library LibParty {
 			requiredStatuses[0] = uint8(LiquidationStatus.IN_PROGRESS);
 			revert CommonErrors.InvalidState(
 				"LiquidationStatus",
-				uint8(AppStorage.layout().liquidationStates[self][collateral].status),
+				uint8(LiquidationStorage.layout().liquidationStates[self][collateral].status),
 				requiredStatuses
 			);
 		}
 	}
 
 	function isSolvent(address self, address collateral) internal view returns (bool) {
-		return AppStorage.layout().liquidationStates[self][collateral].status == LiquidationStatus.SOLVENT;
+		return LiquidationStorage.layout().liquidationStates[self][collateral].status == LiquidationStatus.SOLVENT;
 	}
 
 	function getLiquidationState(address self, address collateral) internal view returns (LiquidationState storage) {
-		return AppStorage.layout().liquidationStates[self][collateral];
+		return LiquidationStorage.layout().liquidationStates[self][collateral];
 	}
 
 	function getInProgressLiquidationDetail(address self, address collateral) internal view returns (LiquidationDetail storage) {
-		return AppStorage.layout().liquidationDetails[getLiquidationState(self, collateral).inProgressLiquidationId];
+		return LiquidationStorage.layout().liquidationDetails[getLiquidationState(self, collateral).inProgressLiquidationId];
 	}
 
 	function getReleaseInterval(address user) external view returns (uint256) {

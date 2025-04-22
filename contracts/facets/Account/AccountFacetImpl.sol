@@ -11,6 +11,7 @@ import { CommonErrors } from "../../libraries/CommonErrors.sol";
 import { AccountFacetErrors } from "./AccountFacetErrors.sol";
 import { LibParty } from "../../libraries/LibParty.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
+import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
 import { Withdraw, WithdrawStatus } from "../../types/WithdrawTypes.sol";
 import { AppStorage } from "../../storages/AppStorage.sol";
 import { LiquidationStatus } from "../../types/LiquidationTypes.sol";
@@ -88,7 +89,7 @@ library AccountFacetImpl {
 			revert CommonErrors.InsufficientBalance(msg.sender, collateral, amount, available);
 		}
 
-		if (accountLayout.instantActionsMode[msg.sender]) {
+		if (CounterPartyRelationsStorage.layout().instantActionsMode[msg.sender]) {
 			revert AccountFacetErrors.InstantActionModeActive(msg.sender);
 		}
 
@@ -181,107 +182,103 @@ library AccountFacetImpl {
 	}
 
 	function activateInstantActionMode() internal {
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		CounterPartyRelationsStorage.Layout storage layout = CounterPartyRelationsStorage.layout();
 
-		if (accountLayout.instantActionsMode[msg.sender]) {
+		if (layout.instantActionsMode[msg.sender]) {
 			revert AccountFacetErrors.InstantActionModeAlreadyActivated(msg.sender);
 		}
 
-		accountLayout.instantActionsMode[msg.sender] = true;
+		layout.instantActionsMode[msg.sender] = true;
 	}
 
 	function proposeToDeactivateInstantActionMode() internal {
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		CounterPartyRelationsStorage.Layout storage layout = CounterPartyRelationsStorage.layout();
 
-		if (!accountLayout.instantActionsMode[msg.sender]) {
+		if (!layout.instantActionsMode[msg.sender]) {
 			revert AccountFacetErrors.InstantActionModeNotActivated(msg.sender);
 		}
 
-		accountLayout.instantActionsModeDeactivateTime[msg.sender] = block.timestamp + accountLayout.deactiveInstantActionModeCooldown;
+		layout.instantActionsModeDeactivateTime[msg.sender] = block.timestamp + layout.deactiveInstantActionModeCooldown;
 	}
 
 	function deactivateInstantActionMode() internal {
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		CounterPartyRelationsStorage.Layout storage layout = CounterPartyRelationsStorage.layout();
 
-		if (!accountLayout.instantActionsMode[msg.sender]) {
+		if (!layout.instantActionsMode[msg.sender]) {
 			revert AccountFacetErrors.InstantActionModeNotActivated(msg.sender);
 		}
 
-		if (accountLayout.instantActionsModeDeactivateTime[msg.sender] == 0) {
+		if (layout.instantActionsModeDeactivateTime[msg.sender] == 0) {
 			revert AccountFacetErrors.InstantActionModeDeactivationNotProposed(msg.sender);
 		}
 
-		if (accountLayout.instantActionsModeDeactivateTime[msg.sender] > block.timestamp) {
-			revert CommonErrors.CooldownNotOver(
-				"deactiveInstantActionMode",
-				block.timestamp,
-				accountLayout.instantActionsModeDeactivateTime[msg.sender]
-			);
+		if (layout.instantActionsModeDeactivateTime[msg.sender] > block.timestamp) {
+			revert CommonErrors.CooldownNotOver("deactiveInstantActionMode", block.timestamp, layout.instantActionsModeDeactivateTime[msg.sender]);
 		}
 
-		accountLayout.instantActionsMode[msg.sender] = false;
-		accountLayout.instantActionsModeDeactivateTime[msg.sender] = 0;
+		layout.instantActionsMode[msg.sender] = false;
+		layout.instantActionsModeDeactivateTime[msg.sender] = 0;
 	}
 
 	function bindToPartyB(address partyB) internal {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		CounterPartyRelationsStorage.Layout storage counterPartyRelationsLayout = CounterPartyRelationsStorage.layout();
 
 		if (!appLayout.partyBConfigs[partyB].isActive) {
 			revert AccountFacetErrors.PartyBNotActive(partyB);
 		}
 
-		if (accountLayout.boundPartyB[msg.sender] != address(0)) {
-			revert AccountFacetErrors.AlreadyBoundToPartyB(msg.sender, accountLayout.boundPartyB[msg.sender]);
+		if (counterPartyRelationsLayout.boundPartyB[msg.sender] != address(0)) {
+			revert AccountFacetErrors.AlreadyBoundToPartyB(msg.sender, counterPartyRelationsLayout.boundPartyB[msg.sender]);
 		}
 
-		accountLayout.boundPartyB[msg.sender] = partyB;
+		counterPartyRelationsLayout.boundPartyB[msg.sender] = partyB;
 	}
 
 	function initiateUnbindingFromPartyB() internal {
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		address currentPartyB = accountLayout.boundPartyB[msg.sender];
+		CounterPartyRelationsStorage.Layout storage counterPartyRelationsLayout = CounterPartyRelationsStorage.layout();
+		address currentPartyB = counterPartyRelationsLayout.boundPartyB[msg.sender];
 
 		if (currentPartyB == address(0)) {
 			revert AccountFacetErrors.NotBoundToAnyPartyB(msg.sender);
 		}
 
-		if (accountLayout.unbindingRequestTime[msg.sender] != 0) {
-			revert AccountFacetErrors.UnbindingAlreadyInitiated(msg.sender, accountLayout.unbindingRequestTime[msg.sender]);
+		if (counterPartyRelationsLayout.unbindingRequestTime[msg.sender] != 0) {
+			revert AccountFacetErrors.UnbindingAlreadyInitiated(msg.sender, counterPartyRelationsLayout.unbindingRequestTime[msg.sender]);
 		}
 
-		accountLayout.unbindingRequestTime[msg.sender] = block.timestamp;
+		counterPartyRelationsLayout.unbindingRequestTime[msg.sender] = block.timestamp;
 	}
 
 	function completeUnbindingFromPartyB() internal {
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		address currentPartyB = accountLayout.boundPartyB[msg.sender];
+		CounterPartyRelationsStorage.Layout storage counterPartyRelationsLayout = CounterPartyRelationsStorage.layout();
+		address currentPartyB = counterPartyRelationsLayout.boundPartyB[msg.sender];
 
 		if (currentPartyB == address(0)) {
 			revert AccountFacetErrors.NotBoundToAnyPartyB(msg.sender);
 		}
 
-		if (accountLayout.unbindingRequestTime[msg.sender] == 0) {
+		if (counterPartyRelationsLayout.unbindingRequestTime[msg.sender] == 0) {
 			revert AccountFacetErrors.UnbindingNotInitiated(msg.sender);
 		}
 
-		uint256 requiredTime = accountLayout.unbindingRequestTime[msg.sender] + accountLayout.unbindingCooldown;
+		uint256 requiredTime = counterPartyRelationsLayout.unbindingRequestTime[msg.sender] + counterPartyRelationsLayout.unbindingCooldown;
 		if (block.timestamp < requiredTime) {
 			revert CommonErrors.CooldownNotOver("unbinding", block.timestamp, requiredTime);
 		}
 
-		delete accountLayout.boundPartyB[msg.sender];
-		delete accountLayout.unbindingRequestTime[msg.sender];
+		delete counterPartyRelationsLayout.boundPartyB[msg.sender];
+		delete counterPartyRelationsLayout.unbindingRequestTime[msg.sender];
 	}
 
 	function cancelUnbindingFromPartyB() internal {
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		CounterPartyRelationsStorage.Layout storage counterPartyRelationsLayout = CounterPartyRelationsStorage.layout();
 
-		if (accountLayout.unbindingRequestTime[msg.sender] == 0) {
+		if (counterPartyRelationsLayout.unbindingRequestTime[msg.sender] == 0) {
 			revert AccountFacetErrors.UnbindingNotInitiated(msg.sender);
 		}
 
-		delete accountLayout.unbindingRequestTime[msg.sender];
+		delete counterPartyRelationsLayout.unbindingRequestTime[msg.sender];
 	}
 
 	// Helper functions

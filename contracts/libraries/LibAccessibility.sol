@@ -4,7 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { AppStorage } from "../storages/AppStorage.sol";
+import { AccessControlStorage } from "../storages/AccessControlStorage.sol";
 
 library LibAccessibility {
 	bytes32 public constant DEFAULT_ADMIN_ROLE = keccak256("DEFAULT_ADMIN_ROLE");
@@ -26,7 +26,6 @@ library LibAccessibility {
 	 * @return Whether the user has the specified role.
 	 */
 	function hasRole(address user, bytes32 role) internal view returns (bool) {
-		AppStorage.Layout storage layout = AppStorage.layout();
-		return layout.hasRole[user][role];
+		return AccessControlStorage.layout().hasRole[user][role];
 	}
 }

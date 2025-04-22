@@ -13,7 +13,10 @@ import { IntentStatus } from "../../types/IntentTypes.sol";
 import { Trade, TradeStatus } from "../../types/TradeTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 import { TradeSide } from "../../types/BaseTypes.sol";
+import { SettlementPriceSig } from "../../types/SettlementTypes.sol";
 import { SymbolStorage } from "../../storages/SymbolStorage.sol";
+import { AppStorage } from "../../storages/AppStorage.sol";
+import { TradeStorage } from "../../storages/TradeStorage.sol";
 import { Symbol, OptionType } from "../../types/SymbolTypes.sol";
 import { CommonErrors } from "../../libraries/CommonErrors.sol";
 import { TradeSettlementFacetErrors } from "./TradeSettlementFacetErrors.sol";
@@ -26,7 +29,7 @@ library TradeSettlementFacetImpl {
 	function executeTrade(uint256 tradeId, SettlementPriceSig memory sig) internal returns (bool isExpired) {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		AppStorage.Layout storage appLayout = AppStorage.layout();
-		Trade storage trade = IntentStorage.layout().trades[tradeId];
+		Trade storage trade = TradeStorage.layout().trades[tradeId];
 		Symbol storage symbol = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId];
 		LibMuon.verifySettlementPriceSig(sig);
 		trade.partyB.requireSolvent(symbol.collateral);

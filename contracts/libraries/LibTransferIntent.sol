@@ -6,23 +6,24 @@
 pragma solidity >=0.8.19;
 
 import { SymbolStorage } from "../storages/SymbolStorage.sol";
+import { TradeStorage } from "../storages/TradeStorage.sol";
 import { Symbol } from "../types/SymbolTypes.sol";
 import { Trade } from "../types/TradeTypes.sol";
 import { TransferIntent } from "../types/TransferIntentTypes.sol";
 
 library TransferIntentOps {
 	function getPremium(TransferIntent memory self) internal view returns (uint256) {
-		Trade memory trade = IntentStorage.layout().trades[self.tradeId];
+		Trade memory trade = TradeStorage.layout().trades[self.tradeId];
 		return self.proposedPrice * (trade.tradeAgreements.quantity - trade.closedAmountBeforeExpiration);
 	}
 
 	function getPremiumWithPrice(TransferIntent memory self, uint256 price) internal view returns (uint256) {
-		Trade memory trade = IntentStorage.layout().trades[self.tradeId];
+		Trade memory trade = TradeStorage.layout().trades[self.tradeId];
 		return price * (trade.tradeAgreements.quantity - trade.closedAmountBeforeExpiration);
 	}
 
 	function getTrade(TransferIntent memory self) internal view returns (Trade storage) {
-		return IntentStorage.layout().trades[self.tradeId];
+		return TradeStorage.layout().trades[self.tradeId];
 	}
 
 	function getSymbol(TransferIntent memory self) internal view returns (Symbol memory) {

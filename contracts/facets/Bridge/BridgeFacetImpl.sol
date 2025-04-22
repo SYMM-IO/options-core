@@ -22,15 +22,16 @@ library BridgeFacetImpl {
 
 	function transferToBridge(address collateral, uint256 amount, address bridge, address receiver) internal returns (uint256 currentId) {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		BridgeStorage.Layout storage bridgeLayout = BridgeStorage.layout();
 
-		if (!accountLayout.bridges[bridge]) revert BridgeFacetErrors.InvalidBridge(bridge);
+		if (!bridgeLayout.bridges[bridge]) revert BridgeFacetErrors.InvalidBridge(bridge);
 		if (bridge == msg.sender) revert BridgeFacetErrors.SameBridgeAndSender(bridge);
 
 		uint256 amountWith18Decimals = (amount * 1e18) / (10 ** IERC20Metadata(collateral).decimals()); //TODO: 1.utilize `normalize` and `denormalize` methods in `accountFacetImlp` and use'em here
 		if (accountLayout.balances[msg.sender][collateral].isolatedBalance < amount)
 			revert CommonErrors.InsufficientBalance(msg.sender, collateral, amount, accountLayout.balances[msg.sender][collateral].isolatedBalance);
 
-		currentId = ++accountLayout.lastBridgeId;
+		currentId = ++bridgeLayout.lastBridgeId;
 		BridgeTransaction memory bridgeTransaction = BridgeTransaction({
 			id: currentId,
 			amount: amount,
@@ -42,21 +43,21 @@ library BridgeFacetImpl {
 			status: BridgeTransactionStatus.RECEIVED
 		});
 		accountLayout.balances[collateral][msg.sender].isolatedSub(amountWith18Decimals, DecreaseBalanceReason.BRIDGE);
-		accountLayout.bridgeTransactions[currentId] = bridgeTransaction;
-		accountLayout.bridgeTransactionIds[bridge].push(currentId);
+		bridgeLayout.bridgeTransactions[currentId] = bridgeTransaction;
+		bridgeLayout.bridgeTransactionIds[bridge].push(currentId);
 	}
 
 	function withdrawReceivedBridgeValues(uint256[] memory transactionIds) internal {
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		BridgeStorage.Layout storage bridgeLayout = BridgeStorage.layout();
 
 		uint256 totalAmount = 0;
 		if (transactionIds.length == 0) revert CommonErrors.EmptyList();
 
-		address collateral = accountLayout.bridgeTransactions[transactionIds[0]].collateral;
+		address collateral = bridgeLayout.bridgeTransactions[transactionIds[0]].collateral;
 		for (uint256 i = transactionIds.length; i != 0; i--) {
-			if (transactionIds[i - 1] > accountLayout.lastBridgeId) revert BridgeFacetErrors.InvalidBridgeTransactionId(transactionIds[i - 1]);
+			if (transactionIds[i - 1] > bridgeLayout.lastBridgeId) revert BridgeFacetErrors.InvalidBridgeTransactionId(transactionIds[i - 1]);
 
-			BridgeTransaction storage bridgeTransaction = accountLayout.bridgeTransactions[transactionIds[i - 1]];
+			BridgeTransaction storage bridgeTransaction = bridgeLayout.bridgeTransactions[transactionIds[i - 1]];
 
 			if (collateral != bridgeTransaction.collateral)
 				revert BridgeFacetErrors.BridgeCollateralMismatch(collateral, bridgeTransaction.collateral);
@@ -84,10 +85,10 @@ library BridgeFacetImpl {
 	}
 
 	function suspendBridgeTransaction(uint256 transactionId) internal {
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		BridgeTransaction storage bridgeTransaction = accountLayout.bridgeTransactions[transactionId];
+		BridgeStorage.Layout storage bridgeLayout = BridgeStorage.layout();
+		BridgeTransaction storage bridgeTransaction = bridgeLayout.bridgeTransactions[transactionId];
 
-		if (transactionId > accountLayout.lastBridgeId) revert BridgeFacetErrors.InvalidBridgeTransactionId(transactionId);
+		if (transactionId > bridgeLayout.lastBridgeId) revert BridgeFacetErrors.InvalidBridgeTransactionId(transactionId);
 
 		if (bridgeTransaction.status != BridgeTransactionStatus.RECEIVED) {
 			uint8[] memory requiredStatuses = new uint8[](1);
@@ -99,8 +100,9 @@ library BridgeFacetImpl {
 	}
 
 	function restoreBridgeTransaction(uint256 transactionId, uint256 validAmount) internal {
+		BridgeStorage.Layout storage bridgeLayout = BridgeStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		BridgeTransaction storage bridgeTransaction = accountLayout.bridgeTransactions[transactionId];
+		BridgeTransaction storage bridgeTransaction = bridgeLayout.bridgeTransactions[transactionId];
 
 		if (bridgeTransaction.status != BridgeTransactionStatus.SUSPENDED) {
 			uint8[] memory requiredStatuses = new uint8[](1);
@@ -108,15 +110,15 @@ library BridgeFacetImpl {
 			revert CommonErrors.InvalidState("BridgeTransactionStatus", uint8(bridgeTransaction.status), requiredStatuses);
 		}
 
-		if (accountLayout.invalidBridgedAmountsPool == address(0)) revert CommonErrors.ZeroAddress("invalidBridgedAmountsPool");
+		if (bridgeLayout.invalidBridgedAmountsPool == address(0)) revert CommonErrors.ZeroAddress("invalidBridgedAmountsPool");
 
 		if (validAmount > bridgeTransaction.amount) revert BridgeFacetErrors.HighValidAmount(validAmount, bridgeTransaction.amount);
 
-		accountLayout.balances[bridgeTransaction.collateral][accountLayout.invalidBridgedAmountsPool].setup(
-			accountLayout.invalidBridgedAmountsPool,
+		accountLayout.balances[bridgeTransaction.collateral][bridgeLayout.invalidBridgedAmountsPool].setup(
+			bridgeLayout.invalidBridgedAmountsPool,
 			bridgeTransaction.collateral
 		);
-		accountLayout.balances[bridgeTransaction.collateral][accountLayout.invalidBridgedAmountsPool].instantIsolatedAdd(
+		accountLayout.balances[bridgeTransaction.collateral][bridgeLayout.invalidBridgedAmountsPool].instantIsolatedAdd(
 			((bridgeTransaction.amount - validAmount) * (10 ** 18)) / (10 ** IERC20Metadata(bridgeTransaction.collateral).decimals()), //TODO: 1.
 			IncreaseBalanceReason.BRIDGE
 		);

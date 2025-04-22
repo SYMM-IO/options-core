@@ -11,6 +11,7 @@ import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { AppStorage } from "../../storages/AppStorage.sol";
 import { SymbolStorage } from "../../storages/SymbolStorage.sol";
 import { TradeStorage } from "../../storages/TradeStorage.sol";
+import { LiquidationStorage } from "../../storages/LiquidationStorage.sol";
 import { Trade, TradeStatus } from "../../types/TradeTypes.sol";
 import { Symbol } from "../../types/SymbolTypes.sol";
 import { Withdraw, WithdrawStatus } from "../../types/WithdrawTypes.sol";
@@ -28,18 +29,19 @@ library ClearingHouseFacetImpl {
 
 	function flagLiquidation(address partyB, address collateral) internal returns (uint256 liquidationId) {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
+		LiquidationStorage.Layout storage liquidationLayout = LiquidationStorage.layout();
 
 		if (appLayout.partyBConfigs[partyB].lossCoverage == 0) revert ClearingHouseFacetErrors.ZeroLossCoverage(partyB);
 
 		partyB.requireSolvent(collateral);
 
-		liquidationId = ++appLayout.lastLiquidationId;
+		liquidationId = ++liquidationLayout.lastLiquidationId;
 
-		appLayout.liquidationStates[partyB][collateral] = LiquidationState({
+		liquidationLayout.liquidationStates[partyB][collateral] = LiquidationState({
 			inProgressLiquidationId: liquidationId,
 			status: LiquidationStatus.FLAGGED
 		});
-		appLayout.liquidationDetails[liquidationId] = LiquidationDetail({
+		liquidationLayout.liquidationDetails[liquidationId] = LiquidationDetail({
 			upnl: 0,
 			flagTimestamp: block.timestamp,
 			liquidationTimestamp: 0,
@@ -134,7 +136,7 @@ library ClearingHouseFacetImpl {
 	}
 
 	function closeTrades(uint256[] memory tradeIds, uint256[] memory prices) internal {
-		AppStorage.Layout storage appLayout = AppStorage.layout();
+		LiquidationStorage.Layout storage liquidationLayout = LiquidationStorage.layout();
 
 		if (tradeIds.length != prices.length) revert ClearingHouseFacetErrors.MismatchedArrays(tradeIds.length, prices.length);
 
@@ -155,14 +157,14 @@ library ClearingHouseFacetImpl {
 			uint256 pnl = trade.getPnl(price, trade.tradeAgreements.quantity);
 
 			if (pnl > 0) {
-				uint256 amountToTransfer = (pnl * appLayout.partyBConfigs[trade.partyB].lossCoverage) / 1e18;
+				uint256 amountToTransfer = (pnl * AppStorage.layout().partyBConfigs[trade.partyB].lossCoverage) / 1e18;
 				LiquidationDetail storage detail = trade.partyB.getInProgressLiquidationDetail(symbol.collateral);
 
 				amountToTransfer = (amountToTransfer * 1e18) / detail.collateralPrice;
-				if (appLayout.liquidationDebtsToPartyAs[trade.partyB][symbol.collateral][trade.partyA] == 0) {
-					appLayout.involvedPartyAsCountInLiquidation[trade.partyB][symbol.collateral] += 1;
+				if (liquidationLayout.liquidationDebtsToPartyAs[trade.partyB][symbol.collateral][trade.partyA] == 0) {
+					liquidationLayout.involvedPartyAsCountInLiquidation[trade.partyB][symbol.collateral] += 1;
 				}
-				appLayout.liquidationDebtsToPartyAs[trade.partyB][symbol.collateral][trade.partyA] += amountToTransfer;
+				liquidationLayout.liquidationDebtsToPartyAs[trade.partyB][symbol.collateral][trade.partyA] += amountToTransfer;
 				detail.requiredCollateral += amountToTransfer;
 
 				trade.close(TradeStatus.LIQUIDATED, IntentStatus.CANCELED);
@@ -177,7 +179,7 @@ library ClearingHouseFacetImpl {
 		address collateral,
 		address[] memory partyAs
 	) internal returns (bool isLiquidationFinished, uint256 liquidationId, uint256[] memory amounts) {
-		AppStorage.Layout storage appLayout = AppStorage.layout();
+		LiquidationStorage.Layout storage liquidationLayout = LiquidationStorage.layout();
 
 		LiquidationState storage state = partyB.getLiquidationState(collateral);
 		LiquidationDetail storage detail = partyB.getInProgressLiquidationDetail(collateral);
@@ -199,13 +201,13 @@ library ClearingHouseFacetImpl {
 		amounts = new uint256[](partyAs.length);
 		for (uint256 i = 0; i < partyAs.length; i++) {
 			address partyA = partyAs[i];
-			uint256 amountToTransfer = appLayout.liquidationDebtsToPartyAs[partyB][collateral][partyA];
+			uint256 amountToTransfer = liquidationLayout.liquidationDebtsToPartyAs[partyB][collateral][partyA];
 			amounts[i] = amountToTransfer;
-			appLayout.involvedPartyAsCountInLiquidation[partyB][collateral] -= 1;
+			liquidationLayout.involvedPartyAsCountInLiquidation[partyB][collateral] -= 1;
 			AccountStorage.layout().balances[partyA][collateral].instantIsolatedAdd(amountToTransfer, IncreaseBalanceReason.LIQUIDATION);
-			appLayout.liquidationDebtsToPartyAs[partyB][collateral][partyA] = 0;
+			liquidationLayout.liquidationDebtsToPartyAs[partyB][collateral][partyA] = 0;
 		}
-		if (appLayout.involvedPartyAsCountInLiquidation[partyB][collateral] == 0) {
+		if (liquidationLayout.involvedPartyAsCountInLiquidation[partyB][collateral] == 0) {
 			isLiquidationFinished = true;
 			state.status = LiquidationStatus.SOLVENT;
 			state.inProgressLiquidationId = 0;
