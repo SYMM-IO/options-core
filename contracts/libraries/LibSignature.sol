@@ -14,12 +14,13 @@ library LibSignature {
 	error SignatureAlreadyUsed(bytes32 hashValue);
 
 	function verifySignature(bytes32 hashValue, bytes calldata signature, address signer) internal {
-		AppStorage.Layout storage layout = AppStorage.layout();
+		AppStorage.Layout storage appLayout = AppStorage.layout();
 
-		if (!ISignatureVerifier(layout.signatureVerifier).verifySignature(signer, hashValue, signature)) revert InvalidSignature(layout, hashValue);
+		if (!ISignatureVerifier(appLayout.signatureVerifier).verifySignature(signer, hashValue, signature))
+			revert InvalidSignature(signer, hashValue);
 
-		if (layout.isSigUsed[hashValue]) revert SignatureAlreadyUsed(hashValue);
+		if (appLayout.isSigUsed[hashValue]) revert SignatureAlreadyUsed(hashValue);
 
-		layout.isSigUsed[hashValue] = true;
+		appLayout.isSigUsed[hashValue] = true;
 	}
 }

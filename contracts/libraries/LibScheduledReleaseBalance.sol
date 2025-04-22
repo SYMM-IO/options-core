@@ -287,8 +287,6 @@ library ScheduledReleaseBalanceOps {
 	 * @param removeCounterPartyOnEmpty If true, remove `counterParty` when no balance remains in buses.
 	 */
 	function _sync(ScheduledReleaseBalance storage self, address counterParty, MarginType marginType, bool removeCounterPartyOnEmpty) internal {
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-
 		// insolvent counter‑party ⇒ keep everything locked
 		if (!counterParty.isSolvent(self.collateral)) {
 			return;
