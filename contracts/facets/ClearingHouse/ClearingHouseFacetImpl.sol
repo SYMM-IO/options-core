@@ -4,13 +4,20 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason, MarginType } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { ScheduledReleaseBalanceOps } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { LibTradeOps } from "../../libraries/LibTrade.sol";
 import { LibParty } from "../../libraries/LibParty.sol";
-import { AccountStorage, Withdraw, WithdrawStatus } from "../../storages/AccountStorage.sol";
-import { AppStorage, LiquidationStatus, LiquidationDetail, LiquidationState } from "../../storages/AppStorage.sol";
-import { Trade, IntentStorage, TradeStatus, IntentStatus } from "../../storages/IntentStorage.sol";
-import { Symbol, SymbolStorage, OptionType } from "../../storages/SymbolStorage.sol";
+import { AccountStorage } from "../../storages/AccountStorage.sol";
+import { AppStorage } from "../../storages/AppStorage.sol";
+import { SymbolStorage } from "../../storages/SymbolStorage.sol";
+import { TradeStorage } from "../../storages/TradeStorage.sol";
+import { Trade, TradeStatus } from "../../types/TradeTypes.sol";
+import { Symbol } from "../../types/SymbolTypes.sol";
+import { Withdraw, WithdrawStatus } from "../../types/WithdrawTypes.sol";
+import { LiquidationStatus, LiquidationDetail, LiquidationState } from "../../types/LiquidationTypes.sol";
+import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
+import { MarginType } from "../../types/BaseTypes.sol";
+import { IntentStatus } from "../../types/IntentTypes.sol";
 import { ClearingHouseFacetErrors } from "./ClearingHouseFacetErrors.sol";
 import { CommonErrors } from "../../libraries/CommonErrors.sol";
 
@@ -132,7 +139,7 @@ library ClearingHouseFacetImpl {
 		if (tradeIds.length != prices.length) revert ClearingHouseFacetErrors.MismatchedArrays(tradeIds.length, prices.length);
 
 		for (uint256 i = 0; i < tradeIds.length; i++) {
-			Trade storage trade = IntentStorage.layout().trades[tradeIds[i]];
+			Trade storage trade = TradeStorage.layout().trades[tradeIds[i]];
 			Symbol storage symbol = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId];
 			uint256 price = prices[i];
 
@@ -175,11 +182,11 @@ library ClearingHouseFacetImpl {
 		LiquidationState storage state = partyB.getLiquidationState(collateral);
 		LiquidationDetail storage detail = partyB.getInProgressLiquidationDetail(collateral);
 
-		if (IntentStorage.layout().activeTradesOfPartyB[partyB][collateral].length != 0)
+		if (TradeStorage.layout().activeTradesOfPartyB[partyB][collateral].length != 0)
 			revert ClearingHouseFacetErrors.PartyBHasOpenTrades(
 				partyB,
 				collateral,
-				IntentStorage.layout().activeTradesOfPartyB[partyB][collateral].length
+				TradeStorage.layout().activeTradesOfPartyB[partyB][collateral].length
 			);
 
 		partyB.requireInProgressLiquidation(collateral);

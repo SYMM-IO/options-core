@@ -4,7 +4,6 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { IntentStorage } from "../storages/IntentStorage.sol";
 import { ISignatureVerifier } from "../interfaces/ISignatureVerifier.sol";
 import { CommonErrors } from "./CommonErrors.sol";
 

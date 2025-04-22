@@ -5,9 +5,12 @@
 pragma solidity >=0.8.19;
 
 import { LibAccessibility } from "../libraries/LibAccessibility.sol";
-import { AccountStorage, Withdraw } from "../storages/AccountStorage.sol";
+import { TradeStorage } from "../storages/TradeStorage.sol";
+import { StateControlStorage } from "../storages/StateControlStorage.sol";
 import { AppStorage } from "../storages/AppStorage.sol";
-import { Trade, IntentStorage, OpenIntent } from "../storages/IntentStorage.sol";
+import { AccountStorage } from "../storages/AccountStorage.sol";
+import { Trade } from "../types/TradeTypes.sol";
+import { Withdraw } from "../types/WithdrawTypes.sol";
 
 abstract contract Accessibility {
 	// Custom errors
@@ -43,27 +46,28 @@ abstract contract Accessibility {
 	}
 
 	modifier onlyPartyAOfTrade(uint256 tradeId) {
-		Trade storage trade = IntentStorage.layout().trades[tradeId];
+		Trade storage trade = TradeStorage.layout().trades[tradeId];
 		if (trade.partyA != msg.sender) revert NotPartyAOfTrade(msg.sender, tradeId, trade.partyA);
 		_;
 	}
 
 	modifier onlyPartyBOfTrade(uint256 tradeId) {
-		Trade storage trade = IntentStorage.layout().trades[tradeId];
+		Trade storage trade = TradeStorage.layout().trades[tradeId];
 		if (trade.partyB != msg.sender) revert NotPartyBOfTrade(msg.sender, tradeId, trade.partyB);
 		_;
 	}
 
 	modifier notSuspended(address user) {
-		if (AccountStorage.layout().suspendedAddresses[user]) revert UserSuspended(user);
+		if (StateControlStorage.layout().suspendedAddresses[user]) revert UserSuspended(user);
 		_;
 	}
 
 	modifier notSuspendedWithdrawal(uint256 withdrawId) {
 		Withdraw storage withdrawObject = AccountStorage.layout().withdrawals[withdrawId];
-		if (AccountStorage.layout().suspendedAddresses[withdrawObject.user]) revert UserSuspended(withdrawObject.user);
-		if (AccountStorage.layout().suspendedAddresses[withdrawObject.to]) revert ReceiverSuspended(withdrawObject.to);
-		if (AccountStorage.layout().suspendedWithdrawal[withdrawId]) revert SuspendedWithdrawal(withdrawId);
+		StateControlStorage.Layout storage stateControlLayout = StateControlStorage.layout();
+		if (stateControlLayout.suspendedAddresses[withdrawObject.user]) revert UserSuspended(withdrawObject.user);
+		if (stateControlLayout.suspendedAddresses[withdrawObject.to]) revert ReceiverSuspended(withdrawObject.to);
+		if (stateControlLayout.suspendedWithdrawal[withdrawId]) revert SuspendedWithdrawal(withdrawId);
 		_;
 	}
 

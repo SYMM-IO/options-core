@@ -5,13 +5,16 @@
 pragma solidity >=0.8.19;
 
 import { LibMuon } from "../../libraries/LibMuon.sol";
-import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { ScheduledReleaseBalanceOps } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { LibTradeOps } from "../../libraries/LibTrade.sol";
 import { LibParty } from "../../libraries/LibParty.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
-import { SettlementPriceSig, AppStorage, LiquidationStatus } from "../../storages/AppStorage.sol";
-import { Trade, IntentStorage, TradeStatus, IntentStatus, TradeSide } from "../../storages/IntentStorage.sol";
-import { Symbol, SymbolStorage, OptionType } from "../../storages/SymbolStorage.sol";
+import { IntentStatus } from "../../types/IntentTypes.sol";
+import { Trade, TradeStatus } from "../../types/TradeTypes.sol";
+import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
+import { TradeSide } from "../../types/BaseTypes.sol";
+import { SymbolStorage } from "../../storages/SymbolStorage.sol";
+import { Symbol, OptionType } from "../../types/SymbolTypes.sol";
 import { CommonErrors } from "../../libraries/CommonErrors.sol";
 import { TradeSettlementFacetErrors } from "./TradeSettlementFacetErrors.sol";
 

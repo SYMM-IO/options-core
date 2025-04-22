@@ -5,10 +5,12 @@
 pragma solidity >=0.8.19;
 
 import { AccountStorage } from "../storages/AccountStorage.sol";
-import { AppStorage } from "../storages/AppStorage.sol";
-import { OpenIntent, IntentStorage, IntentStatus, TradeSide } from "../storages/IntentStorage.sol";
+import { OpenIntentStorage } from "../storages/OpenIntentStorage.sol";
+import { OpenIntent, IntentStatus } from "../types/IntentTypes.sol";
+import { TradeSide, MarginType } from "../types/BaseTypes.sol";
+import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../types/BalanceTypes.sol";
+import { ScheduledReleaseBalanceOps } from "./LibScheduledReleaseBalance.sol";
 import { Symbol, SymbolStorage } from "../storages/SymbolStorage.sol";
-import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason, MarginType } from "./LibScheduledReleaseBalance.sol";
 import { CommonErrors } from "./CommonErrors.sol";
 
 library LibOpenIntentOps {
@@ -30,46 +32,46 @@ library LibOpenIntentOps {
 	}
 
 	function save(OpenIntent memory self) internal {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		OpenIntentStorage.Layout storage openIntentLayout = OpenIntentStorage.layout();
 
-		intentLayout.openIntents[self.id] = self;
-		intentLayout.openIntentsOf[msg.sender].push(self.id);
+		openIntentLayout.openIntents[self.id] = self;
+		openIntentLayout.openIntentsOf[msg.sender].push(self.id);
 
 		if (self.status == IntentStatus.PENDING) {
-			intentLayout.activeOpenIntentsOf[self.partyA].push(self.id);
-			intentLayout.activeOpenIntentsCount[self.partyA] += 1;
-			intentLayout.partyAOpenIntentsIndex[self.id] = intentLayout.activeOpenIntentsOf[self.partyA].length - 1;
+			openIntentLayout.activeOpenIntentsOf[self.partyA].push(self.id);
+			openIntentLayout.activeOpenIntentsCount[self.partyA] += 1;
+			openIntentLayout.partyAOpenIntentsIndex[self.id] = openIntentLayout.activeOpenIntentsOf[self.partyA].length - 1;
 		}
 	}
 
 	function saveForPartyB(OpenIntent memory self) internal {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		OpenIntentStorage.Layout storage openIntentLayout = OpenIntentStorage.layout();
 
-		intentLayout.openIntentsOf[self.partyB].push(self.id);
-		intentLayout.activeOpenIntentsOf[self.partyB].push(self.id);
-		intentLayout.partyBOpenIntentsIndex[self.id] = intentLayout.activeOpenIntentsOf[self.partyB].length - 1;
+		openIntentLayout.openIntentsOf[self.partyB].push(self.id);
+		openIntentLayout.activeOpenIntentsOf[self.partyB].push(self.id);
+		openIntentLayout.partyBOpenIntentsIndex[self.id] = openIntentLayout.activeOpenIntentsOf[self.partyB].length - 1;
 	}
 
 	function remove(OpenIntent memory self, bool fromPartyBOnly) internal {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		OpenIntentStorage.Layout storage openIntentLayout = OpenIntentStorage.layout();
 
 		if (!fromPartyBOnly) {
-			uint256 indexOfIntent = intentLayout.partyAOpenIntentsIndex[self.id];
-			uint256 lastIndex = intentLayout.activeOpenIntentsOf[self.partyA].length - 1;
-			intentLayout.activeOpenIntentsOf[self.partyA][indexOfIntent] = intentLayout.activeOpenIntentsOf[self.partyA][lastIndex];
-			intentLayout.partyAOpenIntentsIndex[intentLayout.activeOpenIntentsOf[self.partyA][lastIndex]] = indexOfIntent;
-			intentLayout.activeOpenIntentsOf[self.partyA].pop();
-			intentLayout.partyAOpenIntentsIndex[self.id] = 0;
-			intentLayout.activeOpenIntentsCount[self.partyA] -= 1;
+			uint256 indexOfIntent = openIntentLayout.partyAOpenIntentsIndex[self.id];
+			uint256 lastIndex = openIntentLayout.activeOpenIntentsOf[self.partyA].length - 1;
+			openIntentLayout.activeOpenIntentsOf[self.partyA][indexOfIntent] = openIntentLayout.activeOpenIntentsOf[self.partyA][lastIndex];
+			openIntentLayout.partyAOpenIntentsIndex[openIntentLayout.activeOpenIntentsOf[self.partyA][lastIndex]] = indexOfIntent;
+			openIntentLayout.activeOpenIntentsOf[self.partyA].pop();
+			openIntentLayout.partyAOpenIntentsIndex[self.id] = 0;
+			openIntentLayout.activeOpenIntentsCount[self.partyA] -= 1;
 		}
 
 		if (self.partyB != address(0)) {
-			uint256 indexOfIntent = intentLayout.partyBOpenIntentsIndex[self.id];
-			uint256 lastIndex = intentLayout.activeOpenIntentsOf[self.partyB].length - 1;
-			intentLayout.activeOpenIntentsOf[self.partyB][indexOfIntent] = intentLayout.activeOpenIntentsOf[self.partyB][lastIndex];
-			intentLayout.partyBOpenIntentsIndex[intentLayout.activeOpenIntentsOf[self.partyB][lastIndex]] = indexOfIntent;
-			intentLayout.activeOpenIntentsOf[self.partyB].pop();
-			intentLayout.partyBOpenIntentsIndex[self.id] = 0;
+			uint256 indexOfIntent = openIntentLayout.partyBOpenIntentsIndex[self.id];
+			uint256 lastIndex = openIntentLayout.activeOpenIntentsOf[self.partyB].length - 1;
+			openIntentLayout.activeOpenIntentsOf[self.partyB][indexOfIntent] = openIntentLayout.activeOpenIntentsOf[self.partyB][lastIndex];
+			openIntentLayout.partyBOpenIntentsIndex[openIntentLayout.activeOpenIntentsOf[self.partyB][lastIndex]] = indexOfIntent;
+			openIntentLayout.activeOpenIntentsOf[self.partyB].pop();
+			openIntentLayout.partyBOpenIntentsIndex[self.id] = 0;
 		}
 	}
 

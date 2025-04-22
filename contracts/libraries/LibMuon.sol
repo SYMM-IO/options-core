@@ -5,9 +5,10 @@
 pragma solidity >=0.8.19;
 
 import { IMuonOracle } from "../interfaces/IMuonOracle.sol";
-import { SettlementPriceSig, AppStorage, LiquidationSig } from "../storages/AppStorage.sol";
+import { AppStorage } from "../storages/AppStorage.sol";
+import { LiquidationSig } from "../types/LiquidationTypes.sol";
+import { SettlementPriceSig } from "../types/SettlementTypes.sol";
 import { SymbolStorage, Symbol, Oracle } from "../storages/SymbolStorage.sol";
-import { CommonErrors } from "./CommonErrors.sol";
 
 library LibMuon {
 	// Custom errors
@@ -37,7 +38,16 @@ library LibMuon {
 		Oracle storage oracle = symbolLayout.oracles[symbol.oracleId];
 
 		bytes32 hash = keccak256(
-			abi.encodePacked(sig.reqId, address(this), sig.timestamp, sig.symbolId, sig.settlementPrice, sig.settlementTimestamp, sig.collateralPrice, getChainId())
+			abi.encodePacked(
+				sig.reqId,
+				address(this),
+				sig.timestamp,
+				sig.symbolId,
+				sig.settlementPrice,
+				sig.settlementTimestamp,
+				sig.collateralPrice,
+				getChainId()
+			)
 		);
 
 		IMuonOracle(oracle.contractAddress).verifyTSSAndGW(hash, sig.reqId, sig.sigs, sig.gatewaySignature);

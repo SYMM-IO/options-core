@@ -5,7 +5,7 @@
 pragma solidity >=0.8.19;
 
 import { PartyBConfig } from "../../storages/AppStorage.sol";
-import { OptionType } from "../../storages/SymbolStorage.sol";
+import { OptionType } from "../../types/SymbolTypes.sol";
 import { IControlEvents } from "./IControlEvents.sol";
 
 interface IControlFacet is IControlEvents {

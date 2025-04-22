@@ -6,7 +6,8 @@ pragma solidity >=0.8.19;
 
 import { IPartiesEvents } from "../../interfaces/IPartiesEvents.sol";
 import { LibCloseIntentOps } from "../../libraries/LibCloseIntent.sol";
-import { CloseIntent, IntentStorage, Trade, IntentStatus } from "../../storages/IntentStorage.sol";
+import { CloseIntent, IntentStatus } from "../../types/IntentTypes.sol";
+import { Trade } from "../../types/TradeTypes.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
 import { Pausable } from "../../utils/Pausable.sol";
 import { IPartyACloseEvents } from "./IPartyACloseEvents.sol";

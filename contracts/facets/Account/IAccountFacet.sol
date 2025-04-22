@@ -5,7 +5,7 @@
 pragma solidity >=0.8.19;
 
 import { IAccountEvents } from "./IAccountEvents.sol";
-import { MarginType } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { MarginType } from "../../types/BaseTypes.sol";
 
 interface IAccountFacet is IAccountEvents {
 	function deposit(address collateral, uint256 amount) external;

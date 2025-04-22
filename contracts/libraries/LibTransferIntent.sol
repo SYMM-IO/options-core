@@ -5,8 +5,10 @@
 
 pragma solidity >=0.8.19;
 
-import { TransferIntent, Trade, IntentStorage } from "../storages/IntentStorage.sol";
-import { Symbol, SymbolStorage } from "../storages/SymbolStorage.sol";
+import { SymbolStorage } from "../storages/SymbolStorage.sol";
+import { Symbol } from "../types/SymbolTypes.sol";
+import { Trade } from "../types/TradeTypes.sol";
+import { TransferIntent } from "../types/TransferIntentTypes.sol";
 
 library TransferIntentOps {
 	function getPremium(TransferIntent memory self) internal view returns (uint256) {

@@ -4,7 +4,10 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { CloseIntent, IntentStorage, Trade, IntentStatus } from "../storages/IntentStorage.sol";
+import { Trade } from "../types/TradeTypes.sol";
+import { TradeStorage } from "../storages/TradeStorage.sol";
+import { CloseIntentStorage } from "../storages/CloseIntentStorage.sol";
+import { CloseIntent, IntentStatus } from "../types/IntentTypes.sol";
 import { CommonErrors } from "./CommonErrors.sol";
 
 library LibCloseIntentOps {
@@ -38,17 +41,16 @@ library LibCloseIntentOps {
 	}
 
 	function save(CloseIntent memory self) internal {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-		Trade storage trade = intentLayout.trades[self.tradeId];
-		intentLayout.closeIntents[self.id] = self;
-		intentLayout.closeIntentIdsOf[trade.id].push(self.id);
+		Trade storage trade = TradeStorage.layout().trades[self.tradeId];
+		CloseIntentStorage.Layout storage closeIntentLayout = CloseIntentStorage.layout();
+		closeIntentLayout.closeIntents[self.id] = self;
+		closeIntentLayout.closeIntentIdsOf[trade.id].push(self.id);
 		trade.activeCloseIntentIds.push(self.id);
 		trade.closePendingAmount += self.quantity;
 	}
 
 	function remove(CloseIntent memory self) internal {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
-		Trade storage trade = intentLayout.trades[self.tradeId];
+		Trade storage trade = TradeStorage.layout().trades[self.tradeId];
 		removeFromArray(trade.activeCloseIntentIds, self.id);
 		trade.closePendingAmount -= self.quantity;
 	}

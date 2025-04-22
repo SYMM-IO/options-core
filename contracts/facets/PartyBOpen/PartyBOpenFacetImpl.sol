@@ -5,13 +5,15 @@
 pragma solidity >=0.8.19;
 
 import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
-import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason, MarginType } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { ScheduledReleaseBalanceOps } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { LibTradeOps } from "../../libraries/LibTrade.sol";
 import { LibUserData } from "../../libraries/LibUserData.sol";
 import { LibParty } from "../../libraries/LibParty.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
-import { AppStorage, LiquidationStatus } from "../../storages/AppStorage.sol";
-import { OpenIntent, Trade, IntentStorage, TradeAgreements, IntentStatus, TradeStatus, TradeSide } from "../../storages/IntentStorage.sol";
+import { TradeAgreements, TradeSide, MarginType } from "../../types/BaseTypes.sol";
+import { Trade, TradeStatus } from "../../types/TradeTypes.sol";
+import { OpenIntent, IntentStatus } from "../../types/IntentTypes.sol";
+import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 import { Symbol, SymbolStorage } from "../../storages/SymbolStorage.sol";
 import { PartyBOpenFacetErrors } from "./PartyBOpenFacetErrors.sol";
 import { CommonErrors } from "../../libraries/CommonErrors.sol";

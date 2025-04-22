@@ -4,10 +4,13 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
-import { Withdraw, BridgeTransaction } from "../../storages/AccountStorage.sol";
-import { PartyBConfig, LiquidationDetail, LiquidationState } from "../../storages/AppStorage.sol";
-import { OpenIntent, TransferIntent, Trade, CloseIntent } from "../../storages/IntentStorage.sol";
+import { BridgeTransaction } from "../../types/BridgeTypes.sol";
+import { Withdraw } from "../../types/WithdrawTypes.sol";
+import { LiquidationDetail, LiquidationState } from "../../types/LiquidationTypes.sol";
+import { PartyBConfig } from "../../storages/AppStorage.sol";
+import { OpenIntent, CloseIntent } from "../../types/IntentTypes.sol";
+import { TransferIntent } from "../../types/TransferIntentTypes.sol";
+import { Trade } from "../../types/TradeTypes.sol";
 import { Symbol, Oracle } from "../../storages/SymbolStorage.sol";
 
 interface IViewFacet {

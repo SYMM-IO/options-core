@@ -4,11 +4,16 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { ScheduledReleaseBalance } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { LibParty } from "../../libraries/LibParty.sol";
-import { AccountStorage, Withdraw, BridgeTransaction } from "../../storages/AccountStorage.sol";
-import { AppStorage, PartyBConfig, LiquidationDetail, LiquidationState } from "../../storages/AppStorage.sol";
-import { IntentStorage, OpenIntent, TransferIntent, Trade, CloseIntent } from "../../storages/IntentStorage.sol";
+import { AccountStorage } from "../../storages/AccountStorage.sol";
+import { BridgeTransaction } from "../../types/BridgeTypes.sol";
+import { Withdraw } from "../../types/WithdrawTypes.sol";
+import { AppStorage, PartyBConfig } from "../../storages/AppStorage.sol";
+import { LiquidationDetail, LiquidationState } from "../../types/LiquidationTypes.sol";
+import { Trade } from "../../types/TradeTypes.sol";
+import { OpenIntent, CloseIntent } from "../../types/IntentTypes.sol";
+import { TransferIntent } from "../../types/TransferIntentTypes.sol";
+import { TransferIntent } from "../../types/TransferIntentTypes.sol";
 import { SymbolStorage, Symbol, Oracle } from "../../storages/SymbolStorage.sol";
 import { IViewFacet } from "./IViewFacet.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";

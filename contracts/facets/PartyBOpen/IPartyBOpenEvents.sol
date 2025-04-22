@@ -5,7 +5,7 @@
 pragma solidity >=0.8.19;
 
 import { IPartiesEvents } from "../../interfaces/IPartiesEvents.sol";
-import { MarginType } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { MarginType } from "../../types/BaseTypes.sol";
 
 interface IPartyBOpenEvents is IPartiesEvents {
 	event AcceptCancelOpenIntent(uint256 intentId);

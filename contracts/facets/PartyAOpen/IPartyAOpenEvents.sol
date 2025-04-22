@@ -5,7 +5,7 @@
 pragma solidity >=0.8.19;
 
 import { IPartiesEvents } from "../../interfaces/IPartiesEvents.sol";
-import { IntentStatus } from "../../storages/IntentStorage.sol";
+import { IntentStatus } from "../../types/IntentTypes.sol";
 
 interface IPartyAOpenEvents is IPartiesEvents {
 	event CancelOpenIntent(uint256 intentId, IntentStatus finalStatus);

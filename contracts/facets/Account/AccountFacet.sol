@@ -5,7 +5,7 @@
 pragma solidity >=0.8.19;
 
 import { LibAccessibility } from "../../libraries/LibAccessibility.sol";
-import { MarginType } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { MarginType } from "../../types/BaseTypes.sol";
 import { AccountStorage, Withdraw } from "../../storages/AccountStorage.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
 import { Pausable } from "../../utils/Pausable.sol";
