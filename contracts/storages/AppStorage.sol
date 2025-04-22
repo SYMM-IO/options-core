@@ -7,50 +7,6 @@ pragma solidity >=0.8.19;
 import { IMuonOracle } from "../interfaces/IMuonOracle.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-struct SettlementState {
-	int256 amount;
-	bool pending;
-}
-
-struct LiquidationState {
-	uint256 inProgressLiquidationId;
-	LiquidationStatus status;
-}
-
-struct LiquidationDetail {
-	bytes clearingHouseLiquidationId;
-	int256 upnl;
-	uint256 flagTimestamp;
-	uint256 liquidationTimestamp;
-	uint256 collateralPrice;
-	address flagger;
-	uint256 collectedCollateral;
-	uint256 requiredCollateral;
-}
-struct LiquidationSig {
-	bytes reqId; // Unique identifier for the liquidation request
-	uint256 timestamp; // Timestamp when the liquidation signature was created
-	bytes liquidationId; // Unique identifier for the liquidation event
-	int256 upnl; // User's unrealized profit and loss at the time of insolvency
-	address collateral; // The address of collateral
-	uint256 collateralPrice; // The price of collateral
-	uint256[] symbolIds; // List of symbol IDs involved in the liquidation
-	uint256[] prices; // Corresponding prices of the symbols involved in the liquidation
-	bytes gatewaySignature; // Signature from the gateway for verification
-	IMuonOracle.SchnorrSign sigs; // Schnorr signature for additional verification
-}
-
-struct SettlementPriceSig {
-	bytes reqId;
-	uint256 timestamp;
-	uint256 symbolId;
-	uint256 settlementPrice;
-	uint256 settlementTimestamp;
-	uint256 collateralPrice;
-	bytes gatewaySignature;
-	IMuonOracle.SchnorrSign sigs;
-}
-
 struct Price {
 	uint256 price;
 	uint256 timestamp;
@@ -63,64 +19,33 @@ struct PartyBConfig {
 	uint256 symbolType;
 }
 
-enum LiquidationStatus {
-	SOLVENT,
-	FLAGGED,
-	IN_PROGRESS
-}
-
 library AppStorage {
 	bytes32 internal constant APP_STORAGE_SLOT = keccak256("diamond.standard.storage.app");
 
 	struct Layout {
-		mapping(address => bool) whiteListedCollateral;
+		// System version
+		uint16 version;
+		/////////////////////////////////////////////////////////
 		uint256 balanceLimitPerUser;
 		uint256 maxCloseOrdersLength;
 		uint256 maxTradePerPartyA;
 		address priceOracleAddress;
-		///////////////////////////////////
-		bool globalPaused;
-		bool depositingPaused;
-		bool withdrawingPaused;
-		bool partyBActionsPaused;
-		bool partyAActionsPaused;
-		bool liquidatingPaused;
-		bool thirdPartyActionsPaused;
-		bool internalTransferPaused;
-		bool bridgePaused;
-		bool bridgeWithdrawPaused;
-		///////////////////////////////////
-		bool emergencyMode;
-		mapping(address => bool) partyBEmergencyStatus;
+		mapping(address => bool) whiteListedCollateral;
+		address tradeNftAddress;
+		/////////////////////////////////////////////////////////
+		mapping(bytes32 => bool) isSigUsed;
+		address signatureVerifier;
+		/////////////////////////////////////////////////////////
 		uint256 partyADeallocateCooldown;
 		uint256 partyBDeallocateCooldown;
 		uint256 forceCancelOpenIntentTimeout;
 		uint256 forceCancelCloseIntentTimeout;
 		uint256 ownerExclusiveWindow;
-		///////////////////////////////////
-		address defaultFeeCollector;
-		mapping(address => bool) affiliateStatus;
-		mapping(address => address) affiliateFeeCollector;
-		///////////////////////////////////
-		mapping(address => mapping(bytes32 => bool)) hasRole;
-		mapping(bytes32 => EnumerableSet.AddressSet) roleMembers;
-		mapping(address => PartyBConfig) partyBConfigs;
-		address[] partyBList;
-		///////////////////////////////////
-		address tradeNftAddress;
-		///////////////////////////////////
 		uint256 settlementPriceSigValidTime;
 		uint256 liquidationSigValidTime;
-		///////////////////////////////////
-		uint16 version;
-		///////////////////////////////////
-		mapping(address => mapping(address => LiquidationState)) liquidationStates; // partyBAddress => collateral => liquidationState
-		mapping(uint256 => LiquidationDetail) liquidationDetails; // liquidationId => detail
-		mapping(address => mapping(address => mapping(address => uint256))) liquidationDebtsToPartyAs; // partyB => collateral => partyA => amount
-		mapping(address => mapping(address => uint256)) involvedPartyAsCountInLiquidation; // partyB => collateral => number of connected partyAs
-		uint256 lastLiquidationId;
-		///////////////////////////////////
-		mapping(address => mapping(uint256 => uint256)) affiliateFees; // affiliate address => symbolId => fee
+		/////////////////////////////////////////////////////////
+		mapping(address => PartyBConfig) partyBConfigs;
+		address[] partyBList;
 	}
 
 	function layout() internal pure returns (Layout storage l) {

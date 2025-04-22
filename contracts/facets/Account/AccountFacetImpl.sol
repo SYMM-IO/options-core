@@ -4,12 +4,16 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason, MarginType } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { ScheduledReleaseBalanceOps } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { MarginType } from "../../types/BaseTypes.sol";
+import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 import { CommonErrors } from "../../libraries/CommonErrors.sol";
 import { AccountFacetErrors } from "./AccountFacetErrors.sol";
 import { LibParty } from "../../libraries/LibParty.sol";
-import { AccountStorage, Withdraw, WithdrawStatus } from "../../storages/AccountStorage.sol";
-import { AppStorage, LiquidationStatus } from "../../storages/AppStorage.sol";
+import { AccountStorage } from "../../storages/AccountStorage.sol";
+import { Withdraw, WithdrawStatus } from "../../types/WithdrawTypes.sol";
+import { AppStorage } from "../../storages/AppStorage.sol";
+import { LiquidationStatus } from "../../types/LiquidationTypes.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";

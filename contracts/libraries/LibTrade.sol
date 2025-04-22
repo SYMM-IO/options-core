@@ -5,12 +5,15 @@
 pragma solidity >=0.8.19;
 
 import { AccountStorage } from "../storages/AccountStorage.sol";
-import { CloseIntent, Trade, IntentStorage, TradeStatus, IntentStatus } from "../storages/IntentStorage.sol";
-import { Symbol, SymbolStorage, OptionType } from "../storages/SymbolStorage.sol";
+import { CloseIntent, IntentStatus } from "../types/IntentTypes.sol";
+import { Trade, TradeStatus } from "../types/TradeTypes.sol";
+import { SymbolStorage } from "../storages/SymbolStorage.sol";
+import { Symbol, OptionType } from "../types/SymbolTypes.sol";
 import { AppStorage } from "../storages/AppStorage.sol";
+import { TradeStorage } from "../storages/TradeStorage.sol";
 import { LibCloseIntentOps } from "./LibCloseIntent.sol";
-import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance } from "./LibScheduledReleaseBalance.sol";
-import { CommonErrors } from "./CommonErrors.sol";
+import { ScheduledReleaseBalanceOps } from "./LibScheduledReleaseBalance.sol";
+import { ScheduledReleaseBalance } from "../types/BalanceTypes.sol";
 
 library LibTradeOps {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
@@ -48,51 +51,51 @@ library LibTradeOps {
 	}
 
 	function save(Trade memory self) internal {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		TradeStorage.Layout storage tradeLayout = TradeStorage.layout();
 
-		if (intentLayout.activeTradesOf[self.partyA].length >= AppStorage.layout().maxTradePerPartyA)
-			revert TooManyActiveTradesForPartyA(self.partyA, intentLayout.activeTradesOf[self.partyA].length, AppStorage.layout().maxTradePerPartyA);
+		if (tradeLayout.activeTradesOf[self.partyA].length >= AppStorage.layout().maxTradePerPartyA)
+			revert TooManyActiveTradesForPartyA(self.partyA, tradeLayout.activeTradesOf[self.partyA].length, AppStorage.layout().maxTradePerPartyA);
 
 		Symbol memory symbol = SymbolStorage.layout().symbols[self.tradeAgreements.symbolId];
-		intentLayout.tradesOf[self.partyA].push(self.id);
-		intentLayout.tradesOf[self.partyB].push(self.id);
-		intentLayout.activeTradesOf[self.partyA].push(self.id);
-		intentLayout.activeTradesOfPartyB[self.partyB][symbol.collateral].push(self.id);
+		tradeLayout.tradesOf[self.partyA].push(self.id);
+		tradeLayout.tradesOf[self.partyB].push(self.id);
+		tradeLayout.activeTradesOf[self.partyA].push(self.id);
+		tradeLayout.activeTradesOfPartyB[self.partyB][symbol.collateral].push(self.id);
 
-		intentLayout.partyATradesIndex[self.id] = intentLayout.activeTradesOf[self.partyA].length - 1;
-		intentLayout.partyBTradesIndex[self.id] = intentLayout.activeTradesOfPartyB[self.partyB][symbol.collateral].length - 1;
+		tradeLayout.partyATradesIndex[self.id] = tradeLayout.activeTradesOf[self.partyA].length - 1;
+		tradeLayout.partyBTradesIndex[self.id] = tradeLayout.activeTradesOfPartyB[self.partyB][symbol.collateral].length - 1;
 
 		AccountStorage.layout().balances[self.partyA][symbol.collateral].addCounterParty(self.partyB, self.tradeAgreements.marginType);
 	}
 
 	function remove(Trade memory self) internal {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		TradeStorage.Layout storage tradeLayout = TradeStorage.layout();
 		Symbol memory symbol = SymbolStorage.layout().symbols[self.tradeAgreements.symbolId];
 
-		uint256 indexOfPartyATrade = intentLayout.partyATradesIndex[self.id];
-		uint256 indexOfPartyBTrade = intentLayout.partyBTradesIndex[self.id];
-		uint256 lastIndex = intentLayout.activeTradesOf[self.partyA].length - 1;
-		intentLayout.activeTradesOf[self.partyA][indexOfPartyATrade] = intentLayout.activeTradesOf[self.partyA][lastIndex];
-		intentLayout.partyATradesIndex[intentLayout.activeTradesOf[self.partyA][lastIndex]] = indexOfPartyATrade;
-		intentLayout.activeTradesOf[self.partyA].pop();
+		uint256 indexOfPartyATrade = tradeLayout.partyATradesIndex[self.id];
+		uint256 indexOfPartyBTrade = tradeLayout.partyBTradesIndex[self.id];
+		uint256 lastIndex = tradeLayout.activeTradesOf[self.partyA].length - 1;
+		tradeLayout.activeTradesOf[self.partyA][indexOfPartyATrade] = tradeLayout.activeTradesOf[self.partyA][lastIndex];
+		tradeLayout.partyATradesIndex[tradeLayout.activeTradesOf[self.partyA][lastIndex]] = indexOfPartyATrade;
+		tradeLayout.activeTradesOf[self.partyA].pop();
 
-		lastIndex = intentLayout.activeTradesOfPartyB[self.partyB][symbol.collateral].length - 1;
-		intentLayout.activeTradesOfPartyB[self.partyB][symbol.collateral][indexOfPartyBTrade] = intentLayout.activeTradesOfPartyB[self.partyB][
+		lastIndex = tradeLayout.activeTradesOfPartyB[self.partyB][symbol.collateral].length - 1;
+		tradeLayout.activeTradesOfPartyB[self.partyB][symbol.collateral][indexOfPartyBTrade] = tradeLayout.activeTradesOfPartyB[self.partyB][
 			symbol.collateral
 		][lastIndex];
-		intentLayout.partyBTradesIndex[intentLayout.activeTradesOfPartyB[self.partyB][symbol.collateral][lastIndex]] = indexOfPartyBTrade;
-		intentLayout.activeTradesOfPartyB[self.partyB][symbol.collateral].pop();
+		tradeLayout.partyBTradesIndex[tradeLayout.activeTradesOfPartyB[self.partyB][symbol.collateral][lastIndex]] = indexOfPartyBTrade;
+		tradeLayout.activeTradesOfPartyB[self.partyB][symbol.collateral].pop();
 
-		intentLayout.partyATradesIndex[self.id] = 0;
-		intentLayout.partyBTradesIndex[self.id] = 0;
+		tradeLayout.partyATradesIndex[self.id] = 0;
+		tradeLayout.partyBTradesIndex[self.id] = 0;
 	}
 
 	function close(Trade storage self, TradeStatus tradeStatus, IntentStatus intentStatus) internal {
-		IntentStorage.Layout storage intentLayout = IntentStorage.layout();
+		TradeStorage.Layout storage tradeLayout = TradeStorage.layout();
 
 		uint256 len = self.activeCloseIntentIds.length;
 		for (uint8 i = 0; i < len; i++) {
-			CloseIntent storage intent = intentLayout.closeIntents[self.activeCloseIntentIds[0]];
+			CloseIntent storage intent = tradeLayout.closeIntents[self.activeCloseIntentIds[0]];
 			intent.statusModifyTimestamp = block.timestamp;
 			intent.status = intentStatus;
 			intent.remove();

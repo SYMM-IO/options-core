@@ -4,7 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { SignedFillIntentById, SignedCloseIntent, SignedFillIntent, SignedSimpleActionIntent } from "../../storages/IntentStorage.sol";
+import { SignedFillIntentById, SignedCloseIntent, SignedFillIntent, SignedSimpleActionIntent } from "../../types/SignedIntentTypes.sol";
 import { IInstantActionsCloseEvents } from "./IInstantActionsCloseEvents.sol";
 
 interface IInstantActionsCloseFacet is IInstantActionsCloseEvents {

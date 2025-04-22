@@ -7,11 +7,13 @@ pragma solidity >=0.8.19;
 import { IPriceOracle } from "../../interfaces/IPriceOracle.sol";
 import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
 import { CommonErrors } from "../../libraries/CommonErrors.sol";
-import { ScheduledReleaseBalanceOps, ScheduledReleaseBalance, MarginType } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { ScheduledReleaseBalanceOps } from "../../libraries/LibScheduledReleaseBalance.sol";
 import { LibUserData } from "../../libraries/LibUserData.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { AppStorage } from "../../storages/AppStorage.sol";
-import { OpenIntent, ExerciseFee, IntentStorage, TradingFee, TradeSide, IntentStatus, TradeAgreements } from "../../storages/IntentStorage.sol";
+import { OpenIntent, IntentStatus } from "../../types/IntentTypes.sol";
+import { ExerciseFee, TradingFee, TradeSide, TradeAgreements, MarginType } from "../../types/BaseTypes.sol";
+import { ScheduledReleaseBalance } from "../../types/BalanceTypes.sol";
 import { Symbol, SymbolStorage } from "../../storages/SymbolStorage.sol";
 import { PartyAOpenFacetErrors } from "./PartyAOpenFacetErrors.sol";
 

@@ -8,7 +8,8 @@ import { LibCloseIntentOps } from "../../libraries/LibCloseIntent.sol";
 import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
 import { CommonErrors } from "../../libraries/CommonErrors.sol";
 import { AppStorage } from "../../storages/AppStorage.sol";
-import { OpenIntent, CloseIntent, IntentStorage, IntentStatus } from "../../storages/IntentStorage.sol";
+import { IntentStatus } from "../../types/IntentTypes.sol";
+import { OpenIntent, CloseIntent } from "../../types/IntentTypes.sol";
 
 library ForceActionsFacetImpl {
 	using LibOpenIntentOps for OpenIntent;

@@ -4,27 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-enum OptionType {
-	PUT,
-	CALL
-}
-
-struct Oracle {
-	uint256 id;
-	string name;
-	address contractAddress;
-}
-
-struct Symbol {
-	uint256 symbolId;
-	bool isValid;
-	string name;
-	OptionType optionType;
-	uint256 oracleId;
-	address collateral;
-	uint256 tradingFee;
-	uint256 symbolType;
-}
+import { Oracle, Symbol } from "../types/SymbolTypes.sol";
 
 library SymbolStorage {
 	bytes32 internal constant SYMBOL_STORAGE_SLOT = keccak256("diamond.standard.storage.symbol");

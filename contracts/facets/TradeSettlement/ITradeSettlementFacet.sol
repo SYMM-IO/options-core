@@ -4,7 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { SettlementPriceSig } from "../../storages/AppStorage.sol";
+import { SettlementPriceSig } from "../../types/SettlementTypes.sol";
 import { ITradeSettlementEvents } from "./ITradeSettlementEvents.sol";
 
 interface ITradeSettlementFacet is ITradeSettlementEvents {

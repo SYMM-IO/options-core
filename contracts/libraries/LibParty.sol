@@ -4,9 +4,11 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { AppStorage, LiquidationStatus, LiquidationState, LiquidationDetail } from "../storages/AppStorage.sol";
+import { AppStorage } from "../storages/AppStorage.sol";
 import { AccountStorage } from "../storages/AccountStorage.sol";
+import { LiquidationStorage } from "../storages/LiquidationStorage.sol";
 import { CommonErrors } from "./CommonErrors.sol";
+import { LiquidationStatus, LiquidationState, LiquidationDetail } from "../types/LiquidationTypes.sol";
 
 library LibParty {
 	// Custom errors
@@ -17,7 +19,7 @@ library LibParty {
 	}
 
 	function requireInProgressLiquidation(address self, address collateral) internal view {
-		if (AppStorage.layout().liquidationStates[self][collateral].status != LiquidationStatus.IN_PROGRESS) {
+		if (LiquidationStorage.layout().liquidationStates[self][collateral].status != LiquidationStatus.IN_PROGRESS) {
 			uint8[] memory requiredStatuses = new uint8[](1);
 			requiredStatuses[0] = uint8(LiquidationStatus.IN_PROGRESS);
 			revert CommonErrors.InvalidState(

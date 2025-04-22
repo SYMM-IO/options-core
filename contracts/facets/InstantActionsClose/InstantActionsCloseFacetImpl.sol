@@ -8,7 +8,8 @@ import { LibHash } from "../../libraries/LibHash.sol";
 import { LibSignature } from "../../libraries/LibSignature.sol";
 import { PartyBCloseFacetImpl } from "../PartyBClose/PartyBCloseFacetImpl.sol";
 import { PartyACloseFacetImpl } from "../PartyAClose/PartyACloseFacetImpl.sol";
-import { IntentStatus, SignedFillIntentById, SignedSimpleActionIntent, SignedFillIntent, SignedCloseIntent } from "../../storages/IntentStorage.sol";
+import { IntentStatus } from "../../types/IntentTypes.sol";
+import { SignedFillIntentById, SignedSimpleActionIntent, SignedFillIntent, SignedCloseIntent } from "../../types/SignedIntentTypes.sol";
 
 library InstantActionsCloseFacetImpl {
 	function instantCancelCloseIntent(
