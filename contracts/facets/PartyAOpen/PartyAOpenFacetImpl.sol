@@ -35,8 +35,8 @@ library PartyAOpenFacetImpl {
 		address affiliate,
 		bytes memory userData
 	) internal returns (uint256 intentId) {
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		AppStorage.Layout storage appLayout = AppStorage.layout();
+		FeeManagementStorage.Layout storage feeLayout = FeeManagementStorage.layout();
 
 		Symbol memory symbol = SymbolStorage.layout().symbols[tradeAgreements.symbolId];
 
@@ -57,8 +57,7 @@ library PartyAOpenFacetImpl {
 		// validate deadline
 		if (deadline < block.timestamp) revert CommonErrors.LowDeadline(deadline, block.timestamp);
 		// validate affiliate
-		if (!(FeeManagementStorage.layout().affiliateStatus[affiliate] || affiliate == address(0)))
-			revert PartyAOpenFacetErrors.InvalidAffiliate(affiliate);
+		if (!(feeLayout.affiliateStatus[affiliate] || affiliate == address(0))) revert PartyAOpenFacetErrors.InvalidAffiliate(affiliate);
 		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		if (CounterPartyRelationsStorage.layout().boundPartyB[sender] != address(0)) {
 			if (!(partyBsWhiteList.length == 1 && partyBsWhiteList[0] == CounterPartyRelationsStorage.layout().boundPartyB[sender]))
@@ -86,12 +85,12 @@ library PartyAOpenFacetImpl {
 			createTimestamp: block.timestamp,
 			statusModifyTimestamp: block.timestamp,
 			deadline: deadline,
-			tradingFee: TradingFee(
-				feeToken,
-				IPriceOracle(appLayout.priceOracleAddress).getPrice(feeToken),
-				symbol.tradingFee,
-				FeeManagementStorage.layout().affiliateFees[affiliate][tradeAgreements.symbolId]
-			),
+			tradingFee: TradingFee({
+				feeToken: feeToken,
+				tokenPrice: IPriceOracle(appLayout.priceOracleAddress).getPrice(feeToken),
+				platformFee: symbol.tradingFee,
+				affiliateFee: feeLayout.affiliateFees[affiliate][tradeAgreements.symbolId]
+			}),
 			affiliate: affiliate,
 			userData: LibUserData.addCounter(userData, 0)
 		});

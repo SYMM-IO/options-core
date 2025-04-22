@@ -4,7 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { TradeAgreements } from "./BaseTypes.sol";
+import { TradeAgreements, TradingFee } from "./BaseTypes.sol";
 
 enum IntentStatus {
 	PENDING,
@@ -13,13 +13,6 @@ enum IntentStatus {
 	CANCELED,
 	FILLED,
 	EXPIRED
-}
-
-struct TradingFee {
-	address feeToken;
-	uint256 tokenPrice;
-	uint256 platformFee;
-	uint256 affiliateFee;
 }
 
 struct OpenIntent {
