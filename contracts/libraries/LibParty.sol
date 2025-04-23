@@ -43,7 +43,7 @@ library LibParty {
 		return LiquidationStorage.layout().liquidationDetails[getLiquidationState(self, collateral).inProgressLiquidationId];
 	}
 
-	function getReleaseInterval(address user) external view returns (uint256) {
+	function getReleaseInterval(address user) internal view returns (uint256) {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		return accountLayout.hasConfiguredInterval[user] ? accountLayout.releaseIntervals[user] : accountLayout.defaultReleaseInterval;
 	}
