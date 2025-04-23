@@ -4,10 +4,10 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { IMultiAccount } from "../interfaces/IMultiAccount.sol";
-import { ISignatureVerifier } from "../interfaces/ISignatureVerifier.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+
+import { IMultiAccount } from "../interfaces/IMultiAccount.sol";
 
 /// @title SymmioPartyA Contract
 /// @notice Account implementation for symmio platform

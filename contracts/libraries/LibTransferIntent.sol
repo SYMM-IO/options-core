@@ -5,10 +5,11 @@
 
 pragma solidity >=0.8.19;
 
-import { SymbolStorage } from "../storages/SymbolStorage.sol";
 import { TradeStorage } from "../storages/TradeStorage.sol";
-import { Symbol } from "../types/SymbolTypes.sol";
+import { SymbolStorage } from "../storages/SymbolStorage.sol";
+
 import { Trade } from "../types/TradeTypes.sol";
+import { Symbol } from "../types/SymbolTypes.sol";
 import { TransferIntent } from "../types/TransferIntentTypes.sol";
 
 library TransferIntentOps {

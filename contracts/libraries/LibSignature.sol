@@ -4,9 +4,9 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { ISignatureVerifier } from "../interfaces/ISignatureVerifier.sol";
-import { CommonErrors } from "./CommonErrors.sol";
 import { AppStorage } from "../storages/AppStorage.sol";
+
+import { ISignatureVerifier } from "../interfaces/ISignatureVerifier.sol";
 
 library LibSignature {
 	// Custom errors

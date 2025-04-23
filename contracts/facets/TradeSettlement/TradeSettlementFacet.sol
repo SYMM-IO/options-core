@@ -5,8 +5,10 @@
 pragma solidity >=0.8.19;
 
 import { SettlementPriceSig } from "../../types/SettlementTypes.sol";
-import { Accessibility } from "../../utils/Accessibility.sol";
+
 import { Pausable } from "../../utils/Pausable.sol";
+import { Accessibility } from "../../utils/Accessibility.sol";
+
 import { ITradeSettlementFacet } from "./ITradeSettlementFacet.sol";
 import { TradeSettlementFacetImpl } from "./TradeSettlementFacetImpl.sol";
 

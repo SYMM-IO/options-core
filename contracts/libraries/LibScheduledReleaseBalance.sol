@@ -5,10 +5,13 @@
 
 pragma solidity >=0.8.19;
 
-import { AccountStorage } from "../storages/AccountStorage.sol";
-import { ScheduledReleaseBalance, ScheduledReleaseEntry, IncreaseBalanceReason, DecreaseBalanceReason } from "../types/BalanceTypes.sol";
-import { MarginType } from "../types/BaseTypes.sol";
 import { LibParty } from "../libraries/LibParty.sol";
+
+import { AccountStorage } from "../storages/AccountStorage.sol";
+
+import { MarginType } from "../types/BaseTypes.sol";
+import { ScheduledReleaseBalance, ScheduledReleaseEntry, IncreaseBalanceReason, DecreaseBalanceReason } from "../types/BalanceTypes.sol";
+
 import { CommonErrors } from "./CommonErrors.sol";
 
 /// @title ScheduledReleaseBalanceOps

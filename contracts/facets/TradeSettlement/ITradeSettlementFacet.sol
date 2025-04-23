@@ -5,6 +5,7 @@
 pragma solidity >=0.8.19;
 
 import { SettlementPriceSig } from "../../types/SettlementTypes.sol";
+
 import { ITradeSettlementEvents } from "./ITradeSettlementEvents.sol";
 
 interface ITradeSettlementFacet is ITradeSettlementEvents {

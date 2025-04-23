@@ -4,14 +4,14 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { IPartiesEvents } from "../../interfaces/IPartiesEvents.sol";
-import { SignedFillIntentById, SignedSimpleActionIntent, SignedOpenIntent, SignedFillIntent } from "../../types/SignedIntentTypes.sol";
-import { OpenIntent, IntentStatus } from "../../types/IntentTypes.sol";
-import { Accessibility } from "../../utils/Accessibility.sol";
-import { Pausable } from "../../utils/Pausable.sol";
 import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
-import { IPartyAOpenEvents } from "../PartyAOpen/IPartyAOpenEvents.sol";
-import { IPartyBOpenEvents } from "../PartyBOpen/IPartyBOpenEvents.sol";
+
+import { OpenIntent, IntentStatus } from "../../types/IntentTypes.sol";
+import { SignedFillIntentById, SignedSimpleActionIntent, SignedOpenIntent, SignedFillIntent } from "../../types/SignedIntentTypes.sol";
+
+import { Pausable } from "../../utils/Pausable.sol";
+import { Accessibility } from "../../utils/Accessibility.sol";
+
 import { IInstantActionsOpenFacet } from "./IInstantActionsOpenFacet.sol";
 import { InstantActionsOpenFacetImpl } from "./InstantActionsOpenFacetImpl.sol";
 

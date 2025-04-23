@@ -4,9 +4,9 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { Accessibility } from "../../utils/Accessibility.sol";
 import { Pausable } from "../../utils/Pausable.sol";
-import { IInterdealerEvents } from "./IInterdealerEvents.sol";
+import { Accessibility } from "../../utils/Accessibility.sol";
+
 import { IInterdealerFacet } from "./IInterdealerFacet.sol";
 import { InterdealerFacetImpl } from "./InterdealerFacetImpl.sol";
 

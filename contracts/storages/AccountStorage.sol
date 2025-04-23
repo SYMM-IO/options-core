@@ -4,8 +4,8 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { ScheduledReleaseBalance } from "../types/BalanceTypes.sol";
 import { Withdraw } from "../types/WithdrawTypes.sol";
+import { ScheduledReleaseBalance } from "../types/BalanceTypes.sol";
 
 library AccountStorage {
 	bytes32 internal constant STORAGE_SLOT = keccak256("diamond.standard.storage.account");

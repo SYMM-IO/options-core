@@ -4,8 +4,9 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { IPartyAOpenEvents } from "./IPartyAOpenEvents.sol";
 import { TradeSide, ExerciseFee, MarginType } from "../../types/BaseTypes.sol";
+
+import { IPartyAOpenEvents } from "./IPartyAOpenEvents.sol";
 
 interface IPartyAOpenFacet is IPartyAOpenEvents {
 	function sendOpenIntent(

@@ -4,8 +4,9 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { IPartyBOpenEvents } from "./IPartyBOpenEvents.sol";
 import { MarginType } from "../../types/BaseTypes.sol";
+
+import { IPartyBOpenEvents } from "./IPartyBOpenEvents.sol";
 
 interface IPartyBOpenFacet is IPartyBOpenEvents {
 	function lockOpenIntent(uint256 intentId) external;
