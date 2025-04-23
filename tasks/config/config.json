@@ -1,0 +1,93 @@
+{
+	"configTitle": "unit-test",
+	"version": "1.0.0",
+	"admin": "",
+
+	"roles": {
+		"grant": [{ "address": "", "role": "" }],
+		"revoke": [{ "address": "", "role": "" }]
+	},
+
+	"collateral": {
+		"whiteList": [""],
+		"removeFromWhitelist": [""]
+	},
+
+	"pause": {
+		"global": true,
+		"deposit": true,
+		"withdraw": true,
+		"partyBActions": true,
+		"partyAActions": true,
+		"liquidating": true
+	},
+
+	"emergencyMode": false,
+	"partyBEmergencyStatus": [{ "address": "", "active": true }],
+
+	"priceOracleAddress": "",
+	"defaultFeeCollector": "",
+	"affiliateFeeCollector": [{ "affiliate": "", "collector": "" }],
+
+	"deactiveInstantActionModeCooldown": 0,
+	"unbindingCooldown": 120,
+	"maxConnectedPartyBs": 120,
+	"partyADeallocateCooldown": 0,
+	"partyBDeallocateCooldown": 0,
+
+	"forceCancelOpenIntentTimeout": 0,
+	"forceCancelCloseIntentTimeout": 0,
+	"settlementPriceSigValidTime": "",
+	"liquidationSigValidTime": "",
+
+	"maxCloseOrdersLength": 0,
+	"balanceLimitPerUser": 0,
+
+	"partyB": [
+		{
+			"address": "",
+			"isActive": true,
+			"lossCoverage": 0,
+			"oracleId": 1,
+			"symbolType": 0
+		}
+	],
+
+	"oracles": [
+		{
+			"name": "",
+			"address": ""
+		}
+	],
+
+	"symbols": [
+		{
+			"name": "",
+			"symbolId": "",
+			"isValid": true,
+			"collateral": "",
+			"optionType": "",
+			"oracleId": "",
+			"isStableCoin": true,
+			"tradingFee": "",
+			"symbolType": ""
+		}
+	],
+
+	"affiliates": [
+		{
+			"address": "",
+			"status": ""
+		}
+	],
+
+	"partyBReleaseInterval": [{ "partyB": "", "interval": 0 }],
+
+	"suspendAddress": [{ "address": "", "suspend": false }],
+
+	"suspendWithdrawal": [{ "withdrawId": "", "suspend": false }],
+
+	"instantActionsMode": [{ "address": "", "active": true }],
+
+	"instantActionsModeDeactivateTime": [{ "address": "", "time": 0 }]
+}
