@@ -222,7 +222,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 
 	function setMaxConnectedCounterParties(uint256 _max) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		AccountStorage.layout().maxConnectedCounterParties = _max;
-		emit MaxConnectedCounterPariesUpdated(_max);
+		emit MaxConnectedCounterPartiesUpdated(_max);
 	}
 
 	function setUnbindingCooldown(uint256 _cooldown) external onlyRole(LibAccessibility.SETTER_ROLE) {

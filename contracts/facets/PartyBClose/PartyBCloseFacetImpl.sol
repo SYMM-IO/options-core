@@ -80,8 +80,8 @@ library PartyBCloseFacetImpl {
 			revert PartyBCloseFacetErrors.TradeExpired(intent.tradeId, block.timestamp, trade.tradeAgreements.expirationTimestamp);
 
 		if (
-			(trade.tradeAgreements.tradeSide == TradeSide.BUY && price < intent.price) ||
-			(trade.tradeAgreements.tradeSide == TradeSide.SELL && price > intent.price)
+			(trade.tradeAgreements.tradeSide == TradeSide.BUY && price <= intent.price) ||
+			(trade.tradeAgreements.tradeSide == TradeSide.SELL && price >= intent.price)
 		) revert PartyBCloseFacetErrors.InvalidClosedPrice(price, intent.price);
 
 		uint256 pnl = (quantity * price) / 1e18;
