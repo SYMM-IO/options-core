@@ -59,6 +59,8 @@ library LibTradeOps {
 		if (tradeLayout.activeTradesOf[self.partyA].length >= AppStorage.layout().maxTradePerPartyA)
 			revert TooManyActiveTradesForPartyA(self.partyA, tradeLayout.activeTradesOf[self.partyA].length, AppStorage.layout().maxTradePerPartyA);
 
+		tradeLayout.trades[self.id] = self;
+
 		Symbol memory symbol = SymbolStorage.layout().symbols[self.tradeAgreements.symbolId];
 		tradeLayout.tradesOf[self.partyA].push(self.id);
 		tradeLayout.tradesOf[self.partyB].push(self.id);
