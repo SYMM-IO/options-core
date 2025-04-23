@@ -5,9 +5,9 @@
 pragma solidity >=0.8.19;
 
 import { Pausable } from "../../utils/Pausable.sol";
-import { ForceActionsFacetEvents } from "./ForceActionsFacetEvents.sol";
-import { ForceActionsFacetImpl } from "./ForceActionsFacetImpl.sol";
+
 import { IForceActionsFacet } from "./IForceActionsFacet.sol";
+import { ForceActionsFacetImpl } from "./ForceActionsFacetImpl.sol";
 
 /**
  * @title ForceActionsFacet

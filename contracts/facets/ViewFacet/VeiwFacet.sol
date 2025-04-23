@@ -5,26 +5,30 @@
 pragma solidity >=0.8.19;
 
 import { LibParty } from "../../libraries/LibParty.sol";
-import { AccountStorage } from "../../storages/AccountStorage.sol";
-import { AccessControlStorage } from "../../storages/AccessControlStorage.sol";
-import { TransferIntentStorage } from "../../storages/TransferIntentStorage.sol";
-import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
-import { CloseIntentStorage } from "../../storages/CloseIntentStorage.sol";
-import { StateControlStorage } from "../../storages/StateControlStorage.sol";
-import { FeeManagementStorage } from "../../storages/FeeManagementStorage.sol";
-import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
+
 import { TradeStorage } from "../../storages/TradeStorage.sol";
 import { BridgeStorage } from "../../storages/BridgeStorage.sol";
-import { LiquidationStorage } from "../../storages/LiquidationStorage.sol";
-import { BridgeTransaction } from "../../types/BridgeTypes.sol";
-import { Withdraw } from "../../types/WithdrawTypes.sol";
+import { AccountStorage } from "../../storages/AccountStorage.sol";
+import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
 import { AppStorage, PartyBConfig } from "../../storages/AppStorage.sol";
-import { LiquidationDetail, LiquidationState } from "../../types/LiquidationTypes.sol";
-import { Trade } from "../../types/TradeTypes.sol";
-import { OpenIntent, CloseIntent } from "../../types/IntentTypes.sol";
-import { TransferIntent } from "../../types/TransferIntentTypes.sol";
+import { CloseIntentStorage } from "../../storages/CloseIntentStorage.sol";
+import { LiquidationStorage } from "../../storages/LiquidationStorage.sol";
+import { StateControlStorage } from "../../storages/StateControlStorage.sol";
+import { AccessControlStorage } from "../../storages/AccessControlStorage.sol";
+import { FeeManagementStorage } from "../../storages/FeeManagementStorage.sol";
+import { TransferIntentStorage } from "../../storages/TransferIntentStorage.sol";
 import { SymbolStorage, Symbol, Oracle } from "../../storages/SymbolStorage.sol";
+import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
+
+import { Trade } from "../../types/TradeTypes.sol";
+import { Withdraw } from "../../types/WithdrawTypes.sol";
+import { BridgeTransaction } from "../../types/BridgeTypes.sol";
+import { TransferIntent } from "../../types/TransferIntentTypes.sol";
+import { OpenIntent, CloseIntent } from "../../types/IntentTypes.sol";
+import { LiquidationDetail, LiquidationState } from "../../types/LiquidationTypes.sol";
+
 import { IViewFacet } from "./IViewFacet.sol";
+
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 contract ViewFacet is IViewFacet {

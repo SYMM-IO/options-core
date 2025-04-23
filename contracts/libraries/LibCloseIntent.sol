@@ -4,10 +4,12 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { Trade } from "../types/TradeTypes.sol";
 import { TradeStorage } from "../storages/TradeStorage.sol";
 import { CloseIntentStorage } from "../storages/CloseIntentStorage.sol";
+
+import { Trade } from "../types/TradeTypes.sol";
 import { CloseIntent, IntentStatus } from "../types/IntentTypes.sol";
+
 import { CommonErrors } from "./CommonErrors.sol";
 
 library LibCloseIntentOps {

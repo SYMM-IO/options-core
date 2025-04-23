@@ -5,6 +5,7 @@
 pragma solidity >=0.8.19;
 
 import { SignedFillIntentById, SignedCloseIntent, SignedFillIntent, SignedSimpleActionIntent } from "../../types/SignedIntentTypes.sol";
+
 import { IInstantActionsCloseEvents } from "./IInstantActionsCloseEvents.sol";
 
 interface IInstantActionsCloseFacet is IInstantActionsCloseEvents {

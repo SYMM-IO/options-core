@@ -5,14 +5,17 @@
 pragma solidity >=0.8.19;
 
 import { LibAccessibility } from "../../libraries/LibAccessibility.sol";
-import { MarginType } from "../../types/BaseTypes.sol";
+
 import { AccountStorage, Withdraw } from "../../storages/AccountStorage.sol";
 import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
-import { Accessibility } from "../../utils/Accessibility.sol";
+
+import { MarginType } from "../../types/BaseTypes.sol";
+
 import { Pausable } from "../../utils/Pausable.sol";
-import { AccountFacetImpl } from "./AccountFacetImpl.sol";
-import { IAccountEvents } from "./IAccountEvents.sol";
+import { Accessibility } from "../../utils/Accessibility.sol";
+
 import { IAccountFacet } from "./IAccountFacet.sol";
+import { AccountFacetImpl } from "./AccountFacetImpl.sol";
 
 /**
  * @title AccountFacet

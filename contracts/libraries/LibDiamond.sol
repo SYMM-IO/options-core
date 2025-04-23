@@ -7,9 +7,6 @@ pragma solidity >=0.8.19;
 /******************************************************************************/
 
 import { IDiamondCut } from "../facets/DiamondCut/IDiamondCut.sol";
-import { IDiamondLoupe } from "../facets/DiamondLoup/IDiamondLoupe.sol";
-import { IERC165 } from "../interfaces/IERC165.sol";
-import { CommonErrors } from "./CommonErrors.sol";
 
 library LibDiamond {
 	// Custom errors

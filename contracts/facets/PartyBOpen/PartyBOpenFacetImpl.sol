@@ -4,24 +4,27 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
-import { ScheduledReleaseBalanceOps } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { LibParty } from "../../libraries/LibParty.sol";
 import { LibTradeOps } from "../../libraries/LibTrade.sol";
 import { LibUserData } from "../../libraries/LibUserData.sol";
-import { LibParty } from "../../libraries/LibParty.sol";
+import { CommonErrors } from "../../libraries/CommonErrors.sol";
+import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
+import { ScheduledReleaseBalanceOps } from "../../libraries/LibScheduledReleaseBalance.sol";
+
+import { AppStorage } from "../../storages/AppStorage.sol";
+import { TradeStorage } from "../../storages/TradeStorage.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
-import { TradeAgreements, TradeSide, MarginType } from "../../types/BaseTypes.sol";
-import { Trade, TradeStatus } from "../../types/TradeTypes.sol";
-import { OpenIntent, IntentStatus } from "../../types/IntentTypes.sol";
-import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 import { Symbol, SymbolStorage } from "../../storages/SymbolStorage.sol";
 import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
-import { AppStorage } from "../../storages/AppStorage.sol";
-import { FeeManagementStorage } from "../../storages/FeeManagementStorage.sol";
 import { StateControlStorage } from "../../storages/StateControlStorage.sol";
-import { TradeStorage } from "../../storages/TradeStorage.sol";
+import { FeeManagementStorage } from "../../storages/FeeManagementStorage.sol";
+
+import { Trade, TradeStatus } from "../../types/TradeTypes.sol";
+import { OpenIntent, IntentStatus } from "../../types/IntentTypes.sol";
+import { TradeAgreements, TradeSide, MarginType } from "../../types/BaseTypes.sol";
+import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
+
 import { PartyBOpenFacetErrors } from "./PartyBOpenFacetErrors.sol";
-import { CommonErrors } from "../../libraries/CommonErrors.sol";
 
 library PartyBOpenFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;

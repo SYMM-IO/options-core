@@ -5,11 +5,12 @@
 pragma solidity >=0.8.19;
 
 import { LibAccessibility } from "../../libraries/LibAccessibility.sol";
-import { Accessibility } from "../../utils/Accessibility.sol";
+
 import { Pausable } from "../../utils/Pausable.sol";
-import { BridgeFacetImpl } from "./BridgeFacetImpl.sol";
-import { IBridgeEvents } from "./IBridgeEvents.sol";
+import { Accessibility } from "../../utils/Accessibility.sol";
+
 import { IBridgeFacet } from "./IBridgeFacet.sol";
+import { BridgeFacetImpl } from "./BridgeFacetImpl.sol";
 
 /**
  * @title BridgeFacet

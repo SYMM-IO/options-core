@@ -5,9 +5,10 @@
 pragma solidity >=0.8.19;
 
 import { Trade } from "../../types/TradeTypes.sol";
-import { Accessibility } from "../../utils/Accessibility.sol";
+
 import { Pausable } from "../../utils/Pausable.sol";
-import { IPartyBCloseEvents } from "./IPartyBCloseEvents.sol";
+import { Accessibility } from "../../utils/Accessibility.sol";
+
 import { IPartyBCloseFacet } from "./IPartyBCloseFacet.sol";
 import { PartyBCloseFacetImpl } from "./PartyBCloseFacetImpl.sol";
 

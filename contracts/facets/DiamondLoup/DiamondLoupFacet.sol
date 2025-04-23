@@ -7,8 +7,10 @@ pragma solidity >=0.8.19;
 /******************************************************************************/
 
 import { LibDiamond } from "../../libraries/LibDiamond.sol";
-import { IDiamondLoupe } from "./IDiamondLoupe.sol";
+
 import { IERC165 } from "../../interfaces/IERC165.sol";
+
+import { IDiamondLoupe } from "./IDiamondLoupe.sol";
 
 contract DiamondLoupeFacet is IDiamondLoupe, IERC165 {
 	/// @notice Gets all facets and their selectors.

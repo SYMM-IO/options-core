@@ -5,11 +5,15 @@
 pragma solidity >=0.8.19;
 
 import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
+
+import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
+
 import { OpenIntent, IntentStatus } from "../../types/IntentTypes.sol";
 import { ExerciseFee, TradeSide, TradeAgreements, MarginType } from "../../types/BaseTypes.sol";
-import { Accessibility } from "../../utils/Accessibility.sol";
-import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
+
 import { Pausable } from "../../utils/Pausable.sol";
+import { Accessibility } from "../../utils/Accessibility.sol";
+
 import { IPartyAOpenFacet } from "./IPartyAOpenFacet.sol";
 import { PartyAOpenFacetImpl } from "./PartyAOpenFacetImpl.sol";
 

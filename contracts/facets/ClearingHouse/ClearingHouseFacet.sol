@@ -5,12 +5,14 @@
 pragma solidity >=0.8.19;
 
 import { LibAccessibility } from "../../libraries/LibAccessibility.sol";
+
 import { AccountStorage } from "../../storages/AccountStorage.sol";
-import { Accessibility } from "../../utils/Accessibility.sol";
+
 import { Pausable } from "../../utils/Pausable.sol";
-import { ClearingHouseFacetImpl } from "./ClearingHouseFacetImpl.sol";
-import { IClearingHouseEvents } from "./IClearingHouseEvents.sol";
+import { Accessibility } from "../../utils/Accessibility.sol";
+
 import { IClearingHouseFacet } from "./IClearingHouseFacet.sol";
+import { ClearingHouseFacetImpl } from "./ClearingHouseFacetImpl.sol";
 
 contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 	/**

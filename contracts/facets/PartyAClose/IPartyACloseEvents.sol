@@ -5,6 +5,7 @@
 pragma solidity >=0.8.19;
 
 import { IPartiesEvents } from "../../interfaces/IPartiesEvents.sol";
+
 interface IPartyACloseEvents is IPartiesEvents {
 	event SendCloseIntent(uint256 tradeId, uint256 intentId, uint256 price, uint256 quantity, uint256 deadline);
 	event CancelCloseIntent(uint256 intentId);

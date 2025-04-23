@@ -4,15 +4,17 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { IMultiAccount } from "../interfaces/IMultiAccount.sol";
-import { ISymmio } from "../interfaces/ISymmio.sol";
-import { ISymmioPartyA } from "../interfaces/ISymmioPartyA.sol";
-import { SignatureVerifier } from "./SignatureVerifier.sol";
-import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+
+import { ISymmio } from "../interfaces/ISymmio.sol";
+import { IMultiAccount } from "../interfaces/IMultiAccount.sol";
+import { ISymmioPartyA } from "../interfaces/ISymmioPartyA.sol";
+
+import { SignatureVerifier } from "./SignatureVerifier.sol";
 
 contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, PausableUpgradeable, AccessControlUpgradeable {
 	using SafeERC20Upgradeable for IERC20Upgradeable;

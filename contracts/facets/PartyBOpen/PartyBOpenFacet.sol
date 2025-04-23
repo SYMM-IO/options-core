@@ -4,11 +4,14 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { OpenIntent, IntentStatus } from "../../types/IntentTypes.sol";
-import { MarginType } from "../../types/BaseTypes.sol";
-import { Accessibility } from "../../utils/Accessibility.sol";
-import { Pausable } from "../../utils/Pausable.sol";
 import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
+
+import { MarginType } from "../../types/BaseTypes.sol";
+import { OpenIntent, IntentStatus } from "../../types/IntentTypes.sol";
+
+import { Pausable } from "../../utils/Pausable.sol";
+import { Accessibility } from "../../utils/Accessibility.sol";
+
 import { IPartyBOpenFacet } from "./IPartyBOpenFacet.sol";
 import { PartyBOpenFacetImpl } from "./PartyBOpenFacetImpl.sol";
 

@@ -4,9 +4,6 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { IMuonOracle } from "../interfaces/IMuonOracle.sol";
-import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-
 struct Price {
 	uint256 price;
 	uint256 timestamp;

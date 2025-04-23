@@ -6,11 +6,13 @@ pragma solidity >=0.8.19;
 
 import { AccountStorage } from "../storages/AccountStorage.sol";
 import { OpenIntentStorage } from "../storages/OpenIntentStorage.sol";
-import { OpenIntent, IntentStatus } from "../types/IntentTypes.sol";
-import { TradeSide, MarginType } from "../types/BaseTypes.sol";
-import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../types/BalanceTypes.sol";
-import { ScheduledReleaseBalanceOps } from "./LibScheduledReleaseBalance.sol";
 import { Symbol, SymbolStorage } from "../storages/SymbolStorage.sol";
+
+import { TradeSide, MarginType } from "../types/BaseTypes.sol";
+import { OpenIntent, IntentStatus } from "../types/IntentTypes.sol";
+import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../types/BalanceTypes.sol";
+
+import { ScheduledReleaseBalanceOps } from "./LibScheduledReleaseBalance.sol";
 import { CommonErrors } from "./CommonErrors.sol";
 
 library LibOpenIntentOps {
