@@ -181,8 +181,8 @@ library PartyBOpenFacetImpl {
 			);
 
 		if (
-			(intent.tradeAgreements.tradeSide == TradeSide.BUY && price >= intent.price) ||
-			(intent.tradeAgreements.tradeSide == TradeSide.SELL && price <= intent.price)
+			(intent.tradeAgreements.tradeSide == TradeSide.BUY && price > intent.price) ||
+			(intent.tradeAgreements.tradeSide == TradeSide.SELL && price < intent.price)
 		) revert PartyBOpenFacetErrors.InvalidOpenPrice(price, intent.price);
 
 		address affiliateFeeCollector = feeLayout.affiliateFeeCollector[intent.affiliate] == address(0)
