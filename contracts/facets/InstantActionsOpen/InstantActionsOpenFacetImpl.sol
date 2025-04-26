@@ -15,36 +15,6 @@ import { PartyBOpenFacetImpl } from "../PartyBOpen/PartyBOpenFacetImpl.sol";
 import { PartyAOpenFacetImpl } from "../PartyAOpen/PartyAOpenFacetImpl.sol";
 
 library InstantActionsOpenFacetImpl {
-	function instantFillOpenIntent(
-		SignedFillIntentById calldata signedFillOpenIntent,
-		bytes calldata partyBSignature
-	) internal returns (uint256 tradeId, uint256 newIntentId) {
-		bytes32 fillOpenIntentHash = LibHash.hashSignedFillOpenIntentById(signedFillOpenIntent);
-		LibSignature.verifySignature(fillOpenIntentHash, partyBSignature, signedFillOpenIntent.partyB);
-
-		(tradeId, newIntentId) = PartyBOpenFacetImpl.fillOpenIntent(
-			signedFillOpenIntent.partyB,
-			signedFillOpenIntent.marginType,
-			signedFillOpenIntent.intentId,
-			signedFillOpenIntent.quantity,
-			signedFillOpenIntent.price
-		);
-	}
-
-	function instantLock(SignedSimpleActionIntent calldata signedLockIntent, bytes calldata partyBSignature) internal {
-		bytes32 lockIntentHash = LibHash.hashSignedLockIntent(signedLockIntent);
-		LibSignature.verifySignature(lockIntentHash, partyBSignature, signedLockIntent.signer);
-
-		PartyBOpenFacetImpl.lockOpenIntent(signedLockIntent.signer, signedLockIntent.intentId);
-	}
-
-	function instantUnlock(SignedSimpleActionIntent calldata signedUnlockIntent, bytes calldata partyBSignature) internal returns (IntentStatus) {
-		bytes32 unlockIntentHash = LibHash.hashSignedUnlockIntent(signedUnlockIntent);
-		LibSignature.verifySignature(unlockIntentHash, partyBSignature, signedUnlockIntent.signer);
-
-		return PartyBOpenFacetImpl.unlockOpenIntent(signedUnlockIntent.signer, signedUnlockIntent.intentId);
-	}
-
 	function instantCreateAndFillOpenIntent(
 		SignedOpenIntent calldata signedOpenIntent,
 		bytes calldata partyASignature,
