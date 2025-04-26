@@ -18,6 +18,7 @@ import { CloseIntentStorage } from "../../storages/CloseIntentStorage.sol";
 import { Trade, TradeStatus } from "../../types/TradeTypes.sol";
 import { ScheduledReleaseBalance } from "../../types/BalanceTypes.sol";
 import { CloseIntent, IntentStatus } from "../../types/IntentTypes.sol";
+import { MarginType } from "../../types/BaseTypes.sol";
 
 import { ITradeNFT } from "../../interfaces/ITradeNFT.sol";
 import { PartyACloseFacetErrors } from "./PartyACloseFacetErrors.sol";
@@ -104,7 +105,10 @@ library PartyACloseFacetImpl {
 			revert CommonErrors.InvalidState("TradeStatus", uint8(trade.status), requiredStatuses);
 		}
 
-		trade.partyB.requireSolvent(symbol.collateral);
+		trade.partyB.requireSolventPartyB(trade.partyA, symbol.collateral, trade.partyBMarginType);
+		if (trade.tradeAgreements.marginType == MarginType.CROSS) {
+			trade.partyA.requireSolventPartyA(trade.partyB, symbol.collateral);
+		}
 
 		trade.remove();
 		trade.partyA = receiver;
