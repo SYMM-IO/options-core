@@ -10,7 +10,9 @@ library LiquidationStorage {
 	bytes32 internal constant SYMBOL_STORAGE_SLOT = keccak256("diamond.standard.storage.liquidation");
 
 	struct Layout {
-		mapping(address => mapping(address => LiquidationState)) liquidationStates; // partyBAddress => collateral => liquidationState
+		mapping(address => mapping(address => LiquidationState)) partyBLiquidationState; // partyBAddress => collateral => liquidationState
+		mapping(address => mapping(address => mapping(address => LiquidationState))) partyBCrossLiquidationState; // partyBAddress => partyAAddress => collateral => liquidationState
+		mapping(address => mapping(address => mapping(address => LiquidationState))) partyALiquidationState; // partyAAddress => partyBAddress => collateral => liquidationState
 		mapping(uint256 => LiquidationDetail) liquidationDetails; // liquidationId => detail
 		mapping(address => mapping(address => mapping(address => uint256))) liquidationDebtsToPartyAs; // partyB => collateral => partyA => amount
 		mapping(address => mapping(address => uint256)) involvedPartyAsCountInLiquidation; // partyB => collateral => number of connected partyAs

@@ -5,38 +5,71 @@
 pragma solidity >=0.8.19;
 
 import { AccountStorage } from "../storages/AccountStorage.sol";
+import { AppStorage } from "../storages/AppStorage.sol";
 import { LiquidationStorage } from "../storages/LiquidationStorage.sol";
 
 import { LiquidationStatus, LiquidationState, LiquidationDetail } from "../types/LiquidationTypes.sol";
+import { MarginType } from "../types/BaseTypes.sol";
 
 import { CommonErrors } from "./CommonErrors.sol";
 
 library LibParty {
 	// Custom errors
-	error NotSolvent(address user, address collateral);
+	error NotSolvent(address user, address counterParty, address collateral, MarginType marginType);
 
-	function requireSolvent(address self, address collateral) internal view {
-		if (!isSolvent(self, collateral)) revert NotSolvent(self, collateral);
+	function requireSolventParty(address self, address counterParty, address collateral, MarginType marginType) internal view {
+		if (!isSolvent(self, counterParty, collateral, marginType)) revert NotSolvent(self, counterParty, collateral, marginType);
+	}
+
+	function requireSolventPartyA(address self, address counterParty, address collateral) internal view {
+		if (LiquidationStorage.layout().partyALiquidationState[self][counterParty][collateral].status != LiquidationStatus.SOLVENT)
+			revert NotSolvent(self, counterParty, collateral, MarginType.CROSS);
+	}
+
+	function requireSolventPartyB(address self, address counterParty, address collateral, MarginType marginType) internal view {
+		if (
+			marginType == MarginType.ISOLATED &&
+			LiquidationStorage.layout().partyBLiquidationState[self][collateral].status != LiquidationStatus.SOLVENT
+		) revert NotSolvent(self, counterParty, collateral, marginType);
+		if (
+			marginType == MarginType.CROSS &&
+			LiquidationStorage.layout().partyBCrossLiquidationState[self][counterParty][collateral].status != LiquidationStatus.SOLVENT
+		) revert NotSolvent(self, counterParty, collateral, marginType);
 	}
 
 	function requireInProgressLiquidation(address self, address collateral) internal view {
-		if (LiquidationStorage.layout().liquidationStates[self][collateral].status != LiquidationStatus.IN_PROGRESS) {
+		if (LiquidationStorage.layout().partyBLiquidationState[self][collateral].status != LiquidationStatus.IN_PROGRESS) {
 			uint8[] memory requiredStatuses = new uint8[](1);
 			requiredStatuses[0] = uint8(LiquidationStatus.IN_PROGRESS);
 			revert CommonErrors.InvalidState(
 				"LiquidationStatus",
-				uint8(LiquidationStorage.layout().liquidationStates[self][collateral].status),
+				uint8(LiquidationStorage.layout().partyBLiquidationState[self][collateral].status),
 				requiredStatuses
 			);
 		}
 	}
 
-	function isSolvent(address self, address collateral) internal view returns (bool) {
-		return LiquidationStorage.layout().liquidationStates[self][collateral].status == LiquidationStatus.SOLVENT;
+	function isSolvent(address self, address counterParty, address collateral, MarginType marginType) internal view returns (bool) {
+		if (AppStorage.layout().partyBConfigs[self].isActive) {
+			if (
+				marginType == MarginType.ISOLATED &&
+				LiquidationStorage.layout().partyBLiquidationState[self][collateral].status != LiquidationStatus.SOLVENT
+			) return false;
+			if (
+				marginType == MarginType.CROSS &&
+				LiquidationStorage.layout().partyBCrossLiquidationState[self][counterParty][collateral].status != LiquidationStatus.SOLVENT
+			) return false;
+		} else {
+			if (
+				marginType == MarginType.CROSS &&
+				LiquidationStorage.layout().partyALiquidationState[self][counterParty][collateral].status != LiquidationStatus.SOLVENT
+			) return false;
+		}
+		return true;
 	}
 
 	function getLiquidationState(address self, address collateral) internal view returns (LiquidationState storage) {
-		return LiquidationStorage.layout().liquidationStates[self][collateral];
+		return LiquidationStorage.layout().partyBLiquidationState[self][collateral];
 	}
 
 	function getInProgressLiquidationDetail(address self, address collateral) internal view returns (LiquidationDetail storage) {
