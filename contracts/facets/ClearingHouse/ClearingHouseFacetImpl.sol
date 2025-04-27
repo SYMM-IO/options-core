@@ -36,11 +36,11 @@ library ClearingHouseFacetImpl {
 
 		if (appLayout.partyBConfigs[partyB].lossCoverage == 0) revert ClearingHouseFacetErrors.ZeroLossCoverage(partyB);
 
-		partyB.requireSolvent(collateral);
+		// partyB.requiresSolventParty(collateral);
 
 		liquidationId = ++liquidationLayout.lastLiquidationId;
 
-		liquidationLayout.liquidationStates[partyB][collateral] = LiquidationState({
+		liquidationLayout.partyBLiquidationState[partyB][collateral] = LiquidationState({
 			inProgressLiquidationId: liquidationId,
 			status: LiquidationStatus.FLAGGED
 		});

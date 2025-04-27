@@ -291,7 +291,7 @@ library ScheduledReleaseBalanceOps {
 	 */
 	function _sync(ScheduledReleaseBalance storage self, address counterParty, MarginType marginType, bool removeCounterPartyOnEmpty) internal {
 		// insolvent counter‑party ⇒ keep everything locked
-		if (!counterParty.isSolvent(self.collateral)) {
+		if (!counterParty.isSolvent(self.user, self.collateral, marginType)) {
 			return;
 		}
 

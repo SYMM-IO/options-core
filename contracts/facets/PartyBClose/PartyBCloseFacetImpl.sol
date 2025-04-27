@@ -14,7 +14,7 @@ import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { SymbolStorage, Symbol } from "../../storages/SymbolStorage.sol";
 import { CloseIntentStorage } from "../../storages/CloseIntentStorage.sol";
 
-import { TradeSide } from "../../types/BaseTypes.sol";
+import { TradeSide, MarginType } from "../../types/BaseTypes.sol";
 import { Trade, TradeStatus } from "../../types/TradeTypes.sol";
 import { CloseIntent, IntentStatus } from "../../types/IntentTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
@@ -41,7 +41,6 @@ library PartyBCloseFacetImpl {
 			revert CommonErrors.InvalidState("IntentStatus", uint8(intent.status), requiredStatuses);
 		}
 
-		trade.partyB.requireSolvent(SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId].collateral);
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = IntentStatus.CANCELED;
 		intent.remove();
@@ -56,7 +55,10 @@ library PartyBCloseFacetImpl {
 
 		if (sender != trade.partyB) revert CommonErrors.UnauthorizedSender(sender, trade.partyB);
 
-		trade.partyB.requireSolvent(symbol.collateral);
+		sender.requireSolventPartyB(trade.partyA, symbol.collateral, trade.partyBMarginType);
+		if (trade.tradeAgreements.marginType == MarginType.CROSS) {
+			trade.partyA.requireSolventPartyA(trade.partyB, symbol.collateral);
+		}
 
 		if (quantity == 0 || quantity > intent.quantity - intent.filledAmount)
 			revert PartyBCloseFacetErrors.InvalidFilledAmount(quantity, intent.quantity - intent.filledAmount);
@@ -80,8 +82,8 @@ library PartyBCloseFacetImpl {
 			revert PartyBCloseFacetErrors.TradeExpired(intent.tradeId, block.timestamp, trade.tradeAgreements.expirationTimestamp);
 
 		if (
-			(trade.tradeAgreements.tradeSide == TradeSide.BUY && price <= intent.price) ||
-			(trade.tradeAgreements.tradeSide == TradeSide.SELL && price >= intent.price)
+			(trade.tradeAgreements.tradeSide == TradeSide.BUY && price < intent.price) ||
+			(trade.tradeAgreements.tradeSide == TradeSide.SELL && price > intent.price)
 		) revert PartyBCloseFacetErrors.InvalidClosedPrice(price, intent.price);
 
 		uint256 pnl = (quantity * price) / 1e18;

@@ -24,40 +24,6 @@ import { InstantActionsOpenFacetImpl } from "./InstantActionsOpenFacetImpl.sol";
  */
 contract InstantActionsOpenFacet is Accessibility, Pausable, IInstantActionsOpenFacet {
 	/**
-	 * @notice Locks an open intent on behalf of PartyB using their cryptographic signature
-	 * @dev Verifies the signature against the provided intent data before executing the lock
-	 *      Equivalent to PartyB calling lockOpenIntent directly but can be executed by anyone
-	 * @param signedLockIntent The intent data structure containing the intent ID
-	 * @param partyBSignature Cryptographic signature from PartyB authorizing this action
-	 */
-	function instantLock(
-		SignedSimpleActionIntent calldata signedLockIntent,
-		bytes calldata partyBSignature
-	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		InstantActionsOpenFacetImpl.instantLock(signedLockIntent, partyBSignature);
-		emit LockOpenIntent(signedLockIntent.intentId, signedLockIntent.signer);
-	}
-
-	/**
-	 * @notice Unlocks a previously locked open intent on behalf of PartyB using their signature
-	 * @dev Verifies the signature before executing the unlock action
-	 *      The intent may transition to EXPIRED or PENDING state depending on its deadline
-	 * @param signedUnlockIntent The intent data structure containing the intent ID
-	 * @param partyBSignature Cryptographic signature from PartyB authorizing this action
-	 */
-	function instantUnlock(
-		SignedSimpleActionIntent calldata signedUnlockIntent,
-		bytes calldata partyBSignature
-	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		IntentStatus finalStatus = InstantActionsOpenFacetImpl.instantUnlock(signedUnlockIntent, partyBSignature);
-		if (finalStatus == IntentStatus.EXPIRED) {
-			emit ExpireOpenIntent(signedUnlockIntent.intentId);
-		} else if (finalStatus == IntentStatus.PENDING) {
-			emit UnlockOpenIntent(signedUnlockIntent.intentId);
-		}
-	}
-
-	/**
 	 * @notice Cancels an open intent using signatures from both PartyA and PartyB
 	 * @dev Requires signatures from both parties to execute the cancellation in a single transaction
 	 *      This atomic operation replaces the two-step process of PartyA requesting cancellation
@@ -83,35 +49,6 @@ contract InstantActionsOpenFacet is Accessibility, Pausable, IInstantActionsOpen
 			emit ExpireOpenIntent(signedCancelOpenIntent.intentId);
 		} else if (finalStatus == IntentStatus.CANCELED) {
 			emit CancelOpenIntent(signedCancelOpenIntent.intentId, IntentStatus.CANCELED);
-		}
-	}
-
-	/**
-	 * @notice Fills an existing open intent on behalf of PartyB using their signature
-	 * @dev Executes the trade creation based on the intent and PartyB's signed parameters
-	 *      May create a new intent for any unfilled quantity (partial fill)
-	 * @param signedFillOpenIntent The fill data including intent ID, quantity, and price
-	 * @param partyBSignature Cryptographic signature from PartyB authorizing the fill
-	 */
-	function instantFillOpenIntent(
-		SignedFillIntentById calldata signedFillOpenIntent,
-		bytes calldata partyBSignature
-	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		(uint256 tradeId, uint256 newIntentId) = InstantActionsOpenFacetImpl.instantFillOpenIntent(signedFillOpenIntent, partyBSignature);
-		emit FillOpenIntent(
-			signedFillOpenIntent.intentId,
-			tradeId,
-			signedFillOpenIntent.quantity,
-			signedFillOpenIntent.price,
-			signedFillOpenIntent.marginType
-		);
-		if (newIntentId != 0) {
-			OpenIntent storage newIntent = OpenIntentStorage.layout().openIntents[newIntentId];
-			_emitSendOpenIntent(newIntent);
-			if (newIntent.status == IntentStatus.CANCELED) {
-				emit CancelOpenIntent(newIntentId, IntentStatus.CANCEL_PENDING);
-				emit AcceptCancelOpenIntent(newIntent.id);
-			}
 		}
 	}
 

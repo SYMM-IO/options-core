@@ -9,18 +9,12 @@ import { SignedFillIntentById, SignedOpenIntent, SignedFillIntent, SignedSimpleA
 import { IInstantActionsOpenEvents } from "./IInstantActionsOpenEvents.sol";
 
 interface IInstantActionsOpenFacet is IInstantActionsOpenEvents {
-	function instantLock(SignedSimpleActionIntent calldata signedLockIntent, bytes calldata partyBSignature) external;
-
-	function instantUnlock(SignedSimpleActionIntent calldata signedUnlockIntent, bytes calldata partyBSignature) external;
-
 	function instantCancelOpenIntent(
 		SignedSimpleActionIntent calldata signedCancelOpenIntent,
 		bytes calldata partyASignature,
 		SignedSimpleActionIntent calldata signedAcceptCancelOpenIntent,
 		bytes calldata partyBSignature
 	) external;
-
-	function instantFillOpenIntent(SignedFillIntentById calldata signedFillOpenIntent, bytes calldata partyBSignature) external;
 
 	function instantCreateAndFillOpenIntent(
 		SignedOpenIntent calldata signedOpenIntent,

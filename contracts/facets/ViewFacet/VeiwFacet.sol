@@ -791,8 +791,8 @@ contract ViewFacet is IViewFacet {
 		return AppStorage.layout().version;
 	}
 
-	function liquidationStates(address partyBAddress, address collateral) external view returns (LiquidationState memory) {
-		return LiquidationStorage.layout().liquidationStates[partyBAddress][collateral];
+	function partyBLiquidationState(address partyBAddress, address collateral) external view returns (LiquidationState memory) {
+		return LiquidationStorage.layout().partyBLiquidationState[partyBAddress][collateral];
 	}
 
 	function liquidationDetail(uint256 liquidationId) external view returns (LiquidationDetail memory) {
