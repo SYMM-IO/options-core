@@ -110,10 +110,10 @@ library LibOpenIntentOps {
 		if (self.tradeAgreements.marginType == MarginType.ISOLATED) {
 			if (isUserPaying) {
 				partyAFeeBalance.isolatedSub(tradingFee + affiliateFee, DecreaseBalanceReason.FEE);
-				if (self.tradeAgreements.tradeSide == TradeSide.BUY) partyABalance.isolatedLock(premium);
+				partyABalance.isolatedLock(premium);
 			} else {
 				partyAFeeBalance.instantIsolatedAdd(tradingFee + affiliateFee, IncreaseBalanceReason.FEE);
-				if (self.tradeAgreements.tradeSide == TradeSide.BUY) partyABalance.isolatedUnlock(premium);
+				partyABalance.isolatedUnlock(premium);
 			}
 		} else {
 			if (isUserPaying) {

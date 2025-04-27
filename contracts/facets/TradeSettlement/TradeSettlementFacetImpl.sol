@@ -91,6 +91,12 @@ library TradeSettlementFacetImpl {
 			trade.settledPrice = sig.settlementPrice;
 
 			if (trade.tradeAgreements.tradeSide == TradeSide.BUY) {
+				accountLayout.balances[trade.partyB][symbol.collateral].scheduledAdd(
+					trade.partyA,
+					(trade.getPremium() * trade.getOpenAmount()) / trade.tradeAgreements.quantity,
+					trade.partyBMarginType,
+					IncreaseBalanceReason.PREMIUM
+				);
 				accountLayout.balances[trade.partyB][symbol.collateral].subForCounterParty(
 					trade.partyA,
 					amountToTransfer,
