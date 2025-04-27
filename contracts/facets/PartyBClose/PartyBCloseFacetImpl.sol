@@ -109,13 +109,13 @@ library PartyBCloseFacetImpl {
 				trade.partyB,
 				pnl,
 				trade.tradeAgreements.marginType,
-				DecreaseBalanceReason.REALIZED_PNL
+				DecreaseBalanceReason.PREMIUM
 			);
 			accountLayout.balances[trade.partyB][symbol.collateral].scheduledAdd(
 				trade.partyA,
 				pnl,
 				trade.partyBMarginType,
-				IncreaseBalanceReason.REALIZED_PNL
+				IncreaseBalanceReason.PREMIUM
 			);
 		}
 
