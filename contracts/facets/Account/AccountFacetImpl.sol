@@ -96,7 +96,7 @@ library AccountFacetImpl {
 			revert AccountFacetErrors.InstantActionModeActive(msg.sender);
 		}
 
-		msg.sender.requireSolvent(collateral);
+		msg.sender.requireSolventParty(address(0), collateral, MarginType.ISOLATED);
 
 		accountLayout.balances[msg.sender][collateral].isolatedSub(amount, DecreaseBalanceReason.WITHDRAW);
 
@@ -124,7 +124,7 @@ library AccountFacetImpl {
 
 		Withdraw storage withdrawal = accountLayout.withdrawals[id];
 
-		withdrawal.user.requireSolvent(withdrawal.collateral);
+		withdrawal.user.requireSolventParty(address(0), withdrawal.collateral, MarginType.ISOLATED);
 
 		if (withdrawal.status != WithdrawStatus.INITIATED) {
 			uint8[] memory requiredStatuses = new uint8[](1);

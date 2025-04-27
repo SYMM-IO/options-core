@@ -15,7 +15,7 @@ import { TradeStorage } from "../../storages/TradeStorage.sol";
 import { SymbolStorage } from "../../storages/SymbolStorage.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 
-import { TradeSide } from "../../types/BaseTypes.sol";
+import { TradeSide, MarginType } from "../../types/BaseTypes.sol";
 import { IntentStatus } from "../../types/IntentTypes.sol";
 import { Trade, TradeStatus } from "../../types/TradeTypes.sol";
 import { Symbol, OptionType } from "../../types/SymbolTypes.sol";
@@ -35,7 +35,11 @@ library TradeSettlementFacetImpl {
 		Trade storage trade = TradeStorage.layout().trades[tradeId];
 		Symbol storage symbol = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId];
 		LibMuon.verifySettlementPriceSig(sig);
-		trade.partyB.requireSolvent(symbol.collateral);
+
+		trade.partyB.requireSolventPartyB(trade.partyA, symbol.collateral, trade.partyBMarginType);
+		if (trade.tradeAgreements.marginType == MarginType.CROSS) {
+			trade.partyA.requireSolventPartyA(trade.partyB, symbol.collateral);
+		}
 
 		if (sig.symbolId != trade.tradeAgreements.symbolId)
 			revert TradeSettlementFacetErrors.InvalidSymbolId(sig.symbolId, trade.tradeAgreements.symbolId);
@@ -87,6 +91,12 @@ library TradeSettlementFacetImpl {
 			trade.settledPrice = sig.settlementPrice;
 
 			if (trade.tradeAgreements.tradeSide == TradeSide.BUY) {
+				accountLayout.balances[trade.partyB][symbol.collateral].scheduledAdd(
+					trade.partyA,
+					(trade.getPremium() * trade.getOpenAmount()) / trade.tradeAgreements.quantity,
+					trade.partyBMarginType,
+					IncreaseBalanceReason.PREMIUM
+				);
 				accountLayout.balances[trade.partyB][symbol.collateral].subForCounterParty(
 					trade.partyA,
 					amountToTransfer,
