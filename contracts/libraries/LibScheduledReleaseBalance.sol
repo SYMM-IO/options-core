@@ -229,7 +229,8 @@ library ScheduledReleaseBalanceOps {
 	function allocateBalance(ScheduledReleaseBalance storage self, address counterParty, uint256 amount) internal {
 		if (amount == 0) return;
 		if (counterParty == address(0)) revert CommonErrors.ZeroAddress("counterParty");
-		if (self.isolatedBalance < amount) revert InsufficientBalance(self.collateral, amount, int256(self.isolatedBalance));
+		if (self.isolatedBalance - self.isolatedLockedBalance < amount)
+			revert InsufficientBalance(self.collateral, amount, int256(self.isolatedBalance));
 
 		self.isolatedBalance -= amount;
 		self.crossBalance[counterParty].balance += int256(amount);
