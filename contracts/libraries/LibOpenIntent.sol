@@ -108,11 +108,30 @@ library LibOpenIntentOps {
 		uint256 premium = getPremium(self);
 
 		if (self.tradeAgreements.marginType == MarginType.ISOLATED) {
-			if (isUserPaying) {
-				partyAFeeBalance.isolatedSub(tradingFee + affiliateFee, DecreaseBalanceReason.FEE);
+			if (isUserPaying) {ّ
+				if (self.partyBsWhiteList.length == 1) {
+					partyAFeeBalance.subForCounterParty(
+						self.partyBsWhiteList[0],
+						tradingFee + affiliateFee,
+						self.tradeAgreements.marginType,
+						DecreaseBalanceReason.FEE
+					);
+				} else {
+					partyAFeeBalance.isolatedSub(tradingFee + affiliateFee, DecreaseBalanceReason.FEE);
+				}
 				partyABalance.isolatedLock(premium);
 			} else {
-				partyAFeeBalance.instantIsolatedAdd(tradingFee + affiliateFee, IncreaseBalanceReason.FEE);
+				if (self.partyBsWhiteList.length == 1) {
+					partyAFeeBalance.scheduledAdd(
+						self.partyBsWhiteList[0],
+						tradingFee + affiliateFee,
+						self.tradeAgreements.marginType,
+						IncreaseBalanceReason.FEE
+					);
+				} else {
+					partyAFeeBalance.instantIsolatedAdd(tradingFee + affiliateFee, IncreaseBalanceReason.FEE);
+				}
+
 				partyABalance.isolatedUnlock(premium);
 			}
 		} else {
