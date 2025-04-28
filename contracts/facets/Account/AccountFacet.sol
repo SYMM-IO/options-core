@@ -149,7 +149,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 			collateral,
 			counterParty,
 			amount,
-			AccountStorage.layout().balances[msg.sender][collateral].crossBalance[counterParty]
+			AccountStorage.layout().balances[msg.sender][collateral].crossBalance[counterParty].balance
 		);
 	}
 
@@ -166,7 +166,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 			collateral,
 			counterParty,
 			amount,
-			AccountStorage.layout().balances[msg.sender][collateral].crossBalance[counterParty]
+			AccountStorage.layout().balances[msg.sender][collateral].crossBalance[counterParty].balance
 		);
 	}
 

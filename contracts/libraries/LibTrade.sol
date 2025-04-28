@@ -70,7 +70,7 @@ library LibTradeOps {
 		tradeLayout.partyATradesIndex[self.id] = tradeLayout.activeTradesOf[self.partyA].length - 1;
 		tradeLayout.partyBTradesIndex[self.id] = tradeLayout.activeTradesOfPartyB[self.partyB][symbol.collateral].length - 1;
 
-		AccountStorage.layout().balances[self.partyA][symbol.collateral].addCounterParty(self.partyB, self.tradeAgreements.marginType);
+		AccountStorage.layout().balances[self.partyA][symbol.collateral].addCounterParty(self.partyB);
 	}
 
 	function remove(Trade memory self) internal {

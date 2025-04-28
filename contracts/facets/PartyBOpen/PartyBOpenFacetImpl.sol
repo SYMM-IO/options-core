@@ -164,6 +164,8 @@ library PartyBOpenFacetImpl {
 			revert CommonErrors.InvalidState("IntentStatus", uint8(intent.status), requiredStatuses);
 		}
 
+		if (intent.tradeAgreements.marginType == MarginType.CROSS && partyBMarginType != MarginType.CROSS) revert();
+
 		intent.partyB.requireSolventPartyB(intent.partyA, symbol.collateral, partyBMarginType);
 		if (intent.tradeAgreements.marginType == MarginType.CROSS) {
 			intent.partyA.requireSolventPartyA(intent.partyB, symbol.collateral);
@@ -295,6 +297,10 @@ library PartyBOpenFacetImpl {
 				DecreaseBalanceReason.PREMIUM
 			);
 		} else {
+			if (intent.tradeAgreements.marginType == MarginType.CROSS) {
+				accountLayout.balances[trade.partyA][symbol.collateral].crossUnlock(trade.partyB, trade.tradeAgreements.mm);
+				accountLayout.balances[trade.partyA][symbol.collateral].increaseMM(trade.partyB, trade.tradeAgreements.mm);
+			}
 			accountLayout.balances[trade.partyB][symbol.collateral].subForCounterParty(
 				trade.partyA,
 				trade.getPremium(),
