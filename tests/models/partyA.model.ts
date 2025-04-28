@@ -50,6 +50,10 @@ export class PartyA {
 	}
 
 	public async sendCancelOpenIntent(ids: string[]) {
+		await runTx(this.context.partyAOpenFacet.connect(this.signer).cancelOpenIntent(ids))
+	}
+
+	public async sendCancelCloseIntent(ids: string[]) {
 		await runTx(this.context.partyACloseFacet.connect(this.signer).cancelCloseIntent(ids))
 	}
 
@@ -59,5 +63,9 @@ export class PartyA {
 
 	public async deactivateInstantActionMode() {
 		await runTx(this.context.accountFacet.connect(this.signer).deactivateInstantActionMode())
+	}
+
+	public async forceCancelOpenIntent(id: string) {
+		await runTx(this.context.forceActionsFacet.connect(this.signer).forceCancelOpenIntent(id))
 	}
 }

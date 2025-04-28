@@ -22,15 +22,15 @@ export class PartyB {
 	}
 
 	public async lockOpenIntent(id: BigNumberish) {
-		await runTx(this.context.partyBFacet.connect(this.signer).lockOpenIntent(id))
+		await runTx(this.context.partyBOpenFacet.connect(this.signer).lockOpenIntent(id))
 	}
 
 	public async unlockOpenIntent(id: BigNumberish) {
-		await runTx(this.context.partyBFacet.connect(this.signer).unlockOpenIntent(id))
+		await runTx(this.context.partyBOpenFacet.connect(this.signer).unlockOpenIntent(id))
 	}
 
-	public async fillOpenIntent(id: BigNumberish, quantity: BigNumberish, price: BigNumberish) {
-		await runTx(this.context.partyBFacet.connect(this.signer).fillOpenIntent(id, quantity, price))
+	public async fillOpenIntent(id: BigNumberish, quantity: BigNumberish, price: BigNumberish, marginType: BigNumberish) {
+		await runTx(this.context.partyBOpenFacet.connect(this.signer).fillOpenIntent(id, quantity, price, marginType))
 	}
 
 	public getSigner() {
