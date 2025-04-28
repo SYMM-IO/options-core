@@ -12,7 +12,7 @@ import { CloseIntentStorage } from "../storages/CloseIntentStorage.sol";
 
 import { Trade, TradeStatus } from "../types/TradeTypes.sol";
 import { Symbol, OptionType } from "../types/SymbolTypes.sol";
-import { ScheduledReleaseBalance } from "../types/BalanceTypes.sol";
+import { ScheduledReleaseBalance, MarginType } from "../types/BalanceTypes.sol";
 import { CloseIntent, IntentStatus } from "../types/IntentTypes.sol";
 
 import { LibCloseIntentOps } from "./LibCloseIntent.sol";
@@ -55,6 +55,7 @@ library LibTradeOps {
 
 	function save(Trade memory self) internal {
 		TradeStorage.Layout storage tradeLayout = TradeStorage.layout();
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
 		if (tradeLayout.activeTradesOf[self.partyA].length >= AppStorage.layout().maxTradePerPartyA)
 			revert TooManyActiveTradesForPartyA(self.partyA, tradeLayout.activeTradesOf[self.partyA].length, AppStorage.layout().maxTradePerPartyA);
@@ -70,7 +71,13 @@ library LibTradeOps {
 		tradeLayout.partyATradesIndex[self.id] = tradeLayout.activeTradesOf[self.partyA].length - 1;
 		tradeLayout.partyBTradesIndex[self.id] = tradeLayout.activeTradesOfPartyB[self.partyB][symbol.collateral].length - 1;
 
-		AccountStorage.layout().balances[self.partyA][symbol.collateral].addCounterParty(self.partyB);
+		accountLayout.balances[self.partyA][symbol.collateral].addCounterParty(self.partyB);
+		if (self.tradeAgreements.marginType == MarginType.CROSS) {
+			accountLayout.nonces[self.partyA][self.partyB] += 1;
+			accountLayout.nonces[self.partyB][self.partyA] += 1;
+		} else if (self.partyBMarginType == MarginType.CROSS) {
+			accountLayout.nonces[self.partyB][self.partyA] += 1;
+		}
 	}
 
 	function remove(Trade memory self) internal {
@@ -96,6 +103,8 @@ library LibTradeOps {
 	}
 
 	function close(Trade storage self, TradeStatus tradeStatus, IntentStatus intentStatus) internal {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		
 		uint256 len = self.activeCloseIntentIds.length;
 		for (uint8 i = 0; i < len; i++) {
 			CloseIntent storage intent = CloseIntentStorage.layout().closeIntents[self.activeCloseIntentIds[0]];
@@ -105,6 +114,14 @@ library LibTradeOps {
 		}
 		self.status = tradeStatus;
 		self.statusModifyTimestamp = block.timestamp;
+		
+		if (self.tradeAgreements.marginType == MarginType.CROSS) {
+			accountLayout.nonces[self.partyA][self.partyB] += 1;
+			accountLayout.nonces[self.partyB][self.partyA] += 1;
+		} else if (self.partyBMarginType == MarginType.CROSS) {
+			accountLayout.nonces[self.partyB][self.partyA] += 1;
+		}
+		
 		remove(self);
 	}
 }

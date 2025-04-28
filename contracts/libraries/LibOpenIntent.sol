@@ -108,7 +108,7 @@ library LibOpenIntentOps {
 		uint256 premium = getPremium(self);
 
 		if (self.tradeAgreements.marginType == MarginType.ISOLATED) {
-			if (isUserPaying) {ّ
+			if (isUserPaying) {
 				if (self.partyBsWhiteList.length == 1) {
 					partyAFeeBalance.subForCounterParty(
 						self.partyBsWhiteList[0],
