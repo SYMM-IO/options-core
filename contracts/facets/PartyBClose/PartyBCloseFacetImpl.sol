@@ -88,12 +88,20 @@ library PartyBCloseFacetImpl {
 
 		uint256 pnl = (quantity * price) / 1e18;
 		if (trade.tradeAgreements.tradeSide == TradeSide.BUY) {
-			accountLayout.balances[trade.partyB][symbol.collateral].scheduledAdd(
-				trade.partyA,
-				(trade.getPremium() * quantity) / trade.tradeAgreements.quantity,
-				trade.partyBMarginType,
-				IncreaseBalanceReason.PREMIUM
-			);
+			if (trade.tradeAgreements.marginType == MarginType.ISOLATED && trade.partyBMarginType == MarginType.ISOLATED) {
+				accountLayout.balances[trade.partyB][symbol.collateral].instantIsolatedAdd(
+					(trade.getPremium() * quantity) / trade.tradeAgreements.quantity,
+					IncreaseBalanceReason.PREMIUM
+				);
+			} else {
+				accountLayout.balances[trade.partyB][symbol.collateral].scheduledAdd(
+					trade.partyA,
+					(trade.getPremium() * quantity) / trade.tradeAgreements.quantity,
+					trade.partyBMarginType,
+					IncreaseBalanceReason.PREMIUM
+				);
+			}
+
 			accountLayout.balances[trade.partyB][symbol.collateral].subForCounterParty(
 				trade.partyA,
 				pnl,
@@ -107,6 +115,12 @@ library PartyBCloseFacetImpl {
 				IncreaseBalanceReason.REALIZED_PNL
 			);
 		} else {
+			if (trade.tradeAgreements.marginType == MarginType.CROSS) {
+				accountLayout.balances[trade.partyA][symbol.collateral].decreaseMM(
+					trade.partyB,
+					(trade.tradeAgreements.mm * quantity) / trade.tradeAgreements.quantity
+				);
+			}
 			accountLayout.balances[trade.partyA][symbol.collateral].subForCounterParty(
 				trade.partyB,
 				pnl,

@@ -17,6 +17,7 @@ library AccountStorage {
 		uint256 defaultReleaseInterval;
 		uint256 maxConnectedCounterParties;
 		mapping(address => bool) manualSync; // allows unlimited counter parties but require user to manual sync their balances (should be set to true for partyBs)
+		mapping(address => mapping(address => uint256)) nonces;
 		/////////////////////////////////////////////////////////
 		mapping(uint256 => Withdraw) withdrawals;
 		uint256 lastWithdrawId;

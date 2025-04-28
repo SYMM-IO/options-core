@@ -124,7 +124,7 @@ library LibOpenIntentOps {
 					DecreaseBalanceReason.FEE
 				);
 				if (self.tradeAgreements.tradeSide == TradeSide.BUY) partyABalance.crossLock(self.partyBsWhiteList[0], premium);
-				else partyABalance.increaseMM(self.partyBsWhiteList[0], self.tradeAgreements.mm);
+				else partyABalance.crossLock(self.partyBsWhiteList[0], self.tradeAgreements.mm);
 			} else {
 				partyAFeeBalance.scheduledAdd(
 					self.partyBsWhiteList[0],
@@ -133,7 +133,7 @@ library LibOpenIntentOps {
 					IncreaseBalanceReason.FEE
 				);
 				if (self.tradeAgreements.tradeSide == TradeSide.BUY) partyABalance.crossUnlock(self.partyBsWhiteList[0], premium);
-				else partyABalance.decreaseMM(self.partyBsWhiteList[0], self.tradeAgreements.mm);
+				else partyABalance.crossUnlock(self.partyBsWhiteList[0], self.tradeAgreements.mm);
 			}
 		}
 	}

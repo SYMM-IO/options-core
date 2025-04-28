@@ -85,7 +85,7 @@ library AccountFacetImpl {
 			revert CommonErrors.ZeroAddress("to");
 		}
 
-		accountLayout.balances[msg.sender][collateral].syncAll(MarginType.ISOLATED);
+		accountLayout.balances[msg.sender][collateral].syncAll();
 
 		uint256 available = accountLayout.balances[msg.sender][collateral].isolatedBalance;
 		if (available < amount) {
@@ -172,7 +172,7 @@ library AccountFacetImpl {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
 		for (uint256 i = 0; i < partyBs.length; i++) {
-			accountLayout.balances[partyA][collateral].sync(partyBs[i], marginType);
+			accountLayout.balances[partyA][collateral].sync(partyBs[i]);
 		}
 	}
 

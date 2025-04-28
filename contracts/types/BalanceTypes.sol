@@ -25,11 +25,16 @@ import { MarginType } from "./BaseTypes.sol";
  */
 struct ScheduledReleaseEntry {
 	uint256 locked;
-	uint256 totalMM;
 	uint256 releaseInterval;
 	uint256 transitioning;
 	uint256 scheduled;
 	uint256 lastTransitionTimestamp;
+}
+
+struct CrossEntry {
+	int256 balance;
+	uint256 locked;
+	uint256 totalMM;
 }
 
 /**
@@ -48,12 +53,13 @@ struct ScheduledReleaseBalance {
 	// ─── free balances ────────────────────────────────────────────────────────
 	uint256 isolatedBalance; // free isolated funds
 	uint256 isolatedLockedBalance; // free isolated funds
-	mapping(address => int256) crossBalance; // free cross funds
+	uint256 reserveBalance;
+	mapping(address => CrossEntry) crossBalance; // cross funds
 	// ─── delayed balances ─────────────────────────────────────────────────────
-	mapping(address => mapping(MarginType => ScheduledReleaseEntry)) counterPartySchedules;
+	mapping(address => ScheduledReleaseEntry) counterPartySchedules;
 	// ─── enumeration helpers (packed array + 1‑based index map) ───────────────
-	mapping(MarginType => address[]) counterPartyAddresses;
-	mapping(address => mapping(MarginType => uint256)) counterPartyIndexes; // 0 ⇒ not present
+	address[] counterPartyAddresses;
+	mapping(address => uint256) counterPartyIndexes; // 0 ⇒ not present
 }
 
 // ────────────────────────────────────────────────────────────────────────────────
