@@ -141,6 +141,13 @@ library PartyBCloseFacetImpl {
 		trade.closedAmountBeforeExpiration += quantity;
 		intent.filledAmount += quantity;
 
+		if (trade.tradeAgreements.marginType == MarginType.CROSS) {
+			accountLayout.nonces[trade.partyA][trade.partyB] += 1;
+			accountLayout.nonces[trade.partyB][trade.partyA] += 1;
+		} else if (trade.partyBMarginType == MarginType.CROSS) {
+			accountLayout.nonces[trade.partyB][trade.partyA] += 1;
+		}
+
 		if (intent.filledAmount == intent.quantity) {
 			intent.statusModifyTimestamp = block.timestamp;
 			intent.status = IntentStatus.FILLED;
