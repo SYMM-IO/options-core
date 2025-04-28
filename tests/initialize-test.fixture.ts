@@ -28,7 +28,7 @@ export async function initializeTestFixture(): Promise<RunContext> {
 
 	await context.controlFacet.setDeactiveInstantActionModeCooldown(120)
 	await context.controlFacet.setUnbindingCooldown(120)
-	await context.controlFacet.setMaxConnectedPartyBs(1)
+	await context.controlFacet.setMaxConnectedCounterParties(1)
 
 	await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
 		isActive: true,
@@ -44,9 +44,9 @@ export async function initializeTestFixture(): Promise<RunContext> {
 		symbolType: 0,
 	})
 
-	await context.controlFacet.addOracle("test oracel", context.signers.oracle1)
+	await context.controlFacet.addOracle("test oracle", context.signers.oracle1)
 	await context.controlFacet.setPriceOracleAddress(context.oracle)
-	await context.controlFacet.addSymbol("BTC", 0, 1, context.collateral, true, 0, 0)
+	await context.controlFacet.addSymbol("BTC", 0, 1, context.collateral.getAddress(), 0, 0)
 	await context.controlFacet.setAffiliateStatus(context.signers.affiliate1, true)
 
 	return context

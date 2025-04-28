@@ -7,7 +7,6 @@ import { openIntentRequestBuilder } from "./models/builders/send-open-intent.bui
 import { PartyB } from "./models/partyB.model"
 import { ethers, network } from "hardhat"
 import { e } from "../utils/e"
-import { ZeroAddress } from "ethers"
 
 export function shouldBehaveLikePartyACloseFacet(): void {
 	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyB1: PartyB, partyB2: PartyB
@@ -56,12 +55,12 @@ export function shouldBehaveLikePartyACloseFacet(): void {
 
 		it("Should fail when partyA actions paused", async function () {
 			await context.controlFacet.pausePartyAActions()
-			await expect(partyA1.sendCancelOpenIntent(["1"])).to.be.revertedWith("Pausable: PartyA actions paused")
+			await expect(partyA1.sendCancelOpenIntent(["1"])).to.be.revertedWithCustomError(context.partyACloseFacet, "PartyAActionsPaused")
 		})
 
 		it("Should fail when global paused", async function () {
 			await context.controlFacet.pauseGlobal()
-			await expect(partyA1.sendCancelOpenIntent(["1"])).to.be.revertedWith("Pausable: Global paused")
+			await expect(partyA1.sendCancelOpenIntent(["1"])).to.be.revertedWithCustomError(context.partyACloseFacet, "GlobalPaused")
 		})
 
 		it("Should fail when intent status not be pending or locked", async function () {
@@ -69,12 +68,12 @@ export function shouldBehaveLikePartyACloseFacet(): void {
 		})
 
 		it("Should fail when msgSender not be PartyA", async function () {
-			await expect(partyA2.sendCancelOpenIntent(["1"])).to.be.revertedWith("PartyAFacet: Invalid sender")
+			await expect(partyA2.sendCancelOpenIntent(["1"])).to.be.revertedWithCustomError(context.partyACloseFacet, "UnauthorizedSender")
 		})
 
 		it("Should fail when instance mode is active", async function () {
 			await partyA1.activateInstantActionMode()
-			await expect(partyA1.sendCancelOpenIntent(["1"])).to.be.revertedWith("Accessibility: Instant action mode is activated")
+			await expect(partyA1.sendCancelOpenIntent(["1"])).to.be.revertedWithCustomError(context.partyACloseFacet, "InstantActionModeActive")
 		})
 
 		// it("Should set status to EXPIRED when deadline reached", async function () {

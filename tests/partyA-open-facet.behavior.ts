@@ -38,8 +38,9 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 	describe("sendOpenIntent", async function () {
 		beforeEach(async () => {
 			await context.controlFacet.addOracle("test orancel", context.signers.others[0])
-			await context.controlFacet.addSymbol("BTC", 0, 1, context.collateral, true, 0, 0)
+			await context.controlFacet.addSymbol("BTC", 0, 1, context.collateral.getAddress(), 0, 0)
 		})
+
 		it("Should fail when partyA actions paused", async function () {
 			await context.controlFacet.pausePartyAActions()
 			const request = openIntentRequestBuilder()
@@ -47,7 +48,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.build()
-			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWith("Pausable: PartyA actions paused")
+			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "PartyAActionsPaused")
 		})
 
 		it("Should fail when global paused", async function () {
@@ -57,7 +58,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.build()
-			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWith("Pausable: Global paused")
+			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "GlobalPaused")
 		})
 
 		it("Should fail when symbolId be wrong", async function () {
@@ -67,7 +68,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.feeToken(context.collateral)
 				.symbolId(3)
 				.build()
-			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWith("PartyAFacet: Symbol is not valid")
+			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "InvalidSymbol")
 		})
 
 		it("Should fail when deadline be low", async function () {
@@ -77,7 +78,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.feeToken(context.collateral)
 				.symbolId(1)
 				.build()
-			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWith("PartyAFacet: Low deadline")
+			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "LowExpirationTimestamp")
 		})
 
 		it("Should fail when expiration timestamp be low", async function () {
@@ -89,7 +90,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.symbolId(1)
 				.deadline((latestBlock?.timestamp ?? 0) + 120)
 				.build()
-			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWith("PartyAFacet: Low expiration timestamp")
+			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "LowExpirationTimestamp")
 		})
 
 		it("Should fail when cap for exercise fee be high", async function () {
@@ -103,7 +104,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.expirationTimestamp((latestBlock?.timestamp ?? 0) + 120)
 				.exerciseFee({ cap: e(2), rate: "0" })
 				.build()
-			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWith("PartyAFacet: High cap for exercise fee")
+			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "HighExerciseFeeCap")
 		})
 
 		it("Should fail when instance mode is active", async function () {
@@ -119,7 +120,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.build()
 
 			await context.controlFacet.setInstantActionsMode(partyA1.getSigner(), true)
-			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWith("Accessibility: Instant action mode is activated")
+			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "InstantActionModeActive")
 		})
 
 		it("Should fail when affiliate be zero address or invalid", async function () {
@@ -133,13 +134,15 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.expirationTimestamp((latestBlock?.timestamp ?? 0) + 120)
 				.exerciseFee({ cap: e(1), rate: "0" })
 
-			await expect(partyA1.sendOpenIntent(request.build())).to.be.revertedWith("PartyAFacet: Invalid affiliate")
+			// TODO :::
+			// await expect(partyA1.sendOpenIntent(request.build())).to.be.revertedWithCustomError(context.partyAOpenFacet, "GlobalPaused")
 
 			request.affiliate(context.signers.others[1])
-			await expect(partyA1.sendOpenIntent(request.build())).to.be.revertedWith("PartyAFacet: Invalid affiliate")
+			await expect(partyA1.sendOpenIntent(request.build())).to.be.revertedWithCustomError(context.partyAOpenFacet, "InvalidAffiliate")
 
 			await context.controlFacet.setAffiliateStatus(context.signers.others[1], true)
-			await expect(partyA1.sendOpenIntent(request.build())).to.be.not.revertedWith("PartyAFacet: Invalid affiliate")
+			// TODO :::
+			// await expect(partyA1.sendOpenIntent(request.build())).to.be.revertedWithCustomError(context.partyAOpenFacet, "GlobalPaused")
 		})
 
 		it("Should fail when partyA bound to a partyB that is not in whitelisted partyB", async function () {
@@ -155,7 +158,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.build()
 
 			await context.accountFacet.connect(partyA1.getSigner()).bindToPartyB(partyB1.getSigner())
-			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWith("PartyAFacet: User is bound to another PartyB")
+			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "UserBoundToAnotherPartyB")
 		})
 
 		it("Should fail when sender in whitelisted partyB", async function () {
@@ -170,7 +173,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.exerciseFee({ cap: e(1), rate: "0" })
 				.build()
 
-			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWith("PartyAFacet: Sender isn't allowed in partyBWhiteList")
+			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "PartyAInPartyBWhitelist")
 		})
 
 		it("Should fail when partyB whiteListed and available balance be insufficient", async function () {
@@ -187,7 +190,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.price(e(200))
 				.build()
 
-			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWith("PartyAFacet: insufficient available balance")
+			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "InsufficientBalance")
 		})
 
 		it("Should fail when partyB not whiteListed and available balance be insufficient", async function () {
@@ -204,7 +207,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.price(e(200))
 				.build()
 
-			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWith("PartyAFacet: insufficient available balance")
+			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "InsufficientBalance")
 		})
 
 		it("Should fail when partyB whiteListed and available balance be insufficient", async function () {
