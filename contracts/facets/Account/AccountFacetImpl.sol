@@ -87,7 +87,8 @@ library AccountFacetImpl {
 
 		accountLayout.balances[msg.sender][collateral].syncAll();
 
-		uint256 available = accountLayout.balances[msg.sender][collateral].isolatedBalance;
+		uint256 available = accountLayout.balances[msg.sender][collateral].isolatedBalance -
+			accountLayout.balances[msg.sender][collateral].isolatedLockedBalance;
 		if (available < amount) {
 			revert CommonErrors.InsufficientBalance(msg.sender, collateral, amount, available);
 		}
@@ -180,6 +181,7 @@ library AccountFacetImpl {
 		AccountStorage.layout().balances[msg.sender][collateral].allocateBalance(counterParty, amount);
 	}
 
+	// TODO: add muon sig and check if both parites will be solvent after the deallocation
 	function deallocate(address collateral, address counterParty, uint256 amount) internal {
 		AccountStorage.layout().balances[msg.sender][collateral].deallocateBalance(counterParty, amount);
 	}
