@@ -47,7 +47,14 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		uint256 amount
 	) external whenNotInternalTransferPaused notSuspended(msg.sender) notSuspended(user) {
 		AccountFacetImpl.internalTransfer(collateral, user, amount);
-		emit InternalTransfer(msg.sender, user, collateral, amount, AccountStorage.layout().balances[collateral][user].isolatedBalance);
+		emit InternalTransfer(
+			msg.sender,
+			user,
+			collateral,
+			amount,
+			AccountStorage.layout().balances[collateral][user].isolatedBalance,
+			AccountStorage.layout().balances[collateral][msg.sender].isolatedBalance
+		);
 	}
 
 	/**
@@ -129,10 +136,9 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @param collateral The address of the collateral token to synchronize
 	 * @param partyA The PartyA address whose balance will be synchronized
 	 * @param partyBs Array of PartyB addresses with which to synchronize balances
-	 * @param marginType The marginType
 	 */
-	function syncBalances(address collateral, address partyA, address[] calldata partyBs, MarginType marginType) external {
-		AccountFacetImpl.syncBalances(collateral, partyA, partyBs, marginType);
+	function syncBalances(address collateral, address partyA, address[] calldata partyBs) external {
+		AccountFacetImpl.syncBalances(collateral, partyA, partyBs);
 		emit SyncBalances(collateral, partyA, partyBs);
 	}
 
