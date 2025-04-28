@@ -169,7 +169,7 @@ library AccountFacetImpl {
 		accountLayout.balances[withdrawal.user][withdrawal.collateral].instantIsolatedAdd(withdrawal.amount, IncreaseBalanceReason.DEPOSIT);
 	}
 
-	function syncBalances(address collateral, address partyA, address[] calldata partyBs, MarginType marginType) internal {
+	function syncBalances(address collateral, address partyA, address[] calldata partyBs) internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
 		for (uint256 i = 0; i < partyBs.length; i++) {

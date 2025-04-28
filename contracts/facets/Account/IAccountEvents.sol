@@ -6,7 +6,14 @@ pragma solidity >=0.8.19;
 
 interface IAccountEvents {
 	event Deposit(address sender, address user, address collateral, uint256 amount, uint256 newBalance);
-	event InternalTransfer(address sender, address user, address collateral, uint256 amount, uint256 newBalance);
+	event InternalTransfer(
+		address sender,
+		address receiver,
+		address collateral,
+		uint256 amount,
+		uint256 newBalanceOfSender,
+		uint256 newBalanceOfReceiver
+	);
 	event InitiateWithdraw(uint256 id, address user, address to, address collateral, uint256 amount, uint256 newBalance);
 	event CompleteWithdraw(uint256 id);
 	event CancelWithdraw(uint256 id, address user, uint256 newBalance);
