@@ -10,6 +10,7 @@ import { AccountStorage, Withdraw } from "../../storages/AccountStorage.sol";
 import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
 
 import { MarginType } from "../../types/BaseTypes.sol";
+import { UpnlSig } from "../../types/WithdrawTypes.sol";
 
 import { Pausable } from "../../utils/Pausable.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
@@ -233,8 +234,14 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @param counterParty The address of the counterparty
 	 * @param amount The amount of collateral to be deallocated, specified in collateral decimals
 	 */
-	function deallocate(address collateral, address counterParty, uint256 amount) external notSuspended(msg.sender) {
-		AccountFacetImpl.deallocate(collateral, counterParty, amount);
+	function deallocate(
+		address collateral,
+		address counterParty,
+		uint256 amount,
+		bool isPartyB,
+		UpnlSig memory upnlSig
+	) external notSuspended(msg.sender) {
+		AccountFacetImpl.deallocate(collateral, counterParty, amount, isPartyB, upnlSig);
 		emit Deallocate(
 			msg.sender,
 			collateral,

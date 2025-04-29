@@ -82,24 +82,23 @@ library LibMuon {
 		IMuonOracle(oracle.contractAddress).verifyTSSAndGW(hash, liquidationSig.reqId, liquidationSig.sigs, liquidationSig.gatewaySignature);
 	}
 
-	function verifyUpnlSig(UpnlSig memory upnlSig, address collateral, address partyA, address partyB) internal view {
-		AppStorage.Layout storage appLayout = AppStorage.layout();
+	function verifyUpnlSig(UpnlSig memory upnlSig, address collateral, address party, address counterParty, uint256 oracleId) internal view {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		Oracle storage oracle = SymbolStorage.layout().oracles[appLayout.partyBConfigs[partyB].oracleId];
+		Oracle storage oracle = SymbolStorage.layout().oracles[oracleId];
 
 		bytes32 hash = keccak256(
 			abi.encodePacked(
 				upnlSig.reqId,
 				address(this),
 				"verifyUpnlSig",
-				partyA,
-				partyB,
-				upnlSig.partyAUpnl,
-				upnlSig.partyBUpnl,
+				party,
+				counterParty,
+				upnlSig.partyUpnl,
+				upnlSig.counterPartyUpnl,
 				collateral,
 				upnlSig.collateralPrice,
-				accountLayout.nonces[partyA][partyB],
-				accountLayout.nonces[partyB][partyA],
+				accountLayout.nonces[party][counterParty],
+				accountLayout.nonces[counterParty][party],
 				upnlSig.timestamp,
 				getChainId()
 			)

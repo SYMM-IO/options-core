@@ -19,9 +19,8 @@ struct Withdraw {
 struct UpnlSig {
 	bytes reqId; // Unique identifier for the liquidation request
 	uint256 timestamp; // Timestamp when the liquidation signature was created
-	int256 partyAUpnl; // PartyA's unrealized profit and loss at the time
-	int256 partyBUpnl; // PartyB's unrealized profit and loss at the time
-	address collateral; // The address of collateral
+	int256 partyUpnl; // Party's unrealized profit and loss at the time
+	int256 counterPartyUpnl; // CounterParty's unrealized profit and loss at the time
 	uint256 collateralPrice; // The price of collateral
 	bytes gatewaySignature; // Signature from the gateway for verification
 	SchnorrSign sigs; // Schnorr signature for additional verification

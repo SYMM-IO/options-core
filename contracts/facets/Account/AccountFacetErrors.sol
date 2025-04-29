@@ -24,4 +24,10 @@ library AccountFacetErrors {
 	error UnbindingAlreadyInitiated(address user, uint256 requestTime);
 	error UnbindingNotInitiated(address user);
 	error UnbindingCooldownNotReached(address user, uint256 currentTime, uint256 requiredTime);
+
+	// deallocate errors
+	error InvalidCounterPartyToAllocate(address party, address counterParty);
+	error NotSolventAfterDeallocation(address party, address counterParty, int256 partyAvailableBalance, uint256 amount);
+	error CounterPartyIsNotSolvent(address party, address counterParty, int256 counterPartyAvailableBalance);
+	error NotEnoughCrossBalance(address party, address counterParty, int256 partyCrossEntryBalance, uint256 amount);
 }

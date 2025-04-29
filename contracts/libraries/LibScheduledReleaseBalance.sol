@@ -229,6 +229,11 @@ library ScheduledReleaseBalanceOps {
 	function allocateBalance(ScheduledReleaseBalance storage self, address counterParty, uint256 amount) internal {
 		if (amount == 0) return;
 		if (counterParty == address(0)) revert CommonErrors.ZeroAddress("counterParty");
+
+		self.user.requireSolventParty(counterParty, self.collateral, MarginType.CROSS);
+		self.user.requireSolventParty(counterParty, self.collateral, MarginType.ISOLATED);
+		counterParty.requireSolventParty(self.user, self.collateral, MarginType.CROSS);
+
 		if (self.isolatedBalance - self.isolatedLockedBalance < amount)
 			revert InsufficientBalance(self.collateral, amount, int256(self.isolatedBalance));
 
@@ -244,6 +249,10 @@ library ScheduledReleaseBalanceOps {
 	function deallocateBalance(ScheduledReleaseBalance storage self, address counterParty, uint256 amount) internal {
 		if (amount == 0) return;
 		if (counterParty == address(0)) revert CommonErrors.ZeroAddress("counterParty");
+
+		self.user.requireSolventParty(counterParty, self.collateral, MarginType.CROSS);
+		self.user.requireSolventParty(counterParty, self.collateral, MarginType.ISOLATED);
+		counterParty.requireSolventParty(self.user, self.collateral, MarginType.CROSS);
 
 		self.crossBalance[counterParty].balance -= int256(amount);
 		self.isolatedBalance += amount;
