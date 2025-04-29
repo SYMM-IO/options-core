@@ -4,11 +4,13 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-
 import { AppStorage } from "../storages/AppStorage.sol";
+import { AccountStorage } from "../storages/AccountStorage.sol";
+
 import { SymbolStorage, Symbol, Oracle } from "../storages/SymbolStorage.sol";
 
 import { LiquidationSig } from "../types/LiquidationTypes.sol";
+import { UpnlSig } from "../types/WithdrawTypes.sol";
 import { SettlementPriceSig } from "../types/SettlementTypes.sol";
 
 import { IMuonOracle } from "../interfaces/IMuonOracle.sol";
@@ -78,5 +80,31 @@ library LibMuon {
 		);
 
 		IMuonOracle(oracle.contractAddress).verifyTSSAndGW(hash, liquidationSig.reqId, liquidationSig.sigs, liquidationSig.gatewaySignature);
+	}
+
+	function verifyUpnlSig(UpnlSig memory upnlSig, address collateral, address partyA, address partyB) internal view {
+		AppStorage.Layout storage appLayout = AppStorage.layout();
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		Oracle storage oracle = SymbolStorage.layout().oracles[appLayout.partyBConfigs[partyB].oracleId];
+
+		bytes32 hash = keccak256(
+			abi.encodePacked(
+				upnlSig.reqId,
+				address(this),
+				"verifyUpnlSig",
+				partyA,
+				partyB,
+				upnlSig.partyAUpnl,
+				upnlSig.partyBUpnl,
+				collateral,
+				upnlSig.collateralPrice,
+				accountLayout.nonces[partyA][partyB],
+				accountLayout.nonces[partyB][partyA],
+				upnlSig.timestamp,
+				getChainId()
+			)
+		);
+
+		IMuonOracle(oracle.contractAddress).verifyTSSAndGW(hash, upnlSig.reqId, upnlSig.sigs, upnlSig.gatewaySignature);
 	}
 }
