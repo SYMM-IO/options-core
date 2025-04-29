@@ -178,11 +178,13 @@ library AccountFacetImpl {
 	}
 
 	function allocate(address collateral, address counterParty, uint256 amount) internal {
+		// TODO: check solvency
 		AccountStorage.layout().balances[msg.sender][collateral].allocateBalance(counterParty, amount);
 	}
 
 	// TODO: add muon sig and check if both parites will be solvent after the deallocation
 	function deallocate(address collateral, address counterParty, uint256 amount) internal {
+		// TODO: check solvency
 		AccountStorage.layout().balances[msg.sender][collateral].deallocateBalance(counterParty, amount);
 	}
 
