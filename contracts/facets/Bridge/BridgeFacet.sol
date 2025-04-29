@@ -5,6 +5,7 @@
 pragma solidity >=0.8.19;
 
 import { LibAccessibility } from "../../libraries/LibAccessibility.sol";
+import { AccountStorage } from "../../storages/AccountStorage.sol";
 
 import { Pausable } from "../../utils/Pausable.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
@@ -33,7 +34,15 @@ contract BridgeFacet is Accessibility, Pausable, IBridgeFacet {
 		address receiver
 	) external whenNotBridgePaused notSuspended(msg.sender) {
 		uint256 transactionId = BridgeFacetImpl.transferToBridge(collateral, amount, bridgeAddress, receiver);
-		emit TransferToBridge(msg.sender, receiver, collateral, amount, bridgeAddress, transactionId);
+		emit TransferToBridge(
+			msg.sender,
+			receiver,
+			collateral,
+			amount,
+			bridgeAddress,
+			transactionId,
+			AccountStorage.layout().balances[msg.sender][collateral].isolatedBalance
+		);
 	}
 
 	/**
