@@ -310,6 +310,31 @@ library AccountFacetImpl {
 		delete counterPartyRelationsLayout.unbindingRequestTime[msg.sender];
 	}
 
+	function allocateToReserveBalance(address collateral, uint256 amount) internal {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+
+		msg.sender.requireSolventParty(address(0), collateral, MarginType.ISOLATED);
+		if (
+			accountLayout.balances[msg.sender][collateral].isolatedBalance - accountLayout.balances[msg.sender][collateral].isolatedLockedBalance <
+			amount
+		)
+			// revert InsufficientBalance(self.collateral, amount, int256(self.isolatedBalance));
+			revert();
+		accountLayout.balances[msg.sender][collateral].isolatedBalance -= amount;
+		accountLayout.balances[msg.sender][collateral].reserveBalance += amount;
+	}
+
+	function deallocateFromReserveBalance(address collateral, uint256 amount) internal {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+
+		msg.sender.requireSolventParty(address(0), collateral, MarginType.ISOLATED);
+		if (accountLayout.balances[msg.sender][collateral].reserveBalance < amount)
+			// revert InsufficientBalance(self.collateral, amount, int256(self.isolatedBalance));
+			revert();
+		accountLayout.balances[msg.sender][collateral].isolatedBalance += amount;
+		accountLayout.balances[msg.sender][collateral].reserveBalance -= amount;
+	}
+
 	// Helper functions
 	function _normalizeAmount(address token, uint256 amount) private view returns (uint256) {
 		uint8 decimals = IERC20Metadata(token).decimals();
