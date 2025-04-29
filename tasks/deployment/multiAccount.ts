@@ -1,11 +1,11 @@
 import { task, types } from "hardhat/config"
 
-task("deploy:multiAccount", "Deploys the SymmioPartyB")
+task("deploy:multiAccount", "Deploys the MultiAccount")
 	.addParam("symmioaddress", "The address of the Symmio contract")
 	.addParam("admin", "The admin address")
 	.addOptionalParam("logData", "Write the deployed addresses to a data file", true, types.boolean)
 	.setAction(async ({ symmioaddress, admin, logData }, { ethers, upgrades, run }) => {
-		console.log("Running deploy:symmioPartyB")
+		console.log("Running deploy:MultiAccount")
 
 		const [deployer] = await ethers.getSigners()
 
