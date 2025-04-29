@@ -8,11 +8,12 @@ import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 
 import { IMultiAccount } from "../interfaces/IMultiAccount.sol";
+import { ISymmioPartyA } from "../interfaces/ISymmioPartyA.sol";
 
 /// @title SymmioPartyA Contract
 /// @notice Account implementation for symmio platform
 /// @dev Implements the ERC-1271 standard for contract-based signature validation
-contract SymmioPartyA is AccessControl, IERC1271 {
+contract SymmioPartyA is AccessControl, IERC1271, ISymmioPartyA {
 	// Custom errors
 	error OnlyMultiAccount(address sender, address expectedMultiAccount);
 

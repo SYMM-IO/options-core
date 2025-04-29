@@ -278,7 +278,7 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 	 * @param _callData The input calldata to pass by the call.
 	 */
 	function innerCall(address account, bytes memory _callData) internal {
-		(bool _success, bytes memory _resultData) = ISymmioPartyA(account)._call(_callData);
+		(bool _success, bytes memory _resultData) = ISymmioPartyA(account).call(_callData);
 		emit Call(msg.sender, account, _callData, _success, _resultData);
 		if (!_success) {
 			assembly {
