@@ -5,6 +5,7 @@
 pragma solidity >=0.8.19;
 
 import { LibParty } from "../../libraries/LibParty.sol";
+import { LibMuon } from "../../libraries/LibMuon.sol";
 import { CommonErrors } from "../../libraries/CommonErrors.sol";
 import { ScheduledReleaseBalanceOps } from "../../libraries/LibScheduledReleaseBalance.sol";
 
@@ -13,8 +14,8 @@ import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
 
 import { MarginType } from "../../types/BaseTypes.sol";
-import { Withdraw, WithdrawStatus } from "../../types/WithdrawTypes.sol";
-import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
+import { Withdraw, WithdrawStatus, UpnlSig } from "../../types/WithdrawTypes.sol";
+import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason, CrossEntry } from "../../types/BalanceTypes.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -178,13 +179,34 @@ library AccountFacetImpl {
 	}
 
 	function allocate(address collateral, address counterParty, uint256 amount) internal {
-		// TODO: check solvency
+		AppStorage.Layout storage appLayout = AppStorage.layout();
+		if (
+			(!appLayout.partyBConfigs[counterParty].isActive && !appLayout.partyBConfigs[msg.sender].isActive) ||
+			(appLayout.partyBConfigs[counterParty].isActive && appLayout.partyBConfigs[msg.sender].isActive)
+		) revert AccountFacetErrors.InvalidCounterPartyToAllocate(msg.sender, counterParty);
 		AccountStorage.layout().balances[msg.sender][collateral].allocateBalance(counterParty, amount);
 	}
 
-	// TODO: add muon sig and check if both parites will be solvent after the deallocation
-	function deallocate(address collateral, address counterParty, uint256 amount) internal {
-		// TODO: check solvency
+	function deallocate(address collateral, address counterParty, uint256 amount, bool isPartyB, UpnlSig memory upnlSig) internal {
+		AppStorage.Layout storage appLayout = AppStorage.layout();
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		uint256 oracleId = isPartyB ? appLayout.partyBConfigs[msg.sender].oracleId : appLayout.partyBConfigs[counterParty].oracleId;
+
+		LibMuon.verifyUpnlSig(upnlSig, collateral, msg.sender, counterParty, oracleId);
+		CrossEntry memory partyCrossEntry = accountLayout.balances[msg.sender][collateral].crossBalance[counterParty];
+		int256 partyAvailableBalance = partyCrossEntry.balance +
+			((upnlSig.partyUpnl * 1e18) / int256(upnlSig.collateralPrice)) -
+			int256(partyCrossEntry.totalMM);
+		CrossEntry memory counterPartyCrossEntry = accountLayout.balances[msg.sender][collateral].crossBalance[counterParty];
+		int256 counterPartyAvailableBalance = counterPartyCrossEntry.balance +
+			((upnlSig.counterPartyUpnl * 1e18) / int256(upnlSig.collateralPrice)) -
+			int256(counterPartyCrossEntry.totalMM);
+		if (int256(amount) > partyCrossEntry.balance)
+			revert AccountFacetErrors.NotEnoughCrossBalance(msg.sender, counterParty, partyCrossEntry.balance, amount);
+		if (int256(amount) > partyAvailableBalance)
+			revert AccountFacetErrors.NotSolventAfterDeallocation(msg.sender, counterParty, partyAvailableBalance, amount);
+		if (counterPartyAvailableBalance < 0)
+			revert AccountFacetErrors.CounterPartyIsNotSolvent(msg.sender, counterParty, counterPartyAvailableBalance);
 		AccountStorage.layout().balances[msg.sender][collateral].deallocateBalance(counterParty, amount);
 	}
 
