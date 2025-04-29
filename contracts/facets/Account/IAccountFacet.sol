@@ -5,13 +5,18 @@
 pragma solidity >=0.8.19;
 
 import { MarginType } from "../../types/BaseTypes.sol";
+import { UpnlSig } from "../../types/WithdrawTypes.sol";
 
 import { IAccountEvents } from "./IAccountEvents.sol";
 
 interface IAccountFacet is IAccountEvents {
 	function deposit(address collateral, uint256 amount) external;
 
+	function securedDepositFor(address collateral, address user, uint256 amount) external;
+
 	function depositFor(address collateral, address user, uint256 amount) external;
+
+	function internalTransfer(address collateral, address user, uint256 amount) external;
 
 	function initiateWithdraw(address collateral, uint256 amount, address to) external;
 
@@ -25,8 +30,6 @@ interface IAccountFacet is IAccountEvents {
 
 	function deactivateInstantActionMode() external;
 
-	function syncBalances(address collateral, address partyA, address[] calldata partyBs) external;
-
 	function bindToPartyB(address partyB) external;
 
 	function initiateUnbindingFromPartyB() external;
@@ -35,7 +38,13 @@ interface IAccountFacet is IAccountEvents {
 
 	function cancelUnbindingFromPartyB() external;
 
-	function internalTransfer(address collateral, address user, uint256 amount) external;
+	function syncBalances(address collateral, address partyA, address[] calldata partyBs) external;
 
-	function securedDepositFor(address collateral, address user, uint256 amount) external;
+	function allocate(address collateral, address counterParty, uint256 amount) external;
+
+	function deallocate(address collateral, address counterParty, uint256 amount, bool isPartyB, UpnlSig memory upnlSig) external;
+
+	function allocateToReserveBalance(address collateral, uint256 amount) external;
+
+	function deallocateFromReserveBalance(address collateral, uint256 amount) external;
 }

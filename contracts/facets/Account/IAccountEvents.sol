@@ -41,4 +41,7 @@ interface IAccountEvents {
 		uint256 newBalance,
 		int256 newAllocatedBalance
 	);
+
+	event AllocateToReserveBalance(address user, address collateral, uint256 amount, uint256 newBalance);
+	event DeallocateFromReserveBalance(address user, address collateral, uint256 amount, uint256 newBalance);
 }

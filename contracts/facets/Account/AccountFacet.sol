@@ -214,7 +214,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @notice Allocates tokens from a user's isolated balance to their cross balance with a counterparty
 	 * @param collateral The address of the collateral token to allocate
 	 * @param counterParty The address of the counterparty
-	 * @param amount The amount of collateral to be allocated, specified in collateral decimals
+	 * @param amount The amount of collateral to be allocated
 	 */
 	function allocate(address collateral, address counterParty, uint256 amount) external notSuspended(msg.sender) {
 		AccountFacetImpl.allocate(collateral, counterParty, amount);
@@ -232,7 +232,9 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @notice Deallocates tokens, returning them to a user's isolated balance
 	 * @param collateral The address of the collateral token to deallocate
 	 * @param counterParty The address of the counterparty
-	 * @param amount The amount of collateral to be deallocated, specified in collateral decimals
+	 * @param amount The amount of collateral to be deallocated
+	 * @param isPartyB The bool that shows if the sender is partyB
+	 * @param upnlSig The Muon signature that represents the upnl of parties
 	 */
 	function deallocate(
 		address collateral,
@@ -250,5 +252,25 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 			AccountStorage.layout().balances[msg.sender][collateral].isolatedBalance,
 			AccountStorage.layout().balances[msg.sender][collateral].crossBalance[counterParty].balance
 		);
+	}
+
+	/**
+	 * @notice Allocates tokens to a user's reserve balance
+	 * @param collateral The address of the collateral token to deallocate
+	 * @param amount The amount of collateral to be allocated
+	 */
+	function allocateToReserveBalance(address collateral, uint256 amount) external {
+		AccountFacetImpl.allocateToReserveBalance(collateral, amount);
+		emit AllocateToReserveBalance(msg.sender, collateral, amount, AccountStorage.layout().balances[msg.sender][collateral].isolatedBalance);
+	}
+
+	/**
+	 * @notice Deallocates tokens from a user's reserve balance
+	 * @param collateral The address of the collateral token to deallocate
+	 * @param amount The amount of collateral to be deallocated
+	 */
+	function deallocateFromReserveBalance(address collateral, uint256 amount) external {
+		AccountFacetImpl.deallocateFromReserveBalance(collateral, amount);
+		emit DeallocateFromReserveBalance(msg.sender, collateral, amount, AccountStorage.layout().balances[msg.sender][collateral].isolatedBalance);
 	}
 }

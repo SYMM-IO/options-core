@@ -45,8 +45,6 @@ library ScheduledReleaseBalanceOps {
 	);
 
 	event SyncBalance(address indexed user, address indexed counterParty, address indexed collateral);
-	event AllocateBalance(address indexed user, address indexed counterParty, address indexed collateral, uint256 amount);
-	event DeallocateBalance(address indexed user, address indexed counterParty, address indexed collateral, uint256 amount);
 
 	// ─── custom errors ────────────────────────────────────────────────────────
 
@@ -239,7 +237,6 @@ library ScheduledReleaseBalanceOps {
 
 		self.isolatedBalance -= amount;
 		self.crossBalance[counterParty].balance += int256(amount);
-		emit AllocateBalance(self.user, counterParty, self.collateral, amount);
 	}
 
 	/**
@@ -256,7 +253,6 @@ library ScheduledReleaseBalanceOps {
 
 		self.crossBalance[counterParty].balance -= int256(amount);
 		self.isolatedBalance += amount;
-		emit DeallocateBalance(self.user, counterParty, self.collateral, amount);
 	}
 
 	// ────────────────────────────────────────────────────────────────────────────
