@@ -35,29 +35,6 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	}
 
 	/**
-	 * @notice Transfers collateral from sender's available balance to another user's available balance
-	 * @dev Both sender and recipient must not be suspended for the operation to succeed
-	 * @param collateral The address of the collateral token to transfer
-	 * @param user The address of the recipient user
-	 * @param amount The amount to transfer, specified in collateral decimals
-	 */
-	function internalTransfer(
-		address collateral,
-		address user,
-		uint256 amount
-	) external whenNotInternalTransferPaused notSuspended(msg.sender) notSuspended(user) {
-		AccountFacetImpl.internalTransfer(collateral, user, amount);
-		emit InternalTransfer(
-			msg.sender,
-			user,
-			collateral,
-			amount,
-			AccountStorage.layout().balances[collateral][user].isolatedBalance,
-			AccountStorage.layout().balances[collateral][msg.sender].isolatedBalance
-		);
-	}
-
-	/**
 	 * @notice Allows privileged roles to deposit collateral on behalf of another user
 	 * @dev Restricted to accounts with SECURED_DEPOSITOR_ROLE
 	 * @param collateral The address of the collateral token to deposit
@@ -87,6 +64,29 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	) external whenNotDepositingPaused notSuspended(msg.sender) notSuspended(user) {
 		AccountFacetImpl.deposit(collateral, user, amount);
 		emit Deposit(msg.sender, user, collateral, amount, AccountStorage.layout().balances[user][collateral].isolatedBalance);
+	}
+
+	/**
+	 * @notice Transfers collateral from sender's available balance to another user's available balance
+	 * @dev Both sender and recipient must not be suspended for the operation to succeed
+	 * @param collateral The address of the collateral token to transfer
+	 * @param user The address of the recipient user
+	 * @param amount The amount to transfer, specified in collateral decimals
+	 */
+	function internalTransfer(
+		address collateral,
+		address user,
+		uint256 amount
+	) external whenNotInternalTransferPaused notSuspended(msg.sender) notSuspended(user) {
+		AccountFacetImpl.internalTransfer(collateral, user, amount);
+		emit InternalTransfer(
+			msg.sender,
+			user,
+			collateral,
+			amount,
+			AccountStorage.layout().balances[user][collateral].isolatedBalance,
+			AccountStorage.layout().balances[msg.sender][collateral].isolatedBalance
+		);
 	}
 
 	/**
@@ -126,53 +126,9 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		emit CancelWithdraw(
 			id,
 			withdrawObject.user,
+			withdrawObject.collateral,
+			withdrawObject.amount,
 			AccountStorage.layout().balances[withdrawObject.user][withdrawObject.collateral].isolatedBalance
-		);
-	}
-
-	/**
-	 * @notice Synchronizes balances between a PartyA and multiple PartyBs
-	 * @dev Updates internal accounting to reflect the latest state across parties
-	 * @param collateral The address of the collateral token to synchronize
-	 * @param partyA The PartyA address whose balance will be synchronized
-	 * @param partyBs Array of PartyB addresses with which to synchronize balances
-	 */
-	function syncBalances(address collateral, address partyA, address[] calldata partyBs) external {
-		AccountFacetImpl.syncBalances(collateral, partyA, partyBs);
-		emit SyncBalances(collateral, partyA, partyBs);
-	}
-
-	/**
-	 * @notice Allocates tokens from a user's isolated balance to their cross balance with a counterparty
-	 * @param collateral The address of the collateral token to allocate
-	 * @param counterParty The address of the counterparty
-	 * @param amount The amount of collateral to be allocated, specified in collateral decimals
-	 */
-	function allocate(address collateral, address counterParty, uint256 amount) external notSuspended(msg.sender) {
-		AccountFacetImpl.allocate(collateral, counterParty, amount);
-		emit Allocate(
-			msg.sender,
-			collateral,
-			counterParty,
-			amount,
-			AccountStorage.layout().balances[msg.sender][collateral].crossBalance[counterParty].balance
-		);
-	}
-
-	/**
-	 * @notice Deallocates tokens, returning them to a user's isolated balance
-	 * @param collateral The address of the collateral token to deallocate
-	 * @param counterParty The address of the counterparty
-	 * @param amount The amount of collateral to be deallocated, specified in collateral decimals
-	 */
-	function deallocate(address collateral, address counterParty, uint256 amount) external notSuspended(msg.sender) {
-		AccountFacetImpl.deallocate(collateral, counterParty, amount);
-		emit Deallocate(
-			msg.sender,
-			collateral,
-			counterParty,
-			amount,
-			AccountStorage.layout().balances[msg.sender][collateral].crossBalance[counterParty].balance
 		);
 	}
 
@@ -239,5 +195,53 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	function cancelUnbindingFromPartyB() external notPartyB whenNotPartyAActionsPaused {
 		AccountFacetImpl.cancelUnbindingFromPartyB();
 		emit CancelUnbindingFromPartyB(msg.sender, CounterPartyRelationsStorage.layout().boundPartyB[msg.sender]);
+	}
+
+	/**
+	 * @notice Synchronizes balances between a PartyA and multiple PartyBs
+	 * @dev Updates internal accounting to reflect the latest state across parties
+	 * @param collateral The address of the collateral token to synchronize
+	 * @param partyA The PartyA address whose balance will be synchronized
+	 * @param partyBs Array of PartyB addresses with which to synchronize balances
+	 */
+	function syncBalances(address collateral, address partyA, address[] calldata partyBs) external {
+		AccountFacetImpl.syncBalances(collateral, partyA, partyBs);
+		emit SyncBalances(collateral, partyA, partyBs, AccountStorage.layout().balances[partyA][collateral].isolatedBalance);
+	}
+
+	/**
+	 * @notice Allocates tokens from a user's isolated balance to their cross balance with a counterparty
+	 * @param collateral The address of the collateral token to allocate
+	 * @param counterParty The address of the counterparty
+	 * @param amount The amount of collateral to be allocated, specified in collateral decimals
+	 */
+	function allocate(address collateral, address counterParty, uint256 amount) external notSuspended(msg.sender) {
+		AccountFacetImpl.allocate(collateral, counterParty, amount);
+		emit Allocate(
+			msg.sender,
+			collateral,
+			counterParty,
+			amount,
+			AccountStorage.layout().balances[msg.sender][collateral].isolatedBalance,
+			AccountStorage.layout().balances[msg.sender][collateral].crossBalance[counterParty].balance
+		);
+	}
+
+	/**
+	 * @notice Deallocates tokens, returning them to a user's isolated balance
+	 * @param collateral The address of the collateral token to deallocate
+	 * @param counterParty The address of the counterparty
+	 * @param amount The amount of collateral to be deallocated, specified in collateral decimals
+	 */
+	function deallocate(address collateral, address counterParty, uint256 amount) external notSuspended(msg.sender) {
+		AccountFacetImpl.deallocate(collateral, counterParty, amount);
+		emit Deallocate(
+			msg.sender,
+			collateral,
+			counterParty,
+			amount,
+			AccountStorage.layout().balances[msg.sender][collateral].isolatedBalance,
+			AccountStorage.layout().balances[msg.sender][collateral].crossBalance[counterParty].balance
+		);
 	}
 }
