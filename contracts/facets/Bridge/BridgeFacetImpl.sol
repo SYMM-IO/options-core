@@ -32,8 +32,10 @@ library BridgeFacetImpl {
 		if (bridge == msg.sender) revert BridgeFacetErrors.SameBridgeAndSender(bridge);
 
 		uint256 amountWith18Decimals = (amount * 1e18) / (10 ** IERC20Metadata(collateral).decimals()); //TODO: 1.utilize `normalize` and `denormalize` methods in `accountFacetImlp` and use'em here
-		if (accountLayout.balances[msg.sender][collateral].isolatedBalance < amount)
-			revert CommonErrors.InsufficientBalance(msg.sender, collateral, amount, accountLayout.balances[msg.sender][collateral].isolatedBalance);
+		if (
+			accountLayout.balances[msg.sender][collateral].isolatedBalance - accountLayout.balances[msg.sender][collateral].isolatedLockedBalance <
+			amount
+		) revert CommonErrors.InsufficientBalance(msg.sender, collateral, amount, accountLayout.balances[msg.sender][collateral].isolatedBalance);
 
 		currentId = ++bridgeLayout.lastBridgeId;
 		BridgeTransaction memory bridgeTransaction = BridgeTransaction({
