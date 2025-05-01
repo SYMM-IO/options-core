@@ -9,7 +9,7 @@ import { LibMuon } from "../../libraries/LibMuon.sol";
 import { CommonErrors } from "../../libraries/CommonErrors.sol";
 import { ScheduledReleaseBalanceOps } from "../../libraries/LibScheduledReleaseBalance.sol";
 
-import { AppStorage } from "../../storages/AppStorage.sol";
+import { AppStorage, PartyBConfig } from "../../storages/AppStorage.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
 
@@ -189,24 +189,13 @@ library AccountFacetImpl {
 
 	function deallocate(address collateral, address counterParty, uint256 amount, bool isPartyB, UpnlSig memory upnlSig) internal {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		uint256 oracleId = isPartyB ? appLayout.partyBConfigs[msg.sender].oracleId : appLayout.partyBConfigs[counterParty].oracleId;
-
 		LibMuon.verifyUpnlSig(upnlSig, collateral, msg.sender, counterParty, oracleId);
-		CrossEntry memory partyCrossEntry = accountLayout.balances[msg.sender][collateral].crossBalance[counterParty];
-		int256 partyAvailableBalance = partyCrossEntry.balance +
-			((upnlSig.partyUpnl * 1e18) / int256(upnlSig.collateralPrice)) -
-			int256(partyCrossEntry.totalMM);
-		CrossEntry memory counterPartyCrossEntry = accountLayout.balances[msg.sender][collateral].crossBalance[counterParty];
-		int256 counterPartyAvailableBalance = counterPartyCrossEntry.balance +
-			((upnlSig.counterPartyUpnl * 1e18) / int256(upnlSig.collateralPrice)) -
-			int256(counterPartyCrossEntry.totalMM);
-		if (int256(amount) > partyCrossEntry.balance)
-			revert AccountFacetErrors.NotEnoughCrossBalance(msg.sender, counterParty, partyCrossEntry.balance, amount);
-		if (int256(amount) > partyAvailableBalance)
-			revert AccountFacetErrors.NotSolventAfterDeallocation(msg.sender, counterParty, partyAvailableBalance, amount);
-		if (counterPartyAvailableBalance < 0)
-			revert AccountFacetErrors.CounterPartyIsNotSolvent(msg.sender, counterParty, counterPartyAvailableBalance);
+		if (isPartyB) {
+			deallocateForPartyBValidation(collateral, counterParty, int256(amount), upnlSig);
+		} else {
+			deallocateForPartyAValidation(collateral, counterParty, int256(amount), upnlSig);
+		}
 		AccountStorage.layout().balances[msg.sender][collateral].deallocateBalance(counterParty, amount);
 	}
 
@@ -344,5 +333,62 @@ library AccountFacetImpl {
 	function _denormalizeAmount(address token, uint256 amount) private view returns (uint256) {
 		uint8 decimals = IERC20Metadata(token).decimals();
 		return (amount * (10 ** decimals)) / PRECISION_FACTOR;
+	}
+
+	function deallocateForPartyAValidation(address collateral, address counterParty, int256 amount, UpnlSig memory upnlSig) internal view {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		PartyBConfig storage partyBConfig = AppStorage.layout().partyBConfigs[counterParty];
+
+		CrossEntry memory partyACrossEntry = accountLayout.balances[msg.sender][collateral].crossBalance[counterParty];
+		int256 partyAAvailableBalance = partyACrossEntry.balance +
+			((upnlSig.partyUpnl * 1e18) / int256(upnlSig.collateralPrice)) -
+			int256(partyACrossEntry.totalMM) -
+			int256(partyACrossEntry.locked);
+		// min balance and available balance
+		int256 partyAReadyToDeallocate = partyACrossEntry.balance < partyAAvailableBalance ? partyACrossEntry.balance : partyAAvailableBalance;
+
+		if (amount > partyAReadyToDeallocate) revert AccountFacetErrors.NotEnoughBalance(msg.sender, counterParty, partyAReadyToDeallocate, amount);
+
+		CrossEntry memory partyBCrossEntry = accountLayout.balances[counterParty][collateral].crossBalance[msg.sender];
+		int256 partyBAvailableBalance = partyBCrossEntry.balance + ((upnlSig.counterPartyUpnl * 1e18) / int256(upnlSig.collateralPrice));
+		if (partyBAvailableBalance < 0) {
+			int256 debt;
+			if (upnlSig.counterPartyUpnl >= 0) {
+				debt = -partyBAvailableBalance;
+			} else {
+				//check with loss coverage
+				int256 collatearlMustHave = (-upnlSig.counterPartyUpnl * int256(partyBConfig.lossCoverage)) / int256(upnlSig.collateralPrice);
+				debt = collatearlMustHave - partyBCrossEntry.balance;
+			}
+			if (partyAReadyToDeallocate - amount < (-debt))
+				revert AccountFacetErrors.RemainingAmountMoreThanCounterPartyDebt(msg.sender, counterParty, partyAReadyToDeallocate, amount, debt);
+		}
+	}
+
+	function deallocateForPartyBValidation(address collateral, address counterParty, int256 amount, UpnlSig memory upnlSig) internal view {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		PartyBConfig storage partyBConfig = AppStorage.layout().partyBConfigs[msg.sender];
+
+		CrossEntry memory partyACrossEntry = accountLayout.balances[counterParty][collateral].crossBalance[msg.sender];
+		int256 partyAAvailableBalance = partyACrossEntry.balance +
+			((upnlSig.counterPartyUpnl * 1e18) / int256(upnlSig.collateralPrice)) -
+			int256(partyACrossEntry.totalMM);
+
+		CrossEntry memory partyBCrossEntry = accountLayout.balances[msg.sender][collateral].crossBalance[counterParty];
+		int256 partyBAvailableBalance = partyBCrossEntry.balance + ((upnlSig.partyUpnl * 1e18) / int256(upnlSig.collateralPrice));
+
+		// partyA solvent
+		if (partyAAvailableBalance < 0) revert();
+
+		if (upnlSig.partyUpnl >= 0) {
+			// partyB solvent if upnl is pos and balance be positive
+			int256 partyBReadyToDeallocate = partyBCrossEntry.balance < partyBAvailableBalance ? partyBCrossEntry.balance : partyBAvailableBalance;
+			if (amount > partyBReadyToDeallocate)
+				revert AccountFacetErrors.NotEnoughBalance(msg.sender, counterParty, partyBReadyToDeallocate, amount);
+		} else {
+			// partyB solvent with loss coverage
+			int256 collatearlMustHave = (-upnlSig.partyUpnl * int256(partyBConfig.lossCoverage)) / int256(upnlSig.collateralPrice);
+			if (partyBCrossEntry.balance - amount < collatearlMustHave) revert();
+		}
 	}
 }
