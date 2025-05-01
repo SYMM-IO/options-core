@@ -57,17 +57,17 @@ library AccountFacetImpl {
 	}
 
 	function internalTransfer(address collateral, address user, uint256 amount) internal {
-		AppStorage.Layout storage appLayout = AppStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
-		if (!appLayout.whiteListedCollateral[collateral]) {
-			revert AccountFacetErrors.CollateralNotWhitelisted(collateral);
-		}
+		accountLayout.balances[msg.sender][collateral].syncAll();
 
-		uint256 available = accountLayout.balances[msg.sender][collateral].isolatedBalance;
+		uint256 available = accountLayout.balances[msg.sender][collateral].isolatedBalance -
+			accountLayout.balances[msg.sender][collateral].isolatedLockedBalance;
 		if (available < amount) {
 			revert CommonErrors.InsufficientBalance(msg.sender, collateral, amount, available);
 		}
+
+		if (CounterPartyRelationsStorage.layout().instantActionsMode[msg.sender]) revert AccountFacetErrors.InstantActionModeActive(msg.sender);
 
 		accountLayout.balances[msg.sender][collateral].isolatedSub(amount, DecreaseBalanceReason.INTERNAL_TRANSFER);
 		accountLayout.balances[user][collateral].setup(user, collateral);
@@ -78,13 +78,9 @@ library AccountFacetImpl {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
-		if (!appLayout.whiteListedCollateral[collateral]) {
-			revert AccountFacetErrors.CollateralNotWhitelisted(collateral);
-		}
+		if (!appLayout.whiteListedCollateral[collateral]) revert AccountFacetErrors.CollateralNotWhitelisted(collateral);
 
-		if (to == address(0)) {
-			revert CommonErrors.ZeroAddress("to");
-		}
+		if (to == address(0)) revert CommonErrors.ZeroAddress("to");
 
 		accountLayout.balances[msg.sender][collateral].syncAll();
 
@@ -94,9 +90,7 @@ library AccountFacetImpl {
 			revert CommonErrors.InsufficientBalance(msg.sender, collateral, amount, available);
 		}
 
-		if (CounterPartyRelationsStorage.layout().instantActionsMode[msg.sender]) {
-			revert AccountFacetErrors.InstantActionModeActive(msg.sender);
-		}
+		if (CounterPartyRelationsStorage.layout().instantActionsMode[msg.sender]) revert AccountFacetErrors.InstantActionModeActive(msg.sender);
 
 		msg.sender.requireSolventParty(address(0), collateral, MarginType.ISOLATED);
 
@@ -125,8 +119,6 @@ library AccountFacetImpl {
 		}
 
 		Withdraw storage withdrawal = accountLayout.withdrawals[id];
-
-		withdrawal.user.requireSolventParty(address(0), withdrawal.collateral, MarginType.ISOLATED);
 
 		if (withdrawal.status != WithdrawStatus.INITIATED) {
 			uint8[] memory requiredStatuses = new uint8[](1);
@@ -184,6 +176,7 @@ library AccountFacetImpl {
 			(!appLayout.partyBConfigs[counterParty].isActive && !appLayout.partyBConfigs[msg.sender].isActive) ||
 			(appLayout.partyBConfigs[counterParty].isActive && appLayout.partyBConfigs[msg.sender].isActive)
 		) revert AccountFacetErrors.InvalidCounterPartyToAllocate(msg.sender, counterParty);
+		if (CounterPartyRelationsStorage.layout().instantActionsMode[msg.sender]) revert AccountFacetErrors.InstantActionModeActive(msg.sender);
 		AccountStorage.layout().balances[msg.sender][collateral].allocateBalance(counterParty, amount);
 	}
 
