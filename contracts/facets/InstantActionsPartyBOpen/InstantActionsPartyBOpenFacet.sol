@@ -69,13 +69,7 @@ contract InstantActionsPartyBOpenFacet is Accessibility, Pausable, IInstantActio
 		bytes calldata partyBSignature
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
 		(uint256 tradeId, uint256 newIntentId) = InstantActionsPartyBOpenFacetImpl.instantFillOpenIntent(signedFillOpenIntent, partyBSignature);
-		emit FillOpenIntent(
-			signedFillOpenIntent.intentId,
-			tradeId,
-			signedFillOpenIntent.quantity,
-			signedFillOpenIntent.price,
-			signedFillOpenIntent.marginType
-		);
+		emit FillOpenIntent(signedFillOpenIntent.intentId, tradeId, signedFillOpenIntent.quantity, signedFillOpenIntent.price);
 		if (newIntentId != 0) {
 			OpenIntent storage newIntent = OpenIntentStorage.layout().openIntents[newIntentId];
 			emit SendOpenIntent(

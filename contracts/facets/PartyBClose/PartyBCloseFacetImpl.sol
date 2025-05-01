@@ -55,7 +55,7 @@ library PartyBCloseFacetImpl {
 
 		if (sender != trade.partyB) revert CommonErrors.UnauthorizedSender(sender, trade.partyB);
 
-		sender.requireSolventPartyB(trade.partyA, symbol.collateral, trade.partyBMarginType);
+		sender.requireSolventPartyB(trade.partyA, symbol.collateral, trade.tradeAgreements.marginType);
 		if (trade.tradeAgreements.marginType == MarginType.CROSS) {
 			trade.partyA.requireSolventPartyA(trade.partyB, symbol.collateral);
 		}
@@ -88,7 +88,7 @@ library PartyBCloseFacetImpl {
 
 		uint256 pnl = (quantity * price) / 1e18;
 		if (trade.tradeAgreements.tradeSide == TradeSide.BUY) {
-			if (trade.tradeAgreements.marginType == MarginType.ISOLATED && trade.partyBMarginType == MarginType.ISOLATED) {
+			if (trade.tradeAgreements.marginType == MarginType.ISOLATED) {
 				accountLayout.balances[trade.partyB][symbol.collateral].instantIsolatedAdd(
 					(trade.getPremium() * quantity) / trade.tradeAgreements.quantity,
 					IncreaseBalanceReason.PREMIUM
@@ -97,7 +97,7 @@ library PartyBCloseFacetImpl {
 				accountLayout.balances[trade.partyB][symbol.collateral].scheduledAdd(
 					trade.partyA,
 					(trade.getPremium() * quantity) / trade.tradeAgreements.quantity,
-					trade.partyBMarginType,
+					MarginType.ISOLATED,
 					IncreaseBalanceReason.PREMIUM
 				);
 			}
@@ -105,7 +105,7 @@ library PartyBCloseFacetImpl {
 			accountLayout.balances[trade.partyB][symbol.collateral].subForCounterParty(
 				trade.partyA,
 				pnl,
-				trade.partyBMarginType,
+				trade.tradeAgreements.marginType,
 				DecreaseBalanceReason.REALIZED_PNL
 			);
 			accountLayout.balances[trade.partyA][symbol.collateral].scheduledAdd(
@@ -130,7 +130,7 @@ library PartyBCloseFacetImpl {
 			accountLayout.balances[trade.partyB][symbol.collateral].scheduledAdd(
 				trade.partyA,
 				pnl,
-				trade.partyBMarginType,
+				trade.tradeAgreements.marginType,
 				IncreaseBalanceReason.PREMIUM
 			);
 		}
@@ -143,8 +143,6 @@ library PartyBCloseFacetImpl {
 
 		if (trade.tradeAgreements.marginType == MarginType.CROSS) {
 			accountLayout.nonces[trade.partyA][trade.partyB] += 1;
-			accountLayout.nonces[trade.partyB][trade.partyA] += 1;
-		} else if (trade.partyBMarginType == MarginType.CROSS) {
 			accountLayout.nonces[trade.partyB][trade.partyA] += 1;
 		}
 

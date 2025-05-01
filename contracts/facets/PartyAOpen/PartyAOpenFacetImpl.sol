@@ -4,8 +4,8 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-
 import { LibUserData } from "../../libraries/LibUserData.sol";
+import { LibParty } from "../../libraries/LibParty.sol";
 import { CommonErrors } from "../../libraries/CommonErrors.sol";
 import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
 import { ScheduledReleaseBalanceOps } from "../../libraries/LibScheduledReleaseBalance.sol";
@@ -27,6 +27,7 @@ import { PartyAOpenFacetErrors } from "./PartyAOpenFacetErrors.sol";
 library PartyAOpenFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibOpenIntentOps for OpenIntent;
+	using LibParty for address;
 
 	function sendOpenIntent(
 		address sender,
@@ -71,8 +72,10 @@ library PartyAOpenFacetImpl {
 				);
 		}
 
-		if (tradeAgreements.marginType == MarginType.CROSS && partyBsWhiteList.length != 1)
-			revert PartyAOpenFacetErrors.OnlyOnePartyBIsAllowedInCrossMode();
+		if (tradeAgreements.marginType == MarginType.CROSS) {
+			if (partyBsWhiteList.length != 1) revert PartyAOpenFacetErrors.OnlyOnePartyBIsAllowedInCrossMode();
+			sender.requireSolventPartyA(partyBsWhiteList[0], symbol.collateral);
+		}
 
 		intentId = ++OpenIntentStorage.layout().lastOpenIntentId;
 		OpenIntent memory intent = OpenIntent({

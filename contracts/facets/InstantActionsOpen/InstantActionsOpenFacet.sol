@@ -75,7 +75,7 @@ contract InstantActionsOpenFacet is Accessibility, Pausable, IInstantActionsOpen
 		);
 		OpenIntent storage intent = OpenIntentStorage.layout().openIntents[intentId];
 		_emitSendOpenIntent(intent);
-		emit FillOpenIntent(intent.id, tradeId, signedFillOpenIntent.quantity, signedFillOpenIntent.price, signedFillOpenIntent.marginType);
+		emit FillOpenIntent(intent.id, tradeId, signedFillOpenIntent.quantity, signedFillOpenIntent.price);
 		if (newIntentId != 0) {
 			_emitSendOpenIntent(OpenIntentStorage.layout().openIntents[newIntentId]);
 		}

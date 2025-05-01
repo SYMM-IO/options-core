@@ -53,7 +53,6 @@ library InstantActionsOpenFacetImpl {
 		PartyBOpenFacetImpl.lockOpenIntent(signedFillOpenIntent.partyB, intentId);
 		(tradeId, newIntentId) = PartyBOpenFacetImpl.fillOpenIntent(
 			signedFillOpenIntent.partyB,
-			signedFillOpenIntent.marginType,
 			intentId,
 			signedFillOpenIntent.quantity,
 			signedFillOpenIntent.price
