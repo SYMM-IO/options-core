@@ -27,7 +27,6 @@ library AccountFacetErrors {
 
 	// deallocate errors
 	error InvalidCounterPartyToAllocate(address party, address counterParty);
-	error NotSolventAfterDeallocation(address party, address counterParty, int256 partyAvailableBalance, uint256 amount);
-	error CounterPartyIsNotSolvent(address party, address counterParty, int256 counterPartyAvailableBalance);
-	error NotEnoughCrossBalance(address party, address counterParty, int256 partyCrossEntryBalance, uint256 amount);
+	error NotEnoughBalance(address party, address counterParty, int256 availableBalance, int256 amount);
+	error RemainingAmountMoreThanCounterPartyDebt(address party, address counterParty, int256 partyAReadyToDeallocate, int256 amount, int256 debt);
 }
