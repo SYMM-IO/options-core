@@ -75,8 +75,6 @@ library LibTradeOps {
 		if (self.tradeAgreements.marginType == MarginType.CROSS) {
 			accountLayout.nonces[self.partyA][self.partyB] += 1;
 			accountLayout.nonces[self.partyB][self.partyA] += 1;
-		} else if (self.partyBMarginType == MarginType.CROSS) {
-			accountLayout.nonces[self.partyB][self.partyA] += 1;
 		}
 	}
 
@@ -104,7 +102,7 @@ library LibTradeOps {
 
 	function close(Trade storage self, TradeStatus tradeStatus, IntentStatus intentStatus) internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		
+
 		uint256 len = self.activeCloseIntentIds.length;
 		for (uint8 i = 0; i < len; i++) {
 			CloseIntent storage intent = CloseIntentStorage.layout().closeIntents[self.activeCloseIntentIds[0]];
@@ -114,14 +112,11 @@ library LibTradeOps {
 		}
 		self.status = tradeStatus;
 		self.statusModifyTimestamp = block.timestamp;
-		
+
 		if (self.tradeAgreements.marginType == MarginType.CROSS) {
 			accountLayout.nonces[self.partyA][self.partyB] += 1;
 			accountLayout.nonces[self.partyB][self.partyA] += 1;
-		} else if (self.partyBMarginType == MarginType.CROSS) {
-			accountLayout.nonces[self.partyB][self.partyA] += 1;
 		}
-		
 		remove(self);
 	}
 }

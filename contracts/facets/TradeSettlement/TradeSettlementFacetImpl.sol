@@ -36,7 +36,7 @@ library TradeSettlementFacetImpl {
 		Symbol storage symbol = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId];
 		LibMuon.verifySettlementPriceSig(sig);
 
-		trade.partyB.requireSolventPartyB(trade.partyA, symbol.collateral, trade.partyBMarginType);
+		trade.partyB.requireSolventPartyB(trade.partyA, symbol.collateral, trade.tradeAgreements.marginType);
 		if (trade.tradeAgreements.marginType == MarginType.CROSS) {
 			trade.partyA.requireSolventPartyA(trade.partyB, symbol.collateral);
 		}
@@ -91,7 +91,7 @@ library TradeSettlementFacetImpl {
 			trade.settledPrice = sig.settlementPrice;
 
 			if (trade.tradeAgreements.tradeSide == TradeSide.BUY) {
-				if (trade.tradeAgreements.marginType == MarginType.ISOLATED && trade.partyBMarginType == MarginType.ISOLATED) {
+				if (trade.tradeAgreements.marginType == MarginType.ISOLATED) {
 					accountLayout.balances[trade.partyB][symbol.collateral].instantIsolatedAdd(
 						(trade.getPremium() * trade.getOpenAmount()) / trade.tradeAgreements.quantity,
 						IncreaseBalanceReason.PREMIUM
@@ -100,14 +100,14 @@ library TradeSettlementFacetImpl {
 					accountLayout.balances[trade.partyB][symbol.collateral].scheduledAdd(
 						trade.partyA,
 						(trade.getPremium() * trade.getOpenAmount()) / trade.tradeAgreements.quantity,
-						trade.partyBMarginType,
+						trade.tradeAgreements.marginType,
 						IncreaseBalanceReason.PREMIUM
 					);
 				}
 				accountLayout.balances[trade.partyB][symbol.collateral].subForCounterParty(
 					trade.partyA,
 					amountToTransfer,
-					trade.partyBMarginType,
+					trade.tradeAgreements.marginType,
 					DecreaseBalanceReason.REALIZED_PNL
 				);
 				accountLayout.balances[trade.partyA][symbol.collateral].scheduledAdd(
@@ -132,7 +132,7 @@ library TradeSettlementFacetImpl {
 				accountLayout.balances[trade.partyB][symbol.collateral].scheduledAdd(
 					trade.partyB,
 					amountToTransfer,
-					trade.partyBMarginType,
+					trade.tradeAgreements.marginType,
 					IncreaseBalanceReason.REALIZED_PNL
 				);
 			}

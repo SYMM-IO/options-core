@@ -24,7 +24,6 @@ library InstantActionsPartyBOpenFacetImpl {
 
 		(tradeId, newIntentId) = PartyBOpenFacetImpl.fillOpenIntent(
 			signedFillOpenIntent.partyB,
-			signedFillOpenIntent.marginType,
 			signedFillOpenIntent.intentId,
 			signedFillOpenIntent.quantity,
 			signedFillOpenIntent.price

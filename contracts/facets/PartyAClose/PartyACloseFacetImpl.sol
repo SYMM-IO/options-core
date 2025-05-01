@@ -105,7 +105,7 @@ library PartyACloseFacetImpl {
 			revert CommonErrors.InvalidState("TradeStatus", uint8(trade.status), requiredStatuses);
 		}
 
-		trade.partyB.requireSolventPartyB(trade.partyA, symbol.collateral, trade.partyBMarginType);
+		trade.partyB.requireSolventPartyB(trade.partyA, symbol.collateral, trade.tradeAgreements.marginType);
 		if (trade.tradeAgreements.marginType == MarginType.CROSS) {
 			trade.partyA.requireSolventPartyA(trade.partyB, symbol.collateral);
 		}

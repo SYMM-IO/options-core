@@ -15,5 +15,5 @@ interface IPartyBOpenFacet is IPartyBOpenEvents {
 
 	function acceptCancelOpenIntent(uint256 intentId) external;
 
-	function fillOpenIntent(uint256 intentId, uint256 quantity, uint256 price, MarginType marginType) external;
+	function fillOpenIntent(uint256 intentId, uint256 quantity, uint256 price) external;
 }

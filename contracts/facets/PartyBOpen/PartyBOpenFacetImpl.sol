@@ -133,7 +133,6 @@ library PartyBOpenFacetImpl {
 
 	function fillOpenIntent(
 		address sender,
-		MarginType partyBMarginType,
 		uint256 intentId,
 		uint256 quantity,
 		uint256 price
@@ -164,9 +163,7 @@ library PartyBOpenFacetImpl {
 			revert CommonErrors.InvalidState("IntentStatus", uint8(intent.status), requiredStatuses);
 		}
 
-		if (intent.tradeAgreements.marginType == MarginType.CROSS && partyBMarginType != MarginType.CROSS) revert();
-
-		intent.partyB.requireSolventPartyB(intent.partyA, symbol.collateral, partyBMarginType);
+		intent.partyB.requireSolventPartyB(intent.partyA, symbol.collateral, intent.tradeAgreements.marginType);
 		if (intent.tradeAgreements.marginType == MarginType.CROSS) {
 			intent.partyA.requireSolventPartyA(intent.partyB, symbol.collateral);
 		}
@@ -224,7 +221,6 @@ library PartyBOpenFacetImpl {
 			closePendingAmount: 0,
 			avgClosedPriceBeforeExpiration: 0,
 			status: TradeStatus.OPENED,
-			partyBMarginType: partyBMarginType,
 			createTimestamp: block.timestamp,
 			statusModifyTimestamp: block.timestamp
 		});
@@ -304,7 +300,7 @@ library PartyBOpenFacetImpl {
 			accountLayout.balances[trade.partyB][symbol.collateral].subForCounterParty(
 				trade.partyA,
 				trade.getPremium(),
-				partyBMarginType,
+				trade.tradeAgreements.marginType,
 				DecreaseBalanceReason.PREMIUM
 			);
 			accountLayout.balances[trade.partyA][symbol.collateral].scheduledAdd(
