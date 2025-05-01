@@ -30,6 +30,7 @@ library BridgeFacetImpl {
 
 		if (!bridgeLayout.bridges[bridge]) revert BridgeFacetErrors.InvalidBridge(bridge);
 		if (bridge == msg.sender) revert BridgeFacetErrors.SameBridgeAndSender(bridge);
+		if (receiver == address(0)) revert CommonErrors.ZeroAddress("receiver");
 
 		uint256 amountWith18Decimals = (amount * 1e18) / (10 ** IERC20Metadata(collateral).decimals()); //TODO: 1.utilize `normalize` and `denormalize` methods in `accountFacetImlp` and use'em here
 		if (
@@ -48,7 +49,7 @@ library BridgeFacetImpl {
 			timestamp: block.timestamp,
 			status: BridgeTransactionStatus.RECEIVED
 		});
-		accountLayout.balances[collateral][msg.sender].isolatedSub(amountWith18Decimals, DecreaseBalanceReason.BRIDGE);
+		accountLayout.balances[msg.sender][collateral].isolatedSub(amountWith18Decimals, DecreaseBalanceReason.BRIDGE);
 		bridgeLayout.bridgeTransactions[currentId] = bridgeTransaction;
 		bridgeLayout.bridgeTransactionIds[bridge].push(currentId);
 	}
@@ -120,11 +121,11 @@ library BridgeFacetImpl {
 
 		if (validAmount > bridgeTransaction.amount) revert BridgeFacetErrors.HighValidAmount(validAmount, bridgeTransaction.amount);
 
-		accountLayout.balances[bridgeTransaction.collateral][bridgeLayout.invalidBridgedAmountsPool].setup(
+		accountLayout.balances[bridgeLayout.invalidBridgedAmountsPool][bridgeTransaction.collateral].setup(
 			bridgeLayout.invalidBridgedAmountsPool,
 			bridgeTransaction.collateral
 		);
-		accountLayout.balances[bridgeTransaction.collateral][bridgeLayout.invalidBridgedAmountsPool].instantIsolatedAdd(
+		accountLayout.balances[bridgeLayout.invalidBridgedAmountsPool][bridgeTransaction.collateral].instantIsolatedAdd(
 			((bridgeTransaction.amount - validAmount) * (10 ** 18)) / (10 ** IERC20Metadata(bridgeTransaction.collateral).decimals()), //TODO: 1.
 			IncreaseBalanceReason.BRIDGE
 		);
