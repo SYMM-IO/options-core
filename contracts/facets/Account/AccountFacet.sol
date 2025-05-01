@@ -78,7 +78,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		address collateral,
 		address user,
 		uint256 amount
-	) external whenNotInternalTransferPaused notSuspended(msg.sender) notSuspended(user) {
+	) external whenNotInternalTransferPaused notSuspended(msg.sender) notSuspended(user) notPartyB {
 		AccountFacetImpl.internalTransfer(collateral, user, amount);
 		emit InternalTransfer(
 			msg.sender,

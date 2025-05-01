@@ -10,6 +10,7 @@ import { ScheduledReleaseBalanceOps } from "../../libraries/LibScheduledReleaseB
 import { AppStorage } from "../../storages/AppStorage.sol";
 import { BridgeStorage } from "../../storages/BridgeStorage.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
+import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
 
 import { BridgeTransaction, BridgeTransactionStatus } from "../../types/BridgeTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
@@ -19,6 +20,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import { BridgeFacetErrors } from "./BridgeFacetErrors.sol";
+import { Accessibility } from "../../utils/Accessibility.sol";
 
 library BridgeFacetImpl {
 	using SafeERC20 for IERC20;
@@ -32,11 +34,15 @@ library BridgeFacetImpl {
 		if (bridge == msg.sender) revert BridgeFacetErrors.SameBridgeAndSender(bridge);
 		if (receiver == address(0)) revert CommonErrors.ZeroAddress("receiver");
 
+		accountLayout.balances[msg.sender][collateral].syncAll();
+
 		uint256 amountWith18Decimals = (amount * 1e18) / (10 ** IERC20Metadata(collateral).decimals()); //TODO: 1.utilize `normalize` and `denormalize` methods in `accountFacetImlp` and use'em here
 		if (
 			accountLayout.balances[msg.sender][collateral].isolatedBalance - accountLayout.balances[msg.sender][collateral].isolatedLockedBalance <
 			amount
 		) revert CommonErrors.InsufficientBalance(msg.sender, collateral, amount, accountLayout.balances[msg.sender][collateral].isolatedBalance);
+
+		if (CounterPartyRelationsStorage.layout().instantActionsMode[msg.sender]) revert Accessibility.InstantActionModeActive(msg.sender);
 
 		currentId = ++bridgeLayout.lastBridgeId;
 		BridgeTransaction memory bridgeTransaction = BridgeTransaction({
