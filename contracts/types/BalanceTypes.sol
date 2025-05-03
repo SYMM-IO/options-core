@@ -24,7 +24,6 @@ import { MarginType } from "./BaseTypes.sol";
  *                                 processed interval.
  */
 struct ScheduledReleaseEntry {
-	uint256 locked;
 	uint256 releaseInterval;
 	uint256 transitioning;
 	uint256 scheduled;

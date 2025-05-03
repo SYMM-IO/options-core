@@ -814,4 +814,12 @@ contract ViewFacet is IViewFacet {
 	function affiliateFees(address affiliate, uint256 symbolId) external view returns (uint256) {
 		return FeeManagementStorage.layout().affiliateFees[affiliate][symbolId];
 	}
+
+	function getDefaultReleaseInterval() external view returns (uint256) {
+		return AccountStorage.layout().defaultReleaseInterval;
+	}
+
+	function getConfiguredReleaseInterval(address user) external view returns (bool, uint256) {
+		return (AccountStorage.layout().hasConfiguredInterval[user], AccountStorage.layout().releaseIntervals[user]);
+	}
 }

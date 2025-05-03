@@ -50,7 +50,7 @@ library ScheduledReleaseBalanceOps {
 
 	error MaxCounterPartyConnectionsReached(uint256 current, uint256 maximum);
 	error InvalidSyncTimestamp(uint256 currentTime, uint256 lastTransitionTimestamp);
-	error NonZeroBalanceCounterParty(address counterParty, int256 balance);
+	error NonZeroBalanceCounterParty(address counterParty, uint256 balance);
 	error InsufficientBalance(address token, uint256 requested, int256 balance);
 	error InsufficientLockedBalance(address token, uint256 requested, uint256 balance);
 	error InsufficientMMBalance(address token, uint256 requested, uint256 balance);
@@ -75,7 +75,9 @@ library ScheduledReleaseBalanceOps {
 	 * @param _collateral    ERC20 address of the collateral token
 	 */
 	function setup(ScheduledReleaseBalance storage self, address _user, address _collateral) internal {
-		if (self.collateral != address(0) || self.user != address(0)) return;
+		if (self.collateral != address(0) && self.user != address(0)) return;
+		if (_user == address(0)) revert CommonErrors.ZeroAddress("user");
+		if (_collateral == address(0)) revert CommonErrors.ZeroAddress("collateral");
 		self.collateral = _collateral;
 		self.user = _user;
 	}
@@ -107,16 +109,18 @@ library ScheduledReleaseBalanceOps {
 		}
 
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+
+		// ensure counter‑party is tracked so that future syncAll calls reach it
+		if (!accountLayout.manualSync[self.user]) addCounterParty(self, counterParty);
+
 		// keep schedule up‑to‑date first
 		_sync(self, counterParty, false);
 
 		// zero interval ⇒ treat as instant add
 		if (counterParty.getReleaseInterval() == 0) {
-			return instantIsolatedAdd(self, value, reason);
+			instantIsolatedAdd(self, value, reason);
+			return;
 		}
-
-		// ensure counter‑party is tracked so that future syncAll calls reach it
-		if (!accountLayout.manualSync[self.user]) addCounterParty(self, counterParty);
 
 		// finally queue the funds
 		self.counterPartySchedules[counterParty].scheduled += value;
@@ -209,12 +213,9 @@ library ScheduledReleaseBalanceOps {
 	/**
 	 * @notice Return total balance (free + locked) for a counter‑party.
 	 */
-	function counterPartyBalance(ScheduledReleaseBalance storage self, address counterParty, MarginType marginType) internal view returns (int256) {
-		if (marginType == MarginType.CROSS) {
-			return self.crossBalance[counterParty].balance;
-		}
+	function counterPartyBalance(ScheduledReleaseBalance storage self, address counterParty) internal view returns (uint256) {
 		ScheduledReleaseEntry storage entry = self.counterPartySchedules[counterParty];
-		return int256(self.isolatedBalance) + int256(entry.transitioning) + int256(entry.scheduled);
+		return entry.transitioning + entry.scheduled;
 	}
 
 	// ────────────────────────────────────────────────────────────────────────────
@@ -292,19 +293,21 @@ library ScheduledReleaseBalanceOps {
 			return;
 		}
 
-		uint256 extReleaseInterval = counterParty.getReleaseInterval();
+		uint256 updatedReleaseInterval = counterParty.getReleaseInterval();
 
 		ScheduledReleaseEntry storage entry = self.counterPartySchedules[counterParty];
 
 		// (1) Release interval changed externally → reinitialize everything.
-		if (entry.releaseInterval != extReleaseInterval) {
-			entry.releaseInterval = extReleaseInterval;
+		if (entry.releaseInterval != updatedReleaseInterval) {
+			entry.releaseInterval = updatedReleaseInterval;
 			entry.lastTransitionTimestamp = entry.releaseInterval == 0
 				? block.timestamp
 				: (block.timestamp / entry.releaseInterval) * entry.releaseInterval;
 
 			if (entry.releaseInterval == 0) {
 				self.isolatedBalance += (entry.transitioning + entry.scheduled);
+				entry.transitioning = 0;
+				entry.scheduled = 0;
 			} else {
 				entry.scheduled += entry.transitioning; // merge buckets
 				entry.transitioning = 0;
@@ -394,7 +397,7 @@ library ScheduledReleaseBalanceOps {
 	function removeCounterParty(ScheduledReleaseBalance storage self, address counterParty) internal {
 		if (counterParty == address(0)) revert CommonErrors.ZeroAddress("counterParty");
 
-		int256 balance = counterPartyBalance(self, counterParty, MarginType.ISOLATED);
+		uint256 balance = counterPartyBalance(self, counterParty);
 		if (balance != 0) revert NonZeroBalanceCounterParty(counterParty, balance);
 
 		uint256 idxPlusOne = self.counterPartyIndexes[counterParty];

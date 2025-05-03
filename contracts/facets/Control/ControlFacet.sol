@@ -220,6 +220,11 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		emit PartyBReleaseIntervalUpdated(_partyB, _interval);
 	}
 
+	function setDefaultReleaseInterval(uint256 _interval) external onlyRole(LibAccessibility.SETTER_ROLE) {
+		AccountStorage.layout().defaultReleaseInterval = _interval;
+		emit DefaultReleaseIntervalUpdated(_interval);
+	}
+
 	function setMaxConnectedCounterParties(uint256 _max) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		AccountStorage.layout().maxConnectedCounterParties = _max;
 		emit MaxConnectedCounterPartiesUpdated(_max);

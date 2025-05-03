@@ -37,6 +37,10 @@ interface IControlFacet is IControlEvents {
 
 	function setDefaultFeeCollector(address _collector) external;
 
+	function setPartyBReleaseInterval(address _partyB, uint256 _interval) external;
+
+	function setDefaultReleaseInterval(uint256 _interval) external;
+
 	function pauseGlobal() external;
 
 	function pauseDeposit() external;
