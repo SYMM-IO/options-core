@@ -98,7 +98,6 @@ library LibMuon {
 				collateral,
 				upnlSig.collateralPrice,
 				accountLayout.nonces[party][counterParty],
-				accountLayout.nonces[counterParty][party],
 				upnlSig.timestamp,
 				getChainId()
 			)

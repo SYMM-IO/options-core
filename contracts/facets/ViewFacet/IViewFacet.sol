@@ -196,6 +196,8 @@ interface IViewFacet {
 
 	function version() external view returns (uint16);
 
+	function getNonce(address party, address counterParty) external view returns (uint256);
+
 	function partyBLiquidationState(address partyBAddress, address collateral) external view returns (LiquidationState memory);
 
 	function liquidationDetail(uint256 liquidationId) external view returns (LiquidationDetail memory);
