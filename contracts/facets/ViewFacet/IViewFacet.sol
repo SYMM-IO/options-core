@@ -136,7 +136,7 @@ interface IViewFacet {
 	//App
 	function whiteListedCollateral(address collateral) external view returns (bool);
 
-	function balanceLimitPerUser() external view returns (uint256);
+	function balanceLimitPerUser(address collateral) external view returns (uint256);
 
 	function maxCloseOrdersLength() external view returns (uint256);
 

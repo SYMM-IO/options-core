@@ -13,7 +13,7 @@ interface IControlEvents {
 	event CollateralRemovedFromWhitelist(address indexed collateral);
 	event MaxCloseOrdersLengthUpdated(uint256 max);
 	event MaxTradePerPartyAUpdated(uint256 max);
-	event BalanceLimitPerUserUpdated(uint256 limit);
+	event BalanceLimitPerUserUpdated(address collateral, uint256 limit);
 	event PartyADeallocateCooldownUpdated(uint256 cooldown);
 	event PartyBDeallocateCooldownUpdated(uint256 cooldown);
 	event ForceCancelOpenIntentTimeoutUpdated(uint256 timeout);

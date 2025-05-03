@@ -18,7 +18,7 @@ library AppStorage {
 		// System version
 		uint16 version;
 		/////////////////////////////////////////////////////////
-		uint256 balanceLimitPerUser;
+		mapping(address => uint256) balanceLimitPerUser; // collateral => limit
 		uint256 maxCloseOrdersLength;
 		uint256 maxTradePerPartyA;
 		address priceOracleAddress;
