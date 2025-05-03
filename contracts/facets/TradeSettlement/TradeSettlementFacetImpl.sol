@@ -139,5 +139,9 @@ library TradeSettlementFacetImpl {
 
 			trade.close(TradeStatus.EXERCISED, IntentStatus.CANCELED);
 		}
+		if (trade.tradeAgreements.marginType == MarginType.CROSS) {
+			accountLayout.nonces[trade.partyA][trade.partyB] += 1;
+			accountLayout.nonces[trade.partyB][trade.partyA] += 1;
+		}
 	}
 }

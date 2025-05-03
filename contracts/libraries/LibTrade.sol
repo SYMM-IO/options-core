@@ -72,10 +72,6 @@ library LibTradeOps {
 		tradeLayout.partyBTradesIndex[self.id] = tradeLayout.activeTradesOfPartyB[self.partyB][symbol.collateral].length - 1;
 
 		accountLayout.balances[self.partyA][symbol.collateral].addCounterParty(self.partyB);
-		if (self.tradeAgreements.marginType == MarginType.CROSS) {
-			accountLayout.nonces[self.partyA][self.partyB] += 1;
-			accountLayout.nonces[self.partyB][self.partyA] += 1;
-		}
 	}
 
 	function remove(Trade memory self) internal {
@@ -101,8 +97,6 @@ library LibTradeOps {
 	}
 
 	function close(Trade storage self, TradeStatus tradeStatus, IntentStatus intentStatus) internal {
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-
 		uint256 len = self.activeCloseIntentIds.length;
 		for (uint8 i = 0; i < len; i++) {
 			CloseIntent storage intent = CloseIntentStorage.layout().closeIntents[self.activeCloseIntentIds[0]];
@@ -112,11 +106,6 @@ library LibTradeOps {
 		}
 		self.status = tradeStatus;
 		self.statusModifyTimestamp = block.timestamp;
-
-		if (self.tradeAgreements.marginType == MarginType.CROSS) {
-			accountLayout.nonces[self.partyA][self.partyB] += 1;
-			accountLayout.nonces[self.partyB][self.partyA] += 1;
-		}
 		remove(self);
 	}
 }
