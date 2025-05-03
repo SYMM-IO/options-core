@@ -310,5 +310,9 @@ library PartyBOpenFacetImpl {
 				IncreaseBalanceReason.PREMIUM
 			);
 		}
+		if (trade.tradeAgreements.marginType == MarginType.CROSS) {
+			accountLayout.nonces[trade.partyA][trade.partyB] += 1;
+			accountLayout.nonces[trade.partyB][trade.partyA] += 1;
+		}
 	}
 }

@@ -107,7 +107,8 @@ library PartyACloseFacetImpl {
 
 		trade.partyB.requireSolventPartyB(trade.partyA, symbol.collateral, trade.tradeAgreements.marginType);
 		if (trade.tradeAgreements.marginType == MarginType.CROSS) {
-			trade.partyA.requireSolventPartyA(trade.partyB, symbol.collateral);
+			// TODO
+			revert();
 		}
 
 		trade.remove();
