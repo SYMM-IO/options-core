@@ -791,6 +791,10 @@ contract ViewFacet is IViewFacet {
 		return AppStorage.layout().version;
 	}
 
+	function getNonce(address party, address counterParty) external view returns (uint256) {
+		return AccountStorage.layout().nonces[party][counterParty];
+	}
+
 	function partyBLiquidationState(address partyBAddress, address collateral) external view returns (LiquidationState memory) {
 		return LiquidationStorage.layout().partyBLiquidationState[partyBAddress][collateral];
 	}
