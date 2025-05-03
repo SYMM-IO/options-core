@@ -36,8 +36,11 @@ library AccountFacetImpl {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
 		if (!appLayout.whiteListedCollateral[collateral]) {
-			revert AccountFacetErrors.CollateralNotWhitelisted(collateral);
+			revert CommonErrors.CollateralNotWhitelisted(collateral);
 		}
+		if (amount == 0) revert CommonErrors.InvalidAmount("amount", amount, 0, 0);
+		if (user == address(0)) revert CommonErrors.ZeroAddress("user");
+
 		IERC20(collateral).safeTransferFrom(msg.sender, address(this), amount);
 
 		uint256 amountWith18Decimals = _normalizeAmount(collateral, amount);
@@ -78,9 +81,8 @@ library AccountFacetImpl {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
-		if (!appLayout.whiteListedCollateral[collateral]) revert AccountFacetErrors.CollateralNotWhitelisted(collateral);
-
 		if (to == address(0)) revert CommonErrors.ZeroAddress("to");
+		if (amount == 0) revert CommonErrors.InvalidAmount("amount", amount, 0, 0);
 
 		accountLayout.balances[msg.sender][collateral].syncAll();
 
@@ -125,6 +127,8 @@ library AccountFacetImpl {
 			requiredStatuses[0] = uint8(WithdrawStatus.INITIATED);
 			revert CommonErrors.InvalidState("WithdrawStatus", uint8(withdrawal.status), requiredStatuses);
 		}
+
+		if (!appLayout.whiteListedCollateral[withdrawal.collateral]) revert CommonErrors.CollateralNotWhitelisted(withdrawal.collateral);
 
 		uint256 cooldownPeriod;
 		if (appLayout.partyBConfigs[withdrawal.user].isActive) {

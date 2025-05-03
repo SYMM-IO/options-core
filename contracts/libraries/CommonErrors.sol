@@ -24,4 +24,6 @@ library CommonErrors {
 	error UnauthorizedSender(address sender, address requiredSender);
 
 	error InvalidState(string property, uint8 currentStatus, uint8[] requiredStatus);
+
+	error CollateralNotWhitelisted(address collateral);
 }

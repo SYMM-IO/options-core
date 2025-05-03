@@ -249,6 +249,7 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 	 * @param amount The amount of funds to deposit.
 	 */
 	function depositForAccount(address collateral, address account, uint256 amount) external onlyOwner(account, msg.sender) whenNotPaused {
+		// TODO: check collateral
 		IERC20Upgradeable(collateral).safeTransferFrom(msg.sender, address(this), amount);
 		IERC20Upgradeable(collateral).safeApprove(symmioAddress, amount);
 		ISymmio(symmioAddress).depositFor(collateral, account, amount);

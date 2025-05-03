@@ -30,6 +30,7 @@ library BridgeFacetImpl {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		BridgeStorage.Layout storage bridgeLayout = BridgeStorage.layout();
 
+		if (!AppStorage.layout().whiteListedCollateral[collateral]) revert CommonErrors.CollateralNotWhitelisted(collateral);
 		if (!bridgeLayout.bridges[bridge]) revert BridgeFacetErrors.InvalidBridge(bridge);
 		if (bridge == msg.sender) revert BridgeFacetErrors.SameBridgeAndSender(bridge);
 		if (receiver == address(0)) revert CommonErrors.ZeroAddress("receiver");

@@ -5,9 +5,6 @@
 pragma solidity >=0.8.19;
 
 library AccountFacetErrors {
-	// Collateral errors
-	error CollateralNotWhitelisted(address collateral);
-
 	// Instant action mode errors
 	error InstantActionModeAlreadyActivated(address user);
 	error InstantActionModeNotActivated(address user);
