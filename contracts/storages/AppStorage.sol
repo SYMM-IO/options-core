@@ -4,11 +4,6 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-struct Price {
-	uint256 price;
-	uint256 timestamp;
-}
-
 struct PartyBConfig {
 	bool isActive;
 	uint256 lossCoverage;
