@@ -75,9 +75,9 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		emit MaxTradePerPartyAUpdated(_max);
 	}
 
-	function setBalanceLimitPerUser(uint256 _limit) external onlyRole(LibAccessibility.SETTER_ROLE) {
-		AppStorage.layout().balanceLimitPerUser = _limit;
-		emit BalanceLimitPerUserUpdated(_limit);
+	function setBalanceLimitPerUser(address collateral, uint256 _limit) external onlyRole(LibAccessibility.SETTER_ROLE) {
+		AppStorage.layout().balanceLimitPerUser[collateral] = _limit;
+		emit BalanceLimitPerUserUpdated(collateral, _limit);
 	}
 
 	function setPartyADeallocateCooldown(uint256 _cooldown) external onlyRole(LibAccessibility.SETTER_ROLE) {

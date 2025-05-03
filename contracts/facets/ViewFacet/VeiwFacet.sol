@@ -671,8 +671,8 @@ contract ViewFacet is IViewFacet {
 		return AppStorage.layout().whiteListedCollateral[collateral];
 	}
 
-	function balanceLimitPerUser() external view returns (uint256) {
-		return AppStorage.layout().balanceLimitPerUser;
+	function balanceLimitPerUser(address collateral) external view returns (uint256) {
+		return AppStorage.layout().balanceLimitPerUser[collateral];
 	}
 
 	function maxCloseOrdersLength() external view returns (uint256) {

@@ -25,7 +25,7 @@ interface IControlFacet is IControlEvents {
 
 	function setMaxTradePerPartyA(uint256 _max) external;
 
-	function setBalanceLimitPerUser(uint256 _limit) external;
+	function setBalanceLimitPerUser(address collateral, uint256 _limit) external;
 
 	function setPartyADeallocateCooldown(uint256 _cooldown) external;
 

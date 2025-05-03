@@ -41,9 +41,19 @@ library AccountFacetImpl {
 		if (amount == 0) revert CommonErrors.InvalidAmount("amount", amount, 0, 0);
 		if (user == address(0)) revert CommonErrors.ZeroAddress("user");
 
+		uint256 amountWith18Decimals = _normalizeAmount(collateral, amount);
+		if (
+			!appLayout.partyBConfigs[user].isActive &&
+			(accountLayout.balances[user][collateral].isolatedBalance + amountWith18Decimals > appLayout.balanceLimitPerUser[collateral])
+		)
+			revert AccountFacetErrors.BalanceLimitPerUserReached(
+				int256(accountLayout.balances[user][collateral].isolatedBalance),
+				amountWith18Decimals,
+				appLayout.balanceLimitPerUser[collateral]
+			);
+
 		IERC20(collateral).safeTransferFrom(msg.sender, address(this), amount);
 
-		uint256 amountWith18Decimals = _normalizeAmount(collateral, amount);
 		accountLayout.balances[user][collateral].setup(user, collateral);
 		accountLayout.balances[user][collateral].instantIsolatedAdd(amountWith18Decimals, IncreaseBalanceReason.DEPOSIT);
 	}
@@ -53,14 +63,25 @@ library AccountFacetImpl {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
 		if (!appLayout.whiteListedCollateral[collateral]) {
-			revert AccountFacetErrors.CollateralNotWhitelisted(collateral);
+			revert CommonErrors.CollateralNotWhitelisted(collateral);
 		}
+		if (
+			!appLayout.partyBConfigs[user].isActive &&
+			(accountLayout.balances[user][collateral].isolatedBalance + amount > appLayout.balanceLimitPerUser[collateral])
+		)
+			revert AccountFacetErrors.BalanceLimitPerUserReached(
+				int256(accountLayout.balances[user][collateral].isolatedBalance),
+				amount,
+				appLayout.balanceLimitPerUser[collateral]
+			);
+
 		accountLayout.balances[user][collateral].setup(user, collateral);
 		accountLayout.balances[user][collateral].instantIsolatedAdd(amount, IncreaseBalanceReason.DEPOSIT);
 	}
 
 	function internalTransfer(address collateral, address user, uint256 amount) internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		AppStorage.Layout storage appLayout = AppStorage.layout();
 
 		accountLayout.balances[msg.sender][collateral].syncAll();
 
@@ -70,6 +91,16 @@ library AccountFacetImpl {
 			revert CommonErrors.InsufficientBalance(msg.sender, collateral, amount, available);
 		}
 
+		if (
+			!appLayout.partyBConfigs[user].isActive &&
+			(accountLayout.balances[user][collateral].isolatedBalance + amount > appLayout.balanceLimitPerUser[collateral])
+		)
+			revert AccountFacetErrors.BalanceLimitPerUserReached(
+				int256(accountLayout.balances[user][collateral].isolatedBalance),
+				amount,
+				appLayout.balanceLimitPerUser[collateral]
+			);
+
 		if (CounterPartyRelationsStorage.layout().instantActionsMode[msg.sender]) revert AccountFacetErrors.InstantActionModeActive(msg.sender);
 
 		accountLayout.balances[msg.sender][collateral].isolatedSub(amount, DecreaseBalanceReason.INTERNAL_TRANSFER);
@@ -78,7 +109,6 @@ library AccountFacetImpl {
 	}
 
 	function initiateWithdraw(address collateral, uint256 amount, address to) internal returns (uint256 currentId) {
-		AppStorage.Layout storage appLayout = AppStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
 		if (to == address(0)) revert CommonErrors.ZeroAddress("to");
@@ -149,6 +179,7 @@ library AccountFacetImpl {
 
 	function cancelWithdraw(uint256 id) internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		AppStorage.Layout storage appLayout = AppStorage.layout();
 
 		if (id > accountLayout.lastWithdrawId) {
 			revert AccountFacetErrors.InvalidWithdrawId(id, accountLayout.lastWithdrawId);
@@ -161,6 +192,16 @@ library AccountFacetImpl {
 			requiredStatuses[0] = uint8(WithdrawStatus.INITIATED);
 			revert CommonErrors.InvalidState("WithdrawStatus", uint8(withdrawal.status), requiredStatuses);
 		}
+		if (
+			!appLayout.partyBConfigs[withdrawal.user].isActive &&
+			(accountLayout.balances[withdrawal.user][withdrawal.collateral].isolatedBalance + withdrawal.amount >
+				appLayout.balanceLimitPerUser[withdrawal.collateral])
+		)
+			revert AccountFacetErrors.BalanceLimitPerUserReached(
+				int256(accountLayout.balances[withdrawal.user][withdrawal.collateral].isolatedBalance),
+				withdrawal.amount,
+				appLayout.balanceLimitPerUser[withdrawal.collateral]
+			);
 
 		withdrawal.status = WithdrawStatus.CANCELED;
 		accountLayout.balances[withdrawal.user][withdrawal.collateral].instantIsolatedAdd(withdrawal.amount, IncreaseBalanceReason.DEPOSIT);
@@ -176,24 +217,45 @@ library AccountFacetImpl {
 
 	function allocate(address collateral, address counterParty, uint256 amount) internal {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+
 		if (
 			(!appLayout.partyBConfigs[counterParty].isActive && !appLayout.partyBConfigs[msg.sender].isActive) ||
 			(appLayout.partyBConfigs[counterParty].isActive && appLayout.partyBConfigs[msg.sender].isActive)
 		) revert AccountFacetErrors.InvalidCounterPartyToAllocate(msg.sender, counterParty);
 		if (CounterPartyRelationsStorage.layout().instantActionsMode[msg.sender]) revert AccountFacetErrors.InstantActionModeActive(msg.sender);
-		AccountStorage.layout().balances[msg.sender][collateral].allocateBalance(counterParty, amount);
+		if (
+			!appLayout.partyBConfigs[msg.sender].isActive &&
+			(accountLayout.balances[msg.sender][collateral].crossBalance[counterParty].balance + int256(amount) >
+				int256(appLayout.balanceLimitPerUser[collateral]))
+		)
+			revert AccountFacetErrors.BalanceLimitPerUserReached(
+				accountLayout.balances[msg.sender][collateral].crossBalance[counterParty].balance,
+				amount,
+				appLayout.balanceLimitPerUser[collateral]
+			);
+
+		accountLayout.balances[msg.sender][collateral].allocateBalance(counterParty, amount);
 	}
 
 	function deallocate(address collateral, address counterParty, uint256 amount, bool isPartyB, UpnlSig memory upnlSig) internal {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+
 		uint256 oracleId = isPartyB ? appLayout.partyBConfigs[msg.sender].oracleId : appLayout.partyBConfigs[counterParty].oracleId;
 		LibMuon.verifyUpnlSig(upnlSig, collateral, msg.sender, counterParty, oracleId);
 		if (isPartyB) {
 			deallocateForPartyBValidation(collateral, counterParty, int256(amount), upnlSig);
 		} else {
 			deallocateForPartyAValidation(collateral, counterParty, int256(amount), upnlSig);
+			if (accountLayout.balances[msg.sender][collateral].isolatedBalance + amount > appLayout.balanceLimitPerUser[collateral])
+				revert AccountFacetErrors.BalanceLimitPerUserReached(
+					int256(accountLayout.balances[msg.sender][collateral].isolatedBalance),
+					amount,
+					appLayout.balanceLimitPerUser[collateral]
+				);
 		}
-		AccountStorage.layout().balances[msg.sender][collateral].deallocateBalance(counterParty, amount);
+		accountLayout.balances[msg.sender][collateral].deallocateBalance(counterParty, amount);
 	}
 
 	function activateInstantActionMode() internal {
@@ -298,6 +360,7 @@ library AccountFacetImpl {
 
 	function allocateToReserveBalance(address collateral, uint256 amount) internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		AppStorage.Layout storage appLayout = AppStorage.layout();
 
 		msg.sender.requireSolventParty(address(0), collateral, MarginType.ISOLATED);
 		if (
@@ -306,17 +369,36 @@ library AccountFacetImpl {
 		)
 			// revert InsufficientBalance(self.collateral, amount, int256(self.isolatedBalance));
 			revert();
+		if (
+			!appLayout.partyBConfigs[msg.sender].isActive &&
+			(accountLayout.balances[msg.sender][collateral].reserveBalance + amount > appLayout.balanceLimitPerUser[collateral])
+		)
+			revert AccountFacetErrors.BalanceLimitPerUserReached(
+				int256(accountLayout.balances[msg.sender][collateral].reserveBalance),
+				amount,
+				appLayout.balanceLimitPerUser[collateral]
+			);
 		accountLayout.balances[msg.sender][collateral].isolatedBalance -= amount;
 		accountLayout.balances[msg.sender][collateral].reserveBalance += amount;
 	}
 
 	function deallocateFromReserveBalance(address collateral, uint256 amount) internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		AppStorage.Layout storage appLayout = AppStorage.layout();
 
 		msg.sender.requireSolventParty(address(0), collateral, MarginType.ISOLATED);
 		if (accountLayout.balances[msg.sender][collateral].reserveBalance < amount)
 			// revert InsufficientBalance(self.collateral, amount, int256(self.isolatedBalance));
 			revert();
+		if (
+			!appLayout.partyBConfigs[msg.sender].isActive &&
+			(accountLayout.balances[msg.sender][collateral].isolatedBalance + amount > appLayout.balanceLimitPerUser[collateral])
+		)
+			revert AccountFacetErrors.BalanceLimitPerUserReached(
+				int256(accountLayout.balances[msg.sender][collateral].isolatedBalance),
+				amount,
+				appLayout.balanceLimitPerUser[collateral]
+			);
 		accountLayout.balances[msg.sender][collateral].isolatedBalance += amount;
 		accountLayout.balances[msg.sender][collateral].reserveBalance -= amount;
 	}
