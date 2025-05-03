@@ -212,4 +212,8 @@ interface IViewFacet {
 	function hasRole(address user, bytes32 role) external view returns (bool);
 
 	function getRoleHash(string memory str) external pure returns (bytes32);
+
+	function getDefaultReleaseInterval() external view returns (uint256);
+
+	function getConfiguredReleaseInterval(address user) external view returns (bool, uint256);
 }

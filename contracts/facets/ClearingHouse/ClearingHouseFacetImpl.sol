@@ -101,7 +101,8 @@ library ClearingHouseFacetImpl {
 	function confiscatePartyA(address partyB, address partyA, address collateral, uint256 amount) internal {
 		ScheduledReleaseBalance storage balance = AccountStorage.layout().balances[partyA][collateral];
 
-		int256 b = balance.counterPartyBalance(partyB, MarginType.ISOLATED);
+		int256 b = 0;
+		// int256 b = balance.counterPartyBalance(partyB, MarginType.ISOLATED);
 		if (b <= int256(amount)) revert CommonErrors.InsufficientBalance(partyA, collateral, amount, uint256(b));
 
 		partyB.requireInProgressLiquidation(collateral);
