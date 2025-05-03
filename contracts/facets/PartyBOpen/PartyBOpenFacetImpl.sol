@@ -43,6 +43,8 @@ library PartyBOpenFacetImpl {
 
 		if (StateControlStorage.layout().partyBEmergencyStatus[sender]) revert PartyBOpenFacetErrors.PartyBInEmergencyMode(sender);
 
+		if (StateControlStorage.layout().emergencyMode) revert PartyBOpenFacetErrors.SystemInEmergencyMode();
+
 		if (intent.partyA == sender) revert PartyBOpenFacetErrors.UserOnBothSides(sender);
 
 		if (intentId > intentLayout.lastOpenIntentId) revert PartyBOpenFacetErrors.InvalidIntentId(intentId, intentLayout.lastOpenIntentId);
