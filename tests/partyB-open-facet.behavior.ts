@@ -41,6 +41,21 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 	})
 
 	describe("lockOpenIntent", async function () {
+		it("Should be failed when Sender address is Suspended", async () => {
+			await context.controlFacet.suspendAddress(partyB1.getSigner(),true)			
+			await expect(context.partyBOpenFacet.connect(context.signers.partyB1).lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "SuspendedAddress")
+		})
+
+		it("Should be failed when in Emergency Mode", async () => {
+			await context.controlFacet.activeEmergencyMode();
+			await expect(context.partyBOpenFacet.connect(context.signers.partyB1).lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "EmergencyMode")
+		})	
+		
+		it("Should be failed when PartyB in Emergency Mode", async () => {
+			await context.controlFacet.activePartyBEmergencyStatus(partyB1.getSigner())
+			await expect(context.partyBOpenFacet.connect(context.signers.partyB1).lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "PartyBInEmergencyMode")
+		})
+
 		it("Should be failed when Globally Paused", async () => {
 			await context.controlFacet.pauseGlobal()
 			await expect(context.partyBOpenFacet.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "GlobalPaused")

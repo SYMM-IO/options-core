@@ -18,6 +18,7 @@ abstract contract Pausable {
 	error PartyBActionsPaused();
 	error ThirdPartyActionsPaused();
 	error LiquidatingPaused();
+	error EmergencyMode();
 
 	modifier whenNotGlobalPaused() {
 		if (StateControlStorage.layout().globalPaused) revert GlobalPaused();
@@ -63,6 +64,7 @@ abstract contract Pausable {
 	modifier whenNotPartyBActionsPaused() {
 		if (StateControlStorage.layout().globalPaused) revert GlobalPaused();
 		if (StateControlStorage.layout().partyBActionsPaused) revert PartyBActionsPaused();
+		if (StateControlStorage.layout().emergencyMode) revert EmergencyMode();
 		_;
 	}
 
