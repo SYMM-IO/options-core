@@ -16,9 +16,9 @@ describe(`${name}-v${version}`, () => {
 		// 	shouldBehaveLikeAccountFacet()
 		// })
 
-		// describe("Facets_PartyAOpenFacet", async function () {
-		// 	shouldBehaveLikePartyAOpenFacet()
-		// })
+		describe("Facets_PartyAOpenFacet", async function () {
+			shouldBehaveLikePartyAOpenFacet()
+		})
 
 		// describe("Facets_PartyACloseFacet", async function () {
 		// 	shouldBehaveLikePartyACloseFacet()
