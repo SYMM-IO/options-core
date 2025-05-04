@@ -74,4 +74,5 @@ interface IControlEvents {
 	event SignatureVerifierUpdated(address indexed verifier);
 	event SetManualSync(address user, bool isManual);
 	event SignatureVerifierUpdated(address indexed verifier);
+	event SetManualSync(address user, bool isManual);
 }
