@@ -319,14 +319,4 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		AppStorage.layout().signatureVerifier = _verifier;
 		emit SignatureVerifierUpdated(_verifier);
 	}
-
-	function setManualSync(address user, bool isManual) external onlyRole(LibAccessibility.SETTER_ROLE) {
-		AccountStorage.layout().manualSync[user] = isManual;
-		emit SetManualSync(user, isManual);
-	}
-
-	function setSignatureVerifier(address _verifier) external onlyRole(LibAccessibility.SETTER_ROLE) {
-		AppStorage.layout().signatureVerifier = _verifier;
-		emit SignatureVerifierUpdated(_verifier);
-	}
 }

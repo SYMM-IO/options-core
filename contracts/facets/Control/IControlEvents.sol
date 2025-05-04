@@ -72,6 +72,4 @@ interface IControlEvents {
 	event PriceOracleAddressUpdated(address indexed oracle);
 	event SetManualSync(address user, bool isManual);
 	event SignatureVerifierUpdated(address indexed verifier);
-	event SetManualSync(address user, bool isManual);
-	event SignatureVerifierUpdated(address indexed verifier);
 }
