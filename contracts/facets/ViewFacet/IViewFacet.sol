@@ -10,7 +10,6 @@ import { Symbol, Oracle } from "../../storages/SymbolStorage.sol";
 import { Trade } from "../../types/TradeTypes.sol";
 import { Withdraw } from "../../types/WithdrawTypes.sol";
 import { BridgeTransaction } from "../../types/BridgeTypes.sol";
-import { TransferIntent } from "../../types/TransferIntentTypes.sol";
 import { OpenIntent, CloseIntent } from "../../types/IntentTypes.sol";
 import { LiquidationDetail, LiquidationState } from "../../types/LiquidationTypes.sol";
 
@@ -100,10 +99,6 @@ interface IViewFacet {
 	function isSigUsed(bytes32 intentHash) external view returns (bool);
 
 	function signatureVerifier() external view returns (address);
-
-	function getTransferIntent(uint256 intentId) external view returns (TransferIntent memory);
-
-	function getLastTransferIntentId() external view returns (uint256);
 
 	function getOpenIntentsWithBitmap(Bitmap calldata bitmap, uint256 gasNeededForReturn) external view returns (OpenIntent[] memory openIntents);
 

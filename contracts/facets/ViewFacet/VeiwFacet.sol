@@ -16,14 +16,12 @@ import { LiquidationStorage } from "../../storages/LiquidationStorage.sol";
 import { StateControlStorage } from "../../storages/StateControlStorage.sol";
 import { AccessControlStorage } from "../../storages/AccessControlStorage.sol";
 import { FeeManagementStorage } from "../../storages/FeeManagementStorage.sol";
-import { TransferIntentStorage } from "../../storages/TransferIntentStorage.sol";
 import { SymbolStorage, Symbol, Oracle } from "../../storages/SymbolStorage.sol";
 import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
 
 import { Trade } from "../../types/TradeTypes.sol";
 import { Withdraw } from "../../types/WithdrawTypes.sol";
 import { BridgeTransaction } from "../../types/BridgeTypes.sol";
-import { TransferIntent } from "../../types/TransferIntentTypes.sol";
 import { OpenIntent, CloseIntent } from "../../types/IntentTypes.sol";
 import { LiquidationDetail, LiquidationState } from "../../types/LiquidationTypes.sol";
 
@@ -372,14 +370,6 @@ contract ViewFacet is IViewFacet {
 
 	function signatureVerifier() external view returns (address) {
 		return AppStorage.layout().signatureVerifier;
-	}
-
-	function getTransferIntent(uint256 intentId) external view returns (TransferIntent memory) {
-		return TransferIntentStorage.layout().transferIntents[intentId];
-	}
-
-	function getLastTransferIntentId() external view returns (uint256) {
-		return TransferIntentStorage.layout().lastTransferIntentId;
 	}
 
 	/**

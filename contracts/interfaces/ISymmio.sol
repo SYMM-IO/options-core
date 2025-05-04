@@ -12,7 +12,6 @@ import "../facets/DiamondCut/IDiamondCut.sol";
 import "../facets/DiamondLoup/IDiamondLoupe.sol";
 import "../facets/PartyAOpen/IPartyAOpenFacet.sol";
 import "../facets/PartyBOpen/IPartyBOpenFacet.sol";
-import "../facets/Interdealer/IInterdealerFacet.sol";
 import "../facets/PartyAClose/IPartyACloseFacet.sol";
 import "../facets/PartyBClose/IPartyBCloseFacet.sol";
 import "../facets/ForceActions/IForceActionsFacet.sol";
@@ -21,21 +20,18 @@ import "../facets/InstantActionsOpen/IInstantActionsOpenFacet.sol";
 import "../facets/InstantActionsClose/IInstantActionsCloseFacet.sol";
 
 interface ISymmio is
-IAccountFacet,
-IBridgeFacet,
-IClearingHouseFacet,
-IControlFacet,
-IForceActionsFacet,
-IInstantActionsOpenFacet,
-IInstantActionsCloseFacet,
-IInterdealerFacet,
-IPartyAOpenFacet,
-IPartyACloseFacet,
-IPartyBOpenFacet,
-IPartyBCloseFacet,
-IViewFacet,
-IDiamondCut,
-IDiamondLoupe
-{
-
-}
+	IAccountFacet,
+	IBridgeFacet,
+	IClearingHouseFacet,
+	IControlFacet,
+	IForceActionsFacet,
+	IInstantActionsOpenFacet,
+	IInstantActionsCloseFacet,
+	IPartyAOpenFacet,
+	IPartyACloseFacet,
+	IPartyBOpenFacet,
+	IPartyBCloseFacet,
+	IViewFacet,
+	IDiamondCut,
+	IDiamondLoupe
+{}
