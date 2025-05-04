@@ -114,7 +114,9 @@ library AccountFacetImpl {
 		if (to == address(0)) revert CommonErrors.ZeroAddress("to");
 		if (amount == 0) revert CommonErrors.InvalidAmount("amount", amount, 0, 0);
 
-		accountLayout.balances[msg.sender][collateral].syncAll();
+		if (!accountLayout.manualSync[msg.sender]) {
+			accountLayout.balances[msg.sender][collateral].syncAll();
+		}
 
 		uint256 available = accountLayout.balances[msg.sender][collateral].isolatedBalance -
 			accountLayout.balances[msg.sender][collateral].isolatedLockedBalance;

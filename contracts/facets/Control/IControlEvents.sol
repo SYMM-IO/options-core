@@ -65,4 +65,5 @@ interface IControlEvents {
 		uint256 symbolType
 	);
 	event PriceOracleAddressUpdated(address indexed oracle);
+	event SetManualSync(address user, bool isManual);
 }

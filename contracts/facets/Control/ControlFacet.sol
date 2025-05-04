@@ -119,6 +119,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 
 	function setPartyBConfig(address _partyB, PartyBConfig calldata _config) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		AppStorage.layout().partyBConfigs[_partyB] = _config;
+		AccountStorage.layout().manualSync[_partyB] = true;
 		emit PartyBConfigUpdated(_partyB, _config);
 	}
 
@@ -299,5 +300,10 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	function setPriceOracleAddress(address _oracle) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		AppStorage.layout().priceOracleAddress = _oracle;
 		emit PriceOracleAddressUpdated(_oracle);
+	}
+
+	function setManualSync(address user, bool isManual) external onlyRole(LibAccessibility.SETTER_ROLE) {
+		AccountStorage.layout().manualSync[user] = isManual;
+		emit SetManualSync(user, isManual);
 	}
 }
