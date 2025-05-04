@@ -292,21 +292,16 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		emit SymbolAdded(s.lastSymbolId, _name, _optionType, _oracleId, _collateral, _tradingFee, _symbolType);
 	}
 
-	function addSymbols(Symbol[] memory symbols) external onlyRole(LibAccessibility.SETTER_ROLE) {
-		for (uint8 i = 0; i < symbols.length; i++) {
-			Symbol memory s = symbols[i];
-			addSymbol(s.name, s.optionType, s.oracleId, s.collateral, s.isStableCoin, s.tradingFee, s.symbolType);
-		}
-	}
+	function setSymbolState(
+		uint256 _symbolId,
+		bool _status
+	) external onlyRole(LibAccessibility.SETTER_ROLE) {
+		SymbolStorage.Layout storage s = SymbolStorage.layout();
+		if (s.lastSymbolId < _symbolId)
+			revert ControlFacetErrors.InvalidSymbol(_symbolId, s.lastSymbolId);
 
-	function setSymbolValidationState(uint256 _symbolId, bool _isValid) external {
-		SymbolStorage.Layout storage symbolLayout = SymbolStorage.layout();
-		if (_symbolId == 0 || _symbolId > symbolLayout.lastSymbolId) {
-			revert ControlFacetErrors.InvalidSymbol(_symbolId);
-		}
-
-		emit SetSymbolValidationState(_symbolId, symbolLayout.symbols[_symbolId].isValid, _isValid);
-		symbolLayout.symbols[_symbolId].isValid = _isValid;
+		s.symbols[_symbolId].isValid = _status;	
+		emit SymbolStateUpdated(_symbolId, _status);
 	}
 
 	function setPriceOracleAddress(address _oracle) external onlyRole(LibAccessibility.SETTER_ROLE) {
