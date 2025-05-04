@@ -95,4 +95,6 @@ interface IControlFacet is IControlEvents {
 	) external;
 
 	function setMaxConnectedCounterParties(uint256 _max) external;
+
+	function setManualSync(address user, bool isManual) external;
 }
