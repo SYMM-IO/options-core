@@ -4,22 +4,24 @@ import { runTx } from "../../utils/tx"
 import { ethers } from "hardhat"
 import { BigNumberish } from "ethers"
 import { setBalance } from "@nomicfoundation/hardhat-network-helpers"
+import { PartyEntity } from "./partyEntitiy"
+import { FakeStablecoin} from "../../types"
 
-export class PartyB {
-	constructor(private context: RunContext, private signer: SignerWithAddress) {}
+export class PartyB extends PartyEntity {
+	constructor(context: RunContext,  signer: SignerWithAddress) {super(context,signer)}
 
-	public async setBalances(collateralAmount?: BigNumberish, depositAmount?: BigNumberish) {
-		const userAddress = this.signer.getAddress()
+	// public async setBalances(collateralAmount?: BigNumberish, depositAmount?: BigNumberish) {
+	// 	const userAddress = this.signer.getAddress()
 
-		await runTx(this.context.collateral.connect(this.signer).approve(this.context.diamond, ethers.MaxUint256))
+	// 	await runTx(this.context.collateral.connect(this.signer).approve(this.context.diamond, ethers.MaxUint256))
 
-		if (collateralAmount) await runTx(this.context.collateral.connect(this.signer).mint(userAddress, collateralAmount))
-		if (depositAmount) await runTx(this.context.accountFacet.connect(this.signer).deposit(await this.context.collateral.getAddress(), depositAmount))
-	}
+	// 	if (collateralAmount) await runTx(this.context.collateral.connect(this.signer).mint(userAddress, collateralAmount))
+	// 	if (depositAmount) await runTx(this.context.accountFacet.connect(this.signer).deposit(await this.context.collateral.getAddress(), depositAmount))
+	// }
 
-	public async setNativeBalance(amount: BigNumberish) {
-		await setBalance(this.signer.address, amount)
-	}
+	// public async setNativeBalance(amount: BigNumberish) {
+	// 	await setBalance(this.signer.address, amount)
+	// }
 
 	public async lockOpenIntent(id: BigNumberish) {
 		await runTx(this.context.partyBOpenFacet.connect(this.signer).lockOpenIntent(id))
@@ -33,7 +35,7 @@ export class PartyB {
 		await runTx(this.context.partyBOpenFacet.connect(this.signer).fillOpenIntent(id, quantity, price, marginType))
 	}
 
-	public getSigner() {
-		return this.signer
-	}
+	// public getSigner() {
+	// 	return this.signer
+	// }
 }

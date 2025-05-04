@@ -16,8 +16,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 		context = await loadFixture(initializeTestFixture)
 		partyA1 = new PartyA(context, context.signers.partyA1)
 		partyB1 = new PartyB(context, context.signers.partyB1)
-		await partyA1.setBalances("500")
-
+		// await partyA1.setBalances(context.collateral,"500")
+		
 		await context.controlFacet.setPartyBConfig(partyB1.getSigner(), {
 			isActive: true,
 			lossCoverage: 0,
@@ -31,8 +31,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 		partyB1 = new PartyB(context, context.signers.partyB1)
 		partyB2 = new PartyB(context, context.signers.partyB2)
 
-		await partyB1.setBalances(e(100000), e(100000))
-		await partyA1.setBalances(e(100000), e(100000))
+		await partyB1.setBalances(context.collateral, e(100000), e(100000))
+		await partyA1.setBalances(context.collateral, e(100000), e(100000))
 	})
 
 	describe("sendOpenIntent", async function () {
@@ -62,12 +62,17 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 		})
 
 		it("Should fail when symbolId be wrong", async function () {
+			const latestBlock = await ethers.provider.getBlock("latest")
+
 			const request = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB1.getSigner()])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
-				.symbolId(3)
+				.expirationTimestamp( (latestBlock?.timestamp ?? 0) + 100)
+				.symbolId(2)
 				.build()
+
+
 			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "InvalidSymbol")
 		})
 
@@ -174,6 +179,40 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.build()
 
 			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "PartyAInPartyBWhitelist")
+		})
+
+		it("Should fail when partyA sends Short intent with isolated margin", async function () {
+			const latestBlock = await ethers.provider.getBlock("latest")
+			const request = openIntentRequestBuilder()
+				.partyBsWhiteList([partyB2.getSigner(), context.signers.partyB1])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateral)
+				.symbolId(1)
+				.deadline((latestBlock?.timestamp ?? 0) + 120)
+				.expirationTimestamp((latestBlock?.timestamp ?? 0) + 120)
+				.exerciseFee({ cap: e(1), rate: "0" })
+				.marginType(0)  // 0 Isolated, 1 Cross
+				.tradeSide(1)  // 0 Buy, 1 Sell
+				.build()
+
+			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "ShortTradeInIsolatedMode")
+		})
+
+		it("Should fail when partyA sends Short intent with isolated margin", async function () {
+			const latestBlock = await ethers.provider.getBlock("latest")
+			const request = openIntentRequestBuilder()
+				.partyBsWhiteList([partyB2.getSigner(), context.signers.partyB1])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateral)
+				.symbolId(1)
+				.deadline((latestBlock?.timestamp ?? 0) + 120)
+				.expirationTimestamp((latestBlock?.timestamp ?? 0) + 120)
+				.exerciseFee({ cap: e(1), rate: "0" })
+				.marginType(1)  // 0 Isolated, 1 Cross
+				.tradeSide(1)  // 0 Buy, 1 Sell
+				.build()
+
+			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "OnlyOnePartyBIsAllowedInCrossMode")
 		})
 
 		it("Should fail when partyB whiteListed and available balance be insufficient", async function () {

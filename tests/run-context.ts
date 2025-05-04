@@ -1,23 +1,9 @@
 import { ethers } from "hardhat"
 
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers"
-import {
-	AccountFacet,
-	ControlFacet,
-	DiamondCutFacet,
-	DiamondLoupeFacet,
-	FakeOracle,
-	FakeStablecoin,
-	ForceActionsFacet,
-	PartyACloseFacet,
-	PartyAFacet,
-	PartyAOpenFacet,
-	PartyBCloseFacet,
-	PartyBFacet,
-	PartyBOpenFacet,
-	TradeSettlementFacet,
-	ViewFacet,
-} from "../types"
+import { AccountFacet, ControlFacet, DiamondCutFacet, DiamondLoupeFacet, FakeOracle, FakeStablecoin,
+	 ForceActionsFacet, PartyACloseFacet, PartyAOpenFacet, PartyBCloseFacet,
+	  PartyBOpenFacet, TradeSettlementFacet, ViewFacet } from "../types"
 
 export class RunContext {
 	accountFacet!: AccountFacet
@@ -44,10 +30,12 @@ export class RunContext {
 	}
 	diamond!: string
 	collateral!: FakeStablecoin
-	oracle!: FakeOracle
+	collateralNL!: FakeStablecoin
+	oracle!:FakeOracle
+	context: any
 }
 
-export async function createRunContext(diamond: string, collateral: string, oracle: string): Promise<RunContext> {
+export async function createRunContext(diamond: string, collateral: string[], oracle: string): Promise<RunContext> {
 	let context = new RunContext()
 
 	const signers: SignerWithAddress[] = await ethers.getSigners()
@@ -64,7 +52,9 @@ export async function createRunContext(diamond: string, collateral: string, orac
 	}
 
 	context.diamond = diamond
-	context.collateral = await ethers.getContractAt("FakeStablecoin", collateral)
+	context.collateral = await ethers.getContractAt("FakeStablecoin", collateral[0])
+	context.collateralNL = await ethers.getContractAt("FakeStablecoin", collateral[1])
+	
 	context.oracle = await ethers.getContractAt("FakeOracle", oracle)
 	context.accountFacet = await ethers.getContractAt("AccountFacet", diamond)
 	context.diamondCutFacet = await ethers.getContractAt("DiamondCutFacet", diamond)
