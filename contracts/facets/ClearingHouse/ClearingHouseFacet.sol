@@ -20,9 +20,12 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 	 * @param partyB The address of Party B to be liquidated.
 	 * @param collateral The address of collateral
 	 */
-	function flagLiquidation(address partyB, address collateral) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-		ClearingHouseFacetImpl.flagLiquidation(partyB, collateral);
-		emit FlagLiquidation(msg.sender, partyB, collateral);
+	function flagIsolatedPartyBLiquidation(
+		address partyB,
+		address collateral
+	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
+		ClearingHouseFacetImpl.flagIsolatedPartyBLiquidation(partyB, collateral);
+		emit FlagIsolatedPartyBLiquidation(msg.sender, partyB, collateral);
 	}
 
 	/**
@@ -30,9 +33,12 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 	 * @param partyB The address of Party B to be liquidated.
 	 * @param collateral The address of collateral
 	 */
-	function unflagLiquidation(address partyB, address collateral) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-		ClearingHouseFacetImpl.unflagLiquidation(partyB, collateral);
-		emit UnflagLiquidation(msg.sender, partyB, collateral);
+	function unflagIsolatedPartyBLiquidation(
+		address partyB,
+		address collateral
+	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
+		ClearingHouseFacetImpl.unflagIsolatedPartyBLiquidation(partyB, collateral);
+		emit UnflagIsolatedPartyBLiquidation(msg.sender, partyB, collateral);
 	}
 
 	/**
@@ -43,17 +49,17 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 	 * @param upnl The upnl of partyB at the moment of liquidation
 	 * @param collateralPrice The price of collateral
 	 */
-	function liquidate(
-		bytes memory liquidationId,
+	function liquidateIsolatedPartyB(
+		bytes32 liquidationId,
 		address partyB,
 		address collateral,
 		int256 upnl,
 		uint256 collateralPrice
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-		ClearingHouseFacetImpl.liquidate(liquidationId, partyB, collateral, upnl, collateralPrice);
-		emit Liquidate(
-			liquidationId,
+		ClearingHouseFacetImpl.liquidateIsolatedPartyB(liquidationId, partyB, collateral, upnl, collateralPrice);
+		emit LiquidateIsolatedPartyB(
 			msg.sender,
+			liquidationId,
 			partyB,
 			collateral,
 			AccountStorage.layout().balances[partyB][collateral].isolatedBalance,
@@ -80,29 +86,95 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 		emit ConfiscatePartyBWithdrawal(partyB, withdrawId);
 	}
 
+	function distributeCollateral(
+		address partyB,
+		address collateral,
+		address[] memory partyAs,
+		uint256[] memory amounts
+	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
+		ClearingHouseFacetImpl.distributeCollateral(partyB, collateral, partyAs);
+		emit DistributeCollateral(msg.sender, partyB, collateral, partyAs, amounts);
+		// if (isLiquidationFinished) {
+		// 	emit FullyLiquidated(partyB, liquidationId);
+		// }
+	}
+
+	// function unfreezePartyAs(address partyB, address collateral) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {}
+
+	function flagCrossPartyBLiquidation(
+		address partyB,
+		address partyA,
+		address collateral
+	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
+		ClearingHouseFacetImpl.flagCrossPartyBLiquidation(partyB, partyA, collateral);
+		emit FlagCrossPartyBLiquidation(msg.sender, partyB, partyA, collateral);
+	}
+
+	function unflagCrossPartyBLiquidation(
+		address partyB,
+		address partyA,
+		address collateral
+	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
+		ClearingHouseFacetImpl.unflagCrossPartyBLiquidation(partyB, partyA, collateral);
+		emit UnflagCrossPartyBLiquidation(msg.sender, partyB, partyA, collateral);
+	}
+
+	function liquidateCrossPartyB(
+		bytes32 liquidationId,
+		address partyB,
+		address partyA,
+		address collateral,
+		int256 upnl,
+		uint256 collateralPrice
+	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
+		ClearingHouseFacetImpl.liquidateCrossPartyB(liquidationId, partyB, partyA, collateral, upnl, collateralPrice);
+		emit LiquidateCrossPartyB(msg.sender, liquidationId, partyB, partyA, collateral, upnl, collateralPrice);
+	}
+
+	function flagPartyALiquidation(
+		address partyA,
+		address partyB,
+		address collateral
+	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
+		ClearingHouseFacetImpl.flagPartyALiquidation(partyA, partyB, collateral);
+		emit FlagPartyALiquidation(msg.sender, partyA, partyB, collateral);
+	}
+
+	function unflagPartyALiquidation(
+		address partyA,
+		address partyB,
+		address collateral
+	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
+		ClearingHouseFacetImpl.unflagPartyALiquidation(partyA, partyB, collateral);
+		emit UnflagPartyALiquidation(msg.sender, partyA, partyB, collateral);
+	}
+
+	function liquidateCrossPartyA(
+		bytes32 liquidationId,
+		address partyA,
+		address partyB,
+		address collateral,
+		int256 upnl,
+		uint256 collateralPrice
+	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
+		ClearingHouseFacetImpl.liquidateCrossPartyA(liquidationId, partyA, partyB, collateral, upnl, collateralPrice);
+		emit LiquidateCrossPartyA(msg.sender, liquidationId, partyA, partyB, collateral, upnl, collateralPrice);
+	}
+
 	function closeTrades(
 		uint256[] memory tradeIds,
 		uint256[] memory prices
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
 		ClearingHouseFacetImpl.closeTrades(tradeIds, prices);
-		emit CloseTradesForLiquidation(tradeIds, prices);
+		emit CloseTradesForLiquidation(msg.sender, tradeIds, prices);
 	}
 
-	function distributeCollateral(
-		address partyB,
+	function allocateFromReserveToCross(
+		address party,
+		address counterParty,
 		address collateral,
-		address[] memory partyAs
+		uint256 amount
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-		(bool isLiquidationFinished, uint256 liquidationId, uint256[] memory amounts) = ClearingHouseFacetImpl.distributeCollateral(
-			partyB,
-			collateral,
-			partyAs
-		);
-		emit DistributeCollateral(liquidationId, partyB, collateral, partyAs, amounts);
-		if (isLiquidationFinished) {
-			emit FullyLiquidated(partyB, liquidationId);
-		}
+		ClearingHouseFacetImpl.allocateFromReserveToCross(party, counterParty, collateral, amount);
 	}
-
-	function unfreezePartyAs(address partyB, address collateral) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {}
 }
