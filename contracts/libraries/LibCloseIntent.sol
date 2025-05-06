@@ -12,6 +12,8 @@ import { CloseIntent, IntentStatus } from "../types/IntentTypes.sol";
 
 import { CommonErrors } from "./CommonErrors.sol";
 
+import "hardhat/console.sol";
+
 library LibCloseIntentOps {
 	// Custom errors
 	error ItemNotFound(uint256 item);

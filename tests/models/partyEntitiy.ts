@@ -11,7 +11,7 @@ import { FakeStablecoin} from "../../types"
 export class PartyEntity   {
 	constructor(protected context: RunContext, protected signer: SignerWithAddress) {}
 
-	public async setBalances(_collateral?: FakeStablecoin, collateralAmount?: BigNumberish, depositAmount?: BigNumberish) {
+	public async setBalances(_collateral?: FakeStablecoin, collateralAmountToMint?: BigNumberish, depositAmount?: BigNumberish) {
 		const userAddress = this.signer.getAddress()
 		let clt = this.context.collateral
 		if (_collateral) {
@@ -20,7 +20,7 @@ export class PartyEntity   {
 
 		await runTx(clt.connect(this.signer).approve(this.context.diamond, ethers.MaxUint256))
 
-		if (collateralAmount) await runTx(clt.connect(this.signer).mint(userAddress, collateralAmount))
+		if (collateralAmountToMint) await runTx(clt.connect(this.signer).mint(userAddress, collateralAmountToMint))
 		if (depositAmount) await runTx(this.context.accountFacet.connect(this.signer).deposit(await clt.getAddress(), depositAmount))
 	}
 

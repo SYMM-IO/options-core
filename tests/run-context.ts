@@ -1,9 +1,22 @@
 import { ethers } from "hardhat"
 
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers"
-import { AccountFacet, ControlFacet, DiamondCutFacet, DiamondLoupeFacet, FakeOracle, FakeStablecoin,
-	 ForceActionsFacet, PartyACloseFacet, PartyAOpenFacet, PartyBCloseFacet,
-	  PartyBOpenFacet, TradeSettlementFacet, ViewFacet } from "../types"
+import {
+	AccountFacet,
+	CloseIntentOpsMock,
+	ControlFacet,
+	DiamondCutFacet,
+	DiamondLoupeFacet,
+	FakeOracle,
+	FakeStablecoin,
+	ForceActionsFacet,
+	PartyACloseFacet,
+	PartyAOpenFacet,
+	PartyBCloseFacet,
+	PartyBOpenFacet,
+	TradeSettlementFacet,
+	ViewFacet,
+} from "../types"
 
 export class RunContext {
 	accountFacet!: AccountFacet
@@ -31,11 +44,13 @@ export class RunContext {
 	diamond!: string
 	collateral!: FakeStablecoin
 	collateralNL!: FakeStablecoin
-	oracle!:FakeOracle
-	context: any
+	oracle!: FakeOracle
+	mocks!: {
+		libCloseIntentMock: CloseIntentOpsMock
+	}
 }
 
-export async function createRunContext(diamond: string, collateral: string[], oracle: string): Promise<RunContext> {
+export async function createRunContext(diamond: string, collateral: string[], oracle: string, mocks?: Map<string, string>): Promise<RunContext> {
 	let context = new RunContext()
 
 	const signers: SignerWithAddress[] = await ethers.getSigners()
@@ -54,7 +69,7 @@ export async function createRunContext(diamond: string, collateral: string[], or
 	context.diamond = diamond
 	context.collateral = await ethers.getContractAt("FakeStablecoin", collateral[0])
 	context.collateralNL = await ethers.getContractAt("FakeStablecoin", collateral[1])
-	
+
 	context.oracle = await ethers.getContractAt("FakeOracle", oracle)
 	context.accountFacet = await ethers.getContractAt("AccountFacet", diamond)
 	context.diamondCutFacet = await ethers.getContractAt("DiamondCutFacet", diamond)
@@ -70,6 +85,13 @@ export async function createRunContext(diamond: string, collateral: string[], or
 	context.partyBOpenFacet = await ethers.getContractAt("PartyBOpenFacet", diamond)
 
 	context.tradeSettlementFacet = await ethers.getContractAt("TradeSettlementFacet", diamond)
+
+	if (mocks) {
+		console.log(mocks.get("CloseIntentOpsMock"))
+		context.mocks = {
+			libCloseIntentMock: await ethers.getContractAt("CloseIntentOpsMock", mocks.get("CloseIntentOpsMock")!),
+		}
+	}
 
 	return context
 }
