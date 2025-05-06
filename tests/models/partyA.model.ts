@@ -3,6 +3,7 @@ import { RunContext } from "../run-context"
 import { runTx } from "../../utils/tx"
 import { OpenIntent, openIntentRequestBuilder } from "./builders/send-open-intent.builder"
 import { PartyEntity } from "./partyEntitiy"
+import { BigNumberish } from "ethers"
 
 export class PartyA extends PartyEntity {
 	constructor(context: RunContext, signer: SignerWithAddress) {

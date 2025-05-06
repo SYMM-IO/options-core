@@ -229,6 +229,16 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			await expect(partyB1.fillOpenIntent(1,100,7)).to.be.revertedWithCustomError(context.partyBOpenFacet, "PartyBInEmergencyMode")
 		})
 
+		it("Should be failed when in Emergency Mode", async () => {
+			await context.controlFacet.activeEmergencyMode();
+			await expect(partyB1.fillOpenIntent(1,100,7,0)).to.be.revertedWithCustomError(context.partyBOpenFacet, "EmergencyMode")
+		})	
+		
+		it("Should be failed when PartyB in Emergency Mode", async () => {
+			await context.controlFacet.activePartyBEmergencyStatus(partyB1.getSigner)
+			await expect(partyB1.fillOpenIntent(1,100,7,0)).to.be.revertedWithCustomError(context.partyBOpenFacet, "PartyBInEmergencyMode")
+		})
+
 		it("Should failed when msgSender is not PartyB", async () => {
 			await expect(partyB2.fillOpenIntent(2, 100, 7)).to.revertedWithCustomError(context.partyBOpenFacet,
 				"UnauthorizedSender",
