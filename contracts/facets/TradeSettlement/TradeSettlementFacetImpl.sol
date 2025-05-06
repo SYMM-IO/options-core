@@ -36,9 +36,11 @@ library TradeSettlementFacetImpl {
 		Symbol storage symbol = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId];
 		LibMuon.verifySettlementPriceSig(sig);
 
-		trade.partyB.requireSolventPartyB(trade.partyA, symbol.collateral, trade.tradeAgreements.marginType);
 		if (trade.tradeAgreements.marginType == MarginType.CROSS) {
 			trade.partyA.requireSolventPartyA(trade.partyB, symbol.collateral);
+			trade.partyB.requireSolventCrossPartyB(trade.partyA, symbol.collateral);
+		} else {
+			trade.partyB.requireSolventIsolatedPartyB(symbol.collateral);
 		}
 
 		if (sig.symbolId != trade.tradeAgreements.symbolId)

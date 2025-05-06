@@ -55,9 +55,11 @@ library PartyBCloseFacetImpl {
 
 		if (sender != trade.partyB) revert CommonErrors.UnauthorizedSender(sender, trade.partyB);
 
-		sender.requireSolventPartyB(trade.partyA, symbol.collateral, trade.tradeAgreements.marginType);
 		if (trade.tradeAgreements.marginType == MarginType.CROSS) {
 			trade.partyA.requireSolventPartyA(trade.partyB, symbol.collateral);
+			trade.partyB.requireSolventCrossPartyB(trade.partyA, symbol.collateral);
+		} else {
+			trade.partyB.requireSolventIsolatedPartyB(symbol.collateral);
 		}
 
 		if (quantity == 0 || quantity > intent.quantity - intent.filledAmount)

@@ -37,6 +37,16 @@ library LibParty {
 		) revert NotSolvent(self, counterParty, collateral, marginType);
 	}
 
+	function requireSolventIsolatedPartyB(address self, address collateral) internal view {
+		if (LiquidationStorage.layout().partyBIsolatedLiquidationState[self][collateral].status != LiquidationStatus.SOLVENT)
+			revert NotSolvent(self, address(0), collateral, MarginType.ISOLATED);
+	}
+
+	function requireSolventCrossPartyB(address self, address counterParty, address collateral) internal view {
+		if (LiquidationStorage.layout().partyBCrossLiquidationState[self][counterParty][collateral].status != LiquidationStatus.SOLVENT)
+			revert NotSolvent(self, counterParty, collateral, MarginType.CROSS);
+	}
+
 	function requirePartyAInLiquidationProgress(address self, address partyB, address collateral) internal view {
 		if (LiquidationStorage.layout().partyALiquidationState[self][partyB][collateral].status != LiquidationStatus.IN_PROGRESS) {
 			uint8[] memory requiredStatuses = new uint8[](1);

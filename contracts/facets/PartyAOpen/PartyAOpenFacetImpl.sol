@@ -75,6 +75,9 @@ library PartyAOpenFacetImpl {
 		if (tradeAgreements.marginType == MarginType.CROSS) {
 			if (partyBsWhiteList.length != 1) revert PartyAOpenFacetErrors.OnlyOnePartyBIsAllowedInCrossMode();
 			sender.requireSolventPartyA(partyBsWhiteList[0], symbol.collateral);
+			partyBsWhiteList[0].requireSolventCrossPartyB(sender, symbol.collateral);
+		} else if (tradeAgreements.marginType == MarginType.ISOLATED && partyBsWhiteList.length == 1) {
+			partyBsWhiteList[0].requireSolventIsolatedPartyB(symbol.collateral);
 		}
 
 		intentId = ++OpenIntentStorage.layout().lastOpenIntentId;
@@ -117,7 +120,6 @@ library PartyAOpenFacetImpl {
 		}
 
 		if (intent.partyA != sender) revert CommonErrors.UnauthorizedSender(sender, intent.partyA);
-
 		if (block.timestamp > intent.deadline) {
 			intent.expire();
 		} else if (intent.status == IntentStatus.PENDING) {
