@@ -38,26 +38,28 @@ export async function initializeTestFixture(): Promise<RunContext> {
 		.connect(context.signers.admin)
 		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("UNPAUSER_ROLE")))
 
+		
 	await context.controlFacet.connect(context.signers.admin).unpauseGlobal()
-
+	
 	await context.controlFacet.setDeactiveInstantActionModeCooldown(120)
 	await context.controlFacet.setUnbindingCooldown(120)
 	await context.controlFacet.setMaxConnectedCounterParties(2)
-
+	await context.controlFacet.setMaxTradePerPartyA(3)
+		
 	await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
 		isActive: true,
 		lossCoverage: 0,
 		oracleId: 1,
 		symbolType: 0,
 	})
-
+	
 	await context.controlFacet.setPartyBConfig(context.signers.partyB2, {
 		isActive: true,
 		lossCoverage: 0,
 		oracleId: 1,
 		symbolType: 0,
 	})
-
+		
 	await context.controlFacet.setAffiliateStatus(context.signers.affiliate1, true)
 
 	await context.controlFacet.addOracle("test oracle", context.signers.oracle1)

@@ -3,6 +3,7 @@ import { ethers } from "hardhat"
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers"
 import {
 	AccountFacet,
+	ClearingHouseFacet,
 	CloseIntentOpsMock,
 	ControlFacet,
 	DiamondCutFacet,
@@ -35,6 +36,8 @@ export class RunContext {
 	forceActionsFacet!: ForceActionsFacet
 	instantActionOpenFacet!: InstantActionsOpenFacet
 	instantActionCloseFacet!: InstantActionsCloseFacet
+	clearingHouse!: ClearingHouseFacet
+	
 	signers!: {
 		admin: SignerWithAddress
 		partyA1: SignerWithAddress
@@ -94,6 +97,7 @@ export async function createRunContext(
 	context.instantActionCloseFacet = await ethers.getContractAt("InstantActionsCloseFacet", diamond)
 	context.instantActionOpenFacet = await ethers.getContractAt("InstantActionsOpenFacet", diamond)
 	context.signatureVerifier = await ethers.getContractAt("SignatureVerifier", signatureVerifier)
+	context.clearingHouse = await ethers.getContractAt("ClearingHouseFacet",diamond)
 
 	context.partyAOpenFacet = await ethers.getContractAt("PartyAOpenFacet", diamond)
 	context.partyACloseFacet = await ethers.getContractAt("PartyACloseFacet", diamond)
