@@ -14,4 +14,5 @@ library PartyACloseFacetErrors {
 	// Transfer errors
 	error ReceiverIsPartyB(address receiver, address partyB);
 	error OnlyPartyACanTransfer(address sender, address partyA);
+	error TradeInCrossCannotBeTransfered(uint256 tradeId);
 }
