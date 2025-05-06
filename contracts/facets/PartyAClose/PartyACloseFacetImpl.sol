@@ -105,11 +105,10 @@ library PartyACloseFacetImpl {
 			revert CommonErrors.InvalidState("TradeStatus", uint8(trade.status), requiredStatuses);
 		}
 
-		trade.partyB.requireSolventPartyB(trade.partyA, symbol.collateral, trade.tradeAgreements.marginType);
 		if (trade.tradeAgreements.marginType == MarginType.CROSS) {
-			// TODO
-			revert();
+			revert PartyACloseFacetErrors.TradeInCrossCannotBeTransfered(tradeId);
 		}
+		trade.partyB.requireSolventIsolatedPartyB(symbol.collateral);
 
 		trade.remove();
 		trade.partyA = receiver;
