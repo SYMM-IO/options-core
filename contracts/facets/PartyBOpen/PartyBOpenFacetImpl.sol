@@ -165,9 +165,11 @@ library PartyBOpenFacetImpl {
 			revert CommonErrors.InvalidState("IntentStatus", uint8(intent.status), requiredStatuses);
 		}
 
-		intent.partyB.requireSolventPartyB(intent.partyA, symbol.collateral, intent.tradeAgreements.marginType);
 		if (intent.tradeAgreements.marginType == MarginType.CROSS) {
 			intent.partyA.requireSolventPartyA(intent.partyB, symbol.collateral);
+			intent.partyB.requireSolventCrossPartyB(intent.partyA, symbol.collateral);
+		} else {
+			intent.partyB.requireSolventIsolatedPartyB(symbol.collateral);
 		}
 
 		if (block.timestamp > intent.deadline) revert PartyBOpenFacetErrors.IntentExpired(intentId, block.timestamp, intent.deadline);

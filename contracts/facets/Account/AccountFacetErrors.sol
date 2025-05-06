@@ -27,4 +27,5 @@ library AccountFacetErrors {
 	error InvalidCounterPartyToAllocate(address party, address counterParty);
 	error NotEnoughBalance(address party, address counterParty, int256 availableBalance, int256 amount);
 	error RemainingAmountMoreThanCounterPartyDebt(address party, address counterParty, int256 partyAReadyToDeallocate, int256 amount, int256 debt);
+	error PartyShouldBeLiquidated(address party);
 }
