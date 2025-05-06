@@ -12,7 +12,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 	beforeEach(async function () {
 		context = await loadFixture(initializeTestFixture)
 		partyA1 = new PartyA(context, context.signers.partyA1)
-		await partyA1.setBalances("500", "100")
+		await partyA1.setBalances(context.collateral,"500", "100")
 	})
 
 	describe("Deposit", async function () {

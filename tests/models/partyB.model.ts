@@ -15,8 +15,8 @@ export class PartyB extends PartyEntity {
 		await runTx(this.context.partyBOpenFacet.connect(this.signer).unlockOpenIntent(id))
 	}
 
-	public async fillOpenIntent(id: BigNumberish, quantity: BigNumberish, price: BigNumberish, marginType: BigNumberish) {
-		await runTx(this.context.partyBOpenFacet.connect(this.signer).fillOpenIntent(id, quantity, price, marginType))
+	public async fillOpenIntent(id: BigNumberish, quantity: BigNumberish, price: BigNumberish) {
+		await runTx(this.context.partyBOpenFacet.connect(this.signer).fillOpenIntent(id, quantity, price))
 	}
 
 }

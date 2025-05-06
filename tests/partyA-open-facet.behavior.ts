@@ -61,6 +61,13 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "GlobalPaused")
 		})
 
+		it("should fail when deposit more than threshold", async function () {
+
+			await expect(partyA1.setBalances(context.collateral, e(100000), e(100000))).
+				to.revertedWithCustomError(context.partyAOpenFacet,"BalanceLimitPerUserReached")
+			
+		})
+
 		it("Should fail when symbolId be wrong", async function () {
 			const latestBlock = await ethers.provider.getBlock("latest")
 
@@ -69,8 +76,11 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.expirationTimestamp( (latestBlock?.timestamp ?? 0) + 100)
-				.symbolId(2)
+				.deadline((latestBlock?.timestamp ?? 0)+100)
+				.symbolId(1)
 				.build()
+
+				context.controlFacet.setSymbolState(1,false)
 
 
 			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "InvalidSymbol")

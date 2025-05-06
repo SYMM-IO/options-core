@@ -15,7 +15,7 @@ export function shouldBehaveLikeForceActionFacet(): void {
 		context = await loadFixture(initializeTestFixture)
 		partyA1 = new PartyA(context, context.signers.partyA1)
 		partyB1 = new PartyB(context, context.signers.partyB1)
-		await partyA1.setBalances("500")
+		await partyA1.setBalances(context.collateral,"500")
 
 		await context.controlFacet.setPartyBConfig(partyB1.getSigner, {
 			isActive: true,
@@ -30,8 +30,8 @@ export function shouldBehaveLikeForceActionFacet(): void {
 		partyB1 = new PartyB(context, context.signers.partyB1)
 		partyB2 = new PartyB(context, context.signers.partyB2)
 
-		await partyB1.setBalances(e(100000), e(100000))
-		await partyA1.setBalances(e(100000), e(100000))
+		await partyB1.setBalances(context.collateral,e(100000), e(100000))
+		await partyA1.setBalances(context.collateral,e(100000), e(100000))
 
 		await context.controlFacet.setForceCancelOpenIntentTimeout(100)
 	})

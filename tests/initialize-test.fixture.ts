@@ -2,6 +2,7 @@ import { run } from "hardhat"
 import { Diamond, FakeStablecoin, SignatureVerifier } from "../types"
 import { createRunContext, RunContext } from "./run-context"
 import { ethers, toUtf8Bytes } from "ethers"
+import { e } from "../utils/e"
 
 export async function initializeTestFixture(): Promise<RunContext> {
 	const diamond: Diamond = await run("deploy:diamond")
@@ -45,6 +46,10 @@ export async function initializeTestFixture(): Promise<RunContext> {
 	await context.controlFacet.setUnbindingCooldown(120)
 	await context.controlFacet.setMaxConnectedCounterParties(2)
 	await context.controlFacet.setMaxTradePerPartyA(3)
+	await context.controlFacet.setBalanceLimitPerUser(context.collateral,e(1000000))
+	await context.controlFacet.setBalanceLimitPerUser(context.collateralNL,e(1000000))
+	await context.controlFacet.setDefaultFeeCollector(context.signers.feeCollector)
+	// await context.controlFacet.setAffiliateFeeCollector(context.signers.affiliate1)
 		
 	await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
 		isActive: true,
