@@ -3,6 +3,7 @@ import { expect, use } from "chai"
 import { initializeTestFixture } from "./initialize-test.fixture"
 import { PartyA } from "./models/partyA.model"
 import { RunContext } from "./run-context"
+import { IntentStatus } from "./option-enums"
 import { openIntentRequestBuilder } from "./models/builders/send-open-intent.builder"
 import { PartyB } from "./models/partyB.model"
 import { ethers, network } from "hardhat"
@@ -181,7 +182,8 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 
 		it("Should failed when partyB is not Solvent", async () => {
-			// await context.clearingHouse.flagLiquidation(context.signers.partyB1,context.collateral)
+			//requireSolventPartyB
+			await context.clearingHouse.flagIsolatedPartyBLiquidation(context.signers.partyB1,context.collateral)
 
 			await expect(partyB1.lockOpenIntent(1)).to
 				.be.revertedWithCustomError(context.partyBOpenFacet,"NotSolvent");
@@ -292,6 +294,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		it("Should failed when Intent quantity mismatch fill quantity", async () => {
 		
 			await expect(partyB1.fillOpenIntent(1, e(1000), 7)).to.revertedWithCustomError(context.partyBOpenFacet,"InvalidAmount")
+			await expect(partyB1.fillOpenIntent(1, e(0), 7)).to.revertedWithCustomError(context.partyBOpenFacet,"InvalidAmount")
 		})
 
 		it("Should failed when Intent price mismatch fill type price", async () => {
@@ -343,7 +346,8 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 
 		it("Should failed when Intent price mismatch fill type price", async () => {
-			await expect(partyB1.fillOpenIntent(1, 100, 8)).to.revertedWithCustomError(context.partyBOpenFacet,"InsufficientLockedBalance")
+			partyB1.setBalances(context.collateral,e(50),e(50))
+			await expect(partyB1.fillOpenIntent(1, 100, 2)).to.revertedWithCustomError(context.partyBOpenFacet,"InsufficientLockedBalance")
 		})
 		
 		// it("Should failed when Intent price mismatch fill type price", async () => {
@@ -359,5 +363,101 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 
 		
+	})
+
+	describe("unlockOpenIntent", async function () {
+		beforeEach(async () => {
+			await partyB1.lockOpenIntent(1)
+		})
+
+		it("Should failed when Global Paused", async () => {
+			await context.controlFacet.pauseGlobal()
+			await expect(partyB1.unlockOpenIntent("1")).to.revertedWithCustomError(context.partyBOpenFacet,"GlobalPaused")
+		})
+
+		it("Should failed when PartyB action Paused", async () => {
+			await context.controlFacet.pausePartyBActions()
+			await expect(partyB1.unlockOpenIntent("1")).to.revertedWithCustomError(context.partyBOpenFacet,"PartyBActionsPaused")
+		})
+
+		it("Should failed when msgSender is not PartyB", async () => {
+			await expect(context.partyBOpenFacet.connect(context.signers.others[0]).unlockOpenIntent(1)).to
+				.revertedWithCustomError(context.partyBOpenFacet,"UnauthorizedSender")
+		})
+
+		it("Should failed when intent status not LOCKED", async () => {
+			const latestBlock = await ethers.provider.getBlock("latest")
+			const request = openIntentRequestBuilder()
+			.partyBsWhiteList([partyB2.getSigner(), partyB1.getSigner()])
+			.affiliate(context.signers.affiliate1)
+			.feeToken(context.collateral)
+			.symbolId(1)
+			.deadline((latestBlock?.timestamp ?? 0) + 120)
+			.expirationTimestamp((latestBlock?.timestamp ?? 0) + 120)
+			.exerciseFee({ cap: e(1), rate: "0" })
+			.quantity(e(10))
+			.price(e(5))
+			.build()
+			
+			await partyA1.sendOpenIntent(request)
+			partyB1.lockOpenIntent("2")
+			await expect(partyB1.unlockOpenIntent("2")).to.revertedWithCustomError(context.partyBOpenFacet,"InvalidState")
+		})
+
+		it("Should failed when PartyB is in the liquidation process", async () => {
+			//TODO :::
+		})
+
+		it("Should change intent status to EXPIRED when deadline reached", async () => {
+			// TODO :::
+			// const newBlock = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 150
+			// await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
+			// expect(await context.partyBOpenFacet.connect(partyB1.getSigner()).unlockOpenIntent(1)).to.not.reverted
+			// const intent = await context.viewFacet.getOpenIntent(1)
+			// expect(intent.status).to.equal(3)
+		})
+
+		it("Should change intent status to PENDING", async () => {
+			expect(await partyB1.unlockOpenIntent("1")).to.not.reverted
+
+			const intent = await context.viewFacet.getOpenIntent(1)
+
+			expect(intent.status).to.equal(0) //IntentStatus.PENDING
+			expect(intent.partyB).to.equal(ZeroAddress)
+		})
+	})
+
+	describe("acceptCancelOpenIntent", async function () {
+		beforeEach(async () => {
+			await partyB1.lockOpenIntent(1)
+		})
+
+		it("Should failed when Global Paused", async () => {
+			await context.controlFacet.pauseGlobal()
+			await expect(partyB1.acceptCancelOpenIntent("1")).to.revertedWithCustomError(context.partyBOpenFacet,"GlobalPaused")
+		})
+
+		it("Should failed when PartyB action Paused", async () => {
+			await context.controlFacet.pausePartyBActions()
+			await expect(partyB1.acceptCancelOpenIntent("1")).to.revertedWithCustomError(context.partyBOpenFacet,"PartyBActionsPaused")
+		})
+
+		it("Should failed when msgSender is not PartyB", async () => {
+			await expect(context.partyBOpenFacet.connect(context.signers.others[0]).acceptCancelOpenIntent(1)).to
+				.revertedWithCustomError(context.partyBOpenFacet,"InvalidState")
+		})
+
+		it("Should change intent status to EXPIRED when deadline reached", async () => {
+		
+		})
+
+		it("Should change intent status to CANCELED on Accept", async () => {
+			partyA1.sendCancelOpenIntent(["1"])
+			expect(await partyB1.acceptCancelOpenIntent("1")).to.not.reverted
+			
+			const intent = await context.viewFacet.getOpenIntent(1)
+			expect(intent.status).to.equal(IntentStatus.CANCELED) 			
+			
+		})
 	})
 }
