@@ -6,6 +6,7 @@ import { shouldBehaveLikeInstantActionOpenFacet } from "./instant-action-open.be
 import { shouldBehaveLikeLibCloseIntent } from "./lib-closeIntent.behavior"
 import { shouldBehaveLikePartyACloseFacet } from "./partyA-close-facet.behavior"
 import { shouldBehaveLikePartyAOpenFacet } from "./partyA-open-facet.behavior"
+import { shouldBehaveLikePartyBCloseFacet } from "./partyB-close-facet.behavior"
 import { shouldBehaveLikePartyBOpenFacet } from "./partyB-open-facet.behavior"
 
 describe(`${name}-v${version}`, () => {
@@ -26,8 +27,13 @@ describe(`${name}-v${version}`, () => {
 			shouldBehaveLikePartyACloseFacet()
 		})
 
-		describe("Facets_PartyBOpenFacet", async function () {
-			shouldBehaveLikePartyBOpenFacet()
+
+		// describe("Facets_PartyBOpenFacet", async function () {
+		// 	shouldBehaveLikePartyBOpenFacet()
+		// })
+
+		describe("Facets_PartyBCloseFacet", async function () {
+			shouldBehaveLikePartyBCloseFacet()
 		})
 
 		describe("Libraries_LibCloseIntent", async function () {

@@ -7,3 +7,8 @@ export enum IntentStatus {
     FILLED,
     EXPIRED
 }
+
+export enum TradeSide {
+	BUY,
+	SELL
+}

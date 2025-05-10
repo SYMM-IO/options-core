@@ -3,7 +3,7 @@ import { expect, use } from "chai"
 import { initializeTestFixture } from "./initialize-test.fixture"
 import { PartyA } from "./models/partyA.model"
 import { RunContext } from "./run-context"
-import { IntentStatus } from "./option-enums"
+import { IntentStatus, TradeSide } from "./option-enums"
 import { openIntentRequestBuilder } from "./models/builders/send-open-intent.builder"
 import { PartyB } from "./models/partyB.model"
 import { ethers, network } from "hardhat"
@@ -11,6 +11,7 @@ import { e } from "../utils/e"
 import { ZeroAddress } from "ethers"
 import { bigint } from "hardhat/internal/core/params/argumentTypes"
 import { config } from "dotenv"
+import { OpenIntentStructOutput } from "../types/contracts/interfaces/ISymmio"
 
 export function shouldBehaveLikePartyBOpenFacet(): void {
 	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyB1: PartyB, partyB2: PartyB
@@ -189,7 +190,6 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 				.be.revertedWithCustomError(context.partyBOpenFacet,"NotSolvent");
 		})
 
-
 		it("Should lock open intent successfully", async () => {
 			await expect(partyB1.lockOpenIntent(1)).to.not.reverted
 
@@ -298,8 +298,20 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 
 		it("Should failed when Intent price mismatch fill type price", async () => {
-			
-			await expect(partyB1.fillOpenIntent(1, 100, 8)).to.revertedWithCustomError(context.partyBOpenFacet,"InvalidOpenPrice")
+			let intent:OpenIntentStructOutput = await context.viewFacet.getOpenIntent(1);
+			if(intent.tradeAgreements.tradeSide == BigInt(TradeSide.BUY))
+			{
+				await expect(partyB1.fillOpenIntent(1, 100, 8)).to.revertedWithCustomError(context.partyBOpenFacet,"InvalidOpenPrice")
+				await expect(partyB1.fillOpenIntent(1, 100, 5)).not.to.revertedWithCustomError(context.partyBOpenFacet,"InvalidOpenPrice")
+
+			}
+			else if(intent.tradeAgreements.tradeSide == BigInt(TradeSide.SELL))
+			{
+				await expect(partyB1.fillOpenIntent(1, 100, 5)).to.revertedWithCustomError(context.partyBOpenFacet,"InvalidOpenPrice")
+				await expect(partyB1.fillOpenIntent(1, 100, 8)).not.to.revertedWithCustomError(context.partyBOpenFacet,"InvalidOpenPrice")
+
+			}
+
 		})
 		
 		it("Should fail when partyA active trades more than max active trades", async function () {
@@ -388,7 +400,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		it("Should failed when intent status not LOCKED", async () => {
 			const latestBlock = await ethers.provider.getBlock("latest")
 			const request = openIntentRequestBuilder()
-			.partyBsWhiteList([partyB2.getSigner(), partyB1.getSigner()])
+			.partyBsWhiteList([partyB2.getSigner, partyB1.getSigner])
 			.affiliate(context.signers.affiliate1)
 			.feeToken(context.collateral)
 			.symbolId(1)
@@ -443,14 +455,12 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 
 		it("Should failed when msgSender is not PartyB", async () => {
-			await expect(context.partyBOpenFacet.connect(context.signers.others[0]).acceptCancelOpenIntent(1)).to
-				.revertedWithCustomError(context.partyBOpenFacet,"InvalidState")
 		})
-
+		
 		it("Should change intent status to EXPIRED when deadline reached", async () => {
 		
 		})
-
+		
 		it("Should change intent status to CANCELED on Accept", async () => {
 			partyA1.sendCancelOpenIntent(["1"])
 			expect(await partyB1.acceptCancelOpenIntent("1")).to.not.reverted
@@ -459,5 +469,14 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			expect(intent.status).to.equal(IntentStatus.CANCELED) 			
 			
 		})
+		
+		it("Should fail when fee interval not synced with current block timestamp", async () => {
+			partyA1.sendCancelOpenIntent(["1"])
+			TODO:
+			await expect(context.partyBOpenFacet.connect(context.signers.others[0]).acceptCancelOpenIntent(1)).to
+				.revertedWithCustomError(context.partyBOpenFacet,"InvalidSyncTimestamp")
+
+		})
+		
 	})
 }

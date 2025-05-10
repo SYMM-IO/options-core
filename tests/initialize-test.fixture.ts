@@ -49,6 +49,7 @@ export async function initializeTestFixture(): Promise<RunContext> {
 	await context.controlFacet.setBalanceLimitPerUser(context.collateral,e(1000000))
 	await context.controlFacet.setBalanceLimitPerUser(context.collateralNL,e(1000000))
 	await context.controlFacet.setDefaultFeeCollector(context.signers.feeCollector)
+	await context.controlFacet.setMaxCloseOrdersLength(1)
 	// await context.controlFacet.setAffiliateFeeCollector(context.signers.affiliate1)
 		
 	await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
