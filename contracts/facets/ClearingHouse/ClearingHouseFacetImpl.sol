@@ -195,10 +195,9 @@ library ClearingHouseFacetImpl {
 	}
 
 	// =============================================================
-	//                 🔄  Shared 🔄
+	//                       🔄  Shared 🔄
 	// =============================================================
 
-	/// @dev Behavior identical to the original – left untouched for clarity.
 	function closeTrades(uint256 liquidationId, uint256[] memory tradeIds, uint256[] memory prices) internal {
 		if (tradeIds.length != prices.length) revert ClearingHouseFacetErrors.MismatchedArrays(tradeIds.length, prices.length);
 
