@@ -67,7 +67,7 @@ library ClearingHouseFacetImpl {
 		detail.status = LiquidationStatus.CANCELLED;
 	}
 
-	function liquidateIsolatedPartyB(uint256 liquidationId, address partyB, address collateral, int256 upnl, uint256 collateralPrice) internal {
+	function liquidateIsolatedPartyB(address partyB, address collateral, int256 upnl, uint256 collateralPrice) internal {
 		LiquidationStorage.Layout storage liquidationLayout = LiquidationStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
@@ -91,23 +91,6 @@ library ClearingHouseFacetImpl {
 		detail.status = LiquidationStatus.IN_PROGRESS;
 		detail.collateralPrice = collateralPrice;
 	}
-
-	function confiscatePartyA(address partyB, address partyA, address collateral, uint256 amount) internal {
-		//FIXME: Isolated or cross
-		// if (partyB.isSolvent(partyA, collateral, MarginType.ISOLATED)) require(false);
-		// ScheduledReleaseBalance storage balance = AccountStorage.layout().balances[partyA][collateral];
-		// int256 scheduledBalance = balance.counterPartyBalance(partyB);
-		// if (scheduledBalance < 0 || scheduledBalance < int256(amount))
-		// 	revert ClearingHouseFacetErrors.InsufficientBalance(partyA, collateral, amount, scheduledBalance);
-		// balance.subForCounterParty(partyB, amount, MarginType.ISOLATED, DecreaseBalanceReason.CONFISCATE);
-		// partyB.getInProgressLiquidationDetail(collateral).collectedCollateral += amount;
-	}
-
-	function confiscatePartyBWithdrawal(address partyB, uint256 withdrawId) internal {}
-
-	function distributeCollateral(address partyB, address collateral, address[] memory partyAs) internal {}
-
-	// function unfreezePartyAs(address partyB, address collateral) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {}
 
 	function flagCrossPartyBLiquidation(address partyB, address partyA, address collateral) internal {
 		LiquidationStorage.Layout storage liquidationLayout = LiquidationStorage.layout();
@@ -146,14 +129,7 @@ library ClearingHouseFacetImpl {
 		detail.status = LiquidationStatus.CANCELLED;
 	}
 
-	function liquidateCrossPartyB(
-		uint256 liquidationId,
-		address partyB,
-		address partyA,
-		address collateral,
-		int256 upnl,
-		uint256 collateralPrice
-	) internal {
+	function liquidateCrossPartyB(address partyB, address partyA, address collateral, int256 upnl, uint256 collateralPrice) internal {
 		LiquidationStorage.Layout storage liquidationLayout = LiquidationStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
@@ -288,4 +264,21 @@ library ClearingHouseFacetImpl {
 		balance.reserveBalance -= amount;
 		balance.crossBalance[counterParty].balance += int256(amount);
 	}
+
+	function confiscatePartyA(address partyB, address partyA, address collateral, uint256 amount) internal {
+		//FIXME: Isolated or cross
+		// if (partyB.isSolvent(partyA, collateral, MarginType.ISOLATED)) require(false);
+		// ScheduledReleaseBalance storage balance = AccountStorage.layout().balances[partyA][collateral];
+		// int256 scheduledBalance = balance.counterPartyBalance(partyB);
+		// if (scheduledBalance < 0 || scheduledBalance < int256(amount))
+		// 	revert ClearingHouseFacetErrors.InsufficientBalance(partyA, collateral, amount, scheduledBalance);
+		// balance.subForCounterParty(partyB, amount, MarginType.ISOLATED, DecreaseBalanceReason.CONFISCATE);
+		// partyB.getInProgressLiquidationDetail(collateral).collectedCollateral += amount;
+	}
+
+	function confiscatePartyBWithdrawal(address partyB, uint256 withdrawId) internal {}
+
+	function distributeCollateral(address partyB, address collateral, address[] memory partyAs) internal {}
+
+	// function unfreezePartyAs(address partyB, address collateral) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {}
 }

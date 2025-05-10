@@ -43,23 +43,20 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 
 	/**
 	 * @notice Liquidates Party B based on the provided signature.
-	 * @param liquidationId The Id of liquidation
 	 * @param partyB The address of Party B to be liquidated.
 	 * @param collateral The address of collateral.
 	 * @param upnl The upnl of partyB at the moment of liquidation
 	 * @param collateralPrice The price of collateral
 	 */
 	function liquidateIsolatedPartyB(
-		uint256 liquidationId,
 		address partyB,
 		address collateral,
 		int256 upnl,
 		uint256 collateralPrice
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-		ClearingHouseFacetImpl.liquidateIsolatedPartyB(liquidationId, partyB, collateral, upnl, collateralPrice);
+		ClearingHouseFacetImpl.liquidateIsolatedPartyB(partyB, collateral, upnl, collateralPrice);
 		emit LiquidateIsolatedPartyB(
 			msg.sender,
-			liquidationId,
 			partyB,
 			collateral,
 			AccountStorage.layout().balances[partyB][collateral].isolatedBalance,
@@ -120,15 +117,14 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 	}
 
 	function liquidateCrossPartyB(
-		uint256 liquidationId,
 		address partyB,
 		address partyA,
 		address collateral,
 		int256 upnl,
 		uint256 collateralPrice
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-		ClearingHouseFacetImpl.liquidateCrossPartyB(liquidationId, partyB, partyA, collateral, upnl, collateralPrice);
-		emit LiquidateCrossPartyB(msg.sender, liquidationId, partyB, partyA, collateral, upnl, collateralPrice);
+		ClearingHouseFacetImpl.liquidateCrossPartyB(partyB, partyA, collateral, upnl, collateralPrice);
+		emit LiquidateCrossPartyB(msg.sender, partyB, partyA, collateral, upnl, collateralPrice);
 	}
 
 	function flagPartyALiquidation(
