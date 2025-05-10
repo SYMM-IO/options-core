@@ -76,11 +76,7 @@ library BridgeFacetImpl {
 			if (collateral != bridgeTransaction.collateral)
 				revert BridgeFacetErrors.BridgeCollateralMismatch(collateral, bridgeTransaction.collateral);
 
-			if (bridgeTransaction.status != BridgeTransactionStatus.RECEIVED) {
-				uint8[] memory requiredStatuses = new uint8[](1);
-				requiredStatuses[0] = uint8(BridgeTransactionStatus.RECEIVED);
-				revert CommonErrors.InvalidState("BridgeTransactionStatus", uint8(bridgeTransaction.status), requiredStatuses);
-			}
+			CommonErrors.requireStatus("BridgeTransactionStatus", uint8(bridgeTransaction.status), uint8(BridgeTransactionStatus.RECEIVED));
 
 			if (block.timestamp < AppStorage.layout().partyADeallocateCooldown + bridgeTransaction.timestamp)
 				revert CommonErrors.CooldownNotOver(
@@ -104,11 +100,7 @@ library BridgeFacetImpl {
 
 		if (transactionId > bridgeLayout.lastBridgeId) revert BridgeFacetErrors.InvalidBridgeTransactionId(transactionId);
 
-		if (bridgeTransaction.status != BridgeTransactionStatus.RECEIVED) {
-			uint8[] memory requiredStatuses = new uint8[](1);
-			requiredStatuses[0] = uint8(BridgeTransactionStatus.RECEIVED);
-			revert CommonErrors.InvalidState("BridgeTransactionStatus", uint8(bridgeTransaction.status), requiredStatuses);
-		}
+		CommonErrors.requireStatus("BridgeTransactionStatus", uint8(bridgeTransaction.status), uint8(BridgeTransactionStatus.RECEIVED));
 
 		bridgeTransaction.status = BridgeTransactionStatus.SUSPENDED;
 	}
@@ -118,11 +110,7 @@ library BridgeFacetImpl {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		BridgeTransaction storage bridgeTransaction = bridgeLayout.bridgeTransactions[transactionId];
 
-		if (bridgeTransaction.status != BridgeTransactionStatus.SUSPENDED) {
-			uint8[] memory requiredStatuses = new uint8[](1);
-			requiredStatuses[0] = uint8(BridgeTransactionStatus.SUSPENDED);
-			revert CommonErrors.InvalidState("BridgeTransactionStatus", uint8(bridgeTransaction.status), requiredStatuses);
-		}
+		CommonErrors.requireStatus("BridgeTransactionStatus", uint8(bridgeTransaction.status), uint8(BridgeTransactionStatus.SUSPENDED));
 
 		if (bridgeLayout.invalidBridgedAmountsPool == address(0)) revert CommonErrors.ZeroAddress("invalidBridgedAmountsPool");
 

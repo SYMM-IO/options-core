@@ -209,11 +209,7 @@ library ClearingHouseFacetImpl {
 			Trade storage trade = TradeStorage.layout().trades[tradeIds[i]];
 			uint256 price = prices[i];
 
-			if (trade.status != TradeStatus.OPENED) {
-				uint8[] memory requiredStatuses = new uint8[](1);
-				requiredStatuses[0] = uint8(TradeStatus.OPENED);
-				revert CommonErrors.InvalidState("TradeStatus", uint8(trade.status), requiredStatuses);
-			}
+			CommonErrors.requireStatus("TradeStatus", uint8(trade.status), uint8(TradeStatus.OPENED));
 			if (trade.partyA != detail.partyA || trade.partyB != detail.partyB) {
 				revert ClearingHouseFacetErrors.TradeIsNotInLiquidation(liquidationId, trade.id);
 			}

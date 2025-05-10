@@ -35,11 +35,7 @@ library PartyACloseFacetImpl {
 
 		if (sender != trade.partyA) revert CommonErrors.UnauthorizedSender(sender, trade.partyA);
 
-		if (trade.status != TradeStatus.OPENED) {
-			uint8[] memory requiredStatuses = new uint8[](1);
-			requiredStatuses[0] = uint8(TradeStatus.OPENED);
-			revert CommonErrors.InvalidState("TradeStatus", uint8(trade.status), requiredStatuses);
-		}
+		CommonErrors.requireStatus("TradeStatus", uint8(trade.status), uint8(TradeStatus.OPENED));
 
 		if (deadline < block.timestamp) revert CommonErrors.LowDeadline(deadline, block.timestamp);
 
@@ -70,11 +66,7 @@ library PartyACloseFacetImpl {
 
 		if (trade.partyA != sender) revert CommonErrors.UnauthorizedSender(sender, trade.partyA);
 
-		if (intent.status != IntentStatus.PENDING) {
-			uint8[] memory requiredStatuses = new uint8[](1);
-			requiredStatuses[0] = uint8(IntentStatus.PENDING);
-			revert CommonErrors.InvalidState("IntentStatus", uint8(intent.status), requiredStatuses);
-		}
+		CommonErrors.requireStatus("IntentStatus", uint8(intent.status), uint8(IntentStatus.PENDING));
 
 		if (block.timestamp > intent.deadline) {
 			intent.expire();
@@ -100,12 +92,8 @@ library PartyACloseFacetImpl {
 		if (receiver == address(0)) revert CommonErrors.ZeroAddress("receiver");
 
 		if (AppStorage.layout().partyBConfigs[receiver].isActive) revert PartyACloseFacetErrors.ReceiverIsPartyB(receiver, trade.partyB);
-
-		if (trade.status != TradeStatus.OPENED) {
-			uint8[] memory requiredStatuses = new uint8[](1);
-			requiredStatuses[0] = uint8(TradeStatus.OPENED);
-			revert CommonErrors.InvalidState("TradeStatus", uint8(trade.status), requiredStatuses);
-		}
+		
+		CommonErrors.requireStatus("TradeStatus", uint8(trade.status), uint8(TradeStatus.OPENED));
 
 		if (trade.tradeAgreements.marginType == MarginType.CROSS) {
 			revert PartyACloseFacetErrors.TradeInCrossCannotBeTransferred(tradeId);

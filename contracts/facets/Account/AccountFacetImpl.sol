@@ -153,11 +153,7 @@ library AccountFacetImpl {
 
 		Withdraw storage withdrawal = accountLayout.withdrawals[id];
 
-		if (withdrawal.status != WithdrawStatus.INITIATED) {
-			uint8[] memory requiredStatuses = new uint8[](1);
-			requiredStatuses[0] = uint8(WithdrawStatus.INITIATED);
-			revert CommonErrors.InvalidState("WithdrawStatus", uint8(withdrawal.status), requiredStatuses);
-		}
+		CommonErrors.requireStatus("WithdrawStatus", uint8(withdrawal.status), uint8(WithdrawStatus.INITIATED));
 
 		if (!appLayout.whiteListedCollateral[withdrawal.collateral]) revert CommonErrors.CollateralNotWhitelisted(withdrawal.collateral);
 
@@ -188,11 +184,8 @@ library AccountFacetImpl {
 
 		Withdraw storage withdrawal = accountLayout.withdrawals[id];
 
-		if (withdrawal.status != WithdrawStatus.INITIATED) {
-			uint8[] memory requiredStatuses = new uint8[](1);
-			requiredStatuses[0] = uint8(WithdrawStatus.INITIATED);
-			revert CommonErrors.InvalidState("WithdrawStatus", uint8(withdrawal.status), requiredStatuses);
-		}
+		CommonErrors.requireStatus("WithdrawStatus", uint8(withdrawal.status), uint8(WithdrawStatus.INITIATED));
+
 		if (
 			!appLayout.partyBConfigs[withdrawal.user].isActive &&
 			(accountLayout.balances[withdrawal.user][withdrawal.collateral].isolatedBalance + withdrawal.amount >
