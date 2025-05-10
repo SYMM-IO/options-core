@@ -218,6 +218,18 @@ library ScheduledReleaseBalanceOps {
 		return entry.transitioning + entry.scheduled;
 	}
 
+	/**
+	 * @notice Return total balance of user for a counterparty
+	 */
+	function counterPartyBalance(ScheduledReleaseBalance storage self, address counterParty, MarginType marginType) internal view returns (int256) {
+		ScheduledReleaseEntry storage entry = self.counterPartySchedules[counterParty];
+		if (marginType == MarginType.ISOLATED) {
+			return int256(self.isolatedBalance + entry.transitioning + entry.scheduled);
+		} else {
+			return self.crossBalance[counterParty].balance + int256(entry.transitioning) + int256(entry.scheduled);
+		}
+	}
+
 	// ────────────────────────────────────────────────────────────────────────────
 	// ↑↑  ALLOCATION  ↑↑
 	// ────────────────────────────────────────────────────────────────────────────

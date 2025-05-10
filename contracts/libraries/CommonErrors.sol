@@ -19,6 +19,8 @@ library CommonErrors {
 
 	error InsufficientBalance(address user, address token, uint256 requested, uint256 available);
 
+	error InsufficientIntBalance(address user, address token, uint256 requested, int256 available);
+
 	error CooldownNotOver(string cooldown, uint256 currentTime, uint256 requiredTime);
 
 	error UnauthorizedSender(address sender, address requiredSender);

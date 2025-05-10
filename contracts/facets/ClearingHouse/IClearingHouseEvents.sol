@@ -8,7 +8,7 @@ interface IClearingHouseEvents {
 	event FlagIsolatedPartyBLiquidation(address operator, address partyB, address collateral);
 	event UnflagIsolatedPartyBLiquidation(address operator, address partyB, address collateral);
 	event LiquidateIsolatedPartyB(address operator, address partyB, address collateral, uint256 balance, int256 upnl, uint256 collateralPrice);
-	event ConfiscatePartyA(address partyB, address partyA, address collateral, uint256 amount);
+	event ConfiscatePartyA(uint256 liquidationId, uint256 amount);
 	event ConfiscatePartyBWithdrawal(address partyB, uint256 withdrawId);
 	event DistributeCollateral(address operator, address partyB, address collateral, address[] partyAs, uint256[] amounts);
 	event FullyLiquidated(address partyB, uint256 liquidationId);

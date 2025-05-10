@@ -225,7 +225,20 @@ library ClearingHouseFacetImpl {
 		balance.crossBalance[counterParty].balance += int256(amount);
 	}
 
-	function confiscatePartyA(address /*partyB*/, address /*partyA*/, address /*collateral*/, uint256 /*amount*/) internal {}
+	function confiscatePartyA(uint256 liquidationId, uint256 amount) internal {
+		LiquidationDetail storage detail = LiquidationStorage.layout().liquidationDetails[liquidationId];
+
+		ScheduledReleaseBalance storage balance = AccountStorage.layout().balances[detail.partyA][detail.collateral];
+
+		int256 counterPartyBalance = balance.counterPartyBalance(detail.partyB, MarginType.CROSS);
+		if (counterPartyBalance < int256(amount))
+			revert CommonErrors.InsufficientIntBalance(detail.partyA, detail.collateral, amount, counterPartyBalance);
+
+		_requireStatus(detail, LiquidationStatus.IN_PROGRESS);
+
+		balance.subForCounterParty(detail.partyB, amount, MarginType.CROSS, DecreaseBalanceReason.CONFISCATE);
+		// detail.collectedCollateral += amount;
+	}
 
 	function confiscatePartyBWithdrawal(address /*partyB*/, uint256 /*withdrawId*/) internal {}
 
