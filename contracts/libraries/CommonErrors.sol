@@ -26,4 +26,12 @@ library CommonErrors {
 	error InvalidState(string property, uint8 currentStatus, uint8[] requiredStatus);
 
 	error CollateralNotWhitelisted(address collateral);
+
+	function requireStatus(string memory property, uint8 current, uint8 expected) internal pure {
+		if (current != expected) {
+			uint8[] memory requiredStatuses = new uint8[](1);
+			requiredStatuses[0] = expected;
+			revert InvalidState(property, current, requiredStatuses);
+		}
+	}
 }
