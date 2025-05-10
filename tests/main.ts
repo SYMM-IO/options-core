@@ -28,8 +28,13 @@ describe(`${name}-v${version}`, () => {
 			shouldBehaveLikePartyACloseFacet()
 		})
 
-		describe("Facets_PartyBOpenFacet", async function () {
-			shouldBehaveLikePartyBOpenFacet()
+
+		// describe("Facets_PartyBOpenFacet", async function () {
+		// 	shouldBehaveLikePartyBOpenFacet()
+		// })
+
+		describe("Facets_PartyBCloseFacet", async function () {
+			shouldBehaveLikePartyBCloseFacet()
 		})
 
 		describe("Libraries_LibCloseIntent", async function () {

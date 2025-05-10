@@ -26,6 +26,4 @@ export class PartyB extends PartyEntity {
 	public async fillCloseIntent(closeIntentId: BigNumberish, quantity: BigNumberish, price: BigNumberish) {
 		await runTx(this.context.partyBCloseFacet.connect(this.signer).fillCloseIntent(closeIntentId, quantity, price))
 	}
-
-	
 }
