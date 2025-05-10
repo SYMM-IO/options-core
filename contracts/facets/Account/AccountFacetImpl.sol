@@ -40,7 +40,7 @@ library AccountFacetImpl {
 		}
 		if (amount == 0) revert CommonErrors.InvalidAmount("amount", amount, 0, 0);
 		if (user == address(0)) revert CommonErrors.ZeroAddress("user");
-		if (appLayout.partyBConfigs[user].isActive) user.requireSolventIsolatedPartyB(collateral);
+		user.requireSolvent(address(0), collateral, MarginType.ISOLATED);
 
 		uint256 amountWith18Decimals = _normalizeAmount(collateral, amount);
 		if (
@@ -75,7 +75,7 @@ library AccountFacetImpl {
 				amount,
 				appLayout.balanceLimitPerUser[collateral]
 			);
-		if (appLayout.partyBConfigs[user].isActive) user.requireSolventIsolatedPartyB(collateral);
+		user.requireSolvent(address(0), collateral, MarginType.ISOLATED);
 
 		accountLayout.balances[user][collateral].setup(user, collateral);
 		accountLayout.balances[user][collateral].instantIsolatedAdd(amount, IncreaseBalanceReason.DEPOSIT);
@@ -125,7 +125,7 @@ library AccountFacetImpl {
 			revert CommonErrors.InsufficientBalance(msg.sender, collateral, amount, available);
 		}
 		if (CounterPartyRelationsStorage.layout().instantActionsMode[msg.sender]) revert AccountFacetErrors.InstantActionModeActive(msg.sender);
-		if (AppStorage.layout().partyBConfigs[msg.sender].isActive) msg.sender.requireSolventIsolatedPartyB(collateral);
+		msg.sender.requireSolvent(address(0), collateral, MarginType.ISOLATED);
 
 		accountLayout.balances[msg.sender][collateral].isolatedSub(amount, DecreaseBalanceReason.WITHDRAW);
 
@@ -203,7 +203,7 @@ library AccountFacetImpl {
 				withdrawal.amount,
 				appLayout.balanceLimitPerUser[withdrawal.collateral]
 			);
-		if (appLayout.partyBConfigs[withdrawal.user].isActive) (withdrawal.user).requireSolventIsolatedPartyB(withdrawal.collateral);
+		withdrawal.user.requireSolvent(address(0), withdrawal.collateral, MarginType.ISOLATED);
 
 		withdrawal.status = WithdrawStatus.CANCELED;
 		accountLayout.balances[withdrawal.user][withdrawal.collateral].instantIsolatedAdd(withdrawal.amount, IncreaseBalanceReason.DEPOSIT);
@@ -236,12 +236,9 @@ library AccountFacetImpl {
 				amount,
 				appLayout.balanceLimitPerUser[collateral]
 			);
-		if (appLayout.partyBConfigs[msg.sender].isActive) {
-			msg.sender.requireSolventIsolatedPartyB(collateral);
-			msg.sender.requireSolventCrossPartyB(counterParty, collateral);
-		} else {
-			msg.sender.requireSolventPartyA(counterParty, collateral);
-		}
+
+		msg.sender.requireSolvent(counterParty, collateral, MarginType.ISOLATED);
+		msg.sender.requireSolvent(counterParty, collateral, MarginType.CROSS);
 
 		accountLayout.balances[msg.sender][collateral].allocateBalance(counterParty, amount);
 	}
@@ -263,12 +260,9 @@ library AccountFacetImpl {
 					appLayout.balanceLimitPerUser[collateral]
 				);
 		}
-		if (appLayout.partyBConfigs[msg.sender].isActive) {
-			msg.sender.requireSolventIsolatedPartyB(collateral);
-			msg.sender.requireSolventCrossPartyB(counterParty, collateral);
-		} else {
-			msg.sender.requireSolventPartyA(counterParty, collateral);
-		}
+
+		msg.sender.requireSolvent(counterParty, collateral, MarginType.ISOLATED);
+		msg.sender.requireSolvent(counterParty, collateral, MarginType.CROSS);
 
 		accountLayout.balances[msg.sender][collateral].deallocateBalance(counterParty, amount);
 	}
@@ -377,7 +371,7 @@ library AccountFacetImpl {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 
-		if (AppStorage.layout().partyBConfigs[msg.sender].isActive) msg.sender.requireSolventIsolatedPartyB(collateral);
+		if (AppStorage.layout().partyBConfigs[msg.sender].isActive) msg.sender.requireSolvent(address(0), collateral, MarginType.ISOLATED);
 		if (
 			accountLayout.balances[msg.sender][collateral].isolatedBalance - accountLayout.balances[msg.sender][collateral].isolatedLockedBalance <
 			amount
@@ -405,7 +399,7 @@ library AccountFacetImpl {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 
-		if (AppStorage.layout().partyBConfigs[msg.sender].isActive) msg.sender.requireSolventIsolatedPartyB(collateral);
+		if (AppStorage.layout().partyBConfigs[msg.sender].isActive) msg.sender.requireSolvent(address(0), collateral, MarginType.ISOLATED);
 		if (accountLayout.balances[msg.sender][collateral].reserveBalance < amount)
 			revert CommonErrors.InsufficientBalance(msg.sender, collateral, amount, accountLayout.balances[msg.sender][collateral].reserveBalance);
 		if (

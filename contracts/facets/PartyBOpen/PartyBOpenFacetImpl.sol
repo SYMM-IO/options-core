@@ -82,7 +82,7 @@ library PartyBOpenFacetImpl {
 		if (appLayout.partyBConfigs[sender].symbolType != symbol.symbolType)
 			revert PartyBOpenFacetErrors.MismatchedSymbolType(sender, appLayout.partyBConfigs[sender].symbolType, symbol.symbolType);
 
-		sender.requireSolventPartyB(intent.partyA, symbol.collateral, MarginType.ISOLATED);
+		sender.requireSolvent(intent.partyA, symbol.collateral, MarginType.ISOLATED);
 
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = IntentStatus.LOCKED;
@@ -102,7 +102,7 @@ library PartyBOpenFacetImpl {
 			revert CommonErrors.InvalidState("IntentStatus", uint8(intent.status), requiredStatuses);
 		}
 
-		sender.requireSolventPartyB(intent.partyA, SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId].collateral, MarginType.ISOLATED);
+		sender.requireSolvent(intent.partyA, SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId].collateral, MarginType.ISOLATED);
 
 		if (block.timestamp > intent.deadline) {
 			intent.expire();
@@ -166,11 +166,9 @@ library PartyBOpenFacetImpl {
 		}
 
 		if (intent.tradeAgreements.marginType == MarginType.CROSS) {
-			intent.partyA.requireSolventPartyA(intent.partyB, symbol.collateral);
-			intent.partyB.requireSolventCrossPartyB(intent.partyA, symbol.collateral);
-		} else {
-			intent.partyB.requireSolventIsolatedPartyB(symbol.collateral);
+			intent.partyA.requireSolvent(intent.partyB, symbol.collateral, intent.tradeAgreements.marginType);
 		}
+		intent.partyB.requireSolvent(intent.partyA, symbol.collateral, intent.tradeAgreements.marginType);
 
 		if (block.timestamp > intent.deadline) revert PartyBOpenFacetErrors.IntentExpired(intentId, block.timestamp, intent.deadline);
 

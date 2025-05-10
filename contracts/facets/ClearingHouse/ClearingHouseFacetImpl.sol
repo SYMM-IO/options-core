@@ -11,17 +11,15 @@ import { ScheduledReleaseBalanceOps } from "../../libraries/LibScheduledReleaseB
 
 import { AppStorage } from "../../storages/AppStorage.sol";
 import { TradeStorage } from "../../storages/TradeStorage.sol";
-import { SymbolStorage } from "../../storages/SymbolStorage.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { LiquidationStorage } from "../../storages/LiquidationStorage.sol";
 
-import { Symbol } from "../../types/SymbolTypes.sol";
 import { MarginType } from "../../types/BaseTypes.sol";
 import { IntentStatus } from "../../types/IntentTypes.sol";
 import { Trade, TradeStatus } from "../../types/TradeTypes.sol";
 import { Withdraw, WithdrawStatus } from "../../types/WithdrawTypes.sol";
-import { LiquidationStatus, LiquidationDetail, LiquidationState } from "../../types/LiquidationTypes.sol";
-import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
+import { LiquidationStatus, LiquidationDetail, LiquidationSide } from "../../types/LiquidationTypes.sol";
+import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason, CrossEntry } from "../../types/BalanceTypes.sol";
 
 import { ClearingHouseFacetErrors } from "./ClearingHouseFacetErrors.sol";
 
@@ -30,188 +28,78 @@ library ClearingHouseFacetImpl {
 	using LibTradeOps for Trade;
 	using LibParty for address;
 
-	// function liquidate(bytes memory clearingHouseLiquidationId, address partyB, address collateral, int256 upnl, uint256 collateralPrice) internal {
-	// 	AppStorage.Layout storage appLayout = AppStorage.layout();
-	// 	AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-
-	// 	if (partyB.getLiquidationState(collateral).status != LiquidationStatus.FLAGGED) {
-	// 		uint8[] memory requiredStatuses = new uint8[](1);
-	// 		requiredStatuses[0] = uint8(LiquidationStatus.FLAGGED);
-	// 		revert CommonErrors.InvalidState("LiquidationStatus", uint8(partyB.getLiquidationState(collateral).status), requiredStatuses);
-	// 	}
-
-	// 	if (upnl >= 0) revert ClearingHouseFacetErrors.InvalidUpnl(upnl);
-
-	// 	int256 requiredCollateral = (-upnl * int256(appLayout.partyBConfigs[partyB].lossCoverage)) / int256(collateralPrice);
-	// 	if (int256(accountLayout.balances[partyB][collateral].isolatedBalance) >= requiredCollateral)
-	// 		revert ClearingHouseFacetErrors.PartyBIsSolvent(
-	// 			partyB,
-	// 			collateral,
-	// 			int256(accountLayout.balances[partyB][collateral].isolatedBalance),
-	// 			requiredCollateral
-	// 		);
-
-	// 	LiquidationDetail storage detail = partyB.getInProgressLiquidationDetail(collateral);
-	// 	detail.clearingHouseLiquidationId = clearingHouseLiquidationId;
-	// 	detail.upnl = upnl;
-	// 	detail.liquidationTimestamp = block.timestamp;
-	// 	detail.collateralPrice = collateralPrice;
-	// 	detail.collectedCollateral = accountLayout.balances[partyB][collateral].isolatedBalance;
-	// }
-
-	// function confiscatePartyBWithdrawal(address partyB, uint256 withdrawId) internal {
-	// 	AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-
-	// 	if (withdrawId > accountLayout.lastWithdrawId)
-	// 		revert CommonErrors.InvalidAmount(
-	// 			"withdrawId",
-	// 			withdrawId,
-	// 			1, // 1 for less than check
-	// 			accountLayout.lastWithdrawId
-	// 		);
-
-	// 	Withdraw memory withdraw = accountLayout.withdrawals[withdrawId];
-
-	// 	if (withdraw.status != WithdrawStatus.INITIATED) {
-	// 		uint8[] memory requiredStatuses = new uint8[](1);
-	// 		requiredStatuses[0] = uint8(WithdrawStatus.INITIATED);
-	// 		revert CommonErrors.InvalidState("WithdrawStatus", uint8(withdraw.status), requiredStatuses);
-	// 	}
-
-	// 	if (withdraw.user != partyB) revert ClearingHouseFacetErrors.InvalidWithdrawalUser(withdrawId, withdraw.user, partyB);
-
-	// 	partyB.requireInProgressLiquidation(withdraw.collateral);
-
-	// 	withdraw.status = WithdrawStatus.CANCELED;
-
-	// 	partyB.getInProgressLiquidationDetail(withdraw.collateral).collectedCollateral += withdraw.amount;
-	// }
-
-	// function closeTrades(uint256[] memory tradeIds, uint256[] memory prices) internal {
-	// 	LiquidationStorage.Layout storage liquidationLayout = LiquidationStorage.layout();
-
-	// 	if (tradeIds.length != prices.length) revert ClearingHouseFacetErrors.MismatchedArrays(tradeIds.length, prices.length);
-
-	// 	for (uint256 i = 0; i < tradeIds.length; i++) {
-	// 		Trade storage trade = TradeStorage.layout().trades[tradeIds[i]];
-	// 		Symbol storage symbol = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId];
-	// 		uint256 price = prices[i];
-
-	// 		if (trade.status != TradeStatus.OPENED) {
-	// 			uint8[] memory requiredStatuses = new uint8[](1);
-	// 			requiredStatuses[0] = uint8(TradeStatus.OPENED);
-	// 			revert CommonErrors.InvalidState("TradeStatus", uint8(trade.status), requiredStatuses);
-	// 		}
-
-	// 		trade.partyB.requireInProgressLiquidation(symbol.collateral);
-	// 		trade.settledPrice = price;
-
-	// 		uint256 pnl = trade.getPnl(price, trade.tradeAgreements.quantity);
-
-	// 		if (pnl > 0) {
-	// 			uint256 amountToTransfer = (pnl * AppStorage.layout().partyBConfigs[trade.partyB].lossCoverage) / 1e18;
-	// 			LiquidationDetail storage detail = trade.partyB.getInProgressLiquidationDetail(symbol.collateral);
-
-	// 			amountToTransfer = (amountToTransfer * 1e18) / detail.collateralPrice;
-	// 			if (liquidationLayout.liquidationDebtsToPartyAs[trade.partyB][symbol.collateral][trade.partyA] == 0) {
-	// 				liquidationLayout.involvedPartyAsCountInLiquidation[trade.partyB][symbol.collateral] += 1;
-	// 			}
-	// 			liquidationLayout.liquidationDebtsToPartyAs[trade.partyB][symbol.collateral][trade.partyA] += amountToTransfer;
-	// 			detail.requiredCollateral += amountToTransfer;
-
-	// 			trade.close(TradeStatus.LIQUIDATED, IntentStatus.CANCELED);
-	// 		} else {
-	// 			trade.close(TradeStatus.LIQUIDATED, IntentStatus.CANCELED);
-	// 		}
-	// 	}
-	// }
-
-	// function distributeCollateral(
-	// 	address partyB,
-	// 	address collateral,
-	// 	address[] memory partyAs
-	// ) internal returns (bool isLiquidationFinished, uint256 liquidationId, uint256[] memory amounts) {
-	// 	LiquidationStorage.Layout storage liquidationLayout = LiquidationStorage.layout();
-
-	// 	LiquidationState storage state = partyB.getLiquidationState(collateral);
-	// 	LiquidationDetail storage detail = partyB.getInProgressLiquidationDetail(collateral);
-
-	// 	if (TradeStorage.layout().activeTradesOfPartyB[partyB][collateral].length != 0)
-	// 		revert ClearingHouseFacetErrors.PartyBHasOpenTrades(
-	// 			partyB,
-	// 			collateral,
-	// 			TradeStorage.layout().activeTradesOfPartyB[partyB][collateral].length
-	// 		);
-
-	// 	partyB.requireInProgressLiquidation(collateral);
-
-	// 	if (detail.collectedCollateral < detail.requiredCollateral)
-	// 		revert ClearingHouseFacetErrors.InsufficientCollateralForDebts(partyB, collateral, detail.collectedCollateral, detail.requiredCollateral);
-
-	// 	liquidationId = state.inProgressLiquidationId;
-
-	// 	amounts = new uint256[](partyAs.length);
-	// 	for (uint256 i = 0; i < partyAs.length; i++) {
-	// 		address partyA = partyAs[i];
-	// 		uint256 amountToTransfer = liquidationLayout.liquidationDebtsToPartyAs[partyB][collateral][partyA];
-	// 		amounts[i] = amountToTransfer;
-	// 		liquidationLayout.involvedPartyAsCountInLiquidation[partyB][collateral] -= 1;
-	// 		AccountStorage.layout().balances[partyA][collateral].instantIsolatedAdd(amountToTransfer, IncreaseBalanceReason.LIQUIDATION);
-	// 		liquidationLayout.liquidationDebtsToPartyAs[partyB][collateral][partyA] = 0;
-	// 	}
-	// 	if (liquidationLayout.involvedPartyAsCountInLiquidation[partyB][collateral] == 0) {
-	// 		isLiquidationFinished = true;
-	// 		state.status = LiquidationStatus.SOLVENT;
-	// 		state.inProgressLiquidationId = 0;
-	// 	}
-	// }
-
 	function flagIsolatedPartyBLiquidation(address partyB, address collateral) internal {
-		AppStorage.Layout storage appLayout = AppStorage.layout();
 		LiquidationStorage.Layout storage liquidationLayout = LiquidationStorage.layout();
 
-		if (appLayout.partyBConfigs[partyB].lossCoverage == 0) revert ClearingHouseFacetErrors.ZeroLossCoverage(partyB);
+		if (AppStorage.layout().partyBConfigs[partyB].lossCoverage == 0) revert ClearingHouseFacetErrors.ZeroLossCoverage(partyB);
+		partyB.requireSolvent(address(0), collateral, MarginType.ISOLATED);
 
-		if (liquidationLayout.partyBIsolatedLiquidationState[partyB][collateral].status != LiquidationStatus.SOLVENT) {
-			uint8[] memory requiredStatuses = new uint8[](1);
-			requiredStatuses[0] = uint8(LiquidationStatus.SOLVENT);
-			revert CommonErrors.InvalidState(
-				"LiquidationStatus",
-				uint8(liquidationLayout.partyBIsolatedLiquidationState[partyB][collateral].status),
-				requiredStatuses
-			);
-		}
+		address partyA = address(0);
 		uint256 liquidationId = ++liquidationLayout.lastLiquidationId;
-		liquidationLayout.partyBIsolatedLiquidationState[partyB][collateral] = LiquidationState({
-			inProgressLiquidationId: liquidationId,
-			status: LiquidationStatus.FLAGGED
+		liquidationLayout.inProgressLiquidationIds[partyA][partyB][collateral] = liquidationId;
+		liquidationLayout.liquidationDetails[liquidationId] = LiquidationDetail({
+			status: LiquidationStatus.FLAGGED,
+			upnl: 0,
+			flagTimestamp: block.timestamp,
+			liquidationTimestamp: 0,
+			flagger: msg.sender,
+			collateral: collateral,
+			collateralPrice: 0,
+			partyA: partyA,
+			partyB: partyB,
+			side: LiquidationSide.PARTY_B
 		});
 	}
 
 	function unflagIsolatedPartyBLiquidation(address partyB, address collateral) internal {
-		LiquidationState storage state = LiquidationStorage.layout().partyBIsolatedLiquidationState[partyB][collateral];
+		LiquidationStorage.Layout storage liquidationLayout = LiquidationStorage.layout();
+		address partyA = address(0);
 
-		if (state.status != LiquidationStatus.FLAGGED) {
+		LiquidationDetail storage detail = liquidationLayout.liquidationDetails[
+			liquidationLayout.inProgressLiquidationIds[partyA][partyB][collateral]
+		];
+		if (detail.status != LiquidationStatus.FLAGGED) {
 			uint8[] memory requiredStatuses = new uint8[](1);
 			requiredStatuses[0] = uint8(LiquidationStatus.FLAGGED);
-			revert CommonErrors.InvalidState("LiquidationStatus", uint8(state.status), requiredStatuses);
+			revert CommonErrors.InvalidState("LiquidationStatus", uint8(detail.status), requiredStatuses);
 		}
-
-		state.inProgressLiquidationId = 0;
-		state.status = LiquidationStatus.SOLVENT;
+		liquidationLayout.inProgressLiquidationIds[partyA][partyB][collateral] = 0;
+		detail.status = LiquidationStatus.CANCELLED;
 	}
 
-	function liquidateIsolatedPartyB(bytes32 liquidationId, address partyB, address collateral, int256 upnl, uint256 collateralPrice) internal {}
+	function liquidateIsolatedPartyB(uint256 liquidationId, address partyB, address collateral, int256 upnl, uint256 collateralPrice) internal {
+		LiquidationStorage.Layout storage liquidationLayout = LiquidationStorage.layout();
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+
+		LiquidationDetail storage detail = liquidationLayout.liquidationDetails[
+			liquidationLayout.inProgressLiquidationIds[address(0)][partyB][collateral]
+		];
+		if (detail.status != LiquidationStatus.FLAGGED) {
+			uint8[] memory requiredStatuses = new uint8[](1);
+			requiredStatuses[0] = uint8(LiquidationStatus.FLAGGED);
+			revert CommonErrors.InvalidState("LiquidationStatus", uint8(detail.status), requiredStatuses);
+		}
+
+		ScheduledReleaseBalance storage balancePartyB = accountLayout.balances[detail.partyB][detail.collateral];
+
+		uint256 balance = balancePartyB.isolatedBalance;
+		int256 effectiveUpnl = upnl > 0 ? upnl : (upnl * int256(AppStorage.layout().partyBConfigs[partyB].lossCoverage)) / 1e18;
+
+		if (int256(balance) + (effectiveUpnl * 1e18) / int256(collateralPrice) >= 0)
+			revert ClearingHouseFacetErrors.PartyBIsSolvent(detail.partyA, detail.partyB, detail.collateral);
+
+		detail.status = LiquidationStatus.IN_PROGRESS;
+		detail.collateralPrice = collateralPrice;
+	}
 
 	function confiscatePartyA(address partyB, address partyA, address collateral, uint256 amount) internal {
-		ScheduledReleaseBalance storage balance = AccountStorage.layout().balances[partyA][collateral];
-
-		uint256 scheduledBalance = balance.counterPartyBalance(partyB);
-		if (scheduledBalance < amount) revert CommonErrors.InsufficientBalance(partyA, collateral, amount, scheduledBalance);
-
-		partyB.requirePartyBInIsolatedLiquidationProgress(collateral);
-
-		balance.subForCounterParty(partyB, amount, MarginType.ISOLATED, DecreaseBalanceReason.CONFISCATE);
+		//FIXME: Isolated or cross
+		// if (partyB.isSolvent(partyA, collateral, MarginType.ISOLATED)) require(false);
+		// ScheduledReleaseBalance storage balance = AccountStorage.layout().balances[partyA][collateral];
+		// int256 scheduledBalance = balance.counterPartyBalance(partyB);
+		// if (scheduledBalance < 0 || scheduledBalance < int256(amount))
+		// 	revert ClearingHouseFacetErrors.InsufficientBalance(partyA, collateral, amount, scheduledBalance);
+		// balance.subForCounterParty(partyB, amount, MarginType.ISOLATED, DecreaseBalanceReason.CONFISCATE);
 		// partyB.getInProgressLiquidationDetail(collateral).collectedCollateral += amount;
 	}
 
@@ -224,82 +112,159 @@ library ClearingHouseFacetImpl {
 	function flagCrossPartyBLiquidation(address partyB, address partyA, address collateral) internal {
 		LiquidationStorage.Layout storage liquidationLayout = LiquidationStorage.layout();
 		if (AppStorage.layout().partyBConfigs[partyB].lossCoverage == 0) revert ClearingHouseFacetErrors.ZeroLossCoverage(partyB);
-		if (liquidationLayout.partyBCrossLiquidationState[partyB][partyA][collateral].status != LiquidationStatus.SOLVENT) {
-			uint8[] memory requiredStatuses = new uint8[](1);
-			requiredStatuses[0] = uint8(LiquidationStatus.SOLVENT);
-			revert CommonErrors.InvalidState(
-				"LiquidationStatus",
-				uint8(liquidationLayout.partyBCrossLiquidationState[partyB][partyA][collateral].status),
-				requiredStatuses
-			);
-		}
+
+		partyB.requireSolvent(partyA, collateral, MarginType.CROSS);
+
 		uint256 liquidationId = ++liquidationLayout.lastLiquidationId;
-		liquidationLayout.partyBCrossLiquidationState[partyB][partyA][collateral] = LiquidationState({
-			inProgressLiquidationId: liquidationId,
-			status: LiquidationStatus.FLAGGED
+		liquidationLayout.inProgressLiquidationIds[partyA][partyB][collateral] = liquidationId;
+		liquidationLayout.liquidationDetails[liquidationId] = LiquidationDetail({
+			status: LiquidationStatus.FLAGGED,
+			upnl: 0,
+			flagTimestamp: block.timestamp,
+			liquidationTimestamp: 0,
+			flagger: msg.sender,
+			collateral: collateral,
+			collateralPrice: 0,
+			partyA: partyA,
+			partyB: partyB,
+			side: LiquidationSide.PARTY_B
 		});
 	}
 
 	function unflagCrossPartyBLiquidation(address partyB, address partyA, address collateral) internal {
-		LiquidationState storage state = LiquidationStorage.layout().partyBCrossLiquidationState[partyB][partyA][collateral];
-		if (state.status != LiquidationStatus.FLAGGED) {
+		LiquidationStorage.Layout storage liquidationLayout = LiquidationStorage.layout();
+
+		LiquidationDetail storage detail = liquidationLayout.liquidationDetails[
+			liquidationLayout.inProgressLiquidationIds[partyA][partyB][collateral]
+		];
+		if (detail.status != LiquidationStatus.FLAGGED) {
 			uint8[] memory requiredStatuses = new uint8[](1);
 			requiredStatuses[0] = uint8(LiquidationStatus.FLAGGED);
-			revert CommonErrors.InvalidState("LiquidationStatus", uint8(state.status), requiredStatuses);
+			revert CommonErrors.InvalidState("LiquidationStatus", uint8(detail.status), requiredStatuses);
 		}
-		state.inProgressLiquidationId = 0;
-		state.status = LiquidationStatus.SOLVENT;
+		liquidationLayout.inProgressLiquidationIds[partyA][partyB][collateral] = 0;
+		detail.status = LiquidationStatus.CANCELLED;
 	}
 
 	function liquidateCrossPartyB(
-		bytes32 liquidationId,
+		uint256 liquidationId,
 		address partyB,
 		address partyA,
 		address collateral,
 		int256 upnl,
 		uint256 collateralPrice
-	) internal {}
+	) internal {
+		LiquidationStorage.Layout storage liquidationLayout = LiquidationStorage.layout();
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+
+		LiquidationDetail storage detail = liquidationLayout.liquidationDetails[
+			liquidationLayout.inProgressLiquidationIds[partyA][partyB][collateral]
+		];
+		if (detail.status != LiquidationStatus.FLAGGED) {
+			uint8[] memory requiredStatuses = new uint8[](1);
+			requiredStatuses[0] = uint8(LiquidationStatus.FLAGGED);
+			revert CommonErrors.InvalidState("LiquidationStatus", uint8(detail.status), requiredStatuses);
+		}
+
+		ScheduledReleaseBalance storage balancePartyB = accountLayout.balances[detail.partyB][detail.collateral];
+
+		CrossEntry storage crossEntry = balancePartyB.crossBalance[detail.partyA];
+		int256 crossBalance = crossEntry.balance;
+		int256 effectiveUpnl = upnl > 0 ? upnl : (upnl * int(AppStorage.layout().partyBConfigs[partyB].lossCoverage)) / 1e18;
+
+		if (crossBalance + (effectiveUpnl * 1e18) / int256(collateralPrice) >= 0)
+			revert ClearingHouseFacetErrors.PartyBIsSolvent(detail.partyA, detail.partyB, detail.collateral);
+
+		ScheduledReleaseBalance storage balancePartyA = accountLayout.balances[detail.partyA][detail.collateral];
+		if (crossBalance > 0) {
+			balancePartyA.subForCounterParty(detail.partyB, uint256(crossBalance), MarginType.CROSS, DecreaseBalanceReason.LIQUIDATION);
+			balancePartyB.scheduledAdd(detail.partyA, uint256(crossBalance), MarginType.CROSS, IncreaseBalanceReason.LIQUIDATION);
+		}
+		crossEntry.balance = 0;
+		crossEntry.locked = 0;
+		crossEntry.totalMM = 0;
+
+		detail.status = LiquidationStatus.IN_PROGRESS;
+		detail.collateralPrice = collateralPrice;
+	}
 
 	function flagPartyALiquidation(address partyA, address partyB, address collateral) internal {
 		LiquidationStorage.Layout storage liquidationLayout = LiquidationStorage.layout();
-		if (liquidationLayout.partyALiquidationState[partyA][partyB][collateral].status != LiquidationStatus.SOLVENT) {
-			uint8[] memory requiredStatuses = new uint8[](1);
-			requiredStatuses[0] = uint8(LiquidationStatus.SOLVENT);
-			revert CommonErrors.InvalidState(
-				"LiquidationStatus",
-				uint8(liquidationLayout.partyALiquidationState[partyA][partyB][collateral].status),
-				requiredStatuses
-			);
-		}
+
+		partyA.requireSolvent(partyB, collateral, MarginType.CROSS);
+
 		uint256 liquidationId = ++liquidationLayout.lastLiquidationId;
-		liquidationLayout.partyALiquidationState[partyA][partyB][collateral] = LiquidationState({
-			inProgressLiquidationId: liquidationId,
-			status: LiquidationStatus.FLAGGED
+		liquidationLayout.inProgressLiquidationIds[partyA][partyB][collateral] = liquidationId;
+		liquidationLayout.liquidationDetails[liquidationId] = LiquidationDetail({
+			status: LiquidationStatus.FLAGGED,
+			upnl: 0,
+			flagTimestamp: block.timestamp,
+			liquidationTimestamp: 0,
+			flagger: msg.sender,
+			collateral: collateral,
+			collateralPrice: 0,
+			partyA: partyA,
+			partyB: partyB,
+			side: LiquidationSide.PARTY_A
 		});
 	}
 
 	function unflagPartyALiquidation(address partyA, address partyB, address collateral) internal {
-		LiquidationState storage state = LiquidationStorage.layout().partyALiquidationState[partyA][partyB][collateral];
-		if (state.status != LiquidationStatus.FLAGGED) {
+		LiquidationStorage.Layout storage liquidationLayout = LiquidationStorage.layout();
+
+		LiquidationDetail storage detail = liquidationLayout.liquidationDetails[
+			liquidationLayout.inProgressLiquidationIds[partyA][partyB][collateral]
+		];
+		if (detail.status != LiquidationStatus.FLAGGED) {
 			uint8[] memory requiredStatuses = new uint8[](1);
 			requiredStatuses[0] = uint8(LiquidationStatus.FLAGGED);
-			revert CommonErrors.InvalidState("LiquidationStatus", uint8(state.status), requiredStatuses);
+			revert CommonErrors.InvalidState("LiquidationStatus", uint8(detail.status), requiredStatuses);
 		}
-		state.inProgressLiquidationId = 0;
-		state.status = LiquidationStatus.SOLVENT;
+		detail.status = LiquidationStatus.CANCELLED;
+		liquidationLayout.inProgressLiquidationIds[partyA][partyB][collateral] = 0;
 	}
 
-	function liquidateCrossPartyA(
-		bytes32 liquidationId,
-		address partyA,
-		address partyB,
-		address collateral,
-		int256 upnl,
-		uint256 collateralPrice
-	) internal {}
+	function liquidateCrossPartyA(uint256 liquidationId, int256 upnl, uint256 collateralPrice) internal {
+		LiquidationStorage.Layout storage liquidationLayout = LiquidationStorage.layout();
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
-	function closeTrades(uint256[] memory tradeIds, uint256[] memory prices) internal {
+		LiquidationDetail storage detail = liquidationLayout.liquidationDetails[liquidationId];
+		if (detail.status != LiquidationStatus.FLAGGED) {
+			uint8[] memory requiredStatuses = new uint8[](1);
+			requiredStatuses[0] = uint8(LiquidationStatus.FLAGGED);
+			revert CommonErrors.InvalidState("LiquidationStatus", uint8(detail.status), requiredStatuses);
+		}
+
+		ScheduledReleaseBalance storage balancePartyA = accountLayout.balances[detail.partyA][detail.collateral];
+		CrossEntry storage crossEntry = balancePartyA.crossBalance[detail.partyB];
+		int256 crossBalance = crossEntry.balance;
+
+		if ((crossBalance - int256(crossEntry.totalMM)) + (upnl * 1e18) / int256(collateralPrice) >= 0)
+			revert ClearingHouseFacetErrors.PartyAIsSolvent(detail.partyA, detail.partyB, detail.collateral);
+
+		ScheduledReleaseBalance storage balancePartyB = accountLayout.balances[detail.partyB][detail.collateral];
+		if (crossBalance > 0) {
+			balancePartyA.subForCounterParty(detail.partyB, uint256(crossBalance), MarginType.CROSS, DecreaseBalanceReason.LIQUIDATION);
+			balancePartyB.scheduledAdd(detail.partyB, uint256(crossBalance), MarginType.CROSS, IncreaseBalanceReason.LIQUIDATION);
+		}
+		crossEntry.balance = 0;
+		crossEntry.locked = 0;
+		crossEntry.totalMM = 0;
+
+		detail.status = LiquidationStatus.IN_PROGRESS;
+		detail.collateralPrice = collateralPrice;
+	}
+
+	function closeTrades(uint256 liquidationId, uint256[] memory tradeIds, uint256[] memory prices) internal {
 		if (tradeIds.length != prices.length) revert ClearingHouseFacetErrors.MismatchedArrays(tradeIds.length, prices.length);
+
+		LiquidationDetail storage detail = LiquidationStorage.layout().liquidationDetails[liquidationId];
+		if (detail.status != LiquidationStatus.IN_PROGRESS) {
+			uint8[] memory requiredStatuses = new uint8[](1);
+			requiredStatuses[0] = uint8(LiquidationStatus.IN_PROGRESS);
+			revert CommonErrors.InvalidState("LiquidationStatus", uint8(detail.status), requiredStatuses);
+		}
+
 		for (uint256 i = 0; i < tradeIds.length; i++) {
 			Trade storage trade = TradeStorage.layout().trades[tradeIds[i]];
 			uint256 price = prices[i];
@@ -309,17 +274,18 @@ library ClearingHouseFacetImpl {
 				requiredStatuses[0] = uint8(TradeStatus.OPENED);
 				revert CommonErrors.InvalidState("TradeStatus", uint8(trade.status), requiredStatuses);
 			}
-			// TODO
-			// trade.partyB.requireInProgressLiquidation(symbol.collateral);
+			if (trade.partyA != detail.partyA || trade.partyB != detail.partyB)
+				revert ClearingHouseFacetErrors.TradeIsNotInLiquidation(liquidationId, trade.id);
+
 			trade.settledPrice = price;
 			trade.close(TradeStatus.LIQUIDATED, IntentStatus.CANCELED);
 		}
 	}
 
 	function allocateFromReserveToCross(address party, address counterParty, address collateral, uint256 amount) internal {
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		if (accountLayout.balances[party][collateral].reserveBalance < amount) revert();
-		accountLayout.balances[party][collateral].reserveBalance -= amount;
-		accountLayout.balances[party][collateral].crossBalance[counterParty].balance += int256(amount);
+		ScheduledReleaseBalance storage balance = AccountStorage.layout().balances[party][collateral];
+		if (balance.reserveBalance < amount) revert();
+		balance.reserveBalance -= amount;
+		balance.crossBalance[counterParty].balance += int256(amount);
 	}
 }

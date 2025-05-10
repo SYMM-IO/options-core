@@ -23,7 +23,7 @@ import { Trade } from "../../types/TradeTypes.sol";
 import { Withdraw } from "../../types/WithdrawTypes.sol";
 import { BridgeTransaction } from "../../types/BridgeTypes.sol";
 import { OpenIntent, CloseIntent } from "../../types/IntentTypes.sol";
-import { LiquidationDetail, LiquidationState } from "../../types/LiquidationTypes.sol";
+import { LiquidationDetail } from "../../types/LiquidationTypes.sol";
 
 import { IViewFacet } from "./IViewFacet.sol";
 
@@ -773,20 +773,12 @@ contract ViewFacet is IViewFacet {
 		return AppStorage.layout().settlementPriceSigValidTime;
 	}
 
-	function liquidationSigValidTime() external view returns (uint256) {
-		return AppStorage.layout().liquidationSigValidTime;
-	}
-
 	function version() external view returns (uint16) {
 		return AppStorage.layout().version;
 	}
 
 	function getNonce(address party, address counterParty) external view returns (uint256) {
 		return AccountStorage.layout().nonces[party][counterParty];
-	}
-
-	function partyBIsolatedLiquidationState(address partyBAddress, address collateral) external view returns (LiquidationState memory) {
-		return LiquidationStorage.layout().partyBIsolatedLiquidationState[partyBAddress][collateral];
 	}
 
 	function liquidationDetail(uint256 liquidationId) external view returns (LiquidationDetail memory) {

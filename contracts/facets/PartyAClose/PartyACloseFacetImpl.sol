@@ -106,9 +106,9 @@ library PartyACloseFacetImpl {
 		}
 
 		if (trade.tradeAgreements.marginType == MarginType.CROSS) {
-			revert PartyACloseFacetErrors.TradeInCrossCannotBeTransfered(tradeId);
+			revert PartyACloseFacetErrors.TradeInCrossCannotBeTransferred(tradeId);
 		}
-		trade.partyB.requireSolventIsolatedPartyB(symbol.collateral);
+		trade.partyB.requireSolvent(address(0), symbol.collateral, MarginType.ISOLATED);
 
 		trade.remove();
 		trade.partyA = receiver;

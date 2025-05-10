@@ -128,11 +128,6 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		emit SettlementPriceSigValidTimeUpdated(_time);
 	}
 
-	function setLiquidationSigValidTime(uint256 _time) external onlyRole(LibAccessibility.SETTER_ROLE) {
-		AppStorage.layout().liquidationSigValidTime = _time;
-		emit LiquidationSigValidTimeUpdated(_time);
-	}
-
 	// pause
 	function pauseGlobal() external onlyRole(LibAccessibility.PAUSER_ROLE) {
 		StateControlStorage.layout().globalPaused = true;
