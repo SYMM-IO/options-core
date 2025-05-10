@@ -12,7 +12,7 @@ import { CloseIntentStorage } from "../storages/CloseIntentStorage.sol";
 
 import { Trade, TradeStatus } from "../types/TradeTypes.sol";
 import { Symbol, OptionType } from "../types/SymbolTypes.sol";
-import { ScheduledReleaseBalance, MarginType } from "../types/BalanceTypes.sol";
+import { ScheduledReleaseBalance } from "../types/BalanceTypes.sol";
 import { CloseIntent, IntentStatus } from "../types/IntentTypes.sol";
 
 import { LibCloseIntentOps } from "./LibCloseIntent.sol";

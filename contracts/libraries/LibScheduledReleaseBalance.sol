@@ -211,9 +211,9 @@ library ScheduledReleaseBalanceOps {
 	}
 
 	/**
-	 * @notice Return total balance (free + locked) for a counter‑party.
+	 * @notice Return in transition for a counter‑party.
 	 */
-	function counterPartyBalance(ScheduledReleaseBalance storage self, address counterParty) internal view returns (uint256) {
+	function inTransitionBalance(ScheduledReleaseBalance storage self, address counterParty) internal view returns (uint256) {
 		ScheduledReleaseEntry storage entry = self.counterPartySchedules[counterParty];
 		return entry.transitioning + entry.scheduled;
 	}
@@ -389,7 +389,7 @@ library ScheduledReleaseBalanceOps {
 	function removeCounterParty(ScheduledReleaseBalance storage self, address counterParty) internal {
 		if (counterParty == address(0)) revert CommonErrors.ZeroAddress("counterParty");
 
-		uint256 balance = counterPartyBalance(self, counterParty);
+		uint256 balance = inTransitionBalance(self, counterParty);
 		if (balance != 0) revert NonZeroBalanceCounterParty(counterParty, balance);
 
 		uint256 idxPlusOne = self.counterPartyIndexes[counterParty];

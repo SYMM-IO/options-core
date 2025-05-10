@@ -9,7 +9,6 @@ import { AccountStorage } from "../storages/AccountStorage.sol";
 
 import { SymbolStorage, Symbol, Oracle } from "../storages/SymbolStorage.sol";
 
-import { LiquidationSig } from "../types/LiquidationTypes.sol";
 import { UpnlSig } from "../types/WithdrawTypes.sol";
 import { SettlementPriceSig } from "../types/SettlementTypes.sol";
 
@@ -56,30 +55,6 @@ library LibMuon {
 		);
 
 		IMuonOracle(oracle.contractAddress).verifyTSSAndGW(hash, sig.reqId, sig.sigs, sig.gatewaySignature);
-	}
-
-	function verifyLiquidationSig(LiquidationSig memory liquidationSig, address partyB) internal view {
-		AppStorage.Layout storage appLayout = AppStorage.layout();
-		Oracle storage oracle = SymbolStorage.layout().oracles[appLayout.partyBConfigs[partyB].oracleId];
-
-		bytes32 hash = keccak256(
-			abi.encodePacked(
-				liquidationSig.reqId,
-				liquidationSig.liquidationId,
-				address(this),
-				"verifyLiquidationSig",
-				partyB,
-				liquidationSig.collateral,
-				liquidationSig.collateralPrice,
-				liquidationSig.upnl,
-				liquidationSig.symbolIds,
-				liquidationSig.prices,
-				liquidationSig.timestamp,
-				getChainId()
-			)
-		);
-
-		IMuonOracle(oracle.contractAddress).verifyTSSAndGW(hash, liquidationSig.reqId, liquidationSig.sigs, liquidationSig.gatewaySignature);
 	}
 
 	function verifyUpnlSig(UpnlSig memory upnlSig, address collateral, address party, address counterParty, uint256 oracleId) internal view {

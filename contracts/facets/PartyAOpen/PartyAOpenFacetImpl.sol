@@ -74,10 +74,10 @@ library PartyAOpenFacetImpl {
 
 		if (tradeAgreements.marginType == MarginType.CROSS) {
 			if (partyBsWhiteList.length != 1) revert PartyAOpenFacetErrors.OnlyOnePartyBIsAllowedInCrossMode();
-			sender.requireSolventPartyA(partyBsWhiteList[0], symbol.collateral);
-			partyBsWhiteList[0].requireSolventCrossPartyB(sender, symbol.collateral);
+			sender.requireSolvent(partyBsWhiteList[0], symbol.collateral, tradeAgreements.marginType);
+			partyBsWhiteList[0].requireSolvent(sender, symbol.collateral, tradeAgreements.marginType);
 		} else if (tradeAgreements.marginType == MarginType.ISOLATED && partyBsWhiteList.length == 1) {
-			partyBsWhiteList[0].requireSolventIsolatedPartyB(symbol.collateral);
+			partyBsWhiteList[0].requireSolvent(address(0), symbol.collateral, tradeAgreements.marginType);
 		}
 
 		intentId = ++OpenIntentStorage.layout().lastOpenIntentId;

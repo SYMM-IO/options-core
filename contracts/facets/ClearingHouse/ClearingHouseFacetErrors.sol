@@ -8,9 +8,6 @@ library ClearingHouseFacetErrors {
 	// PartyB errors
 	error ZeroLossCoverage(address partyB);
 
-	// Liquidation state errors
-	error PartyBIsSolvent(address partyB, address collateral, int256 available, int256 required);
-
 	// Upnl errors
 	error InvalidUpnl(int256 upnl);
 
@@ -23,4 +20,12 @@ library ClearingHouseFacetErrors {
 
 	// Arrays errors
 	error MismatchedArrays(uint256 tradeIdsLength, uint256 pricesLength);
+
+	error InsufficientBalance(address user, address token, uint256 requested, int256 available);
+
+	error PartyAIsSolvent(address partyA, address partyB, address token);
+
+	error PartyBIsSolvent(address partyA, address partyB, address token);
+
+	error TradeIsNotInLiquidation(uint256 liquidationId, uint256 tradeId);
 }

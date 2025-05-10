@@ -4,8 +4,6 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { MarginType } from "./BaseTypes.sol";
-
 // ────────────────────────────────────────────────────────────────────────────────
 // ↑↑  CORE DATA STRUCTURES  ↑↑
 // ────────────────────────────────────────────────────────────────────────────────
@@ -82,5 +80,6 @@ enum DecreaseBalanceReason {
 	FEE,
 	PREMIUM,
 	REALIZED_PNL,
-	CONFISCATE
+	CONFISCATE,
+	LIQUIDATION
 }

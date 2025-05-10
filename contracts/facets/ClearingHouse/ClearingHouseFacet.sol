@@ -50,7 +50,7 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 	 * @param collateralPrice The price of collateral
 	 */
 	function liquidateIsolatedPartyB(
-		bytes32 liquidationId,
+		uint256 liquidationId,
 		address partyB,
 		address collateral,
 		int256 upnl,
@@ -120,7 +120,7 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 	}
 
 	function liquidateCrossPartyB(
-		bytes32 liquidationId,
+		uint256 liquidationId,
 		address partyB,
 		address partyA,
 		address collateral,
@@ -150,22 +150,23 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 	}
 
 	function liquidateCrossPartyA(
-		bytes32 liquidationId,
+		uint256 liquidationId,
 		address partyA,
 		address partyB,
 		address collateral,
 		int256 upnl,
 		uint256 collateralPrice
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-		ClearingHouseFacetImpl.liquidateCrossPartyA(liquidationId, partyA, partyB, collateral, upnl, collateralPrice);
+		ClearingHouseFacetImpl.liquidateCrossPartyA(liquidationId, upnl, collateralPrice);
 		emit LiquidateCrossPartyA(msg.sender, liquidationId, partyA, partyB, collateral, upnl, collateralPrice);
 	}
 
 	function closeTrades(
+		uint256 liquidationId,
 		uint256[] memory tradeIds,
 		uint256[] memory prices
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-		ClearingHouseFacetImpl.closeTrades(tradeIds, prices);
+		ClearingHouseFacetImpl.closeTrades(liquidationId, tradeIds, prices);
 		emit CloseTradesForLiquidation(msg.sender, tradeIds, prices);
 	}
 

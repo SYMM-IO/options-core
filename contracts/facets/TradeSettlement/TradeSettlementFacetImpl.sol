@@ -37,10 +37,10 @@ library TradeSettlementFacetImpl {
 		LibMuon.verifySettlementPriceSig(sig);
 
 		if (trade.tradeAgreements.marginType == MarginType.CROSS) {
-			trade.partyA.requireSolventPartyA(trade.partyB, symbol.collateral);
-			trade.partyB.requireSolventCrossPartyB(trade.partyA, symbol.collateral);
+			trade.partyA.requireSolvent(trade.partyB, symbol.collateral, trade.tradeAgreements.marginType);
+			trade.partyB.requireSolvent(trade.partyA, symbol.collateral, trade.tradeAgreements.marginType);
 		} else {
-			trade.partyB.requireSolventIsolatedPartyB(symbol.collateral);
+			trade.partyB.requireSolvent(address(0), symbol.collateral, trade.tradeAgreements.marginType);
 		}
 
 		if (sig.symbolId != trade.tradeAgreements.symbolId)

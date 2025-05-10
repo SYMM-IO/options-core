@@ -56,11 +56,9 @@ library PartyBCloseFacetImpl {
 		if (sender != trade.partyB) revert CommonErrors.UnauthorizedSender(sender, trade.partyB);
 
 		if (trade.tradeAgreements.marginType == MarginType.CROSS) {
-			trade.partyA.requireSolventPartyA(trade.partyB, symbol.collateral);
-			trade.partyB.requireSolventCrossPartyB(trade.partyA, symbol.collateral);
-		} else {
-			trade.partyB.requireSolventIsolatedPartyB(symbol.collateral);
+			trade.partyA.requireSolvent(trade.partyB, symbol.collateral, trade.tradeAgreements.marginType);
 		}
+		trade.partyB.requireSolvent(trade.partyA, symbol.collateral, trade.tradeAgreements.marginType);
 
 		if (quantity == 0 || quantity > intent.quantity - intent.filledAmount)
 			revert PartyBCloseFacetErrors.InvalidFilledAmount(quantity, intent.quantity - intent.filledAmount);

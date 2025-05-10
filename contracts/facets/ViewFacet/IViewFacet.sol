@@ -11,7 +11,7 @@ import { Trade } from "../../types/TradeTypes.sol";
 import { Withdraw } from "../../types/WithdrawTypes.sol";
 import { BridgeTransaction } from "../../types/BridgeTypes.sol";
 import { OpenIntent, CloseIntent } from "../../types/IntentTypes.sol";
-import { LiquidationDetail, LiquidationState } from "../../types/LiquidationTypes.sol";
+import { LiquidationDetail } from "../../types/LiquidationTypes.sol";
 
 interface IViewFacet {
 	struct Bitmap {
@@ -187,13 +187,9 @@ interface IViewFacet {
 
 	function settlementPriceSigValidTime() external view returns (uint256);
 
-	function liquidationSigValidTime() external view returns (uint256);
-
 	function version() external view returns (uint16);
 
 	function getNonce(address party, address counterParty) external view returns (uint256);
-
-	function partyBIsolatedLiquidationState(address partyBAddress, address collateral) external view returns (LiquidationState memory);
 
 	function liquidationDetail(uint256 liquidationId) external view returns (LiquidationDetail memory);
 

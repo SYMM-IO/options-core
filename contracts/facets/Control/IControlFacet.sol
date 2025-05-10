@@ -81,8 +81,6 @@ interface IControlFacet is IControlEvents {
 
 	function setSettlementPriceSigValidTime(uint256 _time) external;
 
-	function setLiquidationSigValidTime(uint256 _time) external;
-
 	function addOracle(string calldata _name, address _contractAddress) external;
 
 	function addSymbol(
