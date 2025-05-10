@@ -46,11 +46,7 @@ library TradeSettlementFacetImpl {
 		if (sig.symbolId != trade.tradeAgreements.symbolId)
 			revert TradeSettlementFacetErrors.InvalidSymbolId(sig.symbolId, trade.tradeAgreements.symbolId);
 
-		if (trade.status != TradeStatus.OPENED) {
-			uint8[] memory requiredStatuses = new uint8[](1);
-			requiredStatuses[0] = uint8(TradeStatus.OPENED);
-			revert CommonErrors.InvalidState("TradeStatus", uint8(trade.status), requiredStatuses);
-		}
+		CommonErrors.requireStatus("TradeStatus", uint8(trade.status), uint8(TradeStatus.OPENED));
 
 		if (block.timestamp <= trade.tradeAgreements.expirationTimestamp)
 			revert TradeSettlementFacetErrors.TradeNotExpired(tradeId, block.timestamp, trade.tradeAgreements.expirationTimestamp);

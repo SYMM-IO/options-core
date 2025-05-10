@@ -35,11 +35,7 @@ library PartyBCloseFacetImpl {
 
 		if (trade.partyB != sender) revert CommonErrors.UnauthorizedSender(sender, trade.partyB);
 
-		if (intent.status != IntentStatus.CANCEL_PENDING) {
-			uint8[] memory requiredStatuses = new uint8[](1);
-			requiredStatuses[0] = uint8(IntentStatus.CANCEL_PENDING);
-			revert CommonErrors.InvalidState("IntentStatus", uint8(intent.status), requiredStatuses);
-		}
+		CommonErrors.requireStatus("IntentStatus", uint8(intent.status), uint8(IntentStatus.CANCEL_PENDING));
 
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = IntentStatus.CANCELED;
@@ -70,11 +66,7 @@ library PartyBCloseFacetImpl {
 			revert CommonErrors.InvalidState("IntentStatus", uint8(intent.status), requiredStatuses);
 		}
 
-		if (trade.status != TradeStatus.OPENED) {
-			uint8[] memory requiredStatuses = new uint8[](1);
-			requiredStatuses[0] = uint8(TradeStatus.OPENED);
-			revert CommonErrors.InvalidState("TradeStatus", uint8(trade.status), requiredStatuses);
-		}
+		CommonErrors.requireStatus("TradeStatus", uint8(trade.status), uint8(TradeStatus.OPENED));
 
 		if (block.timestamp > intent.deadline) revert PartyBCloseFacetErrors.IntentExpired(intentId, block.timestamp, intent.deadline);
 

@@ -22,11 +22,7 @@ library ForceActionsFacetImpl {
 	function forceCancelOpenIntent(uint256 intentId) internal {
 		OpenIntent storage intent = OpenIntentStorage.layout().openIntents[intentId];
 
-		if (intent.status != IntentStatus.CANCEL_PENDING) {
-			uint8[] memory requiredStatuses = new uint8[](1);
-			requiredStatuses[0] = uint8(IntentStatus.CANCEL_PENDING);
-			revert CommonErrors.InvalidState("IntentStatus", uint8(intent.status), requiredStatuses);
-		}
+		CommonErrors.requireStatus("IntentStatus", uint8(intent.status), uint8(IntentStatus.CANCEL_PENDING));
 
 		if (block.timestamp <= intent.statusModifyTimestamp + AppStorage.layout().forceCancelOpenIntentTimeout)
 			revert CommonErrors.CooldownNotOver(
@@ -44,11 +40,7 @@ library ForceActionsFacetImpl {
 	function forceCancelCloseIntent(uint256 intentId) internal {
 		CloseIntent storage intent = CloseIntentStorage.layout().closeIntents[intentId];
 
-		if (intent.status != IntentStatus.CANCEL_PENDING) {
-			uint8[] memory requiredStatuses = new uint8[](1);
-			requiredStatuses[0] = uint8(IntentStatus.CANCEL_PENDING);
-			revert CommonErrors.InvalidState("IntentStatus", uint8(intent.status), requiredStatuses);
-		}
+		CommonErrors.requireStatus("IntentStatus", uint8(intent.status), uint8(IntentStatus.CANCEL_PENDING));
 
 		if (block.timestamp <= intent.statusModifyTimestamp + AppStorage.layout().forceCancelCloseIntentTimeout)
 			revert CommonErrors.CooldownNotOver(

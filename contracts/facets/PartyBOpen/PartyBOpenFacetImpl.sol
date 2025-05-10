@@ -49,11 +49,7 @@ library PartyBOpenFacetImpl {
 
 		if (intentId > intentLayout.lastOpenIntentId) revert PartyBOpenFacetErrors.InvalidIntentId(intentId, intentLayout.lastOpenIntentId);
 
-		if (intent.status != IntentStatus.PENDING) {
-			uint8[] memory requiredStatuses = new uint8[](1);
-			requiredStatuses[0] = uint8(IntentStatus.PENDING);
-			revert CommonErrors.InvalidState("IntentStatus", uint8(intent.status), requiredStatuses);
-		}
+		CommonErrors.requireStatus("IntentStatus", uint8(intent.status), uint8(IntentStatus.PENDING));
 
 		if (block.timestamp > intent.deadline) revert PartyBOpenFacetErrors.IntentExpired(intentId, block.timestamp, intent.deadline);
 
@@ -96,11 +92,7 @@ library PartyBOpenFacetImpl {
 
 		if (intent.partyB != sender) revert CommonErrors.UnauthorizedSender(sender, intent.partyB);
 
-		if (intent.status != IntentStatus.LOCKED) {
-			uint8[] memory requiredStatuses = new uint8[](1);
-			requiredStatuses[0] = uint8(IntentStatus.LOCKED);
-			revert CommonErrors.InvalidState("IntentStatus", uint8(intent.status), requiredStatuses);
-		}
+		CommonErrors.requireStatus("IntentStatus", uint8(intent.status), uint8(IntentStatus.LOCKED));
 
 		sender.requireSolvent(intent.partyA, SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId].collateral, MarginType.ISOLATED);
 
@@ -119,11 +111,7 @@ library PartyBOpenFacetImpl {
 	function acceptCancelOpenIntent(address sender, uint256 intentId) internal {
 		OpenIntent storage intent = OpenIntentStorage.layout().openIntents[intentId];
 
-		if (intent.status != IntentStatus.CANCEL_PENDING) {
-			uint8[] memory requiredStatuses = new uint8[](1);
-			requiredStatuses[0] = uint8(IntentStatus.CANCEL_PENDING);
-			revert CommonErrors.InvalidState("IntentStatus", uint8(intent.status), requiredStatuses);
-		}
+		CommonErrors.requireStatus("IntentStatus", uint8(intent.status), uint8(IntentStatus.CANCEL_PENDING));
 
 		if (intent.partyB != sender) revert CommonErrors.UnauthorizedSender(sender, intent.partyB);
 
