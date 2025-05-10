@@ -38,9 +38,6 @@ contract TradeNFT is ERC721Enumerable, Ownable {
 	error CallerNotSymmio(address caller, address symmioAddress);
 
 	// ==================== STATE VARIABLES ====================
-	/// @dev Counter used to generate unique token identifiers. Token IDs start at 1.
-	Counters.Counter private _tokenIdCounter;
-
 	/// @notice The instance of the Symmio contract used for synchronizing trade state with NFT transfers.
 	ISymmio public symmio;
 
@@ -72,7 +69,6 @@ contract TradeNFT is ERC721Enumerable, Ownable {
 	constructor(address symmio_) ERC721("Trade Ownership NFT", "TRNFT") {
 		if (symmio_ == address(0)) revert InvalidSymmioAddress();
 		symmio = ISymmio(symmio_);
-		_tokenIdCounter.increment();
 	}
 
 	// ==================== MODIFIERS ====================
@@ -91,16 +87,11 @@ contract TradeNFT is ERC721Enumerable, Ownable {
 	 * @notice Mints a new NFT representing a specific trade.
 	 * @dev This function can only be called by the Symmio contract. It emits a {PositionNFTMinted} event upon minting.
 	 * @param to The address that will own the minted NFT.
-	 * @return tokenId The unique identifier of the minted NFT.
+	 * @param tokenId the Id of the trade in Symmio
 	 */
-	function mintNFTForTrade(address to) external onlySymmio returns (uint256 tokenId) {
-		tokenId = _tokenIdCounter.current();
-		_tokenIdCounter.increment();
-
+	function mintNFTForTrade(address to, uint256 tokenId) external onlySymmio {
 		_mint(to, tokenId);
 		emit PositionNFTMinted(to, tokenId);
-
-		return tokenId;
 	}
 
 	/**

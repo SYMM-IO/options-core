@@ -99,6 +99,8 @@ library PartyACloseFacetImpl {
 
 		if (receiver == address(0)) revert CommonErrors.ZeroAddress("receiver");
 
+		if (AppStorage.layout().partyBConfigs[receiver].isActive) revert PartyACloseFacetErrors.ReceiverIsPartyB(receiver, trade.partyB);
+
 		if (trade.status != TradeStatus.OPENED) {
 			uint8[] memory requiredStatuses = new uint8[](1);
 			requiredStatuses[0] = uint8(TradeStatus.OPENED);
@@ -117,7 +119,9 @@ library PartyACloseFacetImpl {
 
 	function transferTrade(address receiver, uint256 tradeId) internal {
 		validateAndTransferTrade(msg.sender, receiver, tradeId);
-		ITradeNFT(AppStorage.layout().tradeNftAddress).transferNFTInitiatedInSymmio(msg.sender, receiver, tradeId);
+		if (AppStorage.layout().tradeNftAddress != address(0)) {
+			ITradeNFT(AppStorage.layout().tradeNftAddress).transferNFTInitiatedInSymmio(msg.sender, receiver, tradeId);
+		}
 	}
 
 	function transferTradeFromNFT(address sender, address receiver, uint256 tradeId) internal {
