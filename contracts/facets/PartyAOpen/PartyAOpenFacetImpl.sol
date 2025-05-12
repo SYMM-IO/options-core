@@ -80,6 +80,8 @@ library PartyAOpenFacetImpl {
 			partyBsWhiteList[0].requireSolvent(address(0), symbol.collateral, tradeAgreements.marginType);
 		}
 
+		if (tradeAgreements.quantity == 0) revert PartyAOpenFacetErrors.InvalidOpenQuantity();
+
 		intentId = ++OpenIntentStorage.layout().lastOpenIntentId;
 		OpenIntent memory intent = OpenIntent({
 			id: intentId,

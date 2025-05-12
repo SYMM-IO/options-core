@@ -24,4 +24,6 @@ library PartyAOpenFacetErrors {
 	error UserBoundToAnotherPartyB(address user, address boundPartyB, address[] requestedPartyBs);
 
 	error OnlyOnePartyBIsAllowedInCrossMode();
+
+	error InvalidOpenQuantity();
 }
