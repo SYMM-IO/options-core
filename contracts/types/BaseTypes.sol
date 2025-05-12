@@ -21,9 +21,9 @@ struct ExerciseFee {
 
 struct TradingFee {
 	address feeToken;
-	uint256 tokenPrice;
-	uint256 platformFee;
-	uint256 affiliateFee;
+	uint256 tokenPrice; // from oracle
+	uint256 platformFee; // symbol trading fee
+	uint256 affiliateFee; // any affiliator has a fee 
 }
 
 struct TradeAgreements {
