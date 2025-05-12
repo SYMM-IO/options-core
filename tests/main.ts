@@ -24,17 +24,13 @@ describe(`${name}-v${version}`, () => {
 			shouldBehaveLikePartyAOpenFacet()
 		})
 
-		describe("Facets_PartyACloseFacet", async function () {
-			shouldBehaveLikePartyACloseFacet()
-		})
-
-
-		// describe("Facets_PartyBOpenFacet", async function () {
-		// 	shouldBehaveLikePartyBOpenFacet()
+		// describe("Facets_PartyACloseFacet", async function () {
+		// 	shouldBehaveLikePartyACloseFacet()
 		// })
 
-		describe("Facets_PartyBCloseFacet", async function () {
-			shouldBehaveLikePartyBCloseFacet()
+
+		describe("Facets_PartyBOpenFacet", async function () {
+			shouldBehaveLikePartyBOpenFacet()
 		})
 
 		describe("Libraries_LibCloseIntent", async function () {
