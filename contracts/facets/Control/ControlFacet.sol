@@ -190,6 +190,11 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		emit LiquidatingUnpaused();
 	}
 
+	function pauseThirdPartyActions() external onlyRole(LibAccessibility.PAUSER_ROLE) {
+		StateControlStorage.layout().thirdPartyActionsPaused = true;
+		emit ThirdPartyActionsPaused();
+	}
+
 	function activeEmergencyMode() external onlyRole(LibAccessibility.DEFAULT_ADMIN_ROLE) {
 		StateControlStorage.layout().emergencyMode = true;
 		emit EmergencyModeActivated();
@@ -292,15 +297,11 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		emit SymbolAdded(s.lastSymbolId, _name, _optionType, _oracleId, _collateral, _tradingFee, _symbolType);
 	}
 
-	function setSymbolState(
-		uint256 _symbolId,
-		bool _status
-	) external onlyRole(LibAccessibility.SETTER_ROLE) {
+	function setSymbolState(uint256 _symbolId, bool _status) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		SymbolStorage.Layout storage s = SymbolStorage.layout();
-		if (s.lastSymbolId < _symbolId)
-			revert ControlFacetErrors.InvalidSymbol(_symbolId, s.lastSymbolId);
+		if (s.lastSymbolId < _symbolId) revert ControlFacetErrors.InvalidSymbol(_symbolId, s.lastSymbolId);
 
-		s.symbols[_symbolId].isValid = _status;	
+		s.symbols[_symbolId].isValid = _status;
 		emit SymbolStateUpdated(_symbolId, _status);
 	}
 
@@ -312,5 +313,10 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	function setManualSync(address user, bool isManual) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		AccountStorage.layout().manualSync[user] = isManual;
 		emit SetManualSync(user, isManual);
+	}
+	
+	function setSignatureVerifier(address _verifier) external onlyRole(LibAccessibility.SETTER_ROLE) {
+		AppStorage.layout().signatureVerifier = _verifier;
+		emit SignatureVerifierUpdated(_verifier);
 	}
 }

@@ -5,24 +5,12 @@ import { ethers } from "hardhat"
 import { BigNumberish } from "ethers"
 import { setBalance } from "@nomicfoundation/hardhat-network-helpers"
 import { PartyEntity } from "./partyEntitiy"
-import { FakeStablecoin} from "../../types"
+import { FakeStablecoin } from "../../types"
 
 export class PartyB extends PartyEntity {
-	constructor(context: RunContext,  signer: SignerWithAddress) {super(context,signer)}
-
-	// public async setBalances(collateralAmount?: BigNumberish, depositAmount?: BigNumberish) {
-	// 	const userAddress = this.signer.getAddress()
-
-	// 	await runTx(this.context.collateral.connect(this.signer).approve(this.context.diamond, ethers.MaxUint256))
-
-	// 	if (collateralAmount) await runTx(this.context.collateral.connect(this.signer).mint(userAddress, collateralAmount))
-	// 	if (depositAmount) await runTx(this.context.accountFacet.connect(this.signer).deposit(await this.context.collateral.getAddress(), depositAmount))
-	// }
-
-	// public async setNativeBalance(amount: BigNumberish) {
-	// 	await setBalance(this.signer.address, amount)
-	// }
-
+	constructor(context: RunContext, signer: SignerWithAddress) {
+		super(context, signer)
+	}
 	public async lockOpenIntent(id: BigNumberish) {
 		await runTx(this.context.partyBOpenFacet.connect(this.signer).lockOpenIntent(id))
 	}
@@ -34,8 +22,4 @@ export class PartyB extends PartyEntity {
 	public async fillOpenIntent(id: BigNumberish, quantity: BigNumberish, price: BigNumberish, marginType: BigNumberish) {
 		await runTx(this.context.partyBOpenFacet.connect(this.signer).fillOpenIntent(id, quantity, price, marginType))
 	}
-
-	// public getSigner() {
-	// 	return this.signer
-	// }
 }

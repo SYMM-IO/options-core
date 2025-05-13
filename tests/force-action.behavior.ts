@@ -17,7 +17,7 @@ export function shouldBehaveLikeForceActionFacet(): void {
 		partyB1 = new PartyB(context, context.signers.partyB1)
 		await partyA1.setBalances("500")
 
-		await context.controlFacet.setPartyBConfig(partyB1.getSigner(), {
+		await context.controlFacet.setPartyBConfig(partyB1.getSigner, {
 			isActive: true,
 			lossCoverage: 0,
 			oracleId: 1,
@@ -42,7 +42,7 @@ export function shouldBehaveLikeForceActionFacet(): void {
 
 			await partyA1.sendOpenIntent(
 				openIntentRequestBuilder()
-					.partyBsWhiteList([partyB1.getSigner()])
+					.partyBsWhiteList([partyB1.getSigner])
 					.affiliate(context.signers.affiliate1)
 					.feeToken(context.collateral)
 					.symbolId(1)

@@ -27,7 +27,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		const latestBlock = await ethers.provider.getBlock("latest")
 		await partyA1.sendOpenIntent(
 			openIntentRequestBuilder()
-				.partyBsWhiteList([partyB1.getSigner()])
+				.partyBsWhiteList([partyB1.getSigner])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.symbolId(1)
@@ -80,7 +80,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			// await partyB2.setBalances(context.collateralNL,e(10000),e(10000))
 			
 			const request = openIntentRequestBuilder()
-			.partyBsWhiteList([partyB2.getSigner()])
+			.partyBsWhiteList([partyB2.getSigner])
 			.affiliate(context.signers.affiliate1)
 			.feeToken(context.collateralNL)
 			.symbolId(2)
@@ -105,7 +105,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 				symbolType: 1,  // another category of symbols 
 			});
 
-			await expect(context.partyBOpenFacet.connect(partyB1.getSigner()).lockOpenIntent(1)).to
+			await expect(context.partyBOpenFacet.connect(partyB1.getSigner).lockOpenIntent(1)).to
 			.be.revertedWithCustomError(context.partyBOpenFacet,"MismatchedSymbolType");	
 		})
 
@@ -113,53 +113,53 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			const newBlock = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 130
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
 
-			await expect(context.partyBOpenFacet.connect(partyB1.getSigner()).lockOpenIntent(1)).to
+			await expect(context.partyBOpenFacet.connect(partyB1.getSigner).lockOpenIntent(1)).to
 				.revertedWithCustomError(context.partyBOpenFacet,"ExpirationTimestampPassed");
 		})
 
 		it("Should failed when intent id not exist", async () => {
-			await expect(context.partyBOpenFacet.connect(partyB1.getSigner()).lockOpenIntent(200)).to
+			await expect(context.partyBOpenFacet.connect(partyB1.getSigner).lockOpenIntent(200)).to
 					.be.revertedWithCustomError(context.partyBOpenFacet,"InvalidIntentId");
 		})
 
 		it("Should failed when partyB oracle id not equal with intent symbol oracle id", async () => {
-			await context.controlFacet.setPartyBConfig(partyB1.getSigner(), {
+			await context.controlFacet.setPartyBConfig(partyB1.getSigner, {
 				isActive: true,
 				lossCoverage: 0,
 				oracleId: 2,
 				symbolType: 0,
 			})
 
-			await expect(context.partyBOpenFacet.connect(partyB1.getSigner()).lockOpenIntent(1)).to
+			await expect(context.partyBOpenFacet.connect(partyB1.getSigner).lockOpenIntent(1)).to
 				.be.revertedWithCustomError(context.partyBOpenFacet,"OracleNotMatched");
 		})
 		
 		it("Should failed when partyB is not Active or Valid", async () => {			
 
-			await context.controlFacet.setPartyBConfig(partyB1.getSigner(), {
+			await context.controlFacet.setPartyBConfig(partyB1.getSigner, {
 				isActive: false,
 				lossCoverage: 0,
 				oracleId: 1,
 				symbolType: 0,
 			})
 
-			await expect(context.partyBOpenFacet.connect(partyB1.getSigner()).lockOpenIntent(1)).to
+			await expect(context.partyBOpenFacet.connect(partyB1.getSigner).lockOpenIntent(1)).to
 				.be.revertedWithCustomError(context.partyBOpenFacet,"NotPartyB");
 		})
 
 		it("Should failed when partyB not whitelisted in the intent sent by partyA", async () => {
-			await expect(context.partyBOpenFacet.connect(partyB2.getSigner()).lockOpenIntent(1)).to
+			await expect(context.partyBOpenFacet.connect(partyB2.getSigner).lockOpenIntent(1)).to
 				.be.revertedWithCustomError(context.partyBOpenFacet,"NotWhitelistedPartyB");
 		})
 
 
 		it("Should lock open intent successfully", async () => {
-			await expect(context.partyBOpenFacet.connect(partyB1.getSigner()).lockOpenIntent(1)).to.not.reverted
+			await expect(context.partyBOpenFacet.connect(partyB1.getSigner).lockOpenIntent(1)).to.not.reverted
 
 			const intent = await context.viewFacet.getOpenIntent(1)
 
 			expect(intent.status).to.equal(1) // IntentStatus.LOCKED
-			expect(intent.partyB).to.equal(partyB1.getSigner())
+			expect(intent.partyB).to.equal(partyB1.getSigner)
 
 			// TODO ::: check intentLayout states
 		})
@@ -189,7 +189,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 
 		it("Should failed when partyA suspended", async () => {
-			await context.controlFacet.suspendAddress(partyA1.getSigner(), true)
+			await context.controlFacet.suspendAddress(partyA1.getSigner, true)
 
 			await expect(partyB1.fillOpenIntent(2, 100, 7, 0)).to.revertedWithCustomError(context.partyBOpenFacet,"SuspendedAddress")
 		})

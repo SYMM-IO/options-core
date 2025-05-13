@@ -20,6 +20,7 @@ interface IControlEvents {
 	event ForceCancelCloseIntentTimeoutUpdated(uint256 timeout);
 	event DefaultFeeCollectorUpdated(address indexed collector);
 	event GlobalPaused();
+	event ThirdPartyActionsPaused();
 	event DepositPaused();
 	event WithdrawPaused();
 	event PartyBActionsPaused();
@@ -70,5 +71,5 @@ interface IControlEvents {
 	);
 	event PriceOracleAddressUpdated(address indexed oracle);
 	event SetManualSync(address user, bool isManual);
-	event SetSymbolValidationState(uint256 indexed symbolId, bool oldState, bool state);
+	event SignatureVerifierUpdated(address indexed verifier);
 }

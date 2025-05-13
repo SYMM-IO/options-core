@@ -2,6 +2,7 @@ import { TestModeEnum } from "../common/test-mode.enum"
 import { name, version } from "../package.json"
 import { shouldBehaveLikeAccountFacet } from "./account-facet.behavior"
 import { shouldBehaveLikeForceActionFacet } from "./force-action.behavior"
+import { shouldBehaveLikeInstantActionOpenFacet } from "./instant-action-open.behavior"
 import { shouldBehaveLikeLibCloseIntent } from "./lib-closeIntent.behavior"
 import { shouldBehaveLikePartyACloseFacet } from "./partyA-close-facet.behavior"
 import { shouldBehaveLikePartyAOpenFacet } from "./partyA-open-facet.behavior"
@@ -31,6 +32,10 @@ describe(`${name}-v${version}`, () => {
 
 		describe("Libraries_LibCloseIntent", async function () {
 			shouldBehaveLikeLibCloseIntent()
+		})
+
+		describe("Facets_InstantActionOpenFacet", async function () {
+			shouldBehaveLikeInstantActionOpenFacet()
 		})
 	} else {
 		throw new Error(`Invalid TEST_MODE property. Should be one of: ${Object.keys(TestModeEnum).join(", ")}`)

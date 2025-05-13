@@ -18,7 +18,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 		partyB1 = new PartyB(context, context.signers.partyB1)
 		// await partyA1.setBalances(context.collateral,"500")
 		
-		await context.controlFacet.setPartyBConfig(partyB1.getSigner(), {
+		await context.controlFacet.setPartyBConfig(partyB1.getSigner, {
 			isActive: true,
 			lossCoverage: 0,
 			oracleId: 0,
@@ -44,7 +44,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 		it("Should fail when partyA actions paused", async function () {
 			await context.controlFacet.pausePartyAActions()
 			const request = openIntentRequestBuilder()
-				.partyBsWhiteList([partyB1.getSigner()])
+				.partyBsWhiteList([partyB1.getSigner])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.build()
@@ -54,7 +54,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 		it("Should fail when global paused", async function () {
 			await context.controlFacet.pauseGlobal()
 			const request = openIntentRequestBuilder()
-				.partyBsWhiteList([partyB1.getSigner()])
+				.partyBsWhiteList([partyB1.getSigner])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.build()
@@ -65,7 +65,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			const latestBlock = await ethers.provider.getBlock("latest")
 
 			const request = openIntentRequestBuilder()
-				.partyBsWhiteList([partyB1.getSigner()])
+				.partyBsWhiteList([partyB1.getSigner])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.expirationTimestamp( (latestBlock?.timestamp ?? 0) + 100)
@@ -78,7 +78,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 		it("Should fail when deadline be low", async function () {
 			const request = openIntentRequestBuilder()
-				.partyBsWhiteList([partyB1.getSigner()])
+				.partyBsWhiteList([partyB1.getSigner])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.symbolId(1)
@@ -89,7 +89,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 		it("Should fail when expiration timestamp be low", async function () {
 			const latestBlock = await ethers.provider.getBlock("latest")
 			const request = openIntentRequestBuilder()
-				.partyBsWhiteList([partyB1.getSigner()])
+				.partyBsWhiteList([partyB1.getSigner])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.symbolId(1)
@@ -101,7 +101,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 		it("Should fail when cap for exercise fee be high", async function () {
 			const latestBlock = await ethers.provider.getBlock("latest")
 			const request = openIntentRequestBuilder()
-				.partyBsWhiteList([partyB1.getSigner()])
+				.partyBsWhiteList([partyB1.getSigner])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.symbolId(1)
@@ -115,7 +115,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 		it("Should fail when instance mode is active", async function () {
 			const latestBlock = await ethers.provider.getBlock("latest")
 			const request = openIntentRequestBuilder()
-				.partyBsWhiteList([partyB1.getSigner()])
+				.partyBsWhiteList([partyB1.getSigner])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.symbolId(1)
@@ -124,14 +124,14 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.exerciseFee({ cap: e(1), rate: "0" })
 				.build()
 
-			await context.controlFacet.setInstantActionsMode(partyA1.getSigner(), true)
+			await context.controlFacet.setInstantActionsMode(partyA1.getSigner, true)
 			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "InstantActionModeActive")
 		})
 
 		it("Should fail when affiliate be zero address or invalid", async function () {
 			const latestBlock = await ethers.provider.getBlock("latest")
 			const request = openIntentRequestBuilder()
-				.partyBsWhiteList([partyB1.getSigner()])
+				.partyBsWhiteList([partyB1.getSigner])
 				.affiliate(context.signers.others[0])
 				.feeToken(context.collateral)
 				.symbolId(1)
@@ -153,7 +153,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 		it("Should fail when partyA bound to a partyB that is not in whitelisted partyB", async function () {
 			const latestBlock = await ethers.provider.getBlock("latest")
 			const request = openIntentRequestBuilder()
-				.partyBsWhiteList([partyB2.getSigner()])
+				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.symbolId(1)
@@ -162,14 +162,14 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.exerciseFee({ cap: e(1), rate: "0" })
 				.build()
 
-			await context.accountFacet.connect(partyA1.getSigner()).bindToPartyB(partyB1.getSigner())
+			await context.accountFacet.connect(partyA1.getSigner).bindToPartyB(partyB1.getSigner)
 			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "UserBoundToAnotherPartyB")
 		})
 
 		it("Should fail when sender in whitelisted partyB", async function () {
 			const latestBlock = await ethers.provider.getBlock("latest")
 			const request = openIntentRequestBuilder()
-				.partyBsWhiteList([partyA1.getSigner()])
+				.partyBsWhiteList([partyA1.getSigner])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.symbolId(1)
@@ -184,7 +184,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 		it("Should fail when partyA sends Short intent with isolated margin", async function () {
 			const latestBlock = await ethers.provider.getBlock("latest")
 			const request = openIntentRequestBuilder()
-				.partyBsWhiteList([partyB2.getSigner(), context.signers.partyB1])
+				.partyBsWhiteList([partyB2.getSigner, context.signers.partyB1])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.symbolId(1)
@@ -201,7 +201,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 		it("Should fail when partyA sends Short intent with isolated margin", async function () {
 			const latestBlock = await ethers.provider.getBlock("latest")
 			const request = openIntentRequestBuilder()
-				.partyBsWhiteList([partyB2.getSigner(), context.signers.partyB1])
+				.partyBsWhiteList([partyB2.getSigner, context.signers.partyB1])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.symbolId(1)
@@ -218,7 +218,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 		it("Should fail when partyB whiteListed and available balance be insufficient", async function () {
 			const latestBlock = await ethers.provider.getBlock("latest")
 			const request = openIntentRequestBuilder()
-				.partyBsWhiteList([partyB2.getSigner()])
+				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.symbolId(1)
@@ -235,7 +235,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 		it("Should fail when partyB not whiteListed and available balance be insufficient", async function () {
 			const latestBlock = await ethers.provider.getBlock("latest")
 			const request = openIntentRequestBuilder()
-				.partyBsWhiteList([partyB2.getSigner(), context.signers.partyB1])
+				.partyBsWhiteList([partyB2.getSigner, context.signers.partyB1])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.symbolId(1)
@@ -252,7 +252,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 		it("Should fail when partyB whiteListed and available balance be insufficient", async function () {
 			const latestBlock = await ethers.provider.getBlock("latest")
 			const request = openIntentRequestBuilder()
-				.partyBsWhiteList([partyB1.getSigner()])
+				.partyBsWhiteList([partyB1.getSigner])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.symbolId(1)
@@ -268,7 +268,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			const intent = await context.viewFacet.getOpenIntent(1)
 
 			expect(intent.tradeId).to.be.equal(0)
-			expect(intent.partyBsWhiteList).to.be.deep.equal([await partyB1.getSigner().getAddress()])
+			expect(intent.partyBsWhiteList).to.be.deep.equal([await partyB1.getSigner.getAddress()])
 			expect(intent.tradeAgreements.symbolId).to.be.equal(1)
 			expect(intent.price).to.be.equal(7)
 			expect(intent.tradeAgreements.quantity).to.be.equal(e(100))
@@ -276,7 +276,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			expect(intent.tradeAgreements.expirationTimestamp).to.be.equal((latestBlock?.timestamp ?? 0) + 120)
 			expect(intent.tradeAgreements.exerciseFee.cap).to.be.equal(e(1))
 			expect(intent.tradeAgreements.exerciseFee.rate).to.be.equal(0)
-			expect(intent.partyA).to.be.equal(await partyA1.getSigner().getAddress())
+			expect(intent.partyA).to.be.equal(await partyA1.getSigner.getAddress())
 			expect(intent.partyB).to.be.equal(ZeroAddress)
 			expect(intent.status).to.be.equal(0) // IntentStatus.PENDING
 			expect(intent.parentId).to.be.equal(0)
@@ -286,7 +286,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			// expect(intent.tradingFee).to.be.equal(0)
 			expect(intent.affiliate).to.be.equal(await context.signers.affiliate1.getAddress())
 
-			// expect(await context.viewFacet.lockedBalancesOf(partyA1.getSigner(), context.collateral.getAddress())).to.be.equal(700)
+			// expect(await context.viewFacet.lockedBalancesOf(partyA1.getSigner, context.collateral.getAddress())).to.be.equal(700)
 		})
 	})
 }

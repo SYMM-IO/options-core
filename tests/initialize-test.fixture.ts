@@ -1,11 +1,12 @@
 import { run } from "hardhat"
-import { Diamond, FakeStablecoin } from "../types"
+import { Diamond, FakeStablecoin, SignatureVerifier } from "../types"
 import { createRunContext, RunContext } from "./run-context"
 import { ethers, toUtf8Bytes } from "ethers"
 
 export async function initializeTestFixture(): Promise<RunContext> {
 	const diamond: Diamond = await run("deploy:diamond")
 	const mocks: Map<string, string> = await run("deploy:mocks")
+	const verifier: SignatureVerifier = await run("deploy:SignatureVerifier")
 	const stableCoin: FakeStablecoin = await run("deploy:stablecoin", {
 		name: "MyFakeStablecoin",
 		symbol: "FUSD",
@@ -20,6 +21,7 @@ export async function initializeTestFixture(): Promise<RunContext> {
 		await diamond.getAddress(),
 		[await stableCoin.getAddress(), await stableCoinNL.getAddress()],
 		await oracle.getAddress(),
+		await verifier.getAddress(),
 		mocks,
 	)
 
@@ -66,5 +68,6 @@ export async function initializeTestFixture(): Promise<RunContext> {
 	await context.controlFacet.connect(context.signers.admin).whiteListCollateral(await context.collateral.getAddress())
 	await context.controlFacet.connect(context.signers.admin).whiteListCollateral(await context.collateralNL.getAddress())
 
+	await context.controlFacet.setSignatureVerifier(context.signatureVerifier)
 	return context
 }

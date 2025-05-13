@@ -10,10 +10,13 @@ import {
 	FakeOracle,
 	FakeStablecoin,
 	ForceActionsFacet,
+	InstantActionsCloseFacet,
+	InstantActionsOpenFacet,
 	PartyACloseFacet,
 	PartyAOpenFacet,
 	PartyBCloseFacet,
 	PartyBOpenFacet,
+	SignatureVerifier,
 	TradeSettlementFacet,
 	ViewFacet,
 } from "../types"
@@ -30,6 +33,8 @@ export class RunContext {
 	tradeSettlementFacet!: TradeSettlementFacet
 	controlFacet!: ControlFacet
 	forceActionsFacet!: ForceActionsFacet
+	instantActionOpenFacet!: InstantActionsOpenFacet
+	instantActionCloseFacet!: InstantActionsCloseFacet
 	signers!: {
 		admin: SignerWithAddress
 		partyA1: SignerWithAddress
@@ -41,16 +46,26 @@ export class RunContext {
 		affiliate1: SignerWithAddress
 		others: SignerWithAddress[]
 	}
-	diamond!: string
 	collateral!: FakeStablecoin
 	collateralNL!: FakeStablecoin
 	oracle!: FakeOracle
 	mocks!: {
 		libCloseIntentMock: CloseIntentOpsMock
 	}
+	signatureVerifier!: SignatureVerifier
+	common!: {
+		chainId: number
+		diamondAddress: string
+	}
 }
 
-export async function createRunContext(diamond: string, collateral: string[], oracle: string, mocks?: Map<string, string>): Promise<RunContext> {
+export async function createRunContext(
+	diamond: string,
+	collateral: string[],
+	oracle: string,
+	signatureVerifier: string,
+	mocks?: Map<string, string>,
+): Promise<RunContext> {
 	let context = new RunContext()
 
 	const signers: SignerWithAddress[] = await ethers.getSigners()
@@ -66,7 +81,6 @@ export async function createRunContext(diamond: string, collateral: string[], or
 		others: [signers[8], signers[9]],
 	}
 
-	context.diamond = diamond
 	context.collateral = await ethers.getContractAt("FakeStablecoin", collateral[0])
 	context.collateralNL = await ethers.getContractAt("FakeStablecoin", collateral[1])
 
@@ -77,6 +91,9 @@ export async function createRunContext(diamond: string, collateral: string[], or
 	context.viewFacet = await ethers.getContractAt("ViewFacet", diamond)
 	context.controlFacet = await ethers.getContractAt("ControlFacet", diamond)
 	context.forceActionsFacet = await ethers.getContractAt("ForceActionsFacet", diamond)
+	context.instantActionCloseFacet = await ethers.getContractAt("InstantActionsCloseFacet", diamond)
+	context.instantActionOpenFacet = await ethers.getContractAt("InstantActionsOpenFacet", diamond)
+	context.signatureVerifier = await ethers.getContractAt("SignatureVerifier", signatureVerifier)
 
 	context.partyAOpenFacet = await ethers.getContractAt("PartyAOpenFacet", diamond)
 	context.partyACloseFacet = await ethers.getContractAt("PartyACloseFacet", diamond)
@@ -87,10 +104,14 @@ export async function createRunContext(diamond: string, collateral: string[], or
 	context.tradeSettlementFacet = await ethers.getContractAt("TradeSettlementFacet", diamond)
 
 	if (mocks) {
-		console.log(mocks.get("CloseIntentOpsMock"))
 		context.mocks = {
 			libCloseIntentMock: await ethers.getContractAt("CloseIntentOpsMock", mocks.get("CloseIntentOpsMock")!),
 		}
+	}
+
+	context.common = {
+		chainId: Number((await ethers.provider.getNetwork()).chainId),
+		diamondAddress: diamond,
 	}
 
 	return context
