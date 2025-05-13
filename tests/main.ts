@@ -24,9 +24,9 @@ describe(`${name}-v${version}`, () => {
 			shouldBehaveLikePartyAOpenFacet()
 		})
 
-		// describe("Facets_PartyACloseFacet", async function () {
-		// 	shouldBehaveLikePartyACloseFacet()
-		// })
+		describe("Facets_PartyACloseFacet", async function () {
+			shouldBehaveLikePartyACloseFacet()
+		})
 
 
 		describe("Facets_PartyBOpenFacet", async function () {
@@ -40,14 +40,14 @@ describe(`${name}-v${version}`, () => {
 		describe("Facets_InstantActionOpenFacet", async function () {
 			shouldBehaveLikeInstantActionOpenFacet()
 		})
-		
-		// describe("Facets_PartyBCloseFacet", async function () {
-		// 	shouldBehaveLikePartyBCloseFacet()
-		// })
 
-		// describe("Facets_Settlement", async function () {
-		// 	shouldBehaveLikeSettlementFacet()
-		// })
+		describe("Facets_PartyBCloseFacet", async function () {
+			shouldBehaveLikePartyBCloseFacet()
+		})
+
+		describe("Facets_Settlement", async function () {
+			shouldBehaveLikeSettlementFacet()
+		})
 
 	} else {
 		throw new Error(`Invalid TEST_MODE property. Should be one of: ${Object.keys(TestModeEnum).join(", ")}`)
