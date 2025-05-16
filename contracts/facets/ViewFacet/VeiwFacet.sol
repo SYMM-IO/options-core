@@ -50,6 +50,11 @@ contract ViewFacet is IViewFacet {
 	
 	}
 
+	function getTradingFee(uint256 openIntentId) external view returns (uint256) {
+		OpenIntent memory self = OpenIntentStorage.layout().openIntents[openIntentId];
+		return (self.tradeAgreements.quantity * self.price * self.tradingFee.platformFee) / (self.tradingFee.tokenPrice * 1e18);
+	}
+
 
 	/**
 	 * @notice Returns max connected partyBs.

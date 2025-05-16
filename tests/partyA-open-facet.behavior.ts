@@ -440,18 +440,22 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				// we are in isolated margin
 				let isolatedBalance2 = await context.viewFacet.balanceOf(partyA1.getSigner(), await context.collateral.getAddress()) 
 				const symbol:SymbolStruct = await context.viewFacet.getSymbol(intent.tradeAgreements.symbolId)
+				const feeTokenPrice = await context.oracle.getPrice(context.collateral)
+				let tradingFeeCalculation = BigNumber.from(symbol.tradingFee).mul(intent.tradeAgreements.quantity).mul(intent.price).div( feeTokenPrice )
+				const tradingFeeFromView = await context.viewFacet.getTradingFee(1);
 
 				console.log("PartyA isolated balance:", isolatedBalance)
 				console.log("affiliateFee:",affiliateFee)
 				console.log("tradingFee:",tradingFee)
 				console.log("tradingFee + affiliateFee:",tradingFee + affiliateFee)
 				console.log("Platform fee:", symbol.tradingFee)
+				console.log("Fee Token Price:", feeTokenPrice)
+				console.log("Trading Fee Calculation:", tradingFeeCalculation.toString())
+				console.log("Trading Fee From View:", tradingFeeFromView.toString())
+
 				
-				const feeTokenPrice = await context.oracle.getPrice(context.collateral)
-				let calculation = BigNumber.from(symbol.tradingFee).mul(intent.tradeAgreements.quantity).mul(intent.price).div( feeTokenPrice )
-				console.log("Calculation:", calculation.toString())
 				
-				expect(calculation._hex).to.equal(tradingFee)
+				expect(tradingFeeCalculation._hex).to.equal(tradingFee)
 				expect(intent.tradingFee.platformFee).to.greaterThan(0)
 				expect(intent.tradingFee.platformFee).to.equal(symbol.tradingFee)
 				expect(isolatedBalance - isolatedBalance2).to.be.equal(tradingFee + affiliateFee)
