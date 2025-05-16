@@ -18,6 +18,7 @@ import { AccessControlStorage } from "../../storages/AccessControlStorage.sol";
 import { FeeManagementStorage } from "../../storages/FeeManagementStorage.sol";
 import { SymbolStorage, Symbol, Oracle } from "../../storages/SymbolStorage.sol";
 import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
+import { ScheduledReleaseBalance } from "../../types/BalanceTypes.sol";
 
 import { Trade } from "../../types/TradeTypes.sol";
 import { Withdraw } from "../../types/WithdrawTypes.sol";
@@ -41,7 +42,14 @@ contract ViewFacet is IViewFacet {
 	 */
 	function balanceOf(address user, address collateral) external view returns (uint256) {
 		return AccountStorage.layout().balances[user][collateral].isolatedBalance;
+	
 	}
+
+	function getIsolatedLockedBalance(address user, address collateral) external view returns (uint256) {
+		return AccountStorage.layout().balances[user][collateral].isolatedLockedBalance;
+	
+	}
+
 
 	/**
 	 * @notice Returns max connected partyBs.

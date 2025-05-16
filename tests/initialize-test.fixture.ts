@@ -3,6 +3,7 @@ import { Diamond, FakeStablecoin, SignatureVerifier } from "../types"
 import { createRunContext, RunContext } from "./run-context"
 import { ethers, toUtf8Bytes } from "ethers"
 import { e } from "../utils/e"
+import {OptionType} from "./option-enums"
 
 export async function initializeTestFixture(): Promise<RunContext> {
 	const diamond: Diamond = await run("deploy:diamond")

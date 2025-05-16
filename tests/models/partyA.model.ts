@@ -10,8 +10,8 @@ export class PartyA extends PartyEntity {
 		super(context, signer)
 	}
 
-	public async sendOpenIntent(request: OpenIntent = openIntentRequestBuilder().build()) {
-		await runTx(
+	public async sendOpenIntent(request: OpenIntent = openIntentRequestBuilder().build()): Promise<any> {
+		return await runTx(
 			this.context.partyAOpenFacet
 				.connect(this.signer)
 				.sendOpenIntent(
