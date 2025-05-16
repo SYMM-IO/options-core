@@ -111,10 +111,16 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		emit AffiliateStatusUpdated(_affiliate, _status);
 	}
 
-	function setAffiliateFeeCollector(address _affiliate, address _collector) external onlyRole(LibAccessibility.SETTER_ROLE) {
+	function setAffiliateFeesCollector(address _affiliate, address _collector) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		if (_collector == address(0)) revert CommonErrors.ZeroAddress("collector");
 		FeeManagementStorage.layout().affiliateFeeCollector[_affiliate] = _collector;
-		emit AffiliateFeeCollectorUpdated(_affiliate, _collector);
+		emit AffiliateFeesCollectorUpdated(_affiliate, _collector);
+	}
+
+	function setAffiliateFees(address _affiliate, uint256 _symbolId, uint256 fee) external onlyRole(LibAccessibility.SETTER_ROLE) {
+		if (_affiliate == address(0)) revert CommonErrors.ZeroAddress("collector");
+		FeeManagementStorage.layout().affiliateFees[_affiliate][_symbolId] = fee;
+		emit AffiliateFeesUpdated(_affiliate, _symbolId, fee);
 	}
 
 	function setPartyBConfig(address _partyB, PartyBConfig calldata _config) external onlyRole(LibAccessibility.SETTER_ROLE) {

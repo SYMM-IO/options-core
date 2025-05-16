@@ -37,7 +37,8 @@ interface IControlEvents {
 	event PartyBEmergencyStatusActivated(address indexed partyB);
 	event PartyBEmergencyStatusDeactivated(address indexed partyB);
 	event AffiliateStatusUpdated(address indexed affiliate, bool status);
-	event AffiliateFeeCollectorUpdated(address indexed affiliate, address indexed feeCollector);
+	event AffiliateFeesCollectorUpdated(address indexed affiliate, address indexed feeCollector);
+	event AffiliateFeesUpdated(address indexed affiliate, uint256 indexed symbolId, uint256 fee);
 	event RoleUpdated(address indexed account, bytes32 indexed role, bool granted);
 	event PartyBConfigUpdated(address indexed partyB, PartyBConfig config);
 	event SettlementPriceSigValidTimeUpdated(uint256 time);

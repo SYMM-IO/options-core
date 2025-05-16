@@ -75,7 +75,9 @@ interface IControlFacet is IControlEvents {
 
 	function setAffiliateStatus(address _affiliate, bool _status) external;
 
-	function setAffiliateFeeCollector(address _affiliate, address _feeCollector) external;
+	function setAffiliateFeesCollector(address _affiliate, address _feeCollector) external;
+
+	function setAffiliateFees(address _affiliate, uint256 _symbolId, uint256 fee) external;
 
 	function setPartyBConfig(address _partyB, PartyBConfig calldata _config) external;
 
