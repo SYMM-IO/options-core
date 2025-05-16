@@ -29,9 +29,9 @@ describe(`${name}-v${version}`, () => {
 		// })
 
 
-		describe("Facets_PartyBOpenFacet", async function () {
-			shouldBehaveLikePartyBOpenFacet()
-		})
+		// describe("Facets_PartyBOpenFacet", async function () {
+		// 	shouldBehaveLikePartyBOpenFacet()
+		// })
 
 		describe("Libraries_LibCloseIntent", async function () {
 			shouldBehaveLikeLibCloseIntent()

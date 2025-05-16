@@ -327,7 +327,7 @@ library ScheduledReleaseBalanceOps {
 		// Sanity check
 		if (block.timestamp < entry.lastTransitionTimestamp) revert InvalidSyncTimestamp(block.timestamp, entry.lastTransitionTimestamp);
 
-		uint256 intervals = (block.timestamp - entry.lastTransitionTimestamp) / entry.releaseInterval;
+		uint256 intervals = (block.timestamp - entry.lastTransitionTimestamp) / entry.releaseInterval; // it is zero on the same block as calculations are base on integers
 		if (intervals == 0) return;
 
 		// ---------------------------------------------------------------------
