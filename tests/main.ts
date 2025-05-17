@@ -28,7 +28,6 @@ describe(`${name}-v${version}`, () => {
 			shouldBehaveLikePartyACloseFacet()
 		})
 
-
 		describe("Facets_PartyBOpenFacet", async function () {
 			shouldBehaveLikePartyBOpenFacet()
 		})
@@ -48,7 +47,6 @@ describe(`${name}-v${version}`, () => {
 		describe("Facets_Settlement", async function () {
 			shouldBehaveLikeSettlementFacet()
 		})
-
 	} else {
 		throw new Error(`Invalid TEST_MODE property. Should be one of: ${Object.keys(TestModeEnum).join(", ")}`)
 	}

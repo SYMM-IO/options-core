@@ -58,12 +58,12 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 		})
 
 		it("Should failed when partyA suspended", async () => {
-			await context.controlFacet.suspendAddress(partyA1.getSigner(), true)
+			await context.controlFacet.suspendAddress(partyA1.getSigner, true)
 			await expect(partyB1.fillCloseIntent(1, 100, 7)).to.revertedWithCustomError(context.partyBCloseFacet,"SuspendedAddress")
 		})
 
 		it("Should failed when partyB suspended", async () => {
-			await context.controlFacet.suspendAddress(partyB1.getSigner(), true)
+			await context.controlFacet.suspendAddress(partyB1.getSigner, true)
 			await expect(partyB1.fillCloseIntent(1, 100, 7)).to.revertedWithCustomError(context.partyBCloseFacet,"SuspendedAddress")
 		})
 		
@@ -86,7 +86,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 
 			await partyA1.sendOpenIntent(
 				openIntentRequestBuilder()
-					.partyBsWhiteList([partyB1.getSigner()])
+					.partyBsWhiteList([partyB1.getSigner])
 					.affiliate(context.signers.affiliate1)
 					.feeToken(context.collateral)
 					.symbolId(1)

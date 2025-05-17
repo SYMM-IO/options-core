@@ -50,7 +50,7 @@ library LibHash {
 
 		return
 			keccak256(
-				abi.encode(CHAIN_ID, addr, SIGN_PREFIX, req.partyB, req.intentHash, req.price, req.quantity, req.deadline, req.salt, req.marginType)
+				abi.encode(CHAIN_ID, addr, SIGN_PREFIX, req.partyB, req.intentHash, req.price, req.quantity, req.deadline, req.salt)
 			).toEthSignedMessageHash();
 	}
 
@@ -61,7 +61,7 @@ library LibHash {
 
 		return
 			keccak256(
-				abi.encode(CHAIN_ID, addr, SIGN_PREFIX, req.partyB, req.intentId, req.price, req.quantity, req.deadline, req.salt, req.marginType)
+				abi.encode(CHAIN_ID, addr, SIGN_PREFIX, req.partyB, req.intentId, req.price, req.quantity, req.deadline, req.salt)
 			).toEthSignedMessageHash();
 	}
 

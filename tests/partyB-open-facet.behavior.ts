@@ -424,7 +424,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			// TODO :::
 			// const newBlock = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 150
 			// await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
-			// expect(await context.partyBOpenFacet.connect(partyB1.getSigner()).unlockOpenIntent(1)).to.not.reverted
+			// expect(await context.partyBOpenFacet.connect(partyB1.getSigner).unlockOpenIntent(1)).to.not.reverted
 			// const intent = await context.viewFacet.getOpenIntent(1)
 			// expect(intent.status).to.equal(3)
 		})
