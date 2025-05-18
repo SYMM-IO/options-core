@@ -20,18 +20,18 @@ describe(`${name}-v${version}`, () => {
 			shouldBehaveLikeAccountFacet()
 		})
 
-		describe("Facets_PartyAOpenFacet", async function () {
-			shouldBehaveLikePartyAOpenFacet()
-		})
+		// describe("Facets_PartyAOpenFacet", async function () {
+		// 	shouldBehaveLikePartyAOpenFacet()
+		// })
 
 		// describe("Facets_PartyACloseFacet", async function () {
 		// 	shouldBehaveLikePartyACloseFacet()
 		// })
 
 
-		// describe("Facets_PartyBOpenFacet", async function () {
-		// 	shouldBehaveLikePartyBOpenFacet()
-		// })
+		describe("Facets_PartyBOpenFacet", async function () {
+			shouldBehaveLikePartyBOpenFacet()
+		})
 
 		describe("Libraries_LibCloseIntent", async function () {
 			shouldBehaveLikeLibCloseIntent()

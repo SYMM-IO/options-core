@@ -11,7 +11,9 @@ import { e } from "../utils/e"
 import { ZeroAddress } from "ethers"
 import { bigint } from "hardhat/internal/core/params/argumentTypes"
 import { config } from "dotenv"
-import { OpenIntentStructOutput } from "../types/contracts/interfaces/ISymmio"
+import { OpenIntentStruct, OpenIntentStructOutput } from "../types/contracts/interfaces/ISymmio"
+
+import { MarginType } from "./option-enums"
 
 export function shouldBehaveLikePartyBOpenFacet(): void {
 	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyB1: PartyB, partyB2: PartyB
@@ -26,6 +28,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		// await partyB1.setBalances(context.collateral,e(100000), e(100000))
 		// await partyB2.setBalances(context.collateralNL,e(100000), e(100000))
 		await partyA1.setBalances(context.collateral,e(100000), e(100000))
+		await partyA2.setBalances(context.collateral,e(100000), e(100000))
 
 		const latestBlock = await ethers.provider.getBlock("latest")
 		await partyA1.sendOpenIntent(
@@ -488,5 +491,127 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 		})
 		
+	})
+
+	describe("sendOpenIntent memory management", async function () {
+		beforeEach(async () => {})
+
+		it("should fail on Fee not paid accordingly when more than one partyB whitelisted ", async function () {
+						
+			const latestBlock = await ethers.provider.getBlock("latest")
+			const request = openIntentRequestBuilder()
+				.partyBsWhiteList([partyB1.getSigner(), partyB2.getSigner()])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateral)
+				.symbolId(1)
+				.deadline((latestBlock?.timestamp ?? 0) + 120)
+				.expirationTimestamp((latestBlock?.timestamp ?? 0) + 300)
+				.exerciseFee({ cap: e(1), rate: "0" })
+				.quantity(e(70))
+				.price(7)
+				.marginType(MarginType.ISOLATED)
+				.build()
+
+			// PartyA sends some Intents 
+			expect( await partyA2.sendOpenIntent(request)).not.to.reverted // fee and premium for party A
+			expect( await partyA2.sendOpenIntent(request)).not.to.reverted
+			expect( await partyA2.sendOpenIntent(request)).not.to.reverted
+			expect( await partyA2.sendOpenIntent(request)).not.to.reverted
+			expect( await partyA2.sendOpenIntent(request)).not.to.reverted
+			expect( await partyA2.sendOpenIntent(request)).not.to.reverted
+			expect( await partyA2.sendOpenIntent(request)).not.to.reverted
+			expect( await partyA2.sendOpenIntent(request)).not.to.reverted
+			expect( await partyA2.sendOpenIntent(request)).not.to.reverted
+			expect( await partyA2.sendOpenIntent(request)).not.to.reverted
+			
+			let openIntents: OpenIntentStruct[] = await context.viewFacet.getOpenIntentsOf(partyA2.getSigner(),0,100)
+			for(let openIntent of openIntents){
+				console.log("Initial OpenIntents: ")
+				console.log("ID: ",openIntent.id)
+				console.log("Status: ",openIntent.status == 0?"Pending": openIntent.status)
+				console.log("Quantity: ",openIntent.tradeAgreements.quantity)
+			}
+
+
+			// some time elapses
+			let newBlockTimeStamp = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 20
+			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
+			await network.provider.send("evm_mine")
+	
+			// PartyB locks 
+			// expect( await partyB1.lockOpenIntent(1)).not.to.reverted
+			expect( await partyB1.lockOpenIntent(2)).not.to.reverted
+			expect( await partyB1.lockOpenIntent(3)).not.to.reverted
+			expect( await partyB1.lockOpenIntent(4)).not.to.reverted
+			expect( await partyB1.lockOpenIntent(5)).not.to.reverted
+			expect( await partyB1.lockOpenIntent(6)).not.to.reverted
+			expect( await partyB1.lockOpenIntent(7)).not.to.reverted
+			expect( await partyB1.lockOpenIntent(8)).not.to.reverted
+			expect( await partyB1.lockOpenIntent(9)).not.to.reverted
+			expect( await partyB1.lockOpenIntent(10)).not.to.reverted
+			expect( await partyB1.lockOpenIntent(11)).not.to.reverted
+			
+			// nothing happen to some of the intents
+
+			newBlockTimeStamp = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 20 // Time passes
+			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
+			await network.provider.send("evm_mine")
+			
+			
+			expect( await partyA2.sendCancelOpenIntent(['2','3'])).not.to.reverted // partyA Cancels some intent 
+						
+			expect( await partyB1.unlockOpenIntent(4)).not.to.reverted // partyB Unlock some intents
+			expect( await partyB1.unlockOpenIntent(5)).not.to.reverted
+			
+			newBlockTimeStamp = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 20 // Time passes
+			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
+			await network.provider.send("evm_mine")
+			
+			expect( await partyB1.acceptCancelOpenIntent(2)).not.to.reverted // partyB Accepts Cancel of some partyA Cancels
+			expect( await partyB1.acceptCancelOpenIntent(3)).not.to.reverted
+
+			expect( await partyB1.fillOpenIntent(6,50,6)).not.to.reverted
+			expect( await partyB1.fillOpenIntent(7,50,6)).not.to.reverted // partyB Fills some intent
+			
+			openIntents = await context.viewFacet.getOpenIntentsOf(partyA2.getSigner(),0,100)
+			for(let openIntent of openIntents){
+				console.log("\nOpenIntents Before Deadline: ")
+				console.log("ID: ",openIntent.id)
+				console.log("Status: ",openIntent.status == 0?"Pending":
+					(openIntent.status == 1?"LOCKED":
+						(openIntent.status == 2?"CANCEL_PENDING":
+							(openIntent.status== 3?"CANCELED":
+								(openIntent.status == 4?"FILLED":
+									(openIntent.status == 5?"EXPIRED":openIntent.status)
+								)))))
+			}		
+						
+			newBlockTimeStamp = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 140 // Time passes
+			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
+			await network.provider.send("evm_mine")
+			
+			expect( await partyB1.unlockOpenIntent(8)).not.to.reverted // what happens to locked intents
+			expect( await partyB1.unlockOpenIntent(9)).not.to.reverted // 
+			
+			openIntents = await context.viewFacet.getOpenIntentsOf(partyA2.getSigner(),0,100)
+			for(let openIntent of openIntents){
+				console.log("\nOpenIntents After Deadline: ")
+				console.log("ID: ",openIntent.id)
+				console.log("Status: ",openIntent.status == 0?"Pending":
+					(openIntent.status == 1?"LOCKED":
+						(openIntent.status == 2?"CANCEL_PENDING":
+							(openIntent.status== 3?"CANCELED":
+								(openIntent.status == 4?"FILLED":
+									(openIntent.status == 5?"EXPIRED":openIntent.status)
+								)))))
+			}
+
+			// partyA balance
+			// partyB balance 
+						
+
+		})	
+
+
 	})
 }

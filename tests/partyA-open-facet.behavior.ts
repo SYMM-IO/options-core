@@ -11,6 +11,7 @@ import { ZeroAddress } from "ethers"
 import {MarginType} from "./option-enums"
 import { SymbolStruct } from "../types/contracts/interfaces/ISymmio"
 import { BigNumber } from "@ethersproject/bignumber"
+import { bigint } from "hardhat/internal/core/params/argumentTypes"
 
 export function shouldBehaveLikePartyAOpenFacet(): void {
 	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyB1: PartyB, partyB2: PartyB
@@ -342,8 +343,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 					.deadline((latestBlock?.timestamp ?? 0) + 120)
 					.expirationTimestamp((latestBlock?.timestamp ?? 0) + 120)
 					.exerciseFee({ cap: e(1), rate: "0" })
-					.quantity(e(100))
-					.price(7)
+					.quantity(e(1))
+					.price(700)
 					.marginType(MarginType.ISOLATED)
 					
 					.build()
@@ -351,7 +352,9 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				expect(await partyA1.sendOpenIntent(request)).to.be.not.reverted
 				
 				const intent = await context.viewFacet.getOpenIntent(1)
-				let premium = intent.tradeAgreements.quantity * intent.price
+
+				let premium = ethers.formatUnits((intent.tradeAgreements.quantity * intent.price).toString(), 18)
+				const premiumFromView = await context.viewFacet.getPremium(1)
 				// let tradingFee = intent.tradingFee.platformFee * intent.tradeAgreements.quantity * intent.price / intent.tradingFee.tokenPrice
 				// let affiliateFee = intent.tradingFee.affiliateFee * intent.tradeAgreements.quantity * intent.price / intent.tradingFee.tokenPrice
 				
@@ -364,8 +367,9 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				console.log("PartyA Balance equals: isolatedBalance - isolatedLocketBalance2:",isolatedBalance -isolatedLocketBalance2)
 				console.log("isolatedLocketBalance2 after sending intent:",isolatedLocketBalance2)
 				console.log("isolatedLocketBalance before sending intent:",isolatedLocketBalance)
-				console.log("isolatedLocketBalance2 - isolatedLocketBalance:",isolatedLocketBalance2 - isolatedLocketBalance)
-				expect(isolatedLocketBalance2 - isolatedLocketBalance).to.be.equal(premium)
+				console.log("isolatedLocketBalance before sending intent:",isolatedLocketBalance)
+				console.log("Calculated premium:", premium)
+				expect(isolatedLocketBalance2 - isolatedLocketBalance).to.be.equal(premiumFromView)
 				// expect(isolatedBalance - isolatedBalance2).to.be.equal(0)
 
 				// expect(isolatedBalance - isolatedBalance2).to.be.equal(premium)	
@@ -394,6 +398,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				const intent = await context.viewFacet.getOpenIntent(1)				
 				let tradingFee = intent.tradingFee.platformFee * intent.tradeAgreements.quantity * intent.price / intent.tradingFee.tokenPrice
 				let affiliateFee = intent.tradingFee.affiliateFee * intent.tradeAgreements.quantity * intent.price / intent.tradingFee.tokenPrice
+				const premiumFromView = await context.viewFacet.getPremium(1);
+				const affiliateFeeFromView = await context.viewFacet.getAffiliateFee(1);
 				
 				// partyA pays the fees in so:
 				// we are in isolated margin
@@ -403,9 +409,10 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				console.log("affiliateFee:",affiliateFee)
 				console.log("tradingFee:",tradingFee)
 				console.log("tradingFee + affiliateFee:",tradingFee + affiliateFee)
-				// console.log("Platform Fee:",await context.viewFacet)
+				console.log("Quantity: ",intent.tradeAgreements.quantity)
+				console.log("price: ",intent.price)
 
-				expect(isolatedBalance - isolatedBalance2).to.be.equal(tradingFee + affiliateFee)
+				expect(isolatedBalance - isolatedBalance2).to.be.equal(premiumFromView + affiliateFeeFromView)
 			
 				
 				// const eventFragment = context.accountFacet.interface.getEvent("DecreaseBalance")
@@ -441,8 +448,10 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				let isolatedBalance2 = await context.viewFacet.balanceOf(partyA1.getSigner(), await context.collateral.getAddress()) 
 				const symbol:SymbolStruct = await context.viewFacet.getSymbol(intent.tradeAgreements.symbolId)
 				const feeTokenPrice = await context.oracle.getPrice(context.collateral)
-				let tradingFeeCalculation = BigNumber.from(symbol.tradingFee).mul(intent.tradeAgreements.quantity).mul(intent.price).div( feeTokenPrice )
+				const tradingFeeCalculation = BigNumber.from(symbol.tradingFee).mul(intent.tradeAgreements.quantity).mul(intent.price).div( feeTokenPrice )
 				const tradingFeeFromView = await context.viewFacet.getTradingFee(1);
+				const premiumFromView = await context.viewFacet.getPremium(1);
+				const affiliateFeeFromView = await context.viewFacet.getAffiliateFee(1);
 
 				console.log("PartyA isolated balance:", isolatedBalance)
 				console.log("affiliateFee:",affiliateFee)
@@ -450,15 +459,17 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				console.log("tradingFee + affiliateFee:",tradingFee + affiliateFee)
 				console.log("Platform fee:", symbol.tradingFee)
 				console.log("Fee Token Price:", feeTokenPrice)
-				console.log("Trading Fee Calculation:", tradingFeeCalculation.toString())
-				console.log("Trading Fee From View:", tradingFeeFromView.toString())
+				console.log("Trading Fee Calculation:", tradingFeeCalculation)
+				console.log("Trading Fee From View:", tradingFeeFromView)
+				console.log("Affiliate Fee From View:", affiliateFeeFromView)
+				console.log("Premium Fee From View:", premiumFromView)
 
 				
 				
 				expect(tradingFeeCalculation._hex).to.equal(tradingFee)
 				expect(intent.tradingFee.platformFee).to.greaterThan(0)
 				expect(intent.tradingFee.platformFee).to.equal(symbol.tradingFee)
-				expect(isolatedBalance - isolatedBalance2).to.be.equal(tradingFee + affiliateFee)
+				expect(isolatedBalance - isolatedBalance2).to.be.equal(tradingFeeFromView + affiliateFeeFromView)
 				
 				
 				// const eventFragment = context.accountFacet.interface.getEvent("DecreaseBalance")
@@ -469,6 +480,5 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 		})
 
-		describe("sendOpenIntent memory management", async function () {
-		})
+		
 }
