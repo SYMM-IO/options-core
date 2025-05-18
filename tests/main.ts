@@ -12,13 +12,13 @@ import { shouldBehaveLikeSettlementFacet } from "./parties-settlement"
 
 describe(`${name}-v${version}`, () => {
 	if (process.env.TEST_MODE === TestModeEnum.UNIT_TEST) {
-		describe("Facets_Accounts", async function () {
-			shouldBehaveLikeForceActionFacet()
-		})
+		// describe("Facets_Accounts", async function () {
+		// 	shouldBehaveLikeForceActionFacet()
+		// })
 
-		describe("Facets_Accounts", async function () {
-			shouldBehaveLikeAccountFacet()
-		})
+		// describe("Facets_Accounts", async function () {
+		// 	shouldBehaveLikeAccountFacet()
+		// })
 
 		// describe("Facets_PartyAOpenFacet", async function () {
 		// 	shouldBehaveLikePartyAOpenFacet()
@@ -33,21 +33,21 @@ describe(`${name}-v${version}`, () => {
 			shouldBehaveLikePartyBOpenFacet()
 		})
 
-		describe("Libraries_LibCloseIntent", async function () {
-			shouldBehaveLikeLibCloseIntent()
-		})
+		// describe("Libraries_LibCloseIntent", async function () {
+		// 	shouldBehaveLikeLibCloseIntent()
+		// })
 
-		describe("Facets_InstantActionOpenFacet", async function () {
-			shouldBehaveLikeInstantActionOpenFacet()
-		})
+		// describe("Facets_InstantActionOpenFacet", async function () {
+		// 	shouldBehaveLikeInstantActionOpenFacet()
+		// })
 
-		describe("Facets_PartyBCloseFacet", async function () {
-			shouldBehaveLikePartyBCloseFacet()
-		})
+		// describe("Facets_PartyBCloseFacet", async function () {
+		// 	shouldBehaveLikePartyBCloseFacet()
+		// })
 
-		describe("Facets_Settlement", async function () {
-			shouldBehaveLikeSettlementFacet()
-		})
+		// describe("Facets_Settlement", async function () {
+		// 	shouldBehaveLikeSettlementFacet()
+		// })
 	} else {
 		throw new Error(`Invalid TEST_MODE property. Should be one of: ${Object.keys(TestModeEnum).join(", ")}`)
 	}

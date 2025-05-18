@@ -249,7 +249,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 		it("should fail when partyA have intent with 0 quantity", async function () {
 			const latestBlock = await ethers.provider.getBlock("latest")
 			const request = openIntentRequestBuilder()
-				.partyBsWhiteList([partyB1.getSigner()])
+				.partyBsWhiteList([partyB1.getSigner])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.symbolId(1)
@@ -331,12 +331,12 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			it("should fail on premium not locked on partyA isolatedLocked balance when margin is isolated", async function () {
 
 				// take snapshot
-				let isolatedLocketBalance = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner(), await context.collateral.getAddress())
-				let isolatedBalance = await context.viewFacet.balanceOf(partyA1.getSigner(), context.collateral.getAddress()) 	
+				let isolatedLocketBalance = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateral.getAddress())
+				let isolatedBalance = await context.viewFacet.balanceOf(partyA1.getSigner, context.collateral.getAddress()) 	
 				
 				const latestBlock = await ethers.provider.getBlock("latest")
 				const request = openIntentRequestBuilder()
-					.partyBsWhiteList([partyB1.getSigner()])
+					.partyBsWhiteList([partyB1.getSigner])
 					.affiliate(context.signers.affiliate1)
 					.feeToken(context.collateral)
 					.symbolId(1)
@@ -360,8 +360,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				
 				// partyA pays the fees in so:
 				// we are in isolated margin
-				let isolatedLocketBalance2 = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner(), await context.collateral.getAddress())
-				let isolatedBalance2 = await context.viewFacet.balanceOf(partyA1.getSigner(), await context.collateral.getAddress()) 	
+				let isolatedLocketBalance2 = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateral.getAddress())
+				let isolatedBalance2 = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress()) 	
 				
 				console.log("PartyA isolatedBalance:",isolatedBalance)
 				console.log("PartyA Balance equals: isolatedBalance - isolatedLocketBalance2:",isolatedBalance -isolatedLocketBalance2)
@@ -377,11 +377,11 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 			it("should fail on Fee not paid accordingly when only one partyB whitelisted ", async function () {
 				// take snapshot
-				let isolatedBalance = await context.viewFacet.balanceOf(partyA1.getSigner(), await context.collateral.getAddress()) 	
+				let isolatedBalance = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress()) 	
 				
 				const latestBlock = await ethers.provider.getBlock("latest")
 				const request = openIntentRequestBuilder()
-					.partyBsWhiteList([partyB1.getSigner()])
+					.partyBsWhiteList([partyB1.getSigner])
 					.affiliate(context.signers.affiliate1)
 					.feeToken(context.collateral)
 					.symbolId(1)
@@ -403,7 +403,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				
 				// partyA pays the fees in so:
 				// we are in isolated margin
-				let isolatedBalance2 = await context.viewFacet.balanceOf(partyA1.getSigner(), await context.collateral.getAddress()) 
+				let isolatedBalance2 = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress()) 
 
 				console.log("PartyA isolated balance:", isolatedBalance)
 				console.log("affiliateFee:",affiliateFee)
@@ -421,11 +421,11 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 			it("should fail on Fee not paid accordingly when more than one partyB whitelisted ", async function () {
 				// take snapshot
-				let isolatedBalance = await context.viewFacet.balanceOf(partyA1.getSigner(), await context.collateral.getAddress()) 	
+				let isolatedBalance = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress()) 	
 				
 				const latestBlock = await ethers.provider.getBlock("latest")
 				const request = openIntentRequestBuilder()
-					.partyBsWhiteList([partyB1.getSigner(), partyB2.getSigner()])
+					.partyBsWhiteList([partyB1.getSigner, partyB2.getSigner])
 					.affiliate(context.signers.affiliate1)
 					.feeToken(context.collateral)
 					.symbolId(1)
@@ -445,7 +445,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				
 				// partyA pays the fees in so:
 				// we are in isolated margin
-				let isolatedBalance2 = await context.viewFacet.balanceOf(partyA1.getSigner(), await context.collateral.getAddress()) 
+				let isolatedBalance2 = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress()) 
 				const symbol:SymbolStruct = await context.viewFacet.getSymbol(intent.tradeAgreements.symbolId)
 				const feeTokenPrice = await context.oracle.getPrice(context.collateral)
 				const tradingFeeCalculation = BigNumber.from(symbol.tradingFee).mul(intent.tradeAgreements.quantity).mul(intent.price).div( feeTokenPrice )

@@ -496,11 +496,15 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 	describe("sendOpenIntent memory management", async function () {
 		beforeEach(async () => {})
 
-		it("should fail on Fee not paid accordingly when more than one partyB whitelisted ", async function () {
-						
+		it("should fail on Fee not paid accordingly  ", async function () {
+
+			// take snapshot
+			let initialIsolatedBalancePartyA = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress()) 
+			let initialIsolatedBalancePartyB = await context.viewFacet.balanceOf(partyB1.getSigner, await context.collateral.getAddress()) 
+								
 			const latestBlock = await ethers.provider.getBlock("latest")
 			const request = openIntentRequestBuilder()
-				.partyBsWhiteList([partyB1.getSigner(), partyB2.getSigner()])
+				.partyBsWhiteList([partyB1.getSigner, partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.symbolId(1)
@@ -523,8 +527,8 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			expect( await partyA2.sendOpenIntent(request)).not.to.reverted
 			expect( await partyA2.sendOpenIntent(request)).not.to.reverted
 			expect( await partyA2.sendOpenIntent(request)).not.to.reverted
-			
-			let openIntents: OpenIntentStruct[] = await context.viewFacet.getOpenIntentsOf(partyA2.getSigner(),0,100)
+
+			let openIntents: OpenIntentStruct[] = await context.viewFacet.getOpenIntentsOf(partyA2.getSigner,0,100)
 			for(let openIntent of openIntents){
 				console.log("Initial OpenIntents: ")
 				console.log("ID: ",openIntent.id)
@@ -532,6 +536,14 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 				console.log("Quantity: ",openIntent.tradeAgreements.quantity)
 			}
 
+			const tradingFeeFromView = await context.viewFacet.getTradingFee(2);
+			const premiumFromView = await context.viewFacet.getPremium(2);
+			const affiliateFeeFromView = await context.viewFacet.getAffiliateFee(2);
+
+			let partyAFeesPaid = BigInt(openIntents.length) * (tradingFeeFromView + affiliateFeeFromView) 
+			let partyAPremiumPaid = BigInt(openIntents.length) * premiumFromView
+
+			let send_OI_IsolatedBalancePartyA = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress()) 
 
 			// some time elapses
 			let newBlockTimeStamp = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 20
@@ -550,8 +562,8 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			expect( await partyB1.lockOpenIntent(9)).not.to.reverted
 			expect( await partyB1.lockOpenIntent(10)).not.to.reverted
 			expect( await partyB1.lockOpenIntent(11)).not.to.reverted
-			
-			// nothing happen to some of the intents
+
+			let lockIsolatedBalancePartyB = await context.viewFacet.balanceOf(partyB1.getSigner, await context.collateral.getAddress()) 
 
 			newBlockTimeStamp = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 20 // Time passes
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
@@ -562,6 +574,8 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 						
 			expect( await partyB1.unlockOpenIntent(4)).not.to.reverted // partyB Unlock some intents
 			expect( await partyB1.unlockOpenIntent(5)).not.to.reverted
+
+			let unlockIsolatedBalancePartyB = await context.viewFacet.balanceOf(partyB1.getSigner, await context.collateral.getAddress()) 
 			
 			newBlockTimeStamp = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 20 // Time passes
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
@@ -572,8 +586,11 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 			expect( await partyB1.fillOpenIntent(6,50,6)).not.to.reverted
 			expect( await partyB1.fillOpenIntent(7,50,6)).not.to.reverted // partyB Fills some intent
+
+			let filIsolatedBalancePartyB = await context.viewFacet.balanceOf(partyB1.getSigner, await context.collateral.getAddress()) 
+			let cancel_OI_IsolatedBalancePartyA = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress()) 
 			
-			openIntents = await context.viewFacet.getOpenIntentsOf(partyA2.getSigner(),0,100)
+			openIntents = await context.viewFacet.getOpenIntentsOf(partyA2.getSigner,0,100)
 			for(let openIntent of openIntents){
 				console.log("\nOpenIntents Before Deadline: ")
 				console.log("ID: ",openIntent.id)
@@ -593,7 +610,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			expect( await partyB1.unlockOpenIntent(8)).not.to.reverted // what happens to locked intents
 			expect( await partyB1.unlockOpenIntent(9)).not.to.reverted // 
 			
-			openIntents = await context.viewFacet.getOpenIntentsOf(partyA2.getSigner(),0,100)
+			openIntents = await context.viewFacet.getOpenIntentsOf(partyA2.getSigner,0,100)
 			for(let openIntent of openIntents){
 				console.log("\nOpenIntents After Deadline: ")
 				console.log("ID: ",openIntent.id)
@@ -606,9 +623,8 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 								)))))
 			}
 
-			// partyA balance
-			// partyB balance 
-						
+			let expireIsolatedBalancePartyB = await context.viewFacet.balanceOf(partyB1.getSigner, await context.collateral.getAddress()) 
+			let expireIsolatedBalancePartyA = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress())		
 
 		})	
 
