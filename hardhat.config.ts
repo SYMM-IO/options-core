@@ -4,6 +4,7 @@ import "@openzeppelin/hardhat-upgrades"
 import { config as dotenvConfig } from "dotenv"
 import type { HardhatUserConfig } from "hardhat/config"
 import "solidity-docgen"
+import "solidity-coverage"
 
 import "./tasks"
 import { resolve } from "path"
