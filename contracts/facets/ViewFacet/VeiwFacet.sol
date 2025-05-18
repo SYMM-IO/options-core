@@ -19,6 +19,7 @@ import { FeeManagementStorage } from "../../storages/FeeManagementStorage.sol";
 import { SymbolStorage, Symbol, Oracle } from "../../storages/SymbolStorage.sol";
 import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
 import { ScheduledReleaseBalance } from "../../types/BalanceTypes.sol";
+import {LibOpenIntentOps} from "../../libraries/LibOpenIntent.sol";
 
 import { Trade } from "../../types/TradeTypes.sol";
 import { Withdraw } from "../../types/WithdrawTypes.sol";
@@ -33,6 +34,7 @@ import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableS
 contract ViewFacet is IViewFacet {
 	using EnumerableSet for EnumerableSet.AddressSet;
 	using LibParty for address;
+	using LibOpenIntentOps for OpenIntent;
 
 	/**
 	 * @notice Returns the balance for a specified user and collateral type.
@@ -52,7 +54,18 @@ contract ViewFacet is IViewFacet {
 
 	function getTradingFee(uint256 openIntentId) external view returns (uint256) {
 		OpenIntent memory self = OpenIntentStorage.layout().openIntents[openIntentId];
-		return (self.tradeAgreements.quantity * self.price * self.tradingFee.platformFee) / (self.tradingFee.tokenPrice * 1e18);
+		return self.getTradingFee();
+		
+	}
+
+	function getAffiliateFee(uint256 openIntentId) external view returns (uint256) {
+		OpenIntent memory self = OpenIntentStorage.layout().openIntents[openIntentId];
+		return self.getAffiliateFee();
+	}
+
+	function getPremium(uint256 openIntentId) external view returns (uint256) {
+		OpenIntent memory self = OpenIntentStorage.layout().openIntents[openIntentId];
+		return self.getPremium();
 	}
 
 
@@ -290,9 +303,10 @@ contract ViewFacet is IViewFacet {
 		if (intentLayout.openIntentsOf[partyA].length < start + size) {
 			size = intentLayout.openIntentsOf[partyA].length - start;
 		}
+		uint256 j = 0;
 		OpenIntent[] memory openIntents = new OpenIntent[](size);
-		for (uint256 i = start; i < start + size; i++) {
-			openIntents[i - start] = intentLayout.openIntents[intentLayout.openIntentsOf[partyA][i]];
+		for (uint256 i = start; i < size; i++) {
+			openIntents[j++] = intentLayout.openIntents[intentLayout.openIntentsOf[partyA][i]];
 		}
 		return openIntents;
 	}

@@ -100,8 +100,8 @@ library LibOpenIntentOps {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
 		Symbol memory symbol = SymbolStorage.layout().symbols[self.tradeAgreements.symbolId];
-		ScheduledReleaseBalance storage partyABalance = accountLayout.balances[self.partyA][symbol.collateral];
-		ScheduledReleaseBalance storage partyAFeeBalance = accountLayout.balances[self.partyA][self.tradingFee.feeToken];
+		ScheduledReleaseBalance storage partyABalance = accountLayout.balances[self.partyA][symbol.collateral]; // 
+		ScheduledReleaseBalance storage partyAFeeBalance = accountLayout.balances[self.partyA][self.tradingFee.feeToken]; // what if no balance on fee collateral
 
 		uint256 tradingFee = getTradingFee(self);
 		uint256 affiliateFee = getAffiliateFee(self);

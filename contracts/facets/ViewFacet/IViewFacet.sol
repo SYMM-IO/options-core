@@ -132,6 +132,10 @@ interface IViewFacet {
 	
 	function getTradingFee(uint256 openIntentId) external view returns (uint256);
 
+	function getAffiliateFee(uint256 openIntentId) external view returns (uint256);
+
+	function getPremium(uint256 openIntentId) external view returns (uint256);
+
 	//App
 	function whiteListedCollateral(address collateral) external view returns (bool);
 
