@@ -9,7 +9,6 @@ const defaultSignedFillIntent: SignedFillIntentStruct = {
 	quantity: 0,
 	deadline: 0,
 	salt: 0,
-	marginType: 0,
 }
 
 export const signedFillIntentBuilder = () => Builder(defaultSignedFillIntent)

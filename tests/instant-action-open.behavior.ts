@@ -61,7 +61,6 @@ export function shouldBehaveLikeInstantActionOpenFacet(): void {
 			const hash = hashSignedOpenIntent(signedOpenIntent, context.common.chainId, context.common.diamondAddress)
 
 			const signedFillIntent = signedFillIntentBuilder()
-				.marginType(0)
 				.quantity(signedOpenIntent.quantity)
 				.deadline(signedOpenIntent.deadline)
 				.intentHash(hash)
@@ -98,7 +97,6 @@ export function shouldBehaveLikeInstantActionOpenFacet(): void {
 			const hash = hashSignedOpenIntent(signedOpenIntent, context.common.chainId, context.common.diamondAddress)
 
 			const signedFillIntent = signedFillIntentBuilder()
-				.marginType(0)
 				.quantity(signedOpenIntent.quantity)
 				.deadline(signedOpenIntent.deadline)
 				.intentHash(hash)
@@ -135,7 +133,6 @@ export function shouldBehaveLikeInstantActionOpenFacet(): void {
 			const hash = hashSignedOpenIntent(signedOpenIntent, context.common.chainId, context.common.diamondAddress)
 
 			const signedFillIntent = signedFillIntentBuilder()
-				.marginType(0)
 				.quantity(signedOpenIntent.quantity)
 				.deadline(signedOpenIntent.deadline)
 				.intentHash(hash)
@@ -172,7 +169,6 @@ export function shouldBehaveLikeInstantActionOpenFacet(): void {
 			const hash = hashSignedOpenIntent(signedOpenIntent, context.common.chainId, context.common.diamondAddress)
 
 			const signedFillIntent = signedFillIntentBuilder()
-				.marginType(0)
 				.quantity(signedOpenIntent.quantity)
 				.deadline(signedOpenIntent.deadline)
 				.intentHash(hash)
@@ -210,7 +206,6 @@ export function shouldBehaveLikeInstantActionOpenFacet(): void {
 			const hash = hashSignedOpenIntent(signedOpenIntent, context.common.chainId, context.common.diamondAddress)
 
 			const signedFillIntent = signedFillIntentBuilder()
-				.marginType(0)
 				.quantity(signedOpenIntent.quantity)
 				.deadline(signedOpenIntent.deadline)
 				.intentHash(hash)
