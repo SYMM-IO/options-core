@@ -8,17 +8,13 @@ trailingComma: all
 useTabs: true
 
 plugins:
-  - prettier-plugin-solidity
+    - prettier-plugin-solidity
 
 overrides:
     - files: "*.ts"
       options:
           tabWidth: 2
           semi: false
-          importOrder: ["<THIRD_PARTY_MODULES>", "^[./]"]
-          importOrderParserPlugins: ["typescript"]
-          importOrderSeparation: true
-          importOrderSortSpecifiers: false
     - files: "*.sol"
       options:
-        parser: solidity-parse
+          parser: solidity-parse
