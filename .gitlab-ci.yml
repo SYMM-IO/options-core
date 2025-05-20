@@ -1,0 +1,49 @@
+stages:
+    - compile
+    - secret_detection
+    - test
+
+include:
+    - template: Security/Secret-Detection.gitlab-ci.yml
+
+.build-server: &build-server
+    tags:
+        - build-server
+
+variables:
+    TEST_MODE: UNIT_TEST
+    PRIVATE_KEY: $PRIVATE_KEY
+
+cache:
+    paths:
+        - node_modules/
+
+# TODO ::: Linter
+
+compile:
+    stage: compile
+    image: node:20
+    extends:
+        - .build-server
+    before_script:
+        - yarn install --frozen-lockfile
+    script:
+        - yarn clean
+        - yarn format:check # prettier
+        - yarn compile
+
+secret_detection:
+    stage: secret_detection
+    image: registry.gitlab.com/security-products/secrets:6
+    extends:
+        - .build-server
+
+test:
+    stage: test
+    image: node:20
+    before_script:
+        - yarn install --frozen-lockfile
+    extends:
+        - .build-server
+    script:
+        - yarn test

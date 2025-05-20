@@ -1,0 +1,11 @@
+# .prettierignore
+
+dist
+artifacts
+cache
+coverage
+node_modules
+src/types
+coverage.json
+types
+contracts/helpers/SchnorrSECP256K1Verifier.sol
