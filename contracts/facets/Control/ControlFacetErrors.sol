@@ -7,4 +7,5 @@ pragma solidity >=0.8.19;
 library ControlFacetErrors {
 	// Oracle errors
 	error InvalidOracle(uint256 oracleId, uint256 lastOracleId);
+	error InvalidSymbol(uint256 symbolId);
 }

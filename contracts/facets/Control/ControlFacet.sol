@@ -265,13 +265,13 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	}
 
 	function addSymbol(
-		string calldata _name,
+		string memory _name,
 		OptionType _optionType,
 		uint256 _oracleId,
 		address _collateral,
 		uint256 _tradingFee,
 		uint256 _symbolType
-	) external onlyRole(LibAccessibility.SETTER_ROLE) {
+	) public onlyRole(LibAccessibility.SETTER_ROLE) {
 		if (_collateral == address(0)) revert CommonErrors.ZeroAddress("collateral");
 		SymbolStorage.Layout storage s = SymbolStorage.layout();
 		if (s.oracles[_oracleId].contractAddress == address(0) || s.lastOracleId < _oracleId)
@@ -280,7 +280,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		s.lastSymbolId++;
 		s.symbols[s.lastSymbolId] = Symbol({
 			symbolId: s.lastSymbolId,
-			isValid: true,
+			isValid: false,
 			name: _name,
 			optionType: _optionType,
 			oracleId: _oracleId,
@@ -290,6 +290,23 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		});
 		FeeManagementStorage.layout().affiliateFees[address(0)][s.lastSymbolId] = 0;
 		emit SymbolAdded(s.lastSymbolId, _name, _optionType, _oracleId, _collateral, _tradingFee, _symbolType);
+	}
+
+	function addSymbols(Symbol[] memory symbols) external onlyRole(LibAccessibility.SETTER_ROLE) {
+		for (uint8 i = 0; i < symbols.length; i++) {
+			Symbol memory s = symbols[i];
+			addSymbol(s.name, s.optionType, s.oracleId, s.collateral, s.isStableCoin, s.tradingFee, s.symbolType);
+		}
+	}
+
+	function setSymbolValidationState(uint256 _symbolId, bool _isValid) external {
+		SymbolStorage.Layout storage symbolLayout = SymbolStorage.layout();
+		if (_symbolId == 0 || _symbolId > symbolLayout.lastSymbolId) {
+			revert ControlFacetErrors.InvalidSymbol(_symbolId);
+		}
+
+		emit SetSymbolValidationState(_symbolId, symbolLayout.symbols[_symbolId].isValid, _isValid);
+		symbolLayout.symbols[_symbolId].isValid = _isValid;
 	}
 
 	function setPriceOracleAddress(address _oracle) external onlyRole(LibAccessibility.SETTER_ROLE) {

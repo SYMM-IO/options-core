@@ -60,9 +60,11 @@ interface IControlEvents {
 		OptionType optionType,
 		uint256 oracleId,
 		address collateral,
+		bool isStableCoin,
 		uint256 tradingFee,
 		uint256 symbolType
 	);
 	event PriceOracleAddressUpdated(address indexed oracle);
 	event SetManualSync(address user, bool isManual);
+	event SetSymbolValidationState(uint256 indexed symbolId, bool oldState, bool state);
 }
