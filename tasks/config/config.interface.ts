@@ -65,7 +65,7 @@ export interface IConfig {
 	symbols?: Array<{
 		name: string
 		symbolId: string
-		isValid:boolean
+		isValid: boolean
 		collateral: string
 		optionType: string
 		oracleId: string

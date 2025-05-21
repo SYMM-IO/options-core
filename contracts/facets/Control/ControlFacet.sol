@@ -291,7 +291,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		s.lastSymbolId++;
 		s.symbols[s.lastSymbolId] = Symbol({
 			symbolId: s.lastSymbolId,
-			isValid: false,
+			isValid: true,
 			name: _name,
 			optionType: _optionType,
 			oracleId: _oracleId,
@@ -301,6 +301,13 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		});
 		FeeManagementStorage.layout().affiliateFees[address(0)][s.lastSymbolId] = 0;
 		emit SymbolAdded(s.lastSymbolId, _name, _optionType, _oracleId, _collateral, _tradingFee, _symbolType);
+	}
+
+	function addSymbols(Symbol[] memory symbols) external onlyRole(LibAccessibility.SETTER_ROLE) {
+		for (uint8 i = 0; i < symbols.length; i++) {
+			Symbol memory s = symbols[i];
+			addSymbol(s.name, s.optionType, s.oracleId, s.collateral, s.tradingFee, s.symbolType);
+		}
 	}
 
 	function setSymbolState(uint256 _symbolId, bool _status) external onlyRole(LibAccessibility.SETTER_ROLE) {

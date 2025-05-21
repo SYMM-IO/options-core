@@ -62,7 +62,6 @@ interface IControlEvents {
 		OptionType optionType,
 		uint256 oracleId,
 		address collateral,
-		bool isStableCoin,
 		uint256 tradingFee,
 		uint256 symbolType
 	);
