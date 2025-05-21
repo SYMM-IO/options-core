@@ -207,7 +207,6 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 */
 	function syncBalances(address collateral, address partyA, address[] calldata partyBs) external {
 		AccountFacetImpl.syncBalances(collateral, partyA, partyBs);
-		emit SyncBalances(collateral, partyA, partyBs, AccountStorage.layout().balances[partyA][collateral].isolatedBalance);
 	}
 
 	/**
