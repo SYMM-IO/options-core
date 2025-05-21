@@ -196,6 +196,11 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		emit LiquidatingUnpaused();
 	}
 
+	function unpauseThirdPartyActions() external onlyRole(LibAccessibility.PAUSER_ROLE) {
+		StateControlStorage.layout().thirdPartyActionsPaused = false;
+		emit ThirdPartyActionsPaused();
+	}
+
 	function pauseThirdPartyActions() external onlyRole(LibAccessibility.PAUSER_ROLE) {
 		StateControlStorage.layout().thirdPartyActionsPaused = true;
 		emit ThirdPartyActionsPaused();
@@ -312,7 +317,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 
 	function setSymbolState(uint256 _symbolId, bool _status) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		SymbolStorage.Layout storage s = SymbolStorage.layout();
-		if (s.lastSymbolId < _symbolId) revert ControlFacetErrors.InvalidSymbol(_symbolId, s.lastSymbolId);
+		if (s.lastSymbolId < _symbolId) revert ControlFacetErrors.InvalidSymbol(_symbolId);
 
 		s.symbols[_symbolId].isValid = _status;
 		emit SymbolStateUpdated(_symbolId, _status);

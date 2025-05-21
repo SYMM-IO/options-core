@@ -53,7 +53,7 @@ library TradeSettlementFacetImpl {
 
 		if (symbol.optionType == OptionType.PUT) {
 			if (sig.settlementPrice < trade.tradeAgreements.strikePrice) {
-				isExpired = false; // execute option
+				isExpired = false;
 			} else {
 				trade.settledPrice = sig.settlementPrice;
 				trade.close(TradeStatus.EXPIRED, IntentStatus.CANCELED);
@@ -82,16 +82,16 @@ library TradeSettlementFacetImpl {
 			uint256 pnl = trade.getPnl(sig.settlementPrice, trade.getOpenAmount());
 
 			uint256 exerciseFee = trade.getExerciseFee(sig.settlementPrice, pnl);
-			uint256 amountToTransfer = pnl - exerciseFee; // pnl transfer to partyA
+			uint256 amountToTransfer = pnl - exerciseFee;
 
-			amountToTransfer = (amountToTransfer * 1e18) / sig.collateralPrice; // convert to current muon price
+			amountToTransfer = (amountToTransfer * 1e18) / sig.collateralPrice;
 
 			trade.settledPrice = sig.settlementPrice;
 
 			if (trade.tradeAgreements.tradeSide == TradeSide.BUY) {
 				if (trade.tradeAgreements.marginType == MarginType.ISOLATED) {
 					accountLayout.balances[trade.partyB][symbol.collateral].instantIsolatedAdd(
-						(trade.getPremium() * trade.getOpenAmount()) / trade.tradeAgreements.quantity, // complex calculation
+						(trade.getPremium() * trade.getOpenAmount()) / trade.tradeAgreements.quantity, // TODO ::: refactor(complex calculation)
 						IncreaseBalanceReason.PREMIUM
 					);
 				} else {

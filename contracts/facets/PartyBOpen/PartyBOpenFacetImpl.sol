@@ -49,7 +49,7 @@ library PartyBOpenFacetImpl {
 
 		if (intentId > intentLayout.lastOpenIntentId) revert PartyBOpenFacetErrors.InvalidIntentId(intentId, intentLayout.lastOpenIntentId);
 
-		CommonErrors.requireStatus("IntentStatus", uint8(intent.status), uint8(IntentStatus.PENDING)); // how to lock intent fot other concurrent partyBs
+		CommonErrors.requireStatus("IntentStatus", uint8(intent.status), uint8(IntentStatus.PENDING));
 
 		if (block.timestamp > intent.deadline) revert PartyBOpenFacetErrors.IntentExpired(intentId, block.timestamp, intent.deadline);
 
@@ -255,7 +255,7 @@ library PartyBOpenFacetImpl {
 			newIntent.save();
 
 			if (newStatus == IntentStatus.CANCELED) {
-				newIntent.handleFeesAndPremium(false); // user is not going to pay
+				newIntent.handleFeesAndPremium(false);
 			}
 
 			intent.tradeAgreements.quantity = quantity;
