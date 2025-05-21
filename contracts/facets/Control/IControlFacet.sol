@@ -94,10 +94,7 @@ interface IControlFacet is IControlEvents {
 		uint256 _symbolType
 	) external;
 
-	function setSymbolState(
-		uint256 _symbolId,
-		bool _status
-	) external; 
+	function setSymbolState(uint256 _symbolId, bool _status) external;
 
 	function setMaxConnectedCounterParties(uint256 _max) external;
 

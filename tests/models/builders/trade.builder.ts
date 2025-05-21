@@ -1,7 +1,6 @@
 import { Builder } from "builder-pattern"
 import { TradeStruct } from "../../../types/contracts/facets/ViewFacet/VeiwFacet.sol/ViewFacet"
 
-
 const defaultTrade: TradeStruct = {
 	id: 0,
 	openIntentId: 0,

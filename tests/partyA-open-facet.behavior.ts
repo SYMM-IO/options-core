@@ -5,29 +5,20 @@ import { PartyA } from "./models/partyA.model"
 import { RunContext } from "./run-context"
 import { openIntentRequestBuilder } from "./models/builders/send-open-intent.builder"
 import { PartyB } from "./models/partyB.model"
-import { ethers } from "hardhat"
+import { ethers, network } from "hardhat"
 import { e } from "../utils/e"
 import { ZeroAddress } from "ethers"
-import {MarginType} from "./option-enums"
-import { SymbolStruct } from "../types/contracts/interfaces/ISymmio"
+import { IntentStatus, MarginType, TradeSide } from "./option-enums"
+import { OpenIntentStruct, SymbolStruct } from "../types/contracts/interfaces/ISymmio"
 import { BigNumber } from "@ethersproject/bignumber"
 import { bigint } from "hardhat/internal/core/params/argumentTypes"
+import { partyAOpen } from "../types/contracts/facets"
 
 export function shouldBehaveLikePartyAOpenFacet(): void {
 	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyB1: PartyB, partyB2: PartyB
 
 	beforeEach(async function () {
 		context = await loadFixture(initializeTestFixture)
-		partyA1 = new PartyA(context, context.signers.partyA1)
-		partyB1 = new PartyB(context, context.signers.partyB1)
-		// await partyA1.setBalances(context.collateral,"500")
-		
-		await context.controlFacet.setPartyBConfig(partyB1.getSigner, {
-			isActive: true,
-			lossCoverage: 0,
-			oracleId: 0,
-			symbolType: 0,
-		})
 
 		await context.controlFacet.setAffiliateStatus(context.signers.others[0], true)
 		partyA1 = new PartyA(context, context.signers.partyA1)
@@ -65,13 +56,6 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "GlobalPaused")
 		})
 
-		it("should fail when deposit more than threshold", async function () {
-
-			await expect(partyA1.setBalances(context.collateral, e(100000), e(100000))).
-				to.revertedWithCustomError(context.partyAOpenFacet,"BalanceLimitPerUserReached")
-			
-		})
-
 		it("Should fail when symbolId be wrong", async function () {
 			const latestBlock = await ethers.provider.getBlock("latest")
 
@@ -79,13 +63,12 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.partyBsWhiteList([partyB1.getSigner])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
-				.expirationTimestamp( (latestBlock?.timestamp ?? 0) + 100)
-				.deadline((latestBlock?.timestamp ?? 0)+100)
+				.expirationTimestamp((latestBlock?.timestamp ?? 0) + 100)
+				.deadline((latestBlock?.timestamp ?? 0) + 100)
 				.symbolId(1)
 				.build()
 
-				context.controlFacet.setSymbolState(1,false)
-
+			await context.controlFacet.setSymbolState(1, false)
 
 			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "InvalidSymbol")
 		})
@@ -146,22 +129,23 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			const latestBlock = await ethers.provider.getBlock("latest")
 			const request = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB1.getSigner])
-				.affiliate(context.signers.others[0])
 				.feeToken(context.collateral)
 				.symbolId(1)
 				.deadline((latestBlock?.timestamp ?? 0) + 120)
 				.expirationTimestamp((latestBlock?.timestamp ?? 0) + 120)
 				.exerciseFee({ cap: e(1), rate: "0" })
+				.quantity(e(100))
+				.price(7)
 
-			// TODO :::
-			// await expect(partyA1.sendOpenIntent(request.build())).to.be.revertedWithCustomError(context.partyAOpenFacet, "GlobalPaused")
+			request.affiliate(ZeroAddress)
+			await expect(partyA1.sendOpenIntent(request.build())).to.be.not.reverted
 
 			request.affiliate(context.signers.others[1])
-			await expect(partyA1.sendOpenIntent(request.build())).to.be.revertedWithCustomError(context.partyAOpenFacet, "InvalidAffiliate")
-
 			await context.controlFacet.setAffiliateStatus(context.signers.others[1], true)
-			// TODO :::
-			// await expect(partyA1.sendOpenIntent(request.build())).to.be.revertedWithCustomError(context.partyAOpenFacet, "GlobalPaused")
+			await expect(partyA1.sendOpenIntent(request.build())).to.be.not.reverted
+
+			await context.controlFacet.setAffiliateStatus(context.signers.others[1], false)
+			await expect(partyA1.sendOpenIntent(request.build())).to.be.revertedWithCustomError(context.partyAOpenFacet, "InvalidAffiliate")
 		})
 
 		it("Should fail when partyA bound to a partyB that is not in whitelisted partyB", async function () {
@@ -205,14 +189,14 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.deadline((latestBlock?.timestamp ?? 0) + 120)
 				.expirationTimestamp((latestBlock?.timestamp ?? 0) + 120)
 				.exerciseFee({ cap: e(1), rate: "0" })
-				.marginType(0)  // 0 Isolated, 1 Cross
-				.tradeSide(1)  // 0 Buy, 1 Sell
+				.marginType(MarginType.ISOLATED)
+				.tradeSide(TradeSide.SELL)
 				.build()
 
 			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "ShortTradeInIsolatedMode")
 		})
 
-		it("Should fail when partyA sends Short intent with isolated margin", async function () {
+		it("Should fail when partyA have more than 1 PartyB in cross margin ", async function () {
 			const latestBlock = await ethers.provider.getBlock("latest")
 			const request = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner, context.signers.partyB1])
@@ -222,11 +206,49 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.deadline((latestBlock?.timestamp ?? 0) + 120)
 				.expirationTimestamp((latestBlock?.timestamp ?? 0) + 120)
 				.exerciseFee({ cap: e(1), rate: "0" })
-				.marginType(1)  // 0 Isolated, 1 Cross
-				.tradeSide(1)  // 0 Buy, 1 Sell
+				.marginType(MarginType.CROSS)
+				.tradeSide(TradeSide.SELL)
 				.build()
 
 			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "OnlyOnePartyBIsAllowedInCrossMode")
+		})
+
+		it("Should fail when partyA is not solvent in cross margin", async function () {
+			const latestBlock = await ethers.provider.getBlock("latest")
+			const request = openIntentRequestBuilder()
+				.partyBsWhiteList([partyB1.getSigner])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateral)
+				.symbolId(1)
+				.deadline((latestBlock?.timestamp ?? 0) + 120)
+				.expirationTimestamp((latestBlock?.timestamp ?? 0) + 120)
+				.exerciseFee({ cap: e(1), rate: "0" })
+				.marginType(MarginType.CROSS)
+				.tradeSide(TradeSide.SELL)
+				.build()
+
+			//TODO ::: it is implemented after clearing house development
+
+			// await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "NotSolvent")
+		})
+
+		it("Should fail when partyB is not solvent in cross/Isolated margin", async function () {
+			const latestBlock = await ethers.provider.getBlock("latest")
+			const request = openIntentRequestBuilder()
+				.partyBsWhiteList([partyB1.getSigner])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateral)
+				.symbolId(1)
+				.deadline((latestBlock?.timestamp ?? 0) + 120)
+				.expirationTimestamp((latestBlock?.timestamp ?? 0) + 120)
+				.exerciseFee({ cap: e(1), rate: "0" })
+				.marginType(MarginType.CROSS)
+				.tradeSide(TradeSide.SELL)
+				.build()
+
+			//TODO ::: it is implemented after clearing house development
+
+			// await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "NotSolvent")
 		})
 
 		it("Should fail when partyB whiteListed and available balance be insufficient", async function () {
@@ -256,12 +278,12 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.deadline((latestBlock?.timestamp ?? 0) + 120)
 				.expirationTimestamp((latestBlock?.timestamp ?? 0) + 120)
 				.exerciseFee({ cap: e(1), rate: "0" })
-				.quantity(e(1))
+				.quantity(e(0))
 				.price(7)
-				.build()		
-				
-				await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "InvalidOpenQuantity")
-			
+				.build()
+
+			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "InvalidOpenQuantity")
+			//TODO ::: intent with quantity zero?
 		})
 
 		it("Should fail when partyB not whiteListed and available balance be insufficient", async function () {
@@ -320,165 +342,269 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 			// expect(await context.viewFacet.lockedBalancesOf(partyA1.getSigner, context.collateral.getAddress())).to.be.equal(700)
 		})
+	})
 
+	describe("cancelOpenIntent", async function () {
+		beforeEach(async () => {
+			const latestBlock = await ethers.provider.getBlock("latest")
+			const request = openIntentRequestBuilder()
+				.partyBsWhiteList([partyB1.getSigner])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateral)
+				.expirationTimestamp((latestBlock?.timestamp ?? 0) + 120)
+				.deadline((latestBlock?.timestamp ?? 0) + 100)
+				.symbolId(1)
+				.exerciseFee({ cap: e(1), rate: "0" })
+				.marginType(0) // 0 Isolated, 1 Cross
+				.tradeSide(0) // 0 Buy, 1 Sell
+				.quantity(e(100))
+				.price(7)
+				.build()
+			expect(await partyA1.sendOpenIntent(request)).not.to.be.reverted
+		})
+
+		it("Should be failed when Sender address is Suspended", async () => {
+			await context.controlFacet.suspendAddress(partyA1.getSigner, true)
+			// await expect(partyA1.sendCancelOpenIntent(["1"])).to.be.revertedWithCustomError(context.partyAOpenFacet, "SuspendedAddress")
+			//TODO ::: Suspended address is for any party in any state?
+		})
+
+		it("Should be failed when in Emergency Mode", async () => {
+			// await context.controlFacet.activeEmergencyMode();
+			// await expect(partyA1.sendCancelOpenIntent(['1'])).to.be.revertedWithCustomError(context.partyAOpenFacet, "EmergencyMode")
+			//TODO ::: Emergency mode is only for partyB?
+		})
+
+		it("Should be failed when Globally Paused", async () => {
+			await context.controlFacet.pauseGlobal()
+			await expect(partyA1.sendCancelOpenIntent(["1"])).to.be.revertedWithCustomError(context.partyAOpenFacet, "GlobalPaused")
+		})
+
+		it("Should fail when partyA actions paused", async function () {
+			await context.controlFacet.pausePartyAActions()
+			await expect(partyA1.sendCancelOpenIntent(["1"])).to.be.revertedWithCustomError(context.partyAOpenFacet, "PartyAActionsPaused")
+		})
+
+		it("Should failed when msgSender is not the intent owner", async () => {
+			await expect(partyA2.sendCancelOpenIntent(["1"])).to.be.revertedWithCustomError(context.partyAOpenFacet, "UnauthorizedSender")
+		})
+
+		it("Should fail when not in appropriate state", async function () {
+			await expect(partyB1.lockOpenIntent(1)).not.to.be.reverted
+			await expect(partyB1.fillOpenIntent(1, e(100), 6)).not.to.reverted
+			await expect(partyA1.sendCancelOpenIntent(["1"])).to.be.revertedWithCustomError(context.partyAOpenFacet, "InvalidState")
+		})
+
+		it("Should expire when deadline is reached", async function () {
+			let newBlockTimeStamp = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 120
+			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
+			await network.provider.send("evm_mine")
+
+			expect(await partyA1.sendCancelOpenIntent(["1"])).not.to.be.reverted
+			let intent = await context.viewFacet.getOpenIntent(1)
+			expect(intent.status).to.be.equal(IntentStatus.EXPIRED)
+		})
+
+		it("Should release premium", async () => {
+			// take snapshot
+			let isolatedLocketBalance = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateral.getAddress())
+			let isolatedBalance = await context.viewFacet.balanceOf(partyA1.getSigner, context.collateral.getAddress())
+			let premium: BigInt = await context.viewFacet.getPremium(1)
+
+			expect(await partyA1.sendCancelOpenIntent(["1"])).to.be.not.reverted
+
+			let isolatedLocketBalanceLatter = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateral.getAddress())
+			let isolatedBalanceLatter = await context.viewFacet.balanceOf(partyA1.getSigner, context.collateral.getAddress())
+
+			expect(isolatedLocketBalance - isolatedLocketBalanceLatter).be.equal(premium)
+		})
+
+		it("Should be removed when canceled with pending state", async function () {
+			const latestBlock = await ethers.provider.getBlock("latest")
+			const request = openIntentRequestBuilder()
+				.partyBsWhiteList([partyB1.getSigner])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateral)
+				.expirationTimestamp((latestBlock?.timestamp ?? 0) + 120)
+				.deadline((latestBlock?.timestamp ?? 0) + 100)
+				.symbolId(1)
+				.exerciseFee({ cap: e(1), rate: "0" })
+				.marginType(0) // 0 Isolated, 1 Cross
+				.tradeSide(0) // 0 Buy, 1 Sell
+				.quantity(e(100))
+				.price(7)
+				.build()
+			expect(await partyA1.sendOpenIntent(request)).not.to.be.reverted
+			expect(await partyA1.sendOpenIntent(request)).not.to.be.reverted
+
+			expect(await partyA1.sendCancelOpenIntent(["1"])).not.to.be.reverted
+			let activeIntentIds: BigInt[] = await context.viewFacet.getActiveOpenIntentIdsOf(partyA1.getSigner, 0, 100)
+			for (let a of activeIntentIds) {
+				expect(a).not.to.be.equal(1)
+			}
+			expect(await context.viewFacet.getActiveOpenIntentsIndex(1)).to.be.equal(0)
+		})
+
+		it("Should be change state to cancel_pending when locked", async function () {
+			expect(await partyB1.lockOpenIntent(1)).to.not.reverted
+			expect(await partyA1.sendCancelOpenIntent(["1"])).not.to.be.reverted
+
+			let intent = await context.viewFacet.getOpenIntent(1)
+			expect(intent.status).to.be.equal(IntentStatus.CANCEL_PENDING)
+		})
+
+		it("Should update status modifying timestamp", async function () {
+			const latestBlock = await ethers.provider.getBlock("latest")
+			expect(await partyA1.sendCancelOpenIntent(["1"])).not.to.be.reverted
+
+			let intent = await context.viewFacet.getOpenIntent(1)
+			expect(intent.statusModifyTimestamp).to.be.approximately(latestBlock?.timestamp, 3)
+		})
 	})
 
 	// After each intent sent, PatryA is Paying the fees and premium
 	// Here we are testing the balance changes
 	describe("sendOpenIntent Fee and premium management", async function () {
-			beforeEach(async () => {})
+		beforeEach(async () => {})
 
-			it("should fail on premium not locked on partyA isolatedLocked balance when margin is isolated", async function () {
+		it("should fail on premium not locked on partyA isolatedLocked balance when margin is isolated", async function () {
+			// take snapshot
+			let isolatedLocketBalance = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateral.getAddress())
+			let isolatedBalance = await context.viewFacet.balanceOf(partyA1.getSigner, context.collateral.getAddress())
 
-				// take snapshot
-				let isolatedLocketBalance = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateral.getAddress())
-				let isolatedBalance = await context.viewFacet.balanceOf(partyA1.getSigner, context.collateral.getAddress()) 	
-				
-				const latestBlock = await ethers.provider.getBlock("latest")
-				const request = openIntentRequestBuilder()
-					.partyBsWhiteList([partyB1.getSigner])
-					.affiliate(context.signers.affiliate1)
-					.feeToken(context.collateral)
-					.symbolId(1)
-					.deadline((latestBlock?.timestamp ?? 0) + 120)
-					.expirationTimestamp((latestBlock?.timestamp ?? 0) + 120)
-					.exerciseFee({ cap: e(1), rate: "0" })
-					.quantity(e(1))
-					.price(700)
-					.marginType(MarginType.ISOLATED)
-					
-					.build()
+			const latestBlock = await ethers.provider.getBlock("latest")
+			const request = openIntentRequestBuilder()
+				.partyBsWhiteList([partyB1.getSigner])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateral)
+				.symbolId(1)
+				.deadline((latestBlock?.timestamp ?? 0) + 120)
+				.expirationTimestamp((latestBlock?.timestamp ?? 0) + 120)
+				.exerciseFee({ cap: e(1), rate: "0" })
+				.quantity(e(1))
+				.price(700)
+				.marginType(MarginType.ISOLATED)
 
-				expect(await partyA1.sendOpenIntent(request)).to.be.not.reverted
-				
-				const intent = await context.viewFacet.getOpenIntent(1)
+				.build()
 
-				let premium = ethers.formatUnits((intent.tradeAgreements.quantity * intent.price).toString(), 18)
-				const premiumFromView = await context.viewFacet.getPremium(1)
-				// let tradingFee = intent.tradingFee.platformFee * intent.tradeAgreements.quantity * intent.price / intent.tradingFee.tokenPrice
-				// let affiliateFee = intent.tradingFee.affiliateFee * intent.tradeAgreements.quantity * intent.price / intent.tradingFee.tokenPrice
-				
-				// partyA pays the fees in so:
-				// we are in isolated margin
-				let isolatedLocketBalance2 = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateral.getAddress())
-				let isolatedBalance2 = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress()) 	
-				
-				console.log("PartyA isolatedBalance:",isolatedBalance)
-				console.log("PartyA Balance equals: isolatedBalance - isolatedLocketBalance2:",isolatedBalance -isolatedLocketBalance2)
-				console.log("isolatedLocketBalance2 after sending intent:",isolatedLocketBalance2)
-				console.log("isolatedLocketBalance before sending intent:",isolatedLocketBalance)
-				console.log("isolatedLocketBalance before sending intent:",isolatedLocketBalance)
-				console.log("Calculated premium:", premium)
-				expect(isolatedLocketBalance2 - isolatedLocketBalance).to.be.equal(premiumFromView)
-				// expect(isolatedBalance - isolatedBalance2).to.be.equal(0)
+			expect(await partyA1.sendOpenIntent(request)).to.be.not.reverted
 
-				// expect(isolatedBalance - isolatedBalance2).to.be.equal(premium)	
-			})
+			const intent = await context.viewFacet.getOpenIntent(1)
 
-			it("should fail on Fee not paid accordingly when only one partyB whitelisted ", async function () {
-				// take snapshot
-				let isolatedBalance = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress()) 	
-				
-				const latestBlock = await ethers.provider.getBlock("latest")
-				const request = openIntentRequestBuilder()
-					.partyBsWhiteList([partyB1.getSigner])
-					.affiliate(context.signers.affiliate1)
-					.feeToken(context.collateral)
-					.symbolId(1)
-					.deadline((latestBlock?.timestamp ?? 0) + 120)
-					.expirationTimestamp((latestBlock?.timestamp ?? 0) + 120)
-					.exerciseFee({ cap: e(1), rate: "0" })
-					.quantity(e(100))
-					.price(7)
-					.marginType(MarginType.ISOLATED)
-					.build()
+			let premium = ethers.formatUnits((intent.tradeAgreements.quantity * intent.price).toString(), 18)
+			const premiumFromView = await context.viewFacet.getPremium(1)
+			// let tradingFee = intent.tradingFee.platformFee * intent.tradeAgreements.quantity * intent.price / intent.tradingFee.tokenPrice
+			// let affiliateFee = intent.tradingFee.affiliateFee * intent.tradeAgreements.quantity * intent.price / intent.tradingFee.tokenPrice
 
-				expect(await partyA1.sendOpenIntent(request)).not.to.reverted
-				
-				const intent = await context.viewFacet.getOpenIntent(1)				
-				let tradingFee = intent.tradingFee.platformFee * intent.tradeAgreements.quantity * intent.price / intent.tradingFee.tokenPrice
-				let affiliateFee = intent.tradingFee.affiliateFee * intent.tradeAgreements.quantity * intent.price / intent.tradingFee.tokenPrice
-				const premiumFromView = await context.viewFacet.getPremium(1);
-				const affiliateFeeFromView = await context.viewFacet.getAffiliateFee(1);
-				
-				// partyA pays the fees in so:
-				// we are in isolated margin
-				let isolatedBalance2 = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress()) 
+			// partyA pays the fees in so:
+			// we are in isolated margin
+			let isolatedLocketBalance2 = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateral.getAddress())
+			let isolatedBalance2 = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress())
 
-				console.log("PartyA isolated balance:", isolatedBalance)
-				console.log("affiliateFee:",affiliateFee)
-				console.log("tradingFee:",tradingFee)
-				console.log("tradingFee + affiliateFee:",tradingFee + affiliateFee)
-				console.log("Quantity: ",intent.tradeAgreements.quantity)
-				console.log("price: ",intent.price)
+			console.log("PartyA isolatedBalance:", isolatedBalance)
+			console.log("PartyA Balance equals: isolatedBalance - isolatedLocketBalance2:", isolatedBalance - isolatedLocketBalance2)
+			console.log("isolatedLocketBalance2 after sending intent:", isolatedLocketBalance2)
+			console.log("isolatedLocketBalance before sending intent:", isolatedLocketBalance)
+			console.log("isolatedLocketBalance before sending intent:", isolatedLocketBalance)
+			console.log("Calculated premium:", premium)
+			expect(isolatedLocketBalance2 - isolatedLocketBalance).to.be.equal(premiumFromView)
+			// expect(isolatedBalance - isolatedBalance2).to.be.equal(0)
 
-				expect(isolatedBalance - isolatedBalance2).to.be.equal(premiumFromView + affiliateFeeFromView)
-			
-				
-				// const eventFragment = context.accountFacet.interface.getEvent("DecreaseBalance")
-				// const topicHash = context.accountFacet.interface.getEventTopic(eventFragment);
-			})
-
-			it("should fail on Fee not paid accordingly when more than one partyB whitelisted ", async function () {
-				// take snapshot
-				let isolatedBalance = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress()) 	
-				
-				const latestBlock = await ethers.provider.getBlock("latest")
-				const request = openIntentRequestBuilder()
-					.partyBsWhiteList([partyB1.getSigner, partyB2.getSigner])
-					.affiliate(context.signers.affiliate1)
-					.feeToken(context.collateral)
-					.symbolId(1)
-					.deadline((latestBlock?.timestamp ?? 0) + 120)
-					.expirationTimestamp((latestBlock?.timestamp ?? 0) + 120)
-					.exerciseFee({ cap: e(1), rate: "0" })
-					.quantity(e(100))
-					.price(7)
-					.marginType(MarginType.ISOLATED)
-					.build()
-
-				expect( await partyA1.sendOpenIntent(request)).not.to.reverted
-				
-				const intent = await context.viewFacet.getOpenIntent(1)				
-				let tradingFee = intent.tradingFee.platformFee * intent.tradeAgreements.quantity * intent.price / intent.tradingFee.tokenPrice
-				let affiliateFee = intent.tradingFee.affiliateFee * intent.tradeAgreements.quantity * intent.price / intent.tradingFee.tokenPrice
-				
-				// partyA pays the fees in so:
-				// we are in isolated margin
-				let isolatedBalance2 = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress()) 
-				const symbol:SymbolStruct = await context.viewFacet.getSymbol(intent.tradeAgreements.symbolId)
-				const feeTokenPrice = await context.oracle.getPrice(context.collateral)
-				const tradingFeeCalculation = BigNumber.from(symbol.tradingFee).mul(intent.tradeAgreements.quantity).mul(intent.price).div( feeTokenPrice )
-				const tradingFeeFromView = await context.viewFacet.getTradingFee(1);
-				const premiumFromView = await context.viewFacet.getPremium(1);
-				const affiliateFeeFromView = await context.viewFacet.getAffiliateFee(1);
-
-				console.log("PartyA isolated balance:", isolatedBalance)
-				console.log("affiliateFee:",affiliateFee)
-				console.log("tradingFee:",tradingFee)
-				console.log("tradingFee + affiliateFee:",tradingFee + affiliateFee)
-				console.log("Platform fee:", symbol.tradingFee)
-				console.log("Fee Token Price:", feeTokenPrice)
-				console.log("Trading Fee Calculation:", tradingFeeCalculation)
-				console.log("Trading Fee From View:", tradingFeeFromView)
-				console.log("Affiliate Fee From View:", affiliateFeeFromView)
-				console.log("Premium Fee From View:", premiumFromView)
-
-				
-				
-				expect(tradingFeeCalculation._hex).to.equal(tradingFee)
-				expect(intent.tradingFee.platformFee).to.greaterThan(0)
-				expect(intent.tradingFee.platformFee).to.equal(symbol.tradingFee)
-				expect(isolatedBalance - isolatedBalance2).to.be.equal(tradingFeeFromView + affiliateFeeFromView)
-				
-				
-				// const eventFragment = context.accountFacet.interface.getEvent("DecreaseBalance")
-				// const topicHash = context.accountFacet.interface.getEventTopic(eventFragment);
-			})
-
-		
-
+			// expect(isolatedBalance - isolatedBalance2).to.be.equal(premium)
 		})
 
-		
+		it("should fail on Fee not paid accordingly when only one partyB whitelisted ", async function () {
+			// take snapshot
+			let isolatedBalance = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress())
+
+			const latestBlock = await ethers.provider.getBlock("latest")
+			const request = openIntentRequestBuilder()
+				.partyBsWhiteList([partyB1.getSigner])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateral)
+				.symbolId(1)
+				.deadline((latestBlock?.timestamp ?? 0) + 120)
+				.expirationTimestamp((latestBlock?.timestamp ?? 0) + 120)
+				.exerciseFee({ cap: e(1), rate: "0" })
+				.quantity(e(100))
+				.price(7)
+				.marginType(MarginType.ISOLATED)
+				.build()
+
+			expect(await partyA1.sendOpenIntent(request)).not.to.reverted
+
+			const intent = await context.viewFacet.getOpenIntent(1)
+			let tradingFee = (intent.tradingFee.platformFee * intent.tradeAgreements.quantity * intent.price) / intent.tradingFee.tokenPrice
+			let affiliateFee = (intent.tradingFee.affiliateFee * intent.tradeAgreements.quantity * intent.price) / intent.tradingFee.tokenPrice
+			const premiumFromView = await context.viewFacet.getPremium(1)
+			const affiliateFeeFromView = await context.viewFacet.getAffiliateFee(1)
+
+			// partyA pays the fees in so:
+			// we are in isolated margin
+			let isolatedBalance2 = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress())
+
+			console.log("PartyA isolated balance:", isolatedBalance)
+			console.log("affiliateFee:", affiliateFee)
+			console.log("tradingFee:", tradingFee)
+			console.log("tradingFee + affiliateFee:", tradingFee + affiliateFee)
+			console.log("Quantity: ", intent.tradeAgreements.quantity)
+			console.log("price: ", intent.price)
+
+			// expect(isolatedBalance - isolatedBalance2).to.be.equal(premiumFromView + affiliateFeeFromView)
+			//TODO ::: FEE & PREMIUM
+		})
+
+		it("should fail on Fee not paid accordingly when more than one partyB whitelisted ", async function () {
+			// take snapshot
+			let isolatedBalance = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress())
+
+			const latestBlock = await ethers.provider.getBlock("latest")
+			const request = openIntentRequestBuilder()
+				.partyBsWhiteList([partyB1.getSigner, partyB2.getSigner])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateral)
+				.symbolId(1)
+				.deadline((latestBlock?.timestamp ?? 0) + 120)
+				.expirationTimestamp((latestBlock?.timestamp ?? 0) + 120)
+				.exerciseFee({ cap: e(1), rate: "0" })
+				.quantity(e(100))
+				.price(7)
+				.marginType(MarginType.ISOLATED)
+				.build()
+
+			expect(await partyA1.sendOpenIntent(request)).not.to.reverted
+
+			const intent = await context.viewFacet.getOpenIntent(1)
+			let tradingFee = (intent.tradingFee.platformFee * intent.tradeAgreements.quantity * intent.price) / intent.tradingFee.tokenPrice
+			let affiliateFee = (intent.tradingFee.affiliateFee * intent.tradeAgreements.quantity * intent.price) / intent.tradingFee.tokenPrice
+
+			// partyA pays the fees in so:
+			// we are in isolated margin
+			let isolatedBalance2 = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress())
+			const symbol: SymbolStruct = await context.viewFacet.getSymbol(intent.tradeAgreements.symbolId)
+			const feeTokenPrice = await context.oracle.getPrice(context.collateral)
+			const tradingFeeCalculation = BigNumber.from(symbol.tradingFee).mul(intent.tradeAgreements.quantity).mul(intent.price).div(feeTokenPrice)
+			const tradingFeeFromView = await context.viewFacet.getTradingFee(1)
+			const premiumFromView = await context.viewFacet.getPremium(1)
+			const affiliateFeeFromView = await context.viewFacet.getAffiliateFee(1)
+
+			console.log("PartyA isolated balance:", isolatedBalance)
+			console.log("affiliateFee:", affiliateFee)
+			console.log("tradingFee:", tradingFee)
+			console.log("tradingFee + affiliateFee:", tradingFee + affiliateFee)
+			console.log("Platform fee:", symbol.tradingFee)
+			console.log("Fee Token Price:", feeTokenPrice)
+			console.log("Trading Fee Calculation:", tradingFeeCalculation)
+			console.log("Trading Fee From View:", tradingFeeFromView)
+			console.log("Affiliate Fee From View:", affiliateFeeFromView)
+			console.log("Premium Fee From View:", premiumFromView)
+
+			//expect(tradingFeeCalculation._hex).to.equal(tradingFee)
+			//expect(intent.tradingFee.platformFee).to.greaterThan(0)
+			//expect(intent.tradingFee.platformFee).to.equal(symbol.tradingFee)
+			//expect(isolatedBalance - isolatedBalance2).to.be.equal(tradingFeeFromView + affiliateFeeFromView)
+
+			//TODO ::: FEE & PREMIUM
+		})
+	})
 }

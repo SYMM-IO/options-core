@@ -3,7 +3,7 @@ import { Diamond, FakeStablecoin, SignatureVerifier } from "../types"
 import { createRunContext, RunContext } from "./run-context"
 import { ethers, toUtf8Bytes } from "ethers"
 import { e } from "../utils/e"
-import {OptionType} from "./option-enums"
+import { OptionType } from "./option-enums"
 
 export async function initializeTestFixture(): Promise<RunContext> {
 	const diamond: Diamond = await run("deploy:diamond")
@@ -40,33 +40,32 @@ export async function initializeTestFixture(): Promise<RunContext> {
 		.connect(context.signers.admin)
 		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("UNPAUSER_ROLE")))
 
-		
 	await context.controlFacet.connect(context.signers.admin).unpauseGlobal()
-	
+
 	await context.controlFacet.setDeactiveInstantActionModeCooldown(120)
 	await context.controlFacet.setUnbindingCooldown(120)
 	await context.controlFacet.setMaxConnectedCounterParties(2)
 	await context.controlFacet.setMaxTradePerPartyA(3)
-	await context.controlFacet.setBalanceLimitPerUser(context.collateral,e(1000000))
-	await context.controlFacet.setBalanceLimitPerUser(context.collateralNL,e(1000000))
+	await context.controlFacet.setBalanceLimitPerUser(context.collateral, e(1000000))
+	await context.controlFacet.setBalanceLimitPerUser(context.collateralNL, e(1000000))
 	await context.controlFacet.setDefaultFeeCollector(context.signers.feeCollector)
 	await context.controlFacet.setMaxCloseOrdersLength(1)
 	// await context.controlFacet.setAffiliateFeeCollector(context.signers.affiliate1)
-		
+
 	await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
 		isActive: true,
 		lossCoverage: 0,
 		oracleId: 1,
 		symbolType: 0,
 	})
-	
+
 	await context.controlFacet.setPartyBConfig(context.signers.partyB2, {
 		isActive: true,
 		lossCoverage: 0,
 		oracleId: 1,
 		symbolType: 0,
 	})
-		
+
 	await context.controlFacet.setAffiliateStatus(context.signers.affiliate1, true)
 
 	await context.controlFacet.addOracle("test oracle", context.signers.oracle1)

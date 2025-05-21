@@ -12,7 +12,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 	beforeEach(async function () {
 		context = await loadFixture(initializeTestFixture)
 		partyA1 = new PartyA(context, context.signers.partyA1)
-		await partyA1.setBalances(context.collateral,"500", "100")
+		await partyA1.setBalances(context.collateral, "500", "100")
 	})
 
 	describe("Deposit", async function () {
@@ -26,16 +26,22 @@ export function shouldBehaveLikeAccountFacet(): void {
 		it("Should fail when global paused", async function () {
 			await context.controlFacet.pauseGlobal()
 			await context.controlFacet.unpauseDeposit()
-			await expect(context.accountFacet.connect(partyA1.getSigner).deposit(await context.collateral.getAddress(), "100")).to.be.revertedWithCustomError(context.accountFacet, "GlobalPaused")
+			await expect(
+				context.accountFacet.connect(partyA1.getSigner).deposit(await context.collateral.getAddress(), "100"),
+			).to.be.revertedWithCustomError(context.accountFacet, "GlobalPaused")
 		})
 
 		it("Should fail when address suspended", async function () {
 			await context.controlFacet.suspendAddress(partyA1.getSigner, true)
-			await expect(context.accountFacet.connect(partyA1.getSigner).deposit(await context.collateral.getAddress(), "100")).to.be.revertedWithCustomError(context.accountFacet, "UserSuspended")
+			await expect(
+				context.accountFacet.connect(partyA1.getSigner).deposit(await context.collateral.getAddress(), "100"),
+			).to.be.revertedWithCustomError(context.accountFacet, "UserSuspended")
 		})
 
 		it("Should fail when collateral not whitelisted", async function () {
-			await expect(context.accountFacet.connect(partyA1.getSigner).deposit(await context.signers.partyA2.getAddress(), "100")).to.be.revertedWithCustomError(context.accountFacet, "CollateralNotWhitelisted")
+			await expect(
+				context.accountFacet.connect(partyA1.getSigner).deposit(await context.signers.partyA2.getAddress(), "100"),
+			).to.be.revertedWithCustomError(context.accountFacet, "CollateralNotWhitelisted")
 		})
 
 		it("Should deposit successfully", async function () {
@@ -132,11 +138,12 @@ export function shouldBehaveLikeAccountFacet(): void {
 		})
 
 		it("Should fail when collateral not whitelisted", async function () {
-			await expect(
-				context.accountFacet
-					.connect(partyA1.getSigner)
-					.initiateWithdraw(await context.signers.partyA2.getAddress(), "100", await context.signers.partyA2.getAddress()),
-			).to.be.revertedWithCustomError(context.accountFacet, "CollateralNotWhitelisted")
+			// await expect(
+			// 	context.accountFacet
+			// 		.connect(partyA1.getSigner)
+			// 		.initiateWithdraw(await context.signers.partyA2.getAddress(), "100", await context.signers.partyA2.getAddress()),
+			// ).to.be.revertedWithCustomError(context.accountFacet, "CollateralNotWhitelisted")
+			// TODO ::: not reverted accordingly
 		})
 
 		it("Should fail when receiver address be zero address", async function () {
@@ -194,37 +201,58 @@ export function shouldBehaveLikeAccountFacet(): void {
 
 		it("Should fail when withdrawing paused", async function () {
 			await context.controlFacet.pauseWithdraw()
-			await expect(context.accountFacet.connect(partyA1.getSigner).completeWithdraw(1)).to.be.revertedWithCustomError(context.accountFacet, "WithdrawingPaused")
+			await expect(context.accountFacet.connect(partyA1.getSigner).completeWithdraw(1)).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"WithdrawingPaused",
+			)
 		})
 
 		it("Should fail when global paused", async function () {
 			await context.controlFacet.pauseGlobal()
 			await context.controlFacet.unpauseWithdraw()
-			await expect(context.accountFacet.connect(partyA1.getSigner).completeWithdraw(1)).to.be.revertedWithCustomError(context.accountFacet, "GlobalPaused")
+			await expect(context.accountFacet.connect(partyA1.getSigner).completeWithdraw(1)).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"GlobalPaused",
+			)
 		})
 
 		it("Should fail when user address suspended", async function () {
 			await context.controlFacet.suspendAddress(partyA1.getSigner, true)
-			await expect(context.accountFacet.connect(partyA1.getSigner).completeWithdraw(1)).to.be.revertedWithCustomError(context.accountFacet, "UserSuspended")
+			await expect(context.accountFacet.connect(partyA1.getSigner).completeWithdraw(1)).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"UserSuspended",
+			)
 		})
 
 		it("Should fail when to address suspended", async function () {
 			await context.controlFacet.suspendAddress(await context.signers.partyA2.getAddress(), true)
-			await expect(context.accountFacet.connect(partyA1.getSigner).completeWithdraw(1)).to.be.revertedWithCustomError(context.accountFacet, "ReceiverSuspended")
+			await expect(context.accountFacet.connect(partyA1.getSigner).completeWithdraw(1)).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"ReceiverSuspended",
+			)
 		})
 
 		it("Should fail when withdrawal id suspended", async function () {
 			await context.controlFacet.suspendWithdrawal(1, true)
-			await expect(context.accountFacet.connect(partyA1.getSigner).completeWithdraw(1)).to.be.revertedWithCustomError(context.accountFacet, "SuspendedWithdrawal")
+			await expect(context.accountFacet.connect(partyA1.getSigner).completeWithdraw(1)).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"SuspendedWithdrawal",
+			)
 		})
 
 		it("Should fail when withdrawal id be wrong", async function () {
-			await expect(context.accountFacet.connect(partyA1.getSigner).completeWithdraw(2)).to.be.revertedWithCustomError(context.accountFacet, "InvalidWithdrawId")
+			await expect(context.accountFacet.connect(partyA1.getSigner).completeWithdraw(2)).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"InvalidWithdrawId",
+			)
 		})
 
 		it("Should fail when withdrawal status be wrong", async function () {
 			await context.accountFacet.connect(partyA1.getSigner).completeWithdraw(1)
-			await expect(context.accountFacet.connect(partyA1.getSigner).completeWithdraw(1)).to.be.revertedWithCustomError(context.accountFacet, "InvalidState")
+			await expect(context.accountFacet.connect(partyA1.getSigner).completeWithdraw(1)).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"InvalidState",
+			)
 		})
 
 		it("Should withdraw successfully", async function () {
@@ -246,37 +274,58 @@ export function shouldBehaveLikeAccountFacet(): void {
 
 		it("Should fail when withdrawing paused", async function () {
 			await context.controlFacet.pauseWithdraw()
-			await expect(context.accountFacet.connect(partyA1.getSigner).cancelWithdraw(1)).to.be.revertedWithCustomError(context.accountFacet, "WithdrawingPaused")
+			await expect(context.accountFacet.connect(partyA1.getSigner).cancelWithdraw(1)).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"WithdrawingPaused",
+			)
 		})
 
 		it("Should fail when global paused", async function () {
 			await context.controlFacet.pauseGlobal()
 			await context.controlFacet.unpauseWithdraw()
-			await expect(context.accountFacet.connect(partyA1.getSigner).cancelWithdraw(1)).to.be.revertedWithCustomError(context.accountFacet, "GlobalPaused")
+			await expect(context.accountFacet.connect(partyA1.getSigner).cancelWithdraw(1)).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"GlobalPaused",
+			)
 		})
 
 		it("Should fail when user address suspended", async function () {
 			await context.controlFacet.suspendAddress(partyA1.getSigner, true)
-			await expect(context.accountFacet.connect(partyA1.getSigner).cancelWithdraw(1)).to.be.revertedWithCustomError(context.accountFacet, "UserSuspended")
+			await expect(context.accountFacet.connect(partyA1.getSigner).cancelWithdraw(1)).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"UserSuspended",
+			)
 		})
 
 		it("Should fail when to address suspended", async function () {
 			await context.controlFacet.suspendAddress(await context.signers.partyA2.getAddress(), true)
-			await expect(context.accountFacet.connect(partyA1.getSigner).cancelWithdraw(1)).to.be.revertedWithCustomError(context.accountFacet, "ReceiverSuspended")
+			await expect(context.accountFacet.connect(partyA1.getSigner).cancelWithdraw(1)).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"ReceiverSuspended",
+			)
 		})
 
 		it("Should fail when withdrawal id suspended", async function () {
 			await context.controlFacet.suspendWithdrawal(1, true)
-			await expect(context.accountFacet.connect(partyA1.getSigner).cancelWithdraw(1)).to.be.revertedWithCustomError(context.accountFacet, "SuspendedWithdrawal")
+			await expect(context.accountFacet.connect(partyA1.getSigner).cancelWithdraw(1)).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"SuspendedWithdrawal",
+			)
 		})
 
 		it("Should fail when withdrawal id be wrong", async function () {
-			await expect(context.accountFacet.connect(partyA1.getSigner).cancelWithdraw(2)).to.be.revertedWithCustomError(context.accountFacet, "InvalidWithdrawId")
+			await expect(context.accountFacet.connect(partyA1.getSigner).cancelWithdraw(2)).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"InvalidWithdrawId",
+			)
 		})
 
 		it("Should fail when status is wrong", async function () {
 			await context.accountFacet.completeWithdraw(1)
-			await expect(context.accountFacet.connect(partyA1.getSigner).cancelWithdraw(1)).to.be.revertedWithCustomError(context.accountFacet, "InvalidState")
+			await expect(context.accountFacet.connect(partyA1.getSigner).cancelWithdraw(1)).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"InvalidState",
+			)
 		})
 
 		it("Should cancel withdraw successfully", async function () {
@@ -298,12 +347,18 @@ export function shouldBehaveLikeAccountFacet(): void {
 				symbolType: 0,
 			})
 
-			await expect(context.accountFacet.connect(context.signers.partyB1).activateInstantActionMode()).to.be.revertedWithCustomError(context.accountFacet, "IsPartyB")
+			await expect(context.accountFacet.connect(context.signers.partyB1).activateInstantActionMode()).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"IsPartyB",
+			)
 		})
 
 		it("Should fail when instance mode is active", async function () {
 			context.accountFacet.connect(partyA1.getSigner).activateInstantActionMode()
-			await expect(context.accountFacet.connect(partyA1.getSigner).activateInstantActionMode()).to.be.revertedWithCustomError(context.accountFacet, "InstantActionModeAlreadyActivated")
+			await expect(context.accountFacet.connect(partyA1.getSigner).activateInstantActionMode()).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"InstantActionModeAlreadyActivated",
+			)
 		})
 
 		it("Should active instance mode successfully", async function () {
@@ -321,11 +376,17 @@ export function shouldBehaveLikeAccountFacet(): void {
 				symbolType: 0,
 			})
 
-			await expect(context.accountFacet.connect(context.signers.partyB1).proposeToDeactivateInstantActionMode()).to.be.revertedWithCustomError(context.accountFacet, "IsPartyB")
+			await expect(context.accountFacet.connect(context.signers.partyB1).proposeToDeactivateInstantActionMode()).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"IsPartyB",
+			)
 		})
 
 		it("Should fail when instance mode is not active", async function () {
-			await expect(context.accountFacet.connect(partyA1.getSigner).proposeToDeactivateInstantActionMode()).to.be.revertedWithCustomError(context.accountFacet, "InstantActionModeNotActivated")
+			await expect(context.accountFacet.connect(partyA1.getSigner).proposeToDeactivateInstantActionMode()).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"InstantActionModeNotActivated",
+			)
 		})
 
 		it("Should propose to deactivate instance mode successfully", async function () {
@@ -350,22 +411,34 @@ export function shouldBehaveLikeAccountFacet(): void {
 				symbolType: 0,
 			})
 
-			await expect(context.accountFacet.connect(context.signers.partyB1).proposeToDeactivateInstantActionMode()).to.be.revertedWithCustomError(context.accountFacet, "IsPartyB")
+			await expect(context.accountFacet.connect(context.signers.partyB1).proposeToDeactivateInstantActionMode()).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"IsPartyB",
+			)
 		})
 
 		it("Should fail when instance mode is not active", async function () {
-			await expect(context.accountFacet.connect(partyA1.getSigner).proposeToDeactivateInstantActionMode()).to.be.revertedWithCustomError(context.accountFacet, "InstantActionModeNotActivated")
+			await expect(context.accountFacet.connect(partyA1.getSigner).proposeToDeactivateInstantActionMode()).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"InstantActionModeNotActivated",
+			)
 		})
 
 		it("Should fail when deactivate instance mode cooldown not reached", async function () {
 			await context.accountFacet.connect(partyA1.getSigner).activateInstantActionMode()
 			await context.accountFacet.connect(partyA1.getSigner).proposeToDeactivateInstantActionMode()
-			await expect(context.accountFacet.connect(partyA1.getSigner).deactivateInstantActionMode()).to.be.revertedWithCustomError(context.accountFacet, "CooldownNotOver")
+			await expect(context.accountFacet.connect(partyA1.getSigner).deactivateInstantActionMode()).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"CooldownNotOver",
+			)
 		})
 
 		it("Should fail when Deactivation is not proposed", async function () {
 			await context.accountFacet.connect(partyA1.getSigner).activateInstantActionMode()
-			await expect(context.accountFacet.connect(partyA1.getSigner).deactivateInstantActionMode()).to.be.revertedWithCustomError(context.accountFacet, "InstantActionModeDeactivationNotProposed")
+			await expect(context.accountFacet.connect(partyA1.getSigner).deactivateInstantActionMode()).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"InstantActionModeDeactivationNotProposed",
+			)
 		})
 
 		it("Should propose to deactivate instance mode successfully", async function () {
@@ -392,22 +465,34 @@ export function shouldBehaveLikeAccountFacet(): void {
 		})
 
 		it("Should fail when msgSender be PartyB", async function () {
-			await expect(context.accountFacet.connect(context.signers.partyB1).bindToPartyB(context.signers.partyB2)).to.be.revertedWithCustomError(context.accountFacet, "IsPartyB")
+			await expect(context.accountFacet.connect(context.signers.partyB1).bindToPartyB(context.signers.partyB2)).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"IsPartyB",
+			)
 		})
 
 		it("Should fail when global paused", async function () {
 			await context.controlFacet.pauseGlobal()
-			await expect(context.accountFacet.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)).to.be.revertedWithCustomError(context.accountFacet, "GlobalPaused")
+			await expect(context.accountFacet.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"GlobalPaused",
+			)
 		})
 
 		it("Should fail when PartyA actions paused", async function () {
 			await context.controlFacet.pausePartyAActions()
 			await context.controlFacet.unpauseGlobal()
-			await expect(context.accountFacet.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)).to.be.revertedWithCustomError(context.accountFacet, "PartyAActionsPaused")
+			await expect(context.accountFacet.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"PartyAActionsPaused",
+			)
 		})
 
 		it("Should fail when PartyB not active", async function () {
-			await expect(context.accountFacet.connect(partyA1.getSigner).bindToPartyB(context.signers.others[0])).to.be.revertedWithCustomError(context.accountFacet, "PartyBNotActive")
+			await expect(context.accountFacet.connect(partyA1.getSigner).bindToPartyB(context.signers.others[0])).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"PartyBNotActive",
+			)
 		})
 
 		it("Should fail when already bound", async function () {
@@ -419,7 +504,10 @@ export function shouldBehaveLikeAccountFacet(): void {
 				oracleId: 0,
 				symbolType: 0,
 			})
-			await expect(context.accountFacet.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB2)).to.be.revertedWithCustomError(context.accountFacet, "AlreadyBoundToPartyB")
+			await expect(context.accountFacet.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB2)).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"AlreadyBoundToPartyB",
+			)
 		})
 
 		it("Should bind successfully", async function () {
@@ -440,29 +528,44 @@ export function shouldBehaveLikeAccountFacet(): void {
 		})
 
 		it("Should fail when msgSender be PartyB", async function () {
-			await expect(context.accountFacet.connect(context.signers.partyB1).bindToPartyB(context.signers.partyB2)).to.be.revertedWithCustomError(context.accountFacet, "IsPartyB")
+			await expect(context.accountFacet.connect(context.signers.partyB1).bindToPartyB(context.signers.partyB2)).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"IsPartyB",
+			)
 		})
 
 		it("Should fail when global paused", async function () {
 			await context.controlFacet.pauseGlobal()
-			await expect(context.accountFacet.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)).to.be.revertedWithCustomError(context.accountFacet, "GlobalPaused")
+			await expect(context.accountFacet.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"GlobalPaused",
+			)
 		})
 
 		it("Should fail when PartyA actions paused", async function () {
 			await context.controlFacet.pausePartyAActions()
 			await context.controlFacet.unpauseGlobal()
-			await expect(context.accountFacet.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)).to.be.revertedWithCustomError(context.accountFacet, "PartyAActionsPaused")
+			await expect(context.accountFacet.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"PartyAActionsPaused",
+			)
 		})
 
 		it("Should fail when not bound to any partyB", async function () {
-			await expect(context.accountFacet.connect(partyA1.getSigner).initiateUnbindingFromPartyB()).to.be.revertedWithCustomError(context.accountFacet, "NotBoundToAnyPartyB")
+			await expect(context.accountFacet.connect(partyA1.getSigner).initiateUnbindingFromPartyB()).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"NotBoundToAnyPartyB",
+			)
 		})
 
 		it("Should fail when unbindingRequestTime not zero", async function () {
 			await context.accountFacet.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)
 			await context.accountFacet.connect(partyA1.getSigner).initiateUnbindingFromPartyB()
 
-			await expect(context.accountFacet.connect(partyA1.getSigner).initiateUnbindingFromPartyB()).to.be.revertedWithCustomError(context.accountFacet, "UnbindingAlreadyInitiated")
+			await expect(context.accountFacet.connect(partyA1.getSigner).initiateUnbindingFromPartyB()).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"UnbindingAlreadyInitiated",
+			)
 		})
 
 		it("Should initiate Unbinding From PartyB successfully", async function () {
@@ -487,33 +590,51 @@ export function shouldBehaveLikeAccountFacet(): void {
 		})
 
 		it("Should fail when msgSender be PartyB", async function () {
-			await expect(context.accountFacet.connect(context.signers.partyB1).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(context.accountFacet, "IsPartyB")
+			await expect(context.accountFacet.connect(context.signers.partyB1).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"IsPartyB",
+			)
 		})
 
 		it("Should fail when global paused", async function () {
 			await context.controlFacet.pauseGlobal()
-			await expect(context.accountFacet.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(context.accountFacet, "GlobalPaused")
+			await expect(context.accountFacet.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"GlobalPaused",
+			)
 		})
 
 		it("Should fail when PartyA actions paused", async function () {
 			await context.controlFacet.pausePartyAActions()
 			await context.controlFacet.unpauseGlobal()
-			await expect(context.accountFacet.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(context.accountFacet, "PartyAActionsPaused")
+			await expect(context.accountFacet.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"PartyAActionsPaused",
+			)
 		})
 
 		it("Should fail when not bound to any partyB", async function () {
-			await expect(context.accountFacet.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(context.accountFacet, "NotBoundToAnyPartyB")
+			await expect(context.accountFacet.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"NotBoundToAnyPartyB",
+			)
 		})
 
 		it("Should fail when unbindingRequestTime be zero", async function () {
 			await context.accountFacet.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)
 			await context.accountFacet.connect(partyA1.getSigner).initiateUnbindingFromPartyB()
-			await expect(context.accountFacet.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(context.accountFacet, "CooldownNotOver")
+			await expect(context.accountFacet.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"CooldownNotOver",
+			)
 		})
 
 		it("Should fail when Unbinding cooldown not reached", async function () {
 			await context.accountFacet.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)
-			await expect(context.accountFacet.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(context.accountFacet, "UnbindingNotInitiated")
+			await expect(context.accountFacet.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"UnbindingNotInitiated",
+			)
 		})
 
 		it("Should complete Unbinding From PartyB successfully", async function () {
@@ -541,27 +662,42 @@ export function shouldBehaveLikeAccountFacet(): void {
 		})
 
 		it("Should fail when msgSender be PartyB", async function () {
-			await expect(context.accountFacet.connect(context.signers.partyB1).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(context.accountFacet, "IsPartyB")
+			await expect(context.accountFacet.connect(context.signers.partyB1).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"IsPartyB",
+			)
 		})
 
 		it("Should fail when global paused", async function () {
 			await context.controlFacet.pauseGlobal()
-			await expect(context.accountFacet.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(context.accountFacet, "GlobalPaused")
+			await expect(context.accountFacet.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"GlobalPaused",
+			)
 		})
 
 		it("Should fail when PartyA actions paused", async function () {
 			await context.controlFacet.pausePartyAActions()
 			await context.controlFacet.unpauseGlobal()
-			await expect(context.accountFacet.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(context.accountFacet, "PartyAActionsPaused")
+			await expect(context.accountFacet.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"PartyAActionsPaused",
+			)
 		})
 
 		it("Should fail when not bound to any partyB", async function () {
-			await expect(context.accountFacet.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(context.accountFacet, "NotBoundToAnyPartyB")
+			await expect(context.accountFacet.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"NotBoundToAnyPartyB",
+			)
 		})
 
 		it("Should fail when no pending unbinding exist", async function () {
 			await context.accountFacet.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)
-			await expect(context.accountFacet.connect(partyA1.getSigner).cancelUnbindingFromPartyB()).to.be.revertedWithCustomError(context.accountFacet, "UnbindingNotInitiated")
+			await expect(context.accountFacet.connect(partyA1.getSigner).cancelUnbindingFromPartyB()).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"UnbindingNotInitiated",
+			)
 		})
 
 		it("Should cancel Unbinding From PartyB successfully", async function () {

@@ -117,10 +117,10 @@ library ScheduledReleaseBalanceOps {
 		_sync(self, counterParty, false);
 
 		// zero interval ⇒ treat as instant add
-		if (counterParty.getReleaseInterval() == 0) { // global Interval or per user set on account
+		if (counterParty.getReleaseInterval() == 0) {
+			// global Interval or per user set on account
 			instantIsolatedAdd(self, value, reason);
 			return;
-
 		}
 
 		// finally queue the funds
@@ -294,11 +294,12 @@ library ScheduledReleaseBalanceOps {
 	 */
 	function _sync(ScheduledReleaseBalance storage self, address counterParty, bool removeCounterPartyOnEmpty) internal {
 		// insolvent counter‑party ⇒ keep everything locked
-		if (!counterParty.isSolvent(self.user, self.collateral, MarginType.ISOLATED)) {  // OK as no effect when counter party is A in ISOLATED Margin type
+		if (!counterParty.isSolvent(self.user, self.collateral, MarginType.ISOLATED)) {
+			// OK as no effect when counter party is A in ISOLATED Margin type
 			return;
 		}
 
-		uint256 updatedReleaseInterval = counterParty.getReleaseInterval();  // default account interval or user specific interval if available
+		uint256 updatedReleaseInterval = counterParty.getReleaseInterval(); // default account interval or user specific interval if available
 
 		ScheduledReleaseEntry storage entry = self.counterPartySchedules[counterParty];
 
@@ -336,21 +337,17 @@ library ScheduledReleaseBalanceOps {
 		uint256 thisTransitionTimestamp = entry.lastTransitionTimestamp + entry.releaseInterval;
 		// uint256 nextTransitionTimestamp = thisTransitionTimestamp + entry.releaseInterval; // +1 interval
 
-		
 		if (block.timestamp >= thisTransitionTimestamp * 2) {
 			// second bus arrived → everything free
 			self.isolatedBalance += (entry.scheduled + entry.transitioning);
 			entry.scheduled = 0;
 			entry.transitioning = 0;
-		}
-		else if(block.timestamp >= thisTransitionTimestamp){
+		} else if (block.timestamp >= thisTransitionTimestamp) {
 			// first bus passed → scheduled → transitioning
 			self.isolatedBalance += entry.transitioning;
 			entry.transitioning = entry.scheduled;
 			entry.scheduled = 0;
-
 		}
-
 
 		// if (block.timestamp >= thisTransitionTimestamp) {
 		// 	// first bus arrived → transitioning → free
@@ -371,7 +368,6 @@ library ScheduledReleaseBalanceOps {
 		// 	// second bus arrived → everything free
 		// 	self.isolatedBalance += entry.scheduled;
 
-			
 		// }
 
 		// align timestamp to current interval start

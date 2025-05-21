@@ -19,7 +19,7 @@ import { FeeManagementStorage } from "../../storages/FeeManagementStorage.sol";
 import { SymbolStorage, Symbol, Oracle } from "../../storages/SymbolStorage.sol";
 import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
 import { ScheduledReleaseBalance } from "../../types/BalanceTypes.sol";
-import {LibOpenIntentOps} from "../../libraries/LibOpenIntent.sol";
+import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
 
 import { Trade } from "../../types/TradeTypes.sol";
 import { Withdraw } from "../../types/WithdrawTypes.sol";
@@ -44,18 +44,15 @@ contract ViewFacet is IViewFacet {
 	 */
 	function balanceOf(address user, address collateral) external view returns (uint256) {
 		return AccountStorage.layout().balances[user][collateral].isolatedBalance;
-	
 	}
 
 	function getIsolatedLockedBalance(address user, address collateral) external view returns (uint256) {
 		return AccountStorage.layout().balances[user][collateral].isolatedLockedBalance;
-	
 	}
 
 	function getTradingFee(uint256 openIntentId) external view returns (uint256) {
 		OpenIntent memory self = OpenIntentStorage.layout().openIntents[openIntentId];
 		return self.getTradingFee();
-		
 	}
 
 	function getAffiliateFee(uint256 openIntentId) external view returns (uint256) {
@@ -67,7 +64,6 @@ contract ViewFacet is IViewFacet {
 		OpenIntent memory self = OpenIntentStorage.layout().openIntents[openIntentId];
 		return self.getPremium();
 	}
-
 
 	/**
 	 * @notice Returns max connected partyBs.
@@ -284,9 +280,10 @@ contract ViewFacet is IViewFacet {
 		if (intentLayout.openIntentsOf[partyA].length < start + size) {
 			size = intentLayout.openIntentsOf[partyA].length - start;
 		}
+		uint256 j = 0;
 		uint256[] memory openIntentIds = new uint256[](size);
-		for (uint256 i = start; i < start + size; i++) {
-			openIntentIds[i - start] = intentLayout.openIntentsOf[partyA][i];
+		for (uint256 i = start; i < size; i++) {
+			openIntentIds[j++] = intentLayout.openIntentsOf[partyA][i];
 		}
 		return openIntentIds;
 	}
@@ -327,14 +324,16 @@ contract ViewFacet is IViewFacet {
 	 * @param size The size of the array.
 	 * @return activeOpenIntentIds An array of openIntent IDs that are active.
 	 */
-	function activeOpenIntentIdsOf(address partyA, uint256 start, uint256 size) external view returns (uint256[] memory) {
+	function getActiveOpenIntentIdsOf(address partyA, uint256 start, uint256 size) external view returns (uint256[] memory) {
 		OpenIntentStorage.Layout storage intentLayout = OpenIntentStorage.layout();
 		if (intentLayout.activeOpenIntentsOf[partyA].length < start + size) {
 			size = intentLayout.activeOpenIntentsOf[partyA].length - start;
 		}
+
+		uint256 j = 0;
 		uint256[] memory activeOpenIntentIds = new uint256[](size);
-		for (uint256 i = start; i < start + size; i++) {
-			activeOpenIntentIds[i - start] = intentLayout.activeOpenIntentsOf[partyA][i];
+		for (uint256 i = start; i < size; i++) {
+			activeOpenIntentIds[j++] = intentLayout.activeOpenIntentsOf[partyA][i];
 		}
 		return activeOpenIntentIds;
 	}
@@ -351,11 +350,22 @@ contract ViewFacet is IViewFacet {
 		if (intentLayout.activeOpenIntentsOf[partyA].length < start + size) {
 			size = intentLayout.activeOpenIntentsOf[partyA].length - start;
 		}
+		uint256 j = 0;
 		OpenIntent[] memory activeOpenIntents = new OpenIntent[](size);
-		for (uint256 i = start; i < start + size; i++) {
-			activeOpenIntents[i - start] = intentLayout.openIntents[intentLayout.activeOpenIntentsOf[partyA][i]];
+		for (uint256 i = start; i < size; i++) {
+			activeOpenIntents[j++] = intentLayout.openIntents[intentLayout.activeOpenIntentsOf[partyA][i]];
 		}
 		return activeOpenIntents;
+	}
+
+	/**
+	 * @notice Returns active openIntent index associated with an ID.
+	 * @param id intent ID
+	 * @return index intent index
+	 */
+	function getActiveOpenIntentsIndex(uint256 id) external view returns (uint256 index) {
+		OpenIntentStorage.Layout storage intentLayout = OpenIntentStorage.layout();
+		index = intentLayout.partyAOpenIntentsIndex[id];
 	}
 
 	/**

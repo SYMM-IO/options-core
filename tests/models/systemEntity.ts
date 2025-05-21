@@ -5,10 +5,9 @@ import { ethers } from "hardhat"
 import { BigNumberish } from "ethers"
 import { setBalance } from "@nomicfoundation/hardhat-network-helpers"
 import { OpenIntent, openIntentRequestBuilder } from "./builders/send-open-intent.builder"
-import { FakeStablecoin} from "../../types"
+import { FakeStablecoin } from "../../types"
 
-
-export class SystemEntity   {
+export class SystemEntity {
 	constructor(protected context: RunContext, protected signer: SignerWithAddress) {}
 
 	public async setNativeBalance(amount: bigint) {
@@ -17,5 +16,5 @@ export class SystemEntity   {
 
 	public getSigner() {
 		return this.signer
-	}	
+	}
 }

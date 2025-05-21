@@ -5,7 +5,9 @@ import { BigNumberish } from "ethers"
 import { PartyEntity } from "./partyEntitiy"
 
 export class PartyB extends PartyEntity {
-	constructor(context: RunContext,  signer: SignerWithAddress) {super(context,signer)}
+	constructor(context: RunContext, signer: SignerWithAddress) {
+		super(context, signer)
+	}
 
 	public async lockOpenIntent(id: BigNumberish) {
 		await runTx(this.context.partyBOpenFacet.connect(this.signer).lockOpenIntent(id))

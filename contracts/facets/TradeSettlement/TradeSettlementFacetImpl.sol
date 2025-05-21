@@ -53,7 +53,7 @@ library TradeSettlementFacetImpl {
 
 		if (symbol.optionType == OptionType.PUT) {
 			if (sig.settlementPrice < trade.tradeAgreements.strikePrice) {
-				isExpired = false;  // execute option
+				isExpired = false; // execute option
 			} else {
 				trade.settledPrice = sig.settlementPrice;
 				trade.close(TradeStatus.EXPIRED, IntentStatus.CANCELED);

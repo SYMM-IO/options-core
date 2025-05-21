@@ -62,8 +62,8 @@ export function hashSignedCloseIntent(req: SignedCloseIntentStruct, chainId: num
 export function hashSignedFillOpenIntent(req: SignedFillIntentStruct, chainId: number, diamondAddress: string): string {
 	return keccak256(
 		abiCoder.encode(
-			["uint256", "address", "bytes32", "address", "bytes32", "uint256", "uint256", "uint256", "uint256", "uint8"],
-			[chainId, diamondAddress, PREFIX.FillOpen, req.partyB, req.intentHash, req.price, req.quantity, req.deadline, req.salt, req.marginType],
+			["uint256", "address", "bytes32", "address", "bytes32", "uint256", "uint256", "uint256", "uint256"],
+			[chainId, diamondAddress, PREFIX.FillOpen, req.partyB, req.intentHash, req.price, req.quantity, req.deadline, req.salt],
 		),
 	)
 }
@@ -71,8 +71,8 @@ export function hashSignedFillOpenIntent(req: SignedFillIntentStruct, chainId: n
 export function hashSignedFillOpenIntentById(req: SignedFillIntentByIdStruct, chainId: number, diamondAddress: string): string {
 	return keccak256(
 		abiCoder.encode(
-			["uint256", "address", "bytes32", "address", "uint256", "uint256", "uint256", "uint256", "uint256", "uint8"],
-			[chainId, diamondAddress, PREFIX.FillOpenById, req.partyB, req.intentId, req.price, req.quantity, req.deadline, req.salt, req.marginType],
+			["uint256", "address", "bytes32", "address", "uint256", "uint256", "uint256", "uint256", "uint256"],
+			[chainId, diamondAddress, PREFIX.FillOpenById, req.partyB, req.intentId, req.price, req.quantity, req.deadline, req.salt],
 		),
 	)
 }

@@ -49,9 +49,8 @@ library LibHash {
 		address addr = address(this);
 
 		return
-			keccak256(
-				abi.encode(CHAIN_ID, addr, SIGN_PREFIX, req.partyB, req.intentHash, req.price, req.quantity, req.deadline, req.salt)
-			).toEthSignedMessageHash();
+			keccak256(abi.encode(CHAIN_ID, addr, SIGN_PREFIX, req.partyB, req.intentHash, req.price, req.quantity, req.deadline, req.salt))
+				.toEthSignedMessageHash();
 	}
 
 	function hashSignedFillOpenIntentById(SignedFillIntentById calldata req) internal view returns (bytes32) {
@@ -60,9 +59,8 @@ library LibHash {
 		address addr = address(this);
 
 		return
-			keccak256(
-				abi.encode(CHAIN_ID, addr, SIGN_PREFIX, req.partyB, req.intentId, req.price, req.quantity, req.deadline, req.salt)
-			).toEthSignedMessageHash();
+			keccak256(abi.encode(CHAIN_ID, addr, SIGN_PREFIX, req.partyB, req.intentId, req.price, req.quantity, req.deadline, req.salt))
+				.toEthSignedMessageHash();
 	}
 
 	function hashSignedFillCloseIntent(SignedFillIntent calldata req) internal view returns (bytes32) {

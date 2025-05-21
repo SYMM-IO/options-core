@@ -3,8 +3,8 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers"
 
 task("deploy:stablecoin", "Deploys the FakeStablecoin")
 	.addParam("name", "The token's name")
-  	.addParam("symbol", "The token's symbol")
-	.setAction(async ({name,symbol}, {ethers, run}) => {
+	.addParam("symbol", "The token's symbol")
+	.setAction(async ({ name, symbol }, { ethers, run }) => {
 		console.log("Running deploy:stablecoin")
 
 	const signers: SignerWithAddress[] = await ethers.getSigners()
@@ -18,5 +18,5 @@ task("deploy:stablecoin", "Deploys the FakeStablecoin")
 	await stablecoin.deploymentTransaction()!.wait()
 	console.log("FakeStablecoin deployed:", await stablecoin.getAddress())
 
-	return stablecoin
-})
+		return stablecoin
+	})

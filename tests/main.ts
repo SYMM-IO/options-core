@@ -12,42 +12,41 @@ import { shouldBehaveLikeSettlementFacet } from "./parties-settlement"
 
 describe(`${name}-v${version}`, () => {
 	if (process.env.TEST_MODE === TestModeEnum.UNIT_TEST) {
-		// describe("Facets_Accounts", async function () {
-		// 	shouldBehaveLikeForceActionFacet()
-		// })
+		describe("Facets_Accounts", async function () {
+			shouldBehaveLikeAccountFacet()
+		})
 
-		// describe("Facets_Accounts", async function () {
-		// 	shouldBehaveLikeAccountFacet()
-		// })
-
-		// describe("Facets_PartyAOpenFacet", async function () {
-		// 	shouldBehaveLikePartyAOpenFacet()
-		// })
-
-		// describe("Facets_PartyACloseFacet", async function () {
-		// 	shouldBehaveLikePartyACloseFacet()
-		// })
-
+		describe("Facets_PartyAOpenFacet", async function () {
+			shouldBehaveLikePartyAOpenFacet()
+		})
 
 		describe("Facets_PartyBOpenFacet", async function () {
 			shouldBehaveLikePartyBOpenFacet()
 		})
 
-		// describe("Libraries_LibCloseIntent", async function () {
-		// 	shouldBehaveLikeLibCloseIntent()
-		// })
+		describe("Facets_PartyACloseFacet", async function () {
+			shouldBehaveLikePartyACloseFacet()
+		})
 
-		// describe("Facets_InstantActionOpenFacet", async function () {
-		// 	shouldBehaveLikeInstantActionOpenFacet()
-		// })
+		describe("Libraries_LibCloseIntent", async function () {
+			shouldBehaveLikeLibCloseIntent()
+		})
 
-		// describe("Facets_PartyBCloseFacet", async function () {
-		// 	shouldBehaveLikePartyBCloseFacet()
-		// })
+		describe("Facets_InstantActionOpenFacet", async function () {
+			shouldBehaveLikeInstantActionOpenFacet()
+		})
 
-		// describe("Facets_Settlement", async function () {
-		// 	shouldBehaveLikeSettlementFacet()
-		// })
+		describe("Facets_PartyBCloseFacet", async function () {
+			shouldBehaveLikePartyBCloseFacet()
+		})
+
+		describe("Facets_Settlement", async function () {
+			shouldBehaveLikeSettlementFacet()
+		})
+
+		describe("Facets_ForceActions", async function () {
+			shouldBehaveLikeForceActionFacet()
+		})
 	} else {
 		throw new Error(`Invalid TEST_MODE property. Should be one of: ${Object.keys(TestModeEnum).join(", ")}`)
 	}

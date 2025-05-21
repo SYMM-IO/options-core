@@ -47,6 +47,7 @@ export function shouldBehaveLikeInstantActionOpenFacet(): void {
 			await context.controlFacet.pausePartyBActions()
 			const timestamp = (await ethers.provider.getBlock("latest"))?.timestamp ?? 0
 
+			console.log("AAAAAAAAAAAAAAAAAaaa")
 			const signedOpenIntent = signedOpenIntentBuilder()
 				.affiliate(await context.signers.affiliate1.getAddress())
 				.feeToken(await context.collateral.getAddress())
@@ -59,6 +60,7 @@ export function shouldBehaveLikeInstantActionOpenFacet(): void {
 				.build()
 
 			const hash = hashSignedOpenIntent(signedOpenIntent, context.common.chainId, context.common.diamondAddress)
+			console.log("BBBBBBBBBBBBBB")
 
 			const signedFillIntent = signedFillIntentBuilder()
 				.quantity(signedOpenIntent.quantity)
@@ -66,6 +68,9 @@ export function shouldBehaveLikeInstantActionOpenFacet(): void {
 				.intentHash(hash)
 				.partyB(partyB1.address)
 				.build()
+
+			console.log("CCCCCCCCCCCCCCCCCCCCCCCC")
+
 
 			await expect(
 				context.instantActionOpenFacet

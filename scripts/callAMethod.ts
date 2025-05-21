@@ -5,10 +5,6 @@ async function main() {
 	let contract = await ethers.getContractAt("PartyBCloseFacet", symmioAddress)
 
 	try {
-		// console.log(await contract.lockOpenIntent(2))
-
-		// console.log(await contract.fillOpenIntent(2, "10000000000000000000", "1000000000000000000", 0))
-
 		console.log(await contract.fillCloseIntent(1, "10000000000000000000", "10000000000000000000"))
 	} catch (error: any) {
 		if (error.data) {
