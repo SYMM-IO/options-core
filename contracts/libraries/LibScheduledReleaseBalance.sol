@@ -349,27 +349,6 @@ library ScheduledReleaseBalanceOps {
 			entry.scheduled = 0;
 		}
 
-		// if (block.timestamp >= thisTransitionTimestamp) {
-		// 	// first bus arrived → transitioning → free
-
-		// 	self.isolatedBalance += entry.transitioning;
-
-		// 	if (block.timestamp < nextTransitionTimestamp) {
-		// 		// only first bus passed → scheduled → transitioning
-		// 		entry.transitioning = entry.scheduled;
-		// 		entry.scheduled = 0;
-		// 	} else {
-		// 		// both buses passed
-		// 		entry.transitioning = 0;
-		// 	}
-		// }
-
-		// if (block.timestamp >= nextTransitionTimestamp) {
-		// 	// second bus arrived → everything free
-		// 	self.isolatedBalance += entry.scheduled;
-
-		// }
-
 		// align timestamp to current interval start
 		entry.lastTransitionTimestamp = (block.timestamp / entry.releaseInterval) * entry.releaseInterval;
 
