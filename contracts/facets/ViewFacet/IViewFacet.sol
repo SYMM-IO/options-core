@@ -78,7 +78,7 @@ interface IViewFacet {
 
 	function openIntentsLength(address user) external view returns (uint256);
 
-	function activeOpenIntentIdsOf(address partyA, uint256 start, uint256 size) external view returns (uint256[] memory);
+	function getActiveOpenIntentIdsOf(address partyA, uint256 start, uint256 size) external view returns (uint256[] memory);
 
 	function getActiveOpenIntentsOf(address partyA, uint256 start, uint256 size) external view returns (OpenIntent[] memory);
 
@@ -127,6 +127,14 @@ interface IViewFacet {
 	function closeIntentIdsOf(uint256 tradeId, uint256 start, uint256 size) external view returns (uint256[] memory);
 
 	function getCloseIntentsOf(uint256 tradeId, uint256 start, uint256 size) external view returns (CloseIntent[] memory);
+
+	function affiliateFees(address affiliate, uint256 symbolId) external view returns (uint256);
+
+	function getTradingFee(uint256 openIntentId) external view returns (uint256);
+
+	function getAffiliateFee(uint256 openIntentId) external view returns (uint256);
+
+	function getPremium(uint256 openIntentId) external view returns (uint256);
 
 	//App
 	function whiteListedCollateral(address collateral) external view returns (bool);
@@ -196,8 +204,6 @@ interface IViewFacet {
 	function liquidationDebtsToPartyAs(address partyB, address collateral, address partyA) external view returns (uint256);
 
 	function involvedPartyAsCountInLiquidation(address partyB, address collateral) external view returns (uint256);
-
-	function affiliateFees(address affiliate, uint256 symbolId) external view returns (uint256);
 
 	//Role
 	function hasRole(address user, bytes32 role) external view returns (bool);

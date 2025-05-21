@@ -79,6 +79,8 @@ library PartyAOpenFacetImpl {
 		} else if (tradeAgreements.marginType == MarginType.ISOLATED && partyBsWhiteList.length == 1) {
 			partyBsWhiteList[0].requireSolvent(address(0), symbol.collateral, tradeAgreements.marginType);
 		}
+		//TODO about the solvency of more then one partyB
+		if (tradeAgreements.quantity == 0) revert PartyAOpenFacetErrors.InvalidOpenQuantity();
 
 		intentId = ++OpenIntentStorage.layout().lastOpenIntentId;
 		OpenIntent memory intent = OpenIntent({

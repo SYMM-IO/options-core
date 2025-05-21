@@ -1,3 +1,4 @@
 module.exports = {
-	skipFiles: ["dev"],
+	skipFiles: ["mocks", "libraries/mocks"],
+	configureYulOptimizer: true,
 };

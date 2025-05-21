@@ -1,33 +1,17 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers"
 import { RunContext } from "../run-context"
 import { runTx } from "../../utils/tx"
-import { ethers } from "hardhat"
-import { BigNumberish } from "ethers"
-import { setBalance } from "@nomicfoundation/hardhat-network-helpers"
 import { OpenIntent, openIntentRequestBuilder } from "./builders/send-open-intent.builder"
+import { PartyEntity } from "./partyEntitiy"
+import { BigNumberish } from "ethers"
 
-export class PartyA {
-	constructor(private context: RunContext, private signer: SignerWithAddress) {}
-
-	public async setBalances(collateralAmount?: BigNumberish, depositAmount?: BigNumberish) {
-		const userAddress = this.signer.getAddress()
-
-		await runTx(this.context.collateral.connect(this.signer).approve(this.context.diamond, ethers.MaxUint256))
-
-		if (collateralAmount) await runTx(this.context.collateral.connect(this.signer).mint(userAddress, collateralAmount))
-		if (depositAmount) await runTx(this.context.accountFacet.connect(this.signer).deposit(await this.context.collateral.getAddress(), depositAmount))
+export class PartyA extends PartyEntity {
+	constructor(context: RunContext, signer: SignerWithAddress) {
+		super(context, signer)
 	}
 
-	public async setNativeBalance(amount: bigint) {
-		await setBalance(this.signer.address, amount)
-	}
-
-	public getSigner() {
-		return this.signer
-	}
-
-	public async sendOpenIntent(request: OpenIntent = openIntentRequestBuilder().build()) {
-		await runTx(
+	public async sendOpenIntent(request: OpenIntent = openIntentRequestBuilder().build()): Promise<any> {
+		return await runTx(
 			this.context.partyAOpenFacet
 				.connect(this.signer)
 				.sendOpenIntent(
@@ -50,6 +34,14 @@ export class PartyA {
 	}
 
 	public async sendCancelOpenIntent(ids: string[]) {
+		await runTx(this.context.partyAOpenFacet.connect(this.signer).cancelOpenIntent(ids))
+	}
+
+	public async sendCloseIntent(tradeId: BigNumberish, price: BigNumberish, quantity: BigNumberish, deadline: BigNumberish) {
+		await runTx(this.context.partyACloseFacet.connect(this.signer).sendCloseIntent(tradeId, price, quantity, deadline))
+	}
+
+	public async sendCancelCloseIntent(ids: string[]) {
 		await runTx(this.context.partyACloseFacet.connect(this.signer).cancelCloseIntent(ids))
 	}
 
@@ -59,5 +51,9 @@ export class PartyA {
 
 	public async deactivateInstantActionMode() {
 		await runTx(this.context.accountFacet.connect(this.signer).deactivateInstantActionMode())
+	}
+
+	public async forceCancelOpenIntent(id: string) {
+		await runTx(this.context.forceActionsFacet.connect(this.signer).forceCancelOpenIntent(id))
 	}
 }

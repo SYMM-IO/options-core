@@ -3,18 +3,21 @@ import { ethers } from "hardhat"
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers"
 import {
 	AccountFacet,
+	ClearingHouseFacet,
+	CloseIntentOpsMock,
 	ControlFacet,
 	DiamondCutFacet,
 	DiamondLoupeFacet,
 	FakeOracle,
 	FakeStablecoin,
 	ForceActionsFacet,
+	InstantActionsCloseFacet,
+	InstantActionsOpenFacet,
 	PartyACloseFacet,
-	PartyAFacet,
 	PartyAOpenFacet,
 	PartyBCloseFacet,
-	PartyBFacet,
 	PartyBOpenFacet,
+	SignatureVerifier,
 	TradeSettlementFacet,
 	ViewFacet,
 } from "../types"
@@ -31,6 +34,10 @@ export class RunContext {
 	tradeSettlementFacet!: TradeSettlementFacet
 	controlFacet!: ControlFacet
 	forceActionsFacet!: ForceActionsFacet
+	instantActionOpenFacet!: InstantActionsOpenFacet
+	instantActionCloseFacet!: InstantActionsCloseFacet
+	clearingHouse!: ClearingHouseFacet
+
 	signers!: {
 		admin: SignerWithAddress
 		partyA1: SignerWithAddress
@@ -42,12 +49,26 @@ export class RunContext {
 		affiliate1: SignerWithAddress
 		others: SignerWithAddress[]
 	}
-	diamond!: string
 	collateral!: FakeStablecoin
+	collateralNL!: FakeStablecoin
 	oracle!: FakeOracle
+	mocks!: {
+		libCloseIntentMock: CloseIntentOpsMock
+	}
+	signatureVerifier!: SignatureVerifier
+	common!: {
+		chainId: number
+		diamondAddress: string
+	}
 }
 
-export async function createRunContext(diamond: string, collateral: string, oracle: string): Promise<RunContext> {
+export async function createRunContext(
+	diamond: string,
+	collateral: string[],
+	oracle: string,
+	signatureVerifier: string,
+	mocks?: Map<string, string>,
+): Promise<RunContext> {
 	let context = new RunContext()
 
 	const signers: SignerWithAddress[] = await ethers.getSigners()
@@ -63,8 +84,9 @@ export async function createRunContext(diamond: string, collateral: string, orac
 		others: [signers[8], signers[9]],
 	}
 
-	context.diamond = diamond
-	context.collateral = await ethers.getContractAt("FakeStablecoin", collateral)
+	context.collateral = await ethers.getContractAt("FakeStablecoin", collateral[0])
+	context.collateralNL = await ethers.getContractAt("FakeStablecoin", collateral[1])
+
 	context.oracle = await ethers.getContractAt("FakeOracle", oracle)
 	context.accountFacet = await ethers.getContractAt("AccountFacet", diamond)
 	context.diamondCutFacet = await ethers.getContractAt("DiamondCutFacet", diamond)
@@ -72,6 +94,10 @@ export async function createRunContext(diamond: string, collateral: string, orac
 	context.viewFacet = await ethers.getContractAt("ViewFacet", diamond)
 	context.controlFacet = await ethers.getContractAt("ControlFacet", diamond)
 	context.forceActionsFacet = await ethers.getContractAt("ForceActionsFacet", diamond)
+	context.instantActionCloseFacet = await ethers.getContractAt("InstantActionsCloseFacet", diamond)
+	context.instantActionOpenFacet = await ethers.getContractAt("InstantActionsOpenFacet", diamond)
+	context.signatureVerifier = await ethers.getContractAt("SignatureVerifier", signatureVerifier)
+	context.clearingHouse = await ethers.getContractAt("ClearingHouseFacet", diamond)
 
 	context.partyAOpenFacet = await ethers.getContractAt("PartyAOpenFacet", diamond)
 	context.partyACloseFacet = await ethers.getContractAt("PartyACloseFacet", diamond)
@@ -80,6 +106,17 @@ export async function createRunContext(diamond: string, collateral: string, orac
 	context.partyBOpenFacet = await ethers.getContractAt("PartyBOpenFacet", diamond)
 
 	context.tradeSettlementFacet = await ethers.getContractAt("TradeSettlementFacet", diamond)
+
+	if (mocks) {
+		context.mocks = {
+			libCloseIntentMock: await ethers.getContractAt("CloseIntentOpsMock", mocks.get("CloseIntentOpsMock")!),
+		}
+	}
+
+	context.common = {
+		chainId: Number((await ethers.provider.getNetwork()).chainId),
+		diamondAddress: diamond,
+	}
 
 	return context
 }

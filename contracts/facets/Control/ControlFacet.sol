@@ -111,10 +111,16 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		emit AffiliateStatusUpdated(_affiliate, _status);
 	}
 
-	function setAffiliateFeeCollector(address _affiliate, address _collector) external onlyRole(LibAccessibility.SETTER_ROLE) {
+	function setAffiliateFeesCollector(address _affiliate, address _collector) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		if (_collector == address(0)) revert CommonErrors.ZeroAddress("collector");
 		FeeManagementStorage.layout().affiliateFeeCollector[_affiliate] = _collector;
-		emit AffiliateFeeCollectorUpdated(_affiliate, _collector);
+		emit AffiliateFeesCollectorUpdated(_affiliate, _collector);
+	}
+
+	function setAffiliateFees(address _affiliate, uint256 _symbolId, uint256 fee) external onlyRole(LibAccessibility.SETTER_ROLE) {
+		if (_affiliate == address(0)) revert CommonErrors.ZeroAddress("collector");
+		FeeManagementStorage.layout().affiliateFees[_affiliate][_symbolId] = fee;
+		emit AffiliateFeesUpdated(_affiliate, _symbolId, fee);
 	}
 
 	function setPartyBConfig(address _partyB, PartyBConfig calldata _config) external onlyRole(LibAccessibility.SETTER_ROLE) {
@@ -188,6 +194,16 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	function unpauseLiquidating() external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
 		StateControlStorage.layout().liquidatingPaused = false;
 		emit LiquidatingUnpaused();
+	}
+
+	function unpauseThirdPartyActions() external onlyRole(LibAccessibility.PAUSER_ROLE) {
+		StateControlStorage.layout().thirdPartyActionsPaused = false;
+		emit ThirdPartyActionsPaused();
+	}
+
+	function pauseThirdPartyActions() external onlyRole(LibAccessibility.PAUSER_ROLE) {
+		StateControlStorage.layout().thirdPartyActionsPaused = true;
+		emit ThirdPartyActionsPaused();
 	}
 
 	function activeEmergencyMode() external onlyRole(LibAccessibility.DEFAULT_ADMIN_ROLE) {
@@ -280,7 +296,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		s.lastSymbolId++;
 		s.symbols[s.lastSymbolId] = Symbol({
 			symbolId: s.lastSymbolId,
-			isValid: false,
+			isValid: true,
 			name: _name,
 			optionType: _optionType,
 			oracleId: _oracleId,
@@ -295,18 +311,16 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	function addSymbols(Symbol[] memory symbols) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		for (uint8 i = 0; i < symbols.length; i++) {
 			Symbol memory s = symbols[i];
-			addSymbol(s.name, s.optionType, s.oracleId, s.collateral, s.isStableCoin, s.tradingFee, s.symbolType);
+			addSymbol(s.name, s.optionType, s.oracleId, s.collateral, s.tradingFee, s.symbolType);
 		}
 	}
 
-	function setSymbolValidationState(uint256 _symbolId, bool _isValid) external {
-		SymbolStorage.Layout storage symbolLayout = SymbolStorage.layout();
-		if (_symbolId == 0 || _symbolId > symbolLayout.lastSymbolId) {
-			revert ControlFacetErrors.InvalidSymbol(_symbolId);
-		}
+	function setSymbolState(uint256 _symbolId, bool _status) external onlyRole(LibAccessibility.SETTER_ROLE) {
+		SymbolStorage.Layout storage s = SymbolStorage.layout();
+		if (s.lastSymbolId < _symbolId) revert ControlFacetErrors.InvalidSymbol(_symbolId);
 
-		emit SetSymbolValidationState(_symbolId, symbolLayout.symbols[_symbolId].isValid, _isValid);
-		symbolLayout.symbols[_symbolId].isValid = _isValid;
+		s.symbols[_symbolId].isValid = _status;
+		emit SymbolStateUpdated(_symbolId, _status);
 	}
 
 	function setPriceOracleAddress(address _oracle) external onlyRole(LibAccessibility.SETTER_ROLE) {
@@ -317,5 +331,10 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	function setManualSync(address user, bool isManual) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		AccountStorage.layout().manualSync[user] = isManual;
 		emit SetManualSync(user, isManual);
+	}
+
+	function setSignatureVerifier(address _verifier) external onlyRole(LibAccessibility.SETTER_ROLE) {
+		AppStorage.layout().signatureVerifier = _verifier;
+		emit SignatureVerifierUpdated(_verifier);
 	}
 }

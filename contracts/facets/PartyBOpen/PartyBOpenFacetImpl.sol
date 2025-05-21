@@ -39,8 +39,8 @@ library PartyBOpenFacetImpl {
 		OpenIntent storage intent = intentLayout.openIntents[intentId];
 		Symbol storage symbol = SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId];
 
+		if (StateControlStorage.layout().suspendedAddresses[intent.partyA]) revert CommonErrors.SuspendedAddress(intent.partyA);
 		if (StateControlStorage.layout().suspendedAddresses[sender]) revert CommonErrors.SuspendedAddress(sender);
-
 		if (StateControlStorage.layout().partyBEmergencyStatus[sender]) revert PartyBOpenFacetErrors.PartyBInEmergencyMode(sender);
 
 		if (StateControlStorage.layout().emergencyMode) revert PartyBOpenFacetErrors.SystemInEmergencyMode();

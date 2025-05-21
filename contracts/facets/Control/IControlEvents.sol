@@ -20,6 +20,7 @@ interface IControlEvents {
 	event ForceCancelCloseIntentTimeoutUpdated(uint256 timeout);
 	event DefaultFeeCollectorUpdated(address indexed collector);
 	event GlobalPaused();
+	event ThirdPartyActionsPaused();
 	event DepositPaused();
 	event WithdrawPaused();
 	event PartyBActionsPaused();
@@ -36,7 +37,8 @@ interface IControlEvents {
 	event PartyBEmergencyStatusActivated(address indexed partyB);
 	event PartyBEmergencyStatusDeactivated(address indexed partyB);
 	event AffiliateStatusUpdated(address indexed affiliate, bool status);
-	event AffiliateFeeCollectorUpdated(address indexed affiliate, address indexed feeCollector);
+	event AffiliateFeesCollectorUpdated(address indexed affiliate, address indexed feeCollector);
+	event AffiliateFeesUpdated(address indexed affiliate, uint256 indexed symbolId, uint256 fee);
 	event RoleUpdated(address indexed account, bytes32 indexed role, bool granted);
 	event PartyBConfigUpdated(address indexed partyB, PartyBConfig config);
 	event SettlementPriceSigValidTimeUpdated(uint256 time);
@@ -60,11 +62,11 @@ interface IControlEvents {
 		OptionType optionType,
 		uint256 oracleId,
 		address collateral,
-		bool isStableCoin,
 		uint256 tradingFee,
 		uint256 symbolType
 	);
+	event SymbolStateUpdated(uint256 indexed symbolId, bool status);
 	event PriceOracleAddressUpdated(address indexed oracle);
 	event SetManualSync(address user, bool isManual);
-	event SetSymbolValidationState(uint256 indexed symbolId, bool oldState, bool state);
+	event SignatureVerifierUpdated(address indexed verifier);
 }

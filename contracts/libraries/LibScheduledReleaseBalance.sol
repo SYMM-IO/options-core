@@ -118,6 +118,7 @@ library ScheduledReleaseBalanceOps {
 
 		// zero interval ⇒ treat as instant add
 		if (counterParty.getReleaseInterval() == 0) {
+			// global Interval or per user set on account
 			instantIsolatedAdd(self, value, reason);
 			return;
 		}
@@ -294,10 +295,11 @@ library ScheduledReleaseBalanceOps {
 	function _sync(ScheduledReleaseBalance storage self, address counterParty, bool removeCounterPartyOnEmpty) internal {
 		// insolvent counter‑party ⇒ keep everything locked
 		if (!counterParty.isSolvent(self.user, self.collateral, MarginType.ISOLATED)) {
+			// OK as no effect when counter party is A in ISOLATED Margin type
 			return;
 		}
 
-		uint256 updatedReleaseInterval = counterParty.getReleaseInterval();
+		uint256 updatedReleaseInterval = counterParty.getReleaseInterval(); // default account interval or user specific interval if available
 
 		ScheduledReleaseEntry storage entry = self.counterPartySchedules[counterParty];
 
@@ -326,34 +328,24 @@ library ScheduledReleaseBalanceOps {
 		// Sanity check
 		if (block.timestamp < entry.lastTransitionTimestamp) revert InvalidSyncTimestamp(block.timestamp, entry.lastTransitionTimestamp);
 
-		uint256 intervals = (block.timestamp - entry.lastTransitionTimestamp) / entry.releaseInterval;
+		uint256 intervals = (block.timestamp - entry.lastTransitionTimestamp) / entry.releaseInterval; // it is zero on the same block as calculations are base on integers
 		if (intervals == 0) return;
 
 		// ---------------------------------------------------------------------
 		// (3) Move buckets forward if we have passed transitions
 		// ---------------------------------------------------------------------
 		uint256 thisTransitionTimestamp = entry.lastTransitionTimestamp + entry.releaseInterval;
-		uint256 nextTransitionTimestamp = thisTransitionTimestamp + entry.releaseInterval; // +1 interval
+		// uint256 nextTransitionTimestamp = thisTransitionTimestamp + entry.releaseInterval; // +1 interval
 
-		if (block.timestamp >= thisTransitionTimestamp) {
-			// first bus arrived → transitioning → free
-
-			self.isolatedBalance += entry.transitioning;
-
-			if (block.timestamp < nextTransitionTimestamp) {
-				// only first bus passed → scheduled → transitioning
-				entry.transitioning = entry.scheduled;
-				entry.scheduled = 0;
-			} else {
-				// both buses passed
-				entry.transitioning = 0;
-			}
-		}
-
-		if (block.timestamp >= nextTransitionTimestamp) {
+		if (block.timestamp >= thisTransitionTimestamp * 2) {
 			// second bus arrived → everything free
-			self.isolatedBalance += entry.scheduled;
-
+			self.isolatedBalance += (entry.scheduled + entry.transitioning);
+			entry.scheduled = 0;
+			entry.transitioning = 0;
+		} else if (block.timestamp >= thisTransitionTimestamp) {
+			// first bus passed → scheduled → transitioning
+			self.isolatedBalance += entry.transitioning;
+			entry.transitioning = entry.scheduled;
 			entry.scheduled = 0;
 		}
 
@@ -401,7 +393,7 @@ library ScheduledReleaseBalanceOps {
 	function removeCounterParty(ScheduledReleaseBalance storage self, address counterParty) internal {
 		if (counterParty == address(0)) revert CommonErrors.ZeroAddress("counterParty");
 
-		uint256 balance = inTransitionBalance(self, counterParty);
+		uint256 balance = inTransitionBalance(self, counterParty); // if any window open
 		if (balance != 0) revert NonZeroBalanceCounterParty(counterParty, balance);
 
 		uint256 idxPlusOne = self.counterPartyIndexes[counterParty];

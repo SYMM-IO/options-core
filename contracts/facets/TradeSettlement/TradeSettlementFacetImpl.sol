@@ -91,7 +91,7 @@ library TradeSettlementFacetImpl {
 			if (trade.tradeAgreements.tradeSide == TradeSide.BUY) {
 				if (trade.tradeAgreements.marginType == MarginType.ISOLATED) {
 					accountLayout.balances[trade.partyB][symbol.collateral].instantIsolatedAdd(
-						(trade.getPremium() * trade.getOpenAmount()) / trade.tradeAgreements.quantity,
+						(trade.getPremium() * trade.getOpenAmount()) / trade.tradeAgreements.quantity, // TODO ::: refactor(complex calculation)
 						IncreaseBalanceReason.PREMIUM
 					);
 				} else {
