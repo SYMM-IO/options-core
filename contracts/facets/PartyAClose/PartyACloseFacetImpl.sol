@@ -92,7 +92,7 @@ library PartyACloseFacetImpl {
 		if (receiver == address(0)) revert CommonErrors.ZeroAddress("receiver");
 
 		if (AppStorage.layout().partyBConfigs[receiver].isActive) revert PartyACloseFacetErrors.ReceiverIsPartyB(receiver, trade.partyB);
-		
+
 		CommonErrors.requireStatus("TradeStatus", uint8(trade.status), uint8(TradeStatus.OPENED));
 
 		if (trade.tradeAgreements.marginType == MarginType.CROSS) {

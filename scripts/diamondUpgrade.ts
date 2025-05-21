@@ -1,16 +1,11 @@
-import {ethers} from "hardhat"
-
+import { ethers } from "hardhat"
 
 // Main function
 async function main() {
 	const diamondAddress = "0xF606cccF372683Cf7295726B20cf81552B5af6e1"
 	const [deployer] = await ethers.getSigners()
 
-	const diamondCutFacet = await ethers.getContractAt(
-		"DiamondCutFacet",
-		diamondAddress,
-		deployer
-	)
+	const diamondCutFacet = await ethers.getContractAt("DiamondCutFacet", diamondAddress, deployer)
 	// Prepare _init and _calldata (set to zero address and empty bytes for this example)
 	const _init = ethers.ZeroAddress // Updated for ethers v6
 	const _calldata = "0x"
@@ -23,7 +18,7 @@ async function main() {
 // Run the main function
 main()
 	.then(() => process.exit(0))
-	.catch((error) => {
+	.catch(error => {
 		console.error(error)
 		process.exit(1)
 	})
