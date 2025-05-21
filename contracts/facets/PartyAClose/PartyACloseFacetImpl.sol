@@ -29,7 +29,7 @@ library PartyACloseFacetImpl {
 	using LibTradeOps for Trade;
 	using LibParty for address;
 
-	function sendCloseIntent(address sender, uint256 tradeId, uint256 price, uint256 quantity, uint256 deadline) internal returns (uint256 intentId) {
+	function sendCloseIntent(address sender, uint256 tradeId, uint256 quantity, uint256 price, uint256 deadline) internal returns (uint256 intentId) {
 		TradeStorage.Layout storage tradeLayout = TradeStorage.layout();
 		Trade storage trade = tradeLayout.trades[tradeId];
 
