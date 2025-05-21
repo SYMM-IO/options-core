@@ -1,7 +1,23 @@
 import { ethers } from "hardhat"
 
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers"
-import { AccountFacet, ControlFacet, DiamondCutFacet, DiamondLoupeFacet, FakeOracle, FakeStablecoin, ForceActionsFacet, PartyACloseFacet, PartyAFacet, PartyAOpenFacet, PartyBCloseFacet, PartyBFacet, PartyBOpenFacet, TradeSettlementFacet, ViewFacet } from "../types"
+import {
+	AccountFacet,
+	ControlFacet,
+	DiamondCutFacet,
+	DiamondLoupeFacet,
+	FakeOracle,
+	FakeStablecoin,
+	ForceActionsFacet,
+	PartyACloseFacet,
+	PartyAFacet,
+	PartyAOpenFacet,
+	PartyBCloseFacet,
+	PartyBFacet,
+	PartyBOpenFacet,
+	TradeSettlementFacet,
+	ViewFacet,
+} from "../types"
 
 export class RunContext {
 	accountFacet!: AccountFacet
@@ -28,7 +44,7 @@ export class RunContext {
 	}
 	diamond!: string
 	collateral!: FakeStablecoin
-	oracle!:FakeOracle
+	oracle!: FakeOracle
 }
 
 export async function createRunContext(diamond: string, collateral: string, oracle: string): Promise<RunContext> {
@@ -42,8 +58,8 @@ export async function createRunContext(diamond: string, collateral: string, orac
 		feeCollector: signers[3],
 		partyB1: signers[4],
 		partyB2: signers[5],
-		oracle1:signers[6],
-		affiliate1:signers[7],
+		oracle1: signers[6],
+		affiliate1: signers[7],
 		others: [signers[8], signers[9]],
 	}
 

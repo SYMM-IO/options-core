@@ -1,5 +1,5 @@
-import fs, {writeFileSync} from "fs"
-import {dirname} from "path"
+import fs, { writeFileSync } from "fs"
+import { dirname } from "path"
 
 const BASE_PATH = "./tasks/data"
 
@@ -17,6 +17,6 @@ export function writeData(relativePath: string, data: object): void {
 
 export function createDirectory(path: string): void {
 	if (!fs.existsSync(path)) {
-		fs.mkdirSync(path, {recursive: true})
+		fs.mkdirSync(path, { recursive: true })
 	}
 }

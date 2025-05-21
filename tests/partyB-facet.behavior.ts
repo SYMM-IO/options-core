@@ -151,7 +151,9 @@ export function shouldBehaveLikePartyBFacet(): void {
 		})
 
 		it("Should failed when msgSender is not PartyB", async () => {
-			await expect(context.partyBFacet.connect(context.signers.others[0]).unlockOpenIntent(1)).to.revertedWith("Accessibility: Should be partyB of Intent")
+			await expect(context.partyBFacet.connect(context.signers.others[0]).unlockOpenIntent(1)).to.revertedWith(
+				"Accessibility: Should be partyB of Intent",
+			)
 		})
 
 		it("Should failed when intent status not LOCKED", async () => {
@@ -198,9 +200,7 @@ export function shouldBehaveLikePartyBFacet(): void {
 		})
 
 		it("Should failed when msgSender is not PartyB", async () => {
-			await expect(partyB2.fillOpenIntent(1, 100, 7)).to.revertedWith(
-				"Accessibility: Should be partyB of Intent",
-			)
+			await expect(partyB2.fillOpenIntent(1, 100, 7)).to.revertedWith("Accessibility: Should be partyB of Intent")
 		})
 
 		it("Should failed when partyA suspended", async () => {

@@ -1,5 +1,5 @@
-import {JsonRpcProvider} from "@ethersproject/providers"
-import {formatEther} from "@ethersproject/units"
+import { JsonRpcProvider } from "@ethersproject/providers"
+import { formatEther } from "@ethersproject/units"
 
 export async function generateGasReport(provider: JsonRpcProvider, totalGasUsed: bigint): Promise<void> {
 	const gasPrice = BigInt((await provider.getGasPrice()).toString())

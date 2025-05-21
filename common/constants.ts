@@ -8,7 +8,6 @@ export const FacetNames = [
 	"ClearingHouseFacet",
 	"InstantActionsOpenFacet",
 	"InstantActionsCloseFacet",
-	"InterdealerFacet",
 	"PartyAOpenFacet",
 	"PartyACloseFacet",
 	"PartyBCloseFacet",

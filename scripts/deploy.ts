@@ -1,5 +1,4 @@
-import {ethers, run} from "hardhat"
-
+import { ethers, run } from "hardhat"
 
 async function main() {
 	const facetName = "PartyBOpenFacet"

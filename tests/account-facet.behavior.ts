@@ -12,7 +12,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 	beforeEach(async function () {
 		context = await loadFixture(initializeTestFixture)
 		partyA1 = new PartyA(context, context.signers.partyA1)
-		await partyA1.setBalances("500","100")
+		await partyA1.setBalances("500", "100")
 	})
 
 	describe("Deposit", async function () {
@@ -328,7 +328,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 				isActive: true,
 				lossCoverage: 0,
 				oracleId: 0,
-				symbolType: 0
+				symbolType: 0,
 			})
 
 			await expect(context.accountFacet.connect(context.signers.partyB1).proposeToDeactivateInstantActionMode()).to.be.revertedWith(
@@ -361,7 +361,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 				isActive: true,
 				lossCoverage: 0,
 				oracleId: 0,
-				symbolType: 0
+				symbolType: 0,
 			})
 
 			await expect(context.accountFacet.connect(context.signers.partyB1).proposeToDeactivateInstantActionMode()).to.be.revertedWith(
@@ -409,7 +409,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 				isActive: true,
 				lossCoverage: 0,
 				oracleId: 0,
-				symbolType: 0
+				symbolType: 0,
 			})
 		})
 
@@ -447,7 +447,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 				isActive: true,
 				lossCoverage: 0,
 				oracleId: 0,
-				symbolType: 0
+				symbolType: 0,
 			})
 			await expect(context.accountFacet.connect(partyA1.getSigner()).bindToPartyB(context.signers.partyB2)).to.be.revertedWith(
 				"ControlFacet: Already bound",
@@ -467,7 +467,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 				isActive: true,
 				lossCoverage: 0,
 				oracleId: 0,
-				symbolType: 0
+				symbolType: 0,
 			})
 		})
 
@@ -522,7 +522,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 				isActive: true,
 				lossCoverage: 0,
 				oracleId: 0,
-				symbolType: 0
+				symbolType: 0,
 			})
 
 			await context.controlFacet.setUnbindingCooldown(120)
@@ -586,7 +586,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 				isActive: true,
 				lossCoverage: 0,
 				oracleId: 0,
-				symbolType: 0
+				symbolType: 0,
 			})
 
 			await context.controlFacet.setUnbindingCooldown(120)

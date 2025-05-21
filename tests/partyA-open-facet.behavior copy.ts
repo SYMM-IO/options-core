@@ -22,15 +22,14 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			isActive: true,
 			lossCoverage: 0,
 			oracleId: 0,
-			symbolType: 0
+			symbolType: 0,
 		})
 
 		await context.controlFacet.setAffiliateStatus(context.signers.others[0], true)
-     	partyA1 = new PartyA(context, context.signers.partyA1)
+		partyA1 = new PartyA(context, context.signers.partyA1)
 		partyA2 = new PartyA(context, context.signers.partyA2)
 		partyB1 = new PartyB(context, context.signers.partyB1)
 		partyB2 = new PartyB(context, context.signers.partyB2)
-
 
 		await partyB1.setBalances(e(100000), e(100000))
 		await partyA1.setBalances(e(100000), e(100000))
