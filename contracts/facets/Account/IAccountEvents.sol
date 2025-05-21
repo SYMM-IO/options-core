@@ -24,7 +24,6 @@ interface IAccountEvents {
 	event InitiateUnbindingFromPartyB(address indexed partyA, address indexed partyB, uint256 initiationTime);
 	event CompleteUnbindingFromPartyB(address indexed partyA, address indexed partyB);
 	event CancelUnbindingFromPartyB(address indexed partyA, address indexed partyB);
-	event SyncBalances(address collateral, address partyA, address[] partyBs, uint256 newBalance);
 	event Allocate(
 		address indexed user,
 		address indexed collateral,
