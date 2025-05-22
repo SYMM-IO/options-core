@@ -3,7 +3,6 @@
 ignition/deployments/chain-31337
 
 /node_modules
-package-lock.json
 .env
 coverage
 coverage.json
@@ -26,7 +25,6 @@ coverage.json
 typechain
 typechain-types
 
-yarn.lock
 .idea
 addresses.json
 /abi.json
@@ -35,7 +33,6 @@ tasks/data
 output.log
 serverLog.log
 detailedDebug.log
-pnpm-lock.yaml
 .openzeppelin
 
 docs
