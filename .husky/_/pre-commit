@@ -1,0 +1,6 @@
+#!/bin/sh
+. "$(dirname "$0")/husky.sh"
+
+
+npm run precommit
+npx lint-staged
