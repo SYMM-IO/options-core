@@ -39,11 +39,14 @@
 		"fs-extra": "^11.2.0",
 		"hardhat": "^2.24.0",
 		"hardhat-gas-reporter": "^1.0.8",
+		"husky": "^9.1.7",
 		"js-sha3": "^0.9.3",
+		"lint-staged": "^16.0.0",
 		"mocha": "^10.7.0",
 		"prettier-plugin-solidity": "^1.4.2",
 		"random-ext": "^2.8.0",
 		"rxjs": "^7.8.1",
+		"secretlint": "^9.3.2",
 		"shx": "^0.3.4",
 		"solidity-coverage": "^0.8.16",
 		"solidity-docgen": "^0.6.0-beta.36",
@@ -74,7 +77,6 @@
 		"coverage": "hardhat coverage --testfiles \"test/**/*.ts\" && yarn typechain",
 		"lint": "yarn lint:sol && yarn lint:ts",
 		"lint:sol": "solhint --config ./.solhint.json --max-warnings 0 \"contracts/**/*.sol\"",
-		"postinstall": "DOTENV_CONFIG_PATH=./.env yarn typechain",
 		"test": "hardhat test",
 		"typechain": "cross-env TS_NODE_TRANSPILE_ONLY=true hardhat typechain",
 		"format": "prettier --write .",
@@ -82,6 +84,13 @@
 		"precommit": "yarn format && yarn compile && yarn test"
 	},
 	"dependencies": {
+		"@secretlint/secretlint-rule-no-dotenv": "^9.3.2",
+		"@secretlint/secretlint-rule-preset-recommend": "^9.3.2",
+		"@secretlint/secretlint-rule-privatekey": "^9.3.2",
+		"@secretlint/secretlint-rule-secp256k1-privatekey": "^9.3.2",
 		"solhint": "^5.0.5"
+	},
+	"lint-staged": {
+		"*": "secretlint"
 	}
 }
