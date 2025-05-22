@@ -30,7 +30,7 @@
 		"@types/fs-extra": "^11.0.4",
 		"@types/mocha": "^10.0.7",
 		"@types/node": "^20.14.12",
-		"bignumber.js": "^9.1.2",
+		"bignumber.js": "^9.3.0",
 		"builder-pattern": "^2.2.0",
 		"chai": "^4.2.0",
 		"cross-env": "^7.0.3",
@@ -43,9 +43,9 @@
 		"js-sha3": "^0.9.3",
 		"lint-staged": "^16.0.0",
 		"mocha": "^10.7.0",
-		"prettier-plugin-solidity": "^1.4.2",
+		"prettier-plugin-solidity": "^2.0.0",
 		"random-ext": "^2.8.0",
-		"rxjs": "^7.8.1",
+		"rxjs": "^7.8.2",
 		"secretlint": "^9.3.2",
 		"shx": "^0.3.4",
 		"solidity-coverage": "^0.8.16",
@@ -88,7 +88,7 @@
 		"@secretlint/secretlint-rule-preset-recommend": "^9.3.2",
 		"@secretlint/secretlint-rule-privatekey": "^9.3.2",
 		"@secretlint/secretlint-rule-secp256k1-privatekey": "^9.3.2",
-		"solhint": "^5.0.5"
+		"solhint": "^5.1.0"
 	},
 	"lint-staged": {
 		"*": "secretlint"
