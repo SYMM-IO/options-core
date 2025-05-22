@@ -22,7 +22,7 @@ library LibOpenIntentOps {
 	error IntentNotExpired(uint256 intentId, uint256 currentTime, uint256 deadline);
 
 	function getTradingFee(OpenIntent memory self) internal pure returns (uint256) {
-		return (self.tradeAgreements.quantity * self.price * self.tradingFee.platformFee) / (self.tradingFee.tokenPrice * 1e18);
+		return (self.tradeAgreements.quantity * self.price * self.tradingFee.platformFee) / (1e36);
 	}
 
 	function getAffiliateFee(OpenIntent memory self) internal pure returns (uint256) {
