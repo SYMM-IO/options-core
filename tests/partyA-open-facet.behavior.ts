@@ -326,7 +326,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			expect(intent.tradeAgreements.symbolId).to.be.equal(1)
 			expect(intent.price).to.be.equal(7)
 			expect(intent.tradeAgreements.quantity).to.be.equal(e(100))
-			expect(intent.tradeAgreements.strikePrice).to.be.equal(0)
+			expect(intent.tradeAgreements.strikePrice).to.be.equal(1)
 			expect(intent.tradeAgreements.expirationTimestamp).to.be.equal((latestBlock?.timestamp ?? 0) + 120)
 			expect(intent.tradeAgreements.exerciseFee.cap).to.be.equal(e(1))
 			expect(intent.tradeAgreements.exerciseFee.rate).to.be.equal(0)

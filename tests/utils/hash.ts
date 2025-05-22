@@ -95,6 +95,24 @@ export function hashSignedFillCloseIntentById(req: SignedFillIntentByIdStruct, c
 	)
 }
 
+export function hashSignedCancelOpenIntent(req: SignedSimpleActionIntentStruct, chainId: number, diamondAddress: string): string {
+	return keccak256(
+		new ethers.AbiCoder().encode(
+			["uint256", "address", "bytes32", "address", "uint256", "uint256", "uint256"],
+			[chainId, diamondAddress, PREFIX.CancelOpen, req.signer, req.intentId, req.deadline, req.salt],
+		),
+	)
+}
+
+export function hashSignedAcceptCancelOpenIntent(req: SignedSimpleActionIntentStruct, chainId: number, diamondAddress: string): string {
+	return keccak256(
+		new ethers.AbiCoder().encode(
+			["uint256", "address", "bytes32", "address", "uint256", "uint256", "uint256"],
+			[chainId, diamondAddress, PREFIX.AcceptCancelOpen, req.signer, req.intentId, req.deadline, req.salt],
+		),
+	)
+}
+
 export function hashSignedSimpleActionIntent(
 	req: SignedSimpleActionIntentStruct,
 	prefix: keyof typeof PREFIX,
