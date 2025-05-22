@@ -3,7 +3,7 @@
 ignition/deployments/chain-31337
 
 /node_modules
-/package-lock.json
+package-lock.json
 .env
 coverage
 coverage.json
