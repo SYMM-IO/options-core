@@ -52,7 +52,7 @@ export function shouldBehaveLikeInstantActionOpenFacet(): void {
 
 		it("Should reverts if partyB actions are paused", async function () {
 			await context.controlFacet.pausePartyBActions()
-			const blockTime = await getCurrentLatestBlockTime()
+			const blockTime = await getLatestBlockTime()
 
 			const signedOpenIntent = signedOpenIntentBuilder()
 				.affiliate(await context.signers.affiliate1.getAddress())
