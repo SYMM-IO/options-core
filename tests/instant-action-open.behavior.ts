@@ -14,7 +14,7 @@ import { e } from "../utils/e"
 import { openIntentRequestBuilder } from "./models/builders/send-open-intent.builder"
 import { MarginType } from "./option-enums"
 import { signedSimpleActionIntentBuilder } from "./models/builders/signed-simple-action-intent.builder"
-import { getCurrentLatestBlockTime } from "../utils/time"
+import { getLatestBlockTime } from "../utils/time"
 
 export function shouldBehaveLikeInstantActionOpenFacet(): void {
 	let context: RunContext
@@ -52,7 +52,7 @@ export function shouldBehaveLikeInstantActionOpenFacet(): void {
 
 		it("Should reverts if partyB actions are paused", async function () {
 			await context.controlFacet.pausePartyBActions()
-			const blockTime = await getCurrentLatestBlockTime()
+			const blockTime = await getLatestBlockTime()
 
 			const signedOpenIntent = signedOpenIntentBuilder()
 				.affiliate(await context.signers.affiliate1.getAddress())
@@ -85,7 +85,7 @@ export function shouldBehaveLikeInstantActionOpenFacet(): void {
 
 		it("Should reverts if third-party actions are paused", async function () {
 			await context.controlFacet.pauseThirdPartyActions()
-			const blockTime = await getCurrentLatestBlockTime()
+			const blockTime = await getLatestBlockTime()
 
 			const signedOpenIntent = signedOpenIntentBuilder()
 				.affiliate(await context.signers.affiliate1.getAddress())
@@ -117,7 +117,7 @@ export function shouldBehaveLikeInstantActionOpenFacet(): void {
 		})
 
 		it("Should reverts with invalid partyA signature", async function () {
-			const blockTime = await getCurrentLatestBlockTime()
+			const blockTime = await getLatestBlockTime()
 
 			const signedOpenIntent = signedOpenIntentBuilder()
 				.affiliate(await context.signers.affiliate1.getAddress())
@@ -150,7 +150,7 @@ export function shouldBehaveLikeInstantActionOpenFacet(): void {
 		})
 
 		it("Should reverts with invalid partyB signature", async function () {
-			const blockTime = await getCurrentLatestBlockTime()
+			const blockTime = await getLatestBlockTime()
 
 			const signedOpenIntent = signedOpenIntentBuilder()
 				.affiliate(await context.signers.affiliate1.getAddress())
@@ -183,7 +183,7 @@ export function shouldBehaveLikeInstantActionOpenFacet(): void {
 		})
 
 		it("executes successfully", async function () {
-			const blockTime = await getCurrentLatestBlockTime()
+			const blockTime = await getLatestBlockTime()
 
 			const signedOpenIntent = signedOpenIntentBuilder()
 				.affiliate(await context.signers.affiliate1.getAddress())
@@ -227,7 +227,7 @@ export function shouldBehaveLikeInstantActionOpenFacet(): void {
 		beforeEach(async () => {
 			await context.controlFacet.setMaxTradePerPartyA(3)
 
-			const blockTime = await getCurrentLatestBlockTime()
+			const blockTime = await getLatestBlockTime()
 			const sendOpenIntentReq = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB1.getSigner])
 				.affiliate(context.signers.affiliate1)
