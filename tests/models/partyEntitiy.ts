@@ -7,10 +7,7 @@ import { setBalance } from "@nomicfoundation/hardhat-network-helpers"
 import { FakeStablecoin } from "../../types"
 
 export class PartyEntity {
-	constructor(
-		protected context: RunContext,
-		protected signer: SignerWithAddress,
-	) {}
+	constructor(protected context: RunContext, protected signer: SignerWithAddress) {}
 
 	public async setBalances(_collateral?: FakeStablecoin, collateralAmountToMint?: BigNumberish, depositAmount?: BigNumberish) {
 		const userAddress = this.signer.getAddress()
