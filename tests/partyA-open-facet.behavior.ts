@@ -484,7 +484,6 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.quantity(e(1))
 				.price(700)
 				.marginType(MarginType.ISOLATED)
-
 				.build()
 
 			expect(await partyA1.sendOpenIntent(request)).to.be.not.reverted
@@ -493,9 +492,6 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 			let premium = ethers.formatUnits((intent.tradeAgreements.quantity * intent.price).toString(), 18)
 			const premiumFromView = await context.viewFacet.getPremium(1)
-			// let tradingFee = intent.tradingFee.platformFee * intent.tradeAgreements.quantity * intent.price / intent.tradingFee.tokenPrice
-			// let affiliateFee = intent.tradingFee.affiliateFee * intent.tradeAgreements.quantity * intent.price / intent.tradingFee.tokenPrice
-
 			// partyA pays the fees in so:
 			// we are in isolated margin
 			let isolatedLocketBalance2 = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateral.getAddress())
@@ -508,9 +504,6 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			console.log("isolatedLocketBalance before sending intent:", isolatedLocketBalance)
 			console.log("Calculated premium:", premium)
 			expect(isolatedLocketBalance2 - isolatedLocketBalance).to.be.equal(premiumFromView)
-			// expect(isolatedBalance - isolatedBalance2).to.be.equal(0)
-
-			// expect(isolatedBalance - isolatedBalance2).to.be.equal(premium)
 		})
 
 		it("should fail on Fee not paid accordingly when only one partyB whitelisted ", async function () {
@@ -530,30 +523,32 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.price(7)
 				.marginType(MarginType.ISOLATED)
 				.build()
-
-			expect(await partyA1.sendOpenIntent(request)).not.to.reverted
-
+			
+			await context.controlFacet.setAffiliateFees(context.signers.affiliate1,1, e(50))
+			await context.controlFacet.setSymbolTradingFee(1,e(100))
+					
+			expect(await partyA1.sendOpenIntent(request)).not.to.reverted			
 			const intent = await context.viewFacet.getOpenIntent(1)
-			let tradingFee = (intent.tradingFee.platformFee * intent.tradeAgreements.quantity * intent.price) / intent.tradingFee.tokenPrice
-			let affiliateFee = (intent.tradingFee.affiliateFee * intent.tradeAgreements.quantity * intent.price) / intent.tradingFee.tokenPrice
 			const premiumFromView = await context.viewFacet.getPremium(1)
 			const affiliateFeeFromView = await context.viewFacet.getAffiliateFee(1)
+			const tradingFeeFromView = await context.viewFacet.getTradingFee(1)
 
 			// partyA pays the fees in so:
 			// we are in isolated margin
 			let isolatedBalance2 = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress())
 
 			console.log("PartyA isolated balance:", isolatedBalance)
-			console.log("affiliateFee:", affiliateFee)
-			console.log("tradingFee:", tradingFee)
-			console.log("tradingFee + affiliateFee:", tradingFee + affiliateFee)
+			console.log("PartyA isolated balance after sending Intent:", isolatedBalance2)
+			console.log("affiliateFee:", affiliateFeeFromView)
+			console.log("tradingFee:", tradingFeeFromView)
+			console.log("tradingFee + affiliateFee:", tradingFeeFromView + affiliateFeeFromView)
 			console.log("Quantity: ", intent.tradeAgreements.quantity)
 			console.log("price: ", intent.price)
 
-			// expect(isolatedBalance - isolatedBalance2).to.be.equal(premiumFromView + affiliateFeeFromView)
-			//TODO ::: FEE & PREMIUM
+			expect(isolatedBalance - isolatedBalance2).to.be.equal(affiliateFeeFromView + tradingFeeFromView)
 		})
 
+		
 		it("should fail on Fee not paid accordingly when more than one partyB whitelisted ", async function () {
 			// take snapshot
 			let isolatedBalance = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress())
@@ -572,39 +567,31 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.marginType(MarginType.ISOLATED)
 				.build()
 
+			await context.controlFacet.setAffiliateFees(context.signers.affiliate1,1, e(50))
+			await context.controlFacet.setSymbolTradingFee(1,e(100))	
+
 			expect(await partyA1.sendOpenIntent(request)).not.to.reverted
-
 			const intent = await context.viewFacet.getOpenIntent(1)
-			let tradingFee = (intent.tradingFee.platformFee * intent.tradeAgreements.quantity * intent.price) / intent.tradingFee.tokenPrice
-			let affiliateFee = (intent.tradingFee.affiliateFee * intent.tradeAgreements.quantity * intent.price) / intent.tradingFee.tokenPrice
-
+	
 			// partyA pays the fees in so:
 			// we are in isolated margin
 			let isolatedBalance2 = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress())
 			const symbol: SymbolStruct = await context.viewFacet.getSymbol(intent.tradeAgreements.symbolId)
 			const feeTokenPrice = await context.oracle.getPrice(context.collateral)
-			const tradingFeeCalculation = BigNumber.from(symbol.tradingFee).mul(intent.tradeAgreements.quantity).mul(intent.price).div(feeTokenPrice)
 			const tradingFeeFromView = await context.viewFacet.getTradingFee(1)
 			const premiumFromView = await context.viewFacet.getPremium(1)
 			const affiliateFeeFromView = await context.viewFacet.getAffiliateFee(1)
 
 			console.log("PartyA isolated balance:", isolatedBalance)
-			console.log("affiliateFee:", affiliateFee)
-			console.log("tradingFee:", tradingFee)
-			console.log("tradingFee + affiliateFee:", tradingFee + affiliateFee)
-			console.log("Platform fee:", symbol.tradingFee)
+			console.log("PartyA isolated balance After sending Intent:", isolatedBalance2)
+			console.log("tradingFee + affiliateFee:", tradingFeeFromView + affiliateFeeFromView)
 			console.log("Fee Token Price:", feeTokenPrice)
-			console.log("Trading Fee Calculation:", tradingFeeCalculation)
 			console.log("Trading Fee From View:", tradingFeeFromView)
 			console.log("Affiliate Fee From View:", affiliateFeeFromView)
-			console.log("Premium Fee From View:", premiumFromView)
-
-			//expect(tradingFeeCalculation._hex).to.equal(tradingFee)
-			//expect(intent.tradingFee.platformFee).to.greaterThan(0)
-			//expect(intent.tradingFee.platformFee).to.equal(symbol.tradingFee)
-			//expect(isolatedBalance - isolatedBalance2).to.be.equal(tradingFeeFromView + affiliateFeeFromView)
-
-			//TODO ::: FEE & PREMIUM
+			console.log("Premium Fee From View:", premiumFromView)			
+			
+			expect(intent.tradingFee.platformFee).to.equal(symbol.tradingFee)
+			expect(isolatedBalance - isolatedBalance2).to.be.equal(tradingFeeFromView + affiliateFeeFromView)
 		})
 	})
 }

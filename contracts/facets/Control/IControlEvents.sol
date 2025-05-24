@@ -66,6 +66,7 @@ interface IControlEvents {
 		uint256 symbolType
 	);
 	event SymbolStateUpdated(uint256 indexed symbolId, bool status);
+	event SymbolTradingFeeUpdated(uint256 indexed _symbolId,uint256 _fee);
 	event PriceOracleAddressUpdated(address indexed oracle);
 	event SetManualSync(address user, bool isManual);
 	event SignatureVerifierUpdated(address indexed verifier);
