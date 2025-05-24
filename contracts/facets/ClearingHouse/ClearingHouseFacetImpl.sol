@@ -240,7 +240,41 @@ library ClearingHouseFacetImpl {
 		// detail.collectedCollateral += amount;
 	}
 
-	function confiscatePartyBWithdrawal(address /*partyB*/, uint256 /*withdrawId*/) internal {}
+	function confiscatePartyBWithdrawal(uint256 withdrawId) internal {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		Withdraw storage withdrawal = accountLayout.withdrawals[withdrawId];
+		CommonErrors.requireStatus("WithdrawStatus", uint8(withdrawal.status), uint8(WithdrawStatus.INITIATED));
+		withdrawal.status = WithdrawStatus.CANCELED;
+		accountLayout.balances[withdrawal.user][withdrawal.collateral].instantIsolatedAdd(withdrawal.amount, IncreaseBalanceReason.DEPOSIT);
+	}
 
-	function distributeCollateral(address /*partyB*/, address /*collateral*/, address[] memory /*partyAs*/) internal {}
+	function distributeCollateral(
+		address partyB,
+		address collateral,
+		MarginType marginType,
+		address[] memory partyAs,
+		uint256[] memory amounts
+	) internal {
+		if (partyAs.length != amounts.length) revert ClearingHouseFacetErrors.MismatchedArrays(partyAs.length, amounts.length);
+
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		ScheduledReleaseBalance storage balanceB = accountLayout.balances[partyB][collateral];
+
+		uint256 totalAmount = 0;
+		for (uint256 i = 0; i < partyAs.length; i++) {
+			address partyA = partyAs[i];
+			uint256 amount = amounts[i];
+			totalAmount += amount;
+
+			// Subtract from partyB's balance
+			balanceB.subForCounterParty(partyA, amount, marginType, DecreaseBalanceReason.LIQUIDATION);
+
+			// Add to partyA's balance
+			accountLayout.balances[partyA][collateral].scheduledAdd(partyB, amount, marginType, IncreaseBalanceReason.LIQUIDATION);
+		}
+
+		if (balanceB.counterPartyBalance(partyB, marginType) < int256(totalAmount)) {
+			revert CommonErrors.InsufficientIntBalance(partyB, collateral, totalAmount, balanceB.counterPartyBalance(partyB, marginType));
+		}
+	}
 }

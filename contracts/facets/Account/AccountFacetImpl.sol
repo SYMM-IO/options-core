@@ -441,8 +441,8 @@ library AccountFacetImpl {
 				debt = -partyBAvailableBalance;
 			} else {
 				//check with loss coverage
-				int256 collatearlMustHave = (-upnlSig.counterPartyUpnl * int256(partyBConfig.lossCoverage)) / int256(upnlSig.collateralPrice);
-				debt = collatearlMustHave - partyBCrossEntry.balance;
+				int256 collateralMustHave = (-upnlSig.counterPartyUpnl * int256(partyBConfig.lossCoverage)) / int256(upnlSig.collateralPrice);
+				debt = collateralMustHave - partyBCrossEntry.balance;
 			}
 			if (partyAReadyToDeallocate - amount < (-debt))
 				revert AccountFacetErrors.RemainingAmountMoreThanCounterPartyDebt(msg.sender, counterParty, partyAReadyToDeallocate, amount, debt);
@@ -471,8 +471,8 @@ library AccountFacetImpl {
 				revert AccountFacetErrors.NotEnoughBalance(msg.sender, counterParty, partyBReadyToDeallocate, amount);
 		} else {
 			// partyB solvent with loss coverage
-			int256 collatearlMustHave = (-upnlSig.partyUpnl * int256(partyBConfig.lossCoverage)) / int256(upnlSig.collateralPrice);
-			if (partyBCrossEntry.balance - amount < collatearlMustHave) revert AccountFacetErrors.PartyShouldBeLiquidated(msg.sender);
+			int256 collateralMustHave = (-upnlSig.partyUpnl * int256(partyBConfig.lossCoverage)) / int256(upnlSig.collateralPrice);
+			if (partyBCrossEntry.balance - amount < collateralMustHave) revert AccountFacetErrors.PartyShouldBeLiquidated(msg.sender);
 		}
 	}
 }

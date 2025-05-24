@@ -14,6 +14,8 @@ import { Accessibility } from "../../utils/Accessibility.sol";
 import { IClearingHouseFacet } from "./IClearingHouseFacet.sol";
 import { ClearingHouseFacetImpl } from "./ClearingHouseFacetImpl.sol";
 
+import { MarginType } from "../../types/BaseTypes.sol";
+
 contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 	/**
 	 * @notice Flags Party B to be liquidated.
@@ -73,28 +75,24 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 		emit ConfiscatePartyA(liquidationId, amount);
 	}
 
-	function confiscatePartyBWithdrawal(
-		address partyB,
-		uint256 withdrawId
-	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-		ClearingHouseFacetImpl.confiscatePartyBWithdrawal(partyB, withdrawId);
-		emit ConfiscatePartyBWithdrawal(partyB, withdrawId);
+	function confiscatePartyBWithdrawal(uint256 withdrawId) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
+		ClearingHouseFacetImpl.confiscatePartyBWithdrawal(withdrawId);
+		emit ConfiscatePartyBWithdrawal(withdrawId);
 	}
 
 	function distributeCollateral(
 		address partyB,
 		address collateral,
+		MarginType marginType,
 		address[] memory partyAs,
 		uint256[] memory amounts
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-		ClearingHouseFacetImpl.distributeCollateral(partyB, collateral, partyAs);
+		ClearingHouseFacetImpl.distributeCollateral(partyB, collateral,marginType, partyAs, amounts);
 		emit DistributeCollateral(msg.sender, partyB, collateral, partyAs, amounts);
 		// if (isLiquidationFinished) {
 		// 	emit FullyLiquidated(partyB, liquidationId);
 		// }
 	}
-
-	// function unfreezePartyAs(address partyB, address collateral) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {}
 
 	function flagCrossPartyBLiquidation(
 		address partyB,

@@ -5,6 +5,7 @@
 pragma solidity >=0.8.19;
 
 import { IClearingHouseEvents } from "./IClearingHouseEvents.sol";
+import { MarginType } from "../../types/BaseTypes.sol";
 
 interface IClearingHouseFacet is IClearingHouseEvents {
 	// Actions needed for partyB in isolated mode
@@ -16,11 +17,9 @@ interface IClearingHouseFacet is IClearingHouseEvents {
 
 	function confiscatePartyA(uint256 liquidationId, uint256 amount) external;
 
-	function confiscatePartyBWithdrawal(address partyB, uint256 withdrawId) external;
+	function confiscatePartyBWithdrawal(uint256 withdrawId) external;
 
-	// function unfreezePartyAs(address partyB, address collateral) external;
-
-	function distributeCollateral(address partyB, address collateral, address[] memory partyAs, uint256[] memory amounts) external;
+	function distributeCollateral(address partyB, address collateral, MarginType marginType, address[] memory partyAs, uint256[] memory amounts) external;
 
 	// Actions needed for partyB in cross
 	function flagCrossPartyBLiquidation(address partyB, address partyA, address collateral) external;
