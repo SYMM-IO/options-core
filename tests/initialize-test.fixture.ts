@@ -50,7 +50,7 @@ export async function initializeTestFixture(): Promise<RunContext> {
 	await context.controlFacet.setBalanceLimitPerUser(context.collateralNL, e(1000000))
 	await context.controlFacet.setDefaultFeeCollector(context.signers.feeCollector)
 	await context.controlFacet.setMaxCloseOrdersLength(1)
-	// await context.controlFacet.setAffiliateFeeCollector(context.signers.affiliate1)
+	await context.controlFacet.setAffiliateFeesCollector(context.signers.affiliate1, context.signers.feeCollector)
 
 	await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
 		isActive: true,
@@ -67,6 +67,7 @@ export async function initializeTestFixture(): Promise<RunContext> {
 	})
 
 	await context.controlFacet.setAffiliateStatus(context.signers.affiliate1, true)
+	await context.controlFacet.setAffiliateFees(context.signers.affiliate1, 1, 500)
 
 	await context.controlFacet.addOracle("test oracle", context.signers.oracle1)
 	await context.controlFacet.setPriceOracleAddress(context.oracle)

@@ -451,7 +451,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 
 		it("Should failed when msgSender is not PartyB", async () => {
-			partyA1.sendCancelOpenIntent(["1"])
+			await partyA1.sendCancelOpenIntent(["1"])
 			await expect(partyB2.acceptCancelOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "UnauthorizedSender")
 		})
 
