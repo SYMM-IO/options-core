@@ -1,6 +1,7 @@
 import { Builder } from "builder-pattern"
-import { AddressLike, BigNumberish, BytesLike, encodeBytes32String } from "ethers"
+import { AddressLike, BigNumberish, BytesLike, encodeBytes32String, ZeroAddress } from "ethers"
 import { ExerciseFeeStruct } from "../../../types/contracts/facets/InstantActionsOpen/IInstantActionsOpenFacet"
+import { e } from "../../../utils/e"
 
 export interface OpenIntent {
 	partyBsWhiteList: AddressLike[]
@@ -20,14 +21,14 @@ export interface OpenIntent {
 }
 
 const openIntentRequest: OpenIntent = {
-	partyBsWhiteList: [""],
-	symbolId: 0,
-	price: 0,
-	quantity: 0,
-	strikePrice: 0,
+	partyBsWhiteList: [ZeroAddress],
+	symbolId: 1,
+	price: 1,
+	quantity: e(1),
+	strikePrice: 1,
 	expirationTimestamp: 0,
 	exerciseFee: {
-		cap: 0,
+		cap: e(1),
 		rate: 0,
 	},
 	deadline: 0,
@@ -35,8 +36,8 @@ const openIntentRequest: OpenIntent = {
 	mm: 0,
 	tradeSide: 0,
 	feeToken: "",
-	affiliate: "",
-	userData: encodeBytes32String("x"),
+	affiliate: ZeroAddress,
+	userData: encodeBytes32String("0"),
 }
 
 export const openIntentRequestBuilder = () => Builder(openIntentRequest)

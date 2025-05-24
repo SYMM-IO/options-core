@@ -26,7 +26,7 @@ library LibOpenIntentOps {
 	}
 
 	function getAffiliateFee(OpenIntent memory self) internal pure returns (uint256) {
-		return (self.tradeAgreements.quantity * self.price * self.tradingFee.affiliateFee) / (self.tradingFee.tokenPrice * 1e18);
+		return (self.tradeAgreements.quantity * self.price * self.tradingFee.affiliateFee) / (1e36);
 	}
 
 	function getPremium(OpenIntent memory self) internal pure returns (uint256) {
