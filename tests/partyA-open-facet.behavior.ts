@@ -523,11 +523,11 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.price(7)
 				.marginType(MarginType.ISOLATED)
 				.build()
-			
-			await context.controlFacet.setAffiliateFees(context.signers.affiliate1,1, e(50))
-			await context.controlFacet.setSymbolTradingFee(1,e(100))
-					
-			expect(await partyA1.sendOpenIntent(request)).not.to.reverted			
+
+			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, 1, e(50))
+			await context.controlFacet.setSymbolTradingFee(1, e(100))
+
+			expect(await partyA1.sendOpenIntent(request)).not.to.reverted
 			const intent = await context.viewFacet.getOpenIntent(1)
 			const premiumFromView = await context.viewFacet.getPremium(1)
 			const affiliateFeeFromView = await context.viewFacet.getAffiliateFee(1)
@@ -548,7 +548,6 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			expect(isolatedBalance - isolatedBalance2).to.be.equal(affiliateFeeFromView + tradingFeeFromView)
 		})
 
-		
 		it("should fail on Fee not paid accordingly when more than one partyB whitelisted ", async function () {
 			// take snapshot
 			let isolatedBalance = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress())
@@ -567,12 +566,12 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.marginType(MarginType.ISOLATED)
 				.build()
 
-			await context.controlFacet.setAffiliateFees(context.signers.affiliate1,1, e(50))
-			await context.controlFacet.setSymbolTradingFee(1,e(100))	
+			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, 1, e(50))
+			await context.controlFacet.setSymbolTradingFee(1, e(100))
 
 			expect(await partyA1.sendOpenIntent(request)).not.to.reverted
 			const intent = await context.viewFacet.getOpenIntent(1)
-	
+
 			// partyA pays the fees in so:
 			// we are in isolated margin
 			let isolatedBalance2 = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress())
@@ -588,8 +587,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			console.log("Fee Token Price:", feeTokenPrice)
 			console.log("Trading Fee From View:", tradingFeeFromView)
 			console.log("Affiliate Fee From View:", affiliateFeeFromView)
-			console.log("Premium Fee From View:", premiumFromView)			
-			
+			console.log("Premium Fee From View:", premiumFromView)
+
 			expect(intent.tradingFee.platformFee).to.equal(symbol.tradingFee)
 			expect(isolatedBalance - isolatedBalance2).to.be.equal(tradingFeeFromView + affiliateFeeFromView)
 		})

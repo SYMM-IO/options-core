@@ -320,7 +320,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		if (s.lastSymbolId < _symbolId) revert ControlFacetErrors.InvalidSymbol(_symbolId);
 
 		s.symbols[_symbolId].tradingFee = _fee;
-		emit SymbolTradingFeeUpdated(_symbolId, _fee);		
+		emit SymbolTradingFeeUpdated(_symbolId, _fee);
 	}
 
 	function setSymbolState(uint256 _symbolId, bool _status) external onlyRole(LibAccessibility.SETTER_ROLE) {

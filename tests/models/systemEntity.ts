@@ -8,10 +8,7 @@ import { OpenIntent, openIntentRequestBuilder } from "./builders/send-open-inten
 import { FakeStablecoin } from "../../types"
 
 export class SystemEntity {
-	constructor(
-		protected context: RunContext,
-		protected signer: SignerWithAddress,
-	) {}
+	constructor(protected context: RunContext, protected signer: SignerWithAddress) {}
 
 	public async setNativeBalance(amount: bigint) {
 		await setBalance(this.signer.address, amount)
