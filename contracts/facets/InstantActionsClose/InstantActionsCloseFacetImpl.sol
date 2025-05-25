@@ -46,7 +46,7 @@ library InstantActionsCloseFacetImpl {
 		);
 	}
 
-	function instantCreateAndFillCloseIntent(
+	function instantCloseAndFillCloseIntent(
 		SignedCloseIntent calldata signedCloseIntent,
 		bytes calldata partyASignature,
 		SignedFillIntent calldata signedFillCloseIntent,
