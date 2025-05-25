@@ -310,7 +310,7 @@ library ClearingHouseFacetImpl {
 				intent.expire();
 			} else {
 				intent.status = IntentStatus.CANCELED;
-				if (partyAIsSolvent) intent.handleFeesAndPremium(false);
+				intent.handleFeesAndPremium(false);
 				intent.remove(false);
 			}
 			intent.statusModifyTimestamp = block.timestamp;
