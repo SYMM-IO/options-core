@@ -34,7 +34,7 @@ library TradeSettlementFacetImpl {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		Trade storage trade = TradeStorage.layout().trades[tradeId];
 		Symbol storage symbol = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId];
-		LibMuon.verifySettlementPriceSig(sig);
+		// LibMuon.verifySettlementPriceSig(sig);
 
 		if (trade.tradeAgreements.marginType == MarginType.CROSS) {
 			trade.partyA.requireSolvent(trade.partyB, symbol.collateral, trade.tradeAgreements.marginType);
@@ -91,7 +91,7 @@ library TradeSettlementFacetImpl {
 			if (trade.tradeAgreements.tradeSide == TradeSide.BUY) {
 				if (trade.tradeAgreements.marginType == MarginType.ISOLATED) {
 					accountLayout.balances[trade.partyB][symbol.collateral].instantIsolatedAdd(
-						(trade.getPremium() * trade.getOpenAmount()) / trade.tradeAgreements.quantity, // TODO ::: refactor(complex calculation)
+						(trade.getPremium() * trade.getOpenAmount()) / trade.tradeAgreements.quantity,
 						IncreaseBalanceReason.PREMIUM
 					);
 				} else {

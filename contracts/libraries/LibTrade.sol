@@ -33,7 +33,7 @@ library LibTradeOps {
 		return self.tradeAgreements.quantity - self.closedAmountBeforeExpiration - self.closePendingAmount;
 	}
 
-	function getPnl(Trade memory self, uint256 currentPrice, uint256 filledAmount) internal view returns (uint256 pnl) {
+	function getPnl(Trade memory self, uint256 currentPrice, uint256 filledAmount) internal view returns (uint256 pnl) { //TODO settlement price or current price
 		Symbol storage symbol = SymbolStorage.layout().symbols[self.tradeAgreements.symbolId];
 
 		if (currentPrice > self.tradeAgreements.strikePrice && symbol.optionType == OptionType.CALL) {

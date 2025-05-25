@@ -268,15 +268,15 @@ library PartyBOpenFacetImpl {
 		intent.remove(false);
 
 		trade.save();
-		accountLayout.balances[trade.partyB][symbol.collateral].setup(trade.partyB, symbol.collateral);
+		accountLayout.balances[trade.partyB][symbol.collateral].setup(trade.partyB, symbol.collateral); // TODO how to manage it when B balance key is using this way for multiple A? the answer is that no matter 
 
 		if (intent.tradeAgreements.tradeSide == TradeSide.BUY) {
 			if (intent.tradeAgreements.marginType == MarginType.CROSS) {
 				accountLayout.balances[trade.partyA][symbol.collateral].crossUnlock(trade.partyB, intent.getPremium());
 			} else {
-				accountLayout.balances[trade.partyA][symbol.collateral].isolatedUnlock(intent.getPremium());
+				accountLayout.balances[trade.partyA][symbol.collateral].isolatedUnlock(intent.getPremium()); // remove premium from partyA
 			}
-			accountLayout.balances[trade.partyA][symbol.collateral].subForCounterParty(
+			accountLayout.balances[trade.partyA][symbol.collateral].subForCounterParty( // remove from partyA buses and at the end from his isolated balance, PartyBs balance is updated on the settlement or close phase
 				trade.partyB,
 				trade.getPremium(),
 				intent.tradeAgreements.marginType,
