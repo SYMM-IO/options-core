@@ -49,7 +49,7 @@ struct ScheduledReleaseBalance {
 	address user; // owner of this slot
 	// ─── free balances ────────────────────────────────────────────────────────
 	uint256 isolatedBalance; // free isolated funds
-	uint256 isolatedLockedBalance; // free isolated funds
+	uint256 isolatedLockedBalance; // isolated locked funds
 	uint256 reserveBalance;
 	mapping(address => CrossEntry) crossBalance; // cross funds
 	// ─── delayed balances ─────────────────────────────────────────────────────

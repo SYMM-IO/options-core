@@ -227,7 +227,7 @@ library ScheduledReleaseBalanceOps {
 		if (marginType == MarginType.ISOLATED) {
 			return int256(self.isolatedBalance + entry.transitioning + entry.scheduled);
 		} else {
-			return self.crossBalance[counterParty].balance + int256(entry.transitioning) + int256(entry.scheduled);
+			return self.crossBalance[counterParty].balance;
 		}
 	}
 
