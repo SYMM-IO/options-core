@@ -8,14 +8,19 @@ import { LibParty } from "../../libraries/LibParty.sol";
 import { LibTradeOps } from "../../libraries/LibTrade.sol";
 import { CommonErrors } from "../../libraries/CommonErrors.sol";
 import { ScheduledReleaseBalanceOps } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
+import { LibCloseIntentOps } from "../../libraries/LibCloseIntent.sol";
 
 import { AppStorage } from "../../storages/AppStorage.sol";
 import { TradeStorage } from "../../storages/TradeStorage.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { LiquidationStorage } from "../../storages/LiquidationStorage.sol";
+import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
+import { CloseIntentStorage } from "../../storages/CloseIntentStorage.sol";
+import { SymbolStorage } from "../../storages/SymbolStorage.sol";
 
 import { MarginType } from "../../types/BaseTypes.sol";
-import { IntentStatus } from "../../types/IntentTypes.sol";
+import { IntentStatus, OpenIntent, CloseIntent } from "../../types/IntentTypes.sol";
 import { Trade, TradeStatus } from "../../types/TradeTypes.sol";
 import { Withdraw, WithdrawStatus } from "../../types/WithdrawTypes.sol";
 import { LiquidationStatus, LiquidationDetail, LiquidationSide } from "../../types/LiquidationTypes.sol";
@@ -27,6 +32,8 @@ library ClearingHouseFacetImpl {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibTradeOps for Trade;
 	using LibParty for address;
+	using LibOpenIntentOps for OpenIntent;
+	using LibCloseIntentOps for CloseIntent;
 
 	// =============================================================
 	//                      ✨  Internal helpers  ✨
@@ -275,6 +282,65 @@ library ClearingHouseFacetImpl {
 
 		if (balanceB.counterPartyBalance(partyB, marginType) < int256(totalAmount)) {
 			revert CommonErrors.InsufficientIntBalance(partyB, collateral, totalAmount, balanceB.counterPartyBalance(partyB, marginType));
+		}
+	}
+
+	function cancelOpenIntents(uint256[] memory intentIds) internal {
+		OpenIntentStorage.Layout storage openIntentLayout = OpenIntentStorage.layout();
+
+		for (uint256 i = 0; i < intentIds.length; i++) {
+			OpenIntent storage intent = openIntentLayout.openIntents[intentIds[i]];
+
+			if (!(intent.status == IntentStatus.PENDING || intent.status == IntentStatus.LOCKED)) {
+				uint8[] memory requiredStatuses = new uint8[](2);
+				requiredStatuses[0] = uint8(IntentStatus.PENDING);
+				requiredStatuses[1] = uint8(IntentStatus.LOCKED);
+
+				revert CommonErrors.InvalidState("intent", uint8(intent.status), requiredStatuses);
+			}
+			address collateral = SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId].collateral;
+			bool partyAIsSolvent = intent.partyA.isSolvent(intent.partyB, collateral, intent.tradeAgreements.marginType);
+			bool partyBIsSolvent = intent.partyB.isSolvent(intent.partyA, collateral, intent.tradeAgreements.marginType);
+
+			if (partyAIsSolvent && partyBIsSolvent) {
+				revert ClearingHouseFacetErrors.PartiesAreNotInLiquidation(intent.partyA, intent.partyB, collateral);
+			}
+
+			if (block.timestamp > intent.deadline) {
+				intent.expire();
+			} else {
+				intent.status = IntentStatus.CANCELED;
+				if (partyAIsSolvent) intent.handleFeesAndPremium(false);
+				intent.remove(false);
+			}
+			intent.statusModifyTimestamp = block.timestamp;
+		}
+	}
+
+	function cancelCloseIntents(uint256[] memory intentIds) internal {
+		CloseIntentStorage.Layout storage closeIntentLayout = CloseIntentStorage.layout();
+		TradeStorage.Layout storage tradeLayout = TradeStorage.layout();
+
+		for (uint256 i = 0; i < intentIds.length; i++) {
+			CloseIntent storage intent = closeIntentLayout.closeIntents[intentIds[i]];
+			Trade memory trade = tradeLayout.trades[intent.tradeId];
+			CommonErrors.requireStatus("IntentStatus", uint8(intent.status), uint8(IntentStatus.PENDING));
+
+			address collateral = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId].collateral;
+			bool partyAIsSolvent = trade.partyA.isSolvent(trade.partyB, collateral, trade.tradeAgreements.marginType);
+			bool partyBIsSolvent = trade.partyB.isSolvent(trade.partyA, collateral, trade.tradeAgreements.marginType);
+
+			if (partyAIsSolvent && partyBIsSolvent) {
+				revert ClearingHouseFacetErrors.PartiesAreNotInLiquidation(trade.partyA, trade.partyB, collateral);
+			}
+
+			if (block.timestamp > intent.deadline) {
+				intent.expire();
+			} else {
+				intent.status = IntentStatus.CANCELED;
+				intent.statusModifyTimestamp = block.timestamp;
+				intent.remove();
+			}
 		}
 	}
 }

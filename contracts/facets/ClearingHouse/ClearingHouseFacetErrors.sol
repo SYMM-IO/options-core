@@ -28,4 +28,6 @@ library ClearingHouseFacetErrors {
 	error PartyBIsSolvent(address partyA, address partyB, address token);
 
 	error TradeIsNotInLiquidation(uint256 liquidationId, uint256 tradeId);
+
+	error PartiesAreNotInLiquidation(address partyA, address partyB, address collateral);
 }

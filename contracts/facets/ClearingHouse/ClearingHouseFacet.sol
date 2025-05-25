@@ -170,4 +170,18 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
 		ClearingHouseFacetImpl.allocateFromReserveToCross(party, counterParty, collateral, amount);
 	}
+
+    function cancelOpenIntents(
+        uint256[] calldata intentIds
+    ) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
+        ClearingHouseFacetImpl.cancelOpenIntents(intentIds);
+		emit CancelOpenIntentsForLiquidation(msg.sender, intentIds);
+    }
+
+    function cancelCloseIntents(
+        uint256[] calldata intentIds
+    ) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
+        ClearingHouseFacetImpl.cancelCloseIntents(intentIds);
+		emit CancelCloseIntentsForLiquidation(msg.sender, intentIds);
+    }
 }
