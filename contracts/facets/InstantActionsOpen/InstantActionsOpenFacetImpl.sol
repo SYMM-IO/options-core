@@ -64,13 +64,14 @@ library InstantActionsOpenFacetImpl {
 		bytes calldata partyASignature,
 		SignedSimpleActionIntent calldata signedAcceptCancelOpenIntent,
 		bytes calldata partyBSignature
-	) internal returns (IntentStatus status) {
+	) internal returns (IntentStatus status, bool approvedByPartyB) {
 		bytes32 cancelIntentHash = LibHash.hashSignedCancelOpenIntent(signedCancelOpenIntent);
 		LibSignature.verifySignature(cancelIntentHash, partyASignature, signedCancelOpenIntent.signer);
 
 		status = PartyAOpenFacetImpl.cancelOpenIntent(signedCancelOpenIntent.signer, signedCancelOpenIntent.intentId);
 
 		if (status == IntentStatus.CANCEL_PENDING) {
+			approvedByPartyB = true;
 			bytes32 acceptCancelIntentHash = LibHash.hashSignedAcceptCancelOpenIntent(signedAcceptCancelOpenIntent);
 			LibSignature.verifySignature(acceptCancelIntentHash, partyBSignature, signedAcceptCancelOpenIntent.signer);
 
