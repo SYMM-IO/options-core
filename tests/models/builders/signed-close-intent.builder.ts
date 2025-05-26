@@ -12,4 +12,3 @@ const defaultSignedCloseIntent: SignedCloseIntentStruct = {
 }
 
 export const SignedCloseIntentBuilder = () => Builder(defaultSignedCloseIntent)
-    

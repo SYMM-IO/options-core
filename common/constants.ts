@@ -13,6 +13,7 @@ export const FacetNames = [
 	"PartyBCloseFacet",
 	"PartyBOpenFacet",
 	"TradeSettlementFacet",
+	"InstantActionsPartyBOpenFacet",
 ]
 
 export const DEPLOYMENT_LOG_FILE = "deployed.json"
