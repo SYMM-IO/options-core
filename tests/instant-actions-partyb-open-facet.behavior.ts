@@ -2,7 +2,7 @@ import { loadFixture } from "@nomicfoundation/hardhat-network-helpers"
 import { expect } from "chai"
 
 import { initializeTestFixture } from "./initialize-test.fixture"
-import { hashSignedFillCloseIntent, hashSignedFillCloseIntentById, hashSignedSimpleActionIntent } from "./utils/hash"
+import { hashSignedFillCloseIntent, hashSignedFillCloseIntentById, hashSignedFillOpenIntentById, hashSignedSimpleActionIntent } from "./utils/hash"
 
 import { RunContext } from "./run-context"
 import { PartyA } from "./models/partyA.model"
@@ -11,6 +11,7 @@ import { e } from "../utils/e"
 import { getLatestBlockTime } from "../utils/time"
 import { signedSimpleActionIntentBuilder } from "./models/builders/signed-simple-action-intent.builder"
 import { openIntentRequestBuilder } from "./models/builders/send-open-intent.builder"
+import { SignedFillIntentByIdBuilder } from "./models/builders/signed-fill-close-intent-by-id.builder"
 export function shouldBehaveLikeInstantActionsPartyBOpenFacet(): void {
 	let context: RunContext
 	let partyA1: PartyA
@@ -177,6 +178,81 @@ export function shouldBehaveLikeInstantActionsPartyBOpenFacet(): void {
 
 			const intent = await context.viewFacet.getOpenIntent(1)
 			expect(intent.status).to.equal(0) // 1 is PENDING
+		})
+	})
+
+	describe("instantFillOpenIntent", function () {
+		beforeEach(async () => {
+			await context.controlFacet.setMaxTradePerPartyA(3)
+			const latestBlock = await getLatestBlockTime()
+			const request = openIntentRequestBuilder()
+				.partyBsWhiteList([partyB1.getSigner])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateral)
+				.expirationTimestamp(latestBlock + 120)
+				.deadline(latestBlock + 150)
+				.symbolId(1)
+				.exerciseFee({ cap: e(1), rate: "0" })
+				.marginType(0) // 0 Isolated, 1 Cross
+				.tradeSide(0) // 0 Buy, 1 Sell
+				.quantity(e(100))
+				.price(7)
+				.build()
+
+			// Create and fill open intent
+			await partyA1.sendOpenIntent(request)
+			await partyB1.lockOpenIntent(1)
+		})
+
+		it("Should fail when partyB actions paused", async function () {
+			await context.controlFacet.pausePartyBActions()
+
+			const signedFillOpenIntent = SignedFillIntentByIdBuilder().partyB(partyB1.address).build()
+			const signedFillOpenIntentHash = hashSignedFillOpenIntentById(signedFillOpenIntent, context.common.chainId, context.common.diamondAddress)
+			await expect(
+				context.InstantActionsPartyBOpenFacet.connect(partyA1.getSigner).instantFillOpenIntent(
+					signedFillOpenIntent,
+					await partyB1.sign(signedFillOpenIntentHash),
+				),
+			).to.be.revertedWithCustomError(context.instantActionCloseFacet, "PartyBActionsPaused")
+		})
+
+		it("Should fail when thirdParty actions paused", async function () {
+			await context.controlFacet.pauseThirdPartyActions()
+
+			const signedFillOpenIntent = SignedFillIntentByIdBuilder().partyB(partyB1.address).build()
+			const signedFillOpenIntentHash = hashSignedFillOpenIntentById(signedFillOpenIntent, context.common.chainId, context.common.diamondAddress)
+			await expect(
+				context.InstantActionsPartyBOpenFacet.connect(partyA1.getSigner).instantFillOpenIntent(
+					signedFillOpenIntent,
+					await partyB1.sign(signedFillOpenIntentHash),
+				),
+			).to.be.revertedWithCustomError(context.instantActionCloseFacet, "ThirdPartyActionsPaused")
+		})
+
+		it("Should fail when partyB signature is invalid", async function () {
+			const signedFillOpenIntent = SignedFillIntentByIdBuilder().partyB(partyB2.address).build()
+			const signedFillOpenIntentHash = hashSignedFillOpenIntentById(signedFillOpenIntent, context.common.chainId, context.common.diamondAddress)
+			await expect(
+				context.InstantActionsPartyBOpenFacet.connect(partyA1.getSigner).instantFillOpenIntent(
+					signedFillOpenIntent,
+					await partyB1.sign(signedFillOpenIntentHash),
+				),
+			).to.be.revertedWithCustomError(context.instantActionCloseFacet, "InvalidSignature")
+		})
+
+		it("Should instant fill intent successfully", async function () {
+			const signedFillOpenIntent = SignedFillIntentByIdBuilder().partyB(partyB1.address).quantity(e(100)).price("7").build()
+			const signedFillOpenIntentHash = hashSignedFillOpenIntentById(signedFillOpenIntent, context.common.chainId, context.common.diamondAddress)
+			await expect(
+				await context.InstantActionsPartyBOpenFacet.connect(partyB1.getSigner).instantFillOpenIntent(
+					signedFillOpenIntent,
+					await partyB1.sign(signedFillOpenIntentHash),
+				),
+			).to.not.reverted
+
+			const intent = await context.viewFacet.getOpenIntent(1)
+			expect(intent.status).to.equal(4) // 4 is FILLED
 		})
 	})
 }

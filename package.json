@@ -75,7 +75,7 @@
 	"scripts": {
 		"clean": "shx rm -rf ./artifacts ./cache ./coverage ./src/types ./coverage.json && yarn typechain",
 		"compile": "cross-env TS_NODE_TRANSPILE_ONLY=true hardhat compile",
-		"coverage": "hardhat coverage --testfiles \"test/**/*.ts\" && yarn typechain",
+		"coverage": "hardhat coverage --testfiles \"tests/**/*.ts\"",
 		"lint": "yarn lint:sol && yarn lint:ts",
 		"lint:sol": "solhint --config ./.solhint.json --max-warnings 0 \"contracts/**/*.sol\"",
 		"test": "hardhat test",
