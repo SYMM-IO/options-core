@@ -576,7 +576,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			// we are in isolated margin
 			let isolatedBalance2 = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress())
 			const symbol: SymbolStruct = await context.viewFacet.getSymbol(intent.tradeAgreements.symbolId)
-			const feeTokenPrice = await context.oracle.getPrice(context.collateral)
+			const feeTokenPriceInCollateral = await context.oracle.getPrice(context.collateral)
 			const tradingFeeFromView = await context.viewFacet.getTradingFee(1)
 			const premiumFromView = await context.viewFacet.getPremium(1)
 			const affiliateFeeFromView = await context.viewFacet.getAffiliateFee(1)
@@ -584,7 +584,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			console.log("PartyA isolated balance:", isolatedBalance)
 			console.log("PartyA isolated balance After sending Intent:", isolatedBalance2)
 			console.log("tradingFee + affiliateFee:", tradingFeeFromView + affiliateFeeFromView)
-			console.log("Fee Token Price:", feeTokenPrice)
+			console.log("Fee Token Price:", feeTokenPriceInCollateral)
 			console.log("Trading Fee From View:", tradingFeeFromView)
 			console.log("Affiliate Fee From View:", affiliateFeeFromView)
 			console.log("Premium Fee From View:", premiumFromView)

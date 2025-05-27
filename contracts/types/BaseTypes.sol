@@ -21,7 +21,7 @@ struct ExerciseFee {
 
 struct TradingFee {
 	address feeToken;
-	uint256 tokenPrice;
+	uint256 tokenPriceInCollateral;
 	uint256 platformFee;
 	uint256 affiliateFee;
 }

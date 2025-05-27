@@ -6835,7 +6835,7 @@
 							},
 							{
 								"internalType": "uint256",
-								"name": "tokenPrice",
+								"name": "tokenPriceInCollateral",
 								"type": "uint256"
 							},
 							{
@@ -7747,7 +7747,7 @@
 							},
 							{
 								"internalType": "uint256",
-								"name": "tokenPrice",
+								"name": "tokenPriceInCollateral",
 								"type": "uint256"
 							},
 							{
@@ -7924,7 +7924,7 @@
 							},
 							{
 								"internalType": "uint256",
-								"name": "tokenPrice",
+								"name": "tokenPriceInCollateral",
 								"type": "uint256"
 							},
 							{
@@ -8106,7 +8106,7 @@
 							},
 							{
 								"internalType": "uint256",
-								"name": "tokenPrice",
+								"name": "tokenPriceInCollateral",
 								"type": "uint256"
 							},
 							{
@@ -8307,7 +8307,7 @@
 							},
 							{
 								"internalType": "uint256",
-								"name": "tokenPrice",
+								"name": "tokenPriceInCollateral",
 								"type": "uint256"
 							},
 							{

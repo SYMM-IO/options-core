@@ -98,7 +98,10 @@ library PartyAOpenFacetImpl {
 			deadline: deadline,
 			tradingFee: TradingFee({
 				feeToken: feeToken,
-				tokenPrice: IPriceOracle(appLayout.priceOracleAddress).getPrice(feeToken),
+				tokenPriceInCollateral: IPriceOracle(appLayout.priceOracleAddress).getPrice(
+					feeToken,
+					SymbolStorage.layout().symbols[tradeAgreements.symbolId].collateral
+				),
 				platformFee: symbol.tradingFee,
 				affiliateFee: feeLayout.affiliateFees[affiliate][tradeAgreements.symbolId]
 			}),
