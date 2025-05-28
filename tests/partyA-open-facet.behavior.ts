@@ -140,11 +140,11 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.price(7)
 
 			request.affiliate(ZeroAddress)
-			await expect(partyA1.sendOpenIntent(request.build())).to.be.not.reverted
+			expect(await partyA1.sendOpenIntent(request.build())).to.be.not.reverted
 
 			request.affiliate(context.signers.others[1])
 			await context.controlFacet.setAffiliateStatus(context.signers.others[1], true)
-			await expect(partyA1.sendOpenIntent(request.build())).to.be.not.reverted
+			expect(await partyA1.sendOpenIntent(request.build())).to.be.not.reverted
 
 			await context.controlFacet.setAffiliateStatus(context.signers.others[1], false)
 			await expect(partyA1.sendOpenIntent(request.build())).to.be.revertedWithCustomError(context.partyAOpenFacet, "InvalidAffiliate")
@@ -357,8 +357,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.deadline((latestBlock?.timestamp ?? 0) + 100)
 				.symbolId(1)
 				.exerciseFee({ cap: e(1), rate: "0" })
-				.marginType(0) // 0 Isolated, 1 Cross
-				.tradeSide(0) // 0 Buy, 1 Sell
+				.marginType(MarginType.ISOLATED)
+				.tradeSide(TradeSide.BUY)
 				.quantity(e(100))
 				.price(7)
 				.build()

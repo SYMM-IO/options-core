@@ -35,7 +35,7 @@ const openIntentRequest: OpenIntent = {
 	marginType: 0,
 	mm: 0,
 	tradeSide: 0,
-	feeToken: "",
+	feeToken: ZeroAddress,
 	affiliate: ZeroAddress,
 	userData: encodeBytes32String("0"),
 }
