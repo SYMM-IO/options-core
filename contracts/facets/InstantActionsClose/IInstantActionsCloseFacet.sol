@@ -21,7 +21,7 @@ interface IInstantActionsCloseFacet is IInstantActionsCloseEvents {
 	function instantCloseAndFillCloseIntent(
 		SignedCloseIntent calldata signedCloseIntent,
 		bytes calldata partyASignature,
-		SignedFillIntentById calldata signedFillCloseIntent,
+		SignedFillIntent calldata signedFillCloseIntent,
 		bytes calldata partyBSignature
 	) external;
 }

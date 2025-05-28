@@ -14,6 +14,7 @@ import { openIntentRequestBuilder } from "./models/builders/send-open-intent.bui
 import { SignedFillIntentByIdBuilder } from "./models/builders/signed-fill-close-intent-by-id.builder"
 import { SignedFillIntentByIdStruct } from "../types/contracts/interfaces/ISymmio"
 import { SignedCloseIntentBuilder } from "./models/builders/signed-close-intent.builder"
+import { signedFillIntentBuilder } from "./models/builders/signed-fill-intent.builder"
 
 export function shouldBehaveLikeInstantActionCloseFacet(): void {
 	let context: RunContext
@@ -296,15 +297,15 @@ export function shouldBehaveLikeInstantActionCloseFacet(): void {
 			const signedCloseIntent = SignedCloseIntentBuilder().partyA(partyA1.address).build()
 			const signedCloseIntentHash = hashSignedCloseIntent(signedCloseIntent, context.common.chainId, context.common.diamondAddress)
 
-			const signedFillIntentById = SignedFillIntentByIdBuilder().partyB(partyB1.address).build()
-			const signedFillIntentByIdHash = hashSignedFillCloseIntentById(signedFillIntentById, context.common.chainId, context.common.diamondAddress)
+			const signedFillIntent = signedFillIntentBuilder().partyB(partyB1.address).intentHash(signedCloseIntentHash).build()
+			const signedFillIntentHash = hashSignedFillCloseIntent(signedFillIntent, context.common.chainId, context.common.diamondAddress)
 
 			await expect(
 				context.instantActionCloseFacet.instantCloseAndFillCloseIntent(
 					signedCloseIntent,
 					await partyA1.sign(signedCloseIntentHash),
-					signedFillIntentById,
-					await partyB1.sign(signedFillIntentByIdHash),
+					signedFillIntent,
+					await partyB1.sign(signedFillIntentHash),
 				),
 			).to.be.revertedWithCustomError(context.instantActionCloseFacet, "PartyBActionsPaused")
 		})
@@ -315,32 +316,32 @@ export function shouldBehaveLikeInstantActionCloseFacet(): void {
 			const signedCloseIntent = SignedCloseIntentBuilder().partyA(partyA1.address).build()
 			const signedCloseIntentHash = hashSignedCloseIntent(signedCloseIntent, context.common.chainId, context.common.diamondAddress)
 
-			const signedFillIntentById = SignedFillIntentByIdBuilder().partyB(partyB1.address).build()
-			const signedFillIntentByIdHash = hashSignedFillCloseIntentById(signedFillIntentById, context.common.chainId, context.common.diamondAddress)
+			const signedFillIntent = signedFillIntentBuilder().partyB(partyB1.address).intentHash(signedCloseIntentHash).build()
+			const signedFillIntentHash = hashSignedFillCloseIntent(signedFillIntent, context.common.chainId, context.common.diamondAddress)
 
 			await expect(
 				context.instantActionCloseFacet.instantCloseAndFillCloseIntent(
 					signedCloseIntent,
 					await partyA1.sign(signedCloseIntentHash),
-					signedFillIntentById,
-					await partyB1.sign(signedFillIntentByIdHash),
+					signedFillIntent,
+					await partyB1.sign(signedFillIntentHash),
 				),
 			).to.be.revertedWithCustomError(context.instantActionCloseFacet, "ThirdPartyActionsPaused")
 		})
 
 		it("Should fail when partyA signature is invalid", async function () {
-			const signedCloseIntent = SignedCloseIntentBuilder().partyA(partyA2.address).build()
+			const signedCloseIntent = SignedCloseIntentBuilder().partyA(partyA2.address).build() // invalid partyA
 			const signedCloseIntentHash = hashSignedCloseIntent(signedCloseIntent, context.common.chainId, context.common.diamondAddress)
 
-			const signedFillIntentById = SignedFillIntentByIdBuilder().partyB(partyB1.address).build()
-			const signedFillIntentByIdHash = hashSignedFillCloseIntentById(signedFillIntentById, context.common.chainId, context.common.diamondAddress)
+			const signedFillIntent = signedFillIntentBuilder().partyB(partyB1.address).intentHash(signedCloseIntentHash).build()
+			const signedFillIntentHash = hashSignedFillCloseIntent(signedFillIntent, context.common.chainId, context.common.diamondAddress)
 
 			await expect(
 				context.instantActionCloseFacet.instantCloseAndFillCloseIntent(
 					signedCloseIntent,
 					await partyA1.sign(signedCloseIntentHash),
-					signedFillIntentById,
-					await partyB1.sign(signedFillIntentByIdHash),
+					signedFillIntent,
+					await partyB1.sign(signedFillIntentHash),
 				),
 			).to.be.revertedWithCustomError(context.instantActionCloseFacet, "InvalidSignature")
 		})
@@ -349,40 +350,20 @@ export function shouldBehaveLikeInstantActionCloseFacet(): void {
 			const signedCloseIntent = SignedCloseIntentBuilder().partyA(partyA1.address).build()
 			const signedCloseIntentHash = hashSignedCloseIntent(signedCloseIntent, context.common.chainId, context.common.diamondAddress)
 
-			const signedFillIntentById = SignedFillIntentByIdBuilder().partyB(partyB2.address).build()
-			const signedFillIntentByIdHash = hashSignedFillCloseIntentById(signedFillIntentById, context.common.chainId, context.common.diamondAddress)
+			const signedFillIntent = signedFillIntentBuilder().partyB(partyB2.address).intentHash(signedCloseIntentHash).build() // invalid partyB
+			const signedFillIntentHash = hashSignedFillCloseIntent(signedFillIntent, context.common.chainId, context.common.diamondAddress)
 
 			await expect(
 				context.instantActionCloseFacet.instantCloseAndFillCloseIntent(
 					signedCloseIntent,
 					await partyA1.sign(signedCloseIntentHash),
-					signedFillIntentById,
-					await partyB1.sign(signedFillIntentByIdHash),
+					signedFillIntent,
+					await partyB1.sign(signedFillIntentHash),
 				),
 			).to.be.revertedWithCustomError(context.instantActionCloseFacet, "InvalidSignature")
 		})
 
-		it("Should fail when intentIds not match", async function () {
-			const signedCloseIntent = SignedCloseIntentBuilder()
-				.partyA(partyA1.address)
-				.deadline((await getLatestBlockTime()) + 120)
-				.build()
-			const signedCloseIntentHash = hashSignedCloseIntent(signedCloseIntent, context.common.chainId, context.common.diamondAddress)
-
-			const signedFillIntentById = SignedFillIntentByIdBuilder().partyB(partyB1.address).intentId(3).build()
-			const signedFillIntentByIdHash = hashSignedFillCloseIntentById(signedFillIntentById, context.common.chainId, context.common.diamondAddress)
-
-			await expect(
-				context.instantActionCloseFacet.instantCloseAndFillCloseIntent(
-					signedCloseIntent,
-					await partyA1.sign(signedCloseIntentHash),
-					signedFillIntentById,
-					await partyB1.sign(signedFillIntentByIdHash),
-				),
-			).to.be.revertedWithCustomError(context.instantActionCloseFacet, "InvalidIntentId")
-		})
-
-		it("Should instant cancel close intent successfully", async function () {
+		it("Should instant close and fill close intent successfully", async function () {
 			const signedCloseIntent = SignedCloseIntentBuilder()
 				.partyA(partyA1.address)
 				.deadline((await getLatestBlockTime()) + 120)
@@ -390,15 +371,15 @@ export function shouldBehaveLikeInstantActionCloseFacet(): void {
 
 			const signedCloseIntentHash = hashSignedCloseIntent(signedCloseIntent, context.common.chainId, context.common.diamondAddress)
 
-			const signedFillIntentById = SignedFillIntentByIdBuilder().partyB(partyB1.address).build()
-			const signedFillIntentByIdHash = hashSignedFillCloseIntentById(signedFillIntentById, context.common.chainId, context.common.diamondAddress)
+			const signedFillIntent = signedFillIntentBuilder().partyB(partyB1.address).intentHash(signedCloseIntentHash).build()
+			const signedFillIntentHash = hashSignedFillCloseIntent(signedFillIntent, context.common.chainId, context.common.diamondAddress)
 
 			await expect(
 				await context.instantActionCloseFacet.instantCloseAndFillCloseIntent(
 					signedCloseIntent,
 					await partyA1.sign(signedCloseIntentHash),
-					signedFillIntentById,
-					await partyB1.sign(signedFillIntentByIdHash),
+					signedFillIntent,
+					await partyB1.sign(signedFillIntentHash),
 				),
 			).to.not.reverted
 

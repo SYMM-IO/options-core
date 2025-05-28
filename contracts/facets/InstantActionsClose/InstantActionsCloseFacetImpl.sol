@@ -6,7 +6,6 @@ pragma solidity >=0.8.19;
 
 import { LibHash } from "../../libraries/LibHash.sol";
 import { LibSignature } from "../../libraries/LibSignature.sol";
-import { CommonErrors } from "../../libraries/CommonErrors.sol";
 
 import { IntentStatus } from "../../types/IntentTypes.sol";
 import { SignedFillIntentById, SignedSimpleActionIntent, SignedFillIntent, SignedCloseIntent } from "../../types/SignedIntentTypes.sol";
@@ -50,13 +49,13 @@ library InstantActionsCloseFacetImpl {
 	function instantCloseAndFillCloseIntent(
 		SignedCloseIntent calldata signedCloseIntent,
 		bytes calldata partyASignature,
-		SignedFillIntentById calldata signedFillCloseIntent,
+		SignedFillIntent calldata signedFillCloseIntent,
 		bytes calldata partyBSignature
 	) internal returns (uint256 intentId) {
 		bytes32 closeIntentHash = LibHash.hashSignedCloseIntent(signedCloseIntent);
 		LibSignature.verifySignature(closeIntentHash, partyASignature, signedCloseIntent.partyA);
 
-		bytes32 fillCloseIntentHash = LibHash.hashSignedFillCloseIntentById(signedFillCloseIntent);
+		bytes32 fillCloseIntentHash = LibHash.hashSignedFillCloseIntent(signedFillCloseIntent);
 		LibSignature.verifySignature(fillCloseIntentHash, partyBSignature, signedFillCloseIntent.partyB);
 
 		intentId = PartyACloseFacetImpl.sendCloseIntent(
@@ -67,8 +66,6 @@ library InstantActionsCloseFacetImpl {
 			signedCloseIntent.deadline
 		);
 
-		if (intentId != signedFillCloseIntent.intentId) revert CommonErrors.InvalidIntentId(signedFillCloseIntent.intentId);
-		
 		PartyBCloseFacetImpl.fillCloseIntent(signedFillCloseIntent.partyB, intentId, signedFillCloseIntent.quantity, signedFillCloseIntent.price);
 	}
 }

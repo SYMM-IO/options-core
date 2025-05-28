@@ -7,8 +7,8 @@ const defaultSignedCloseIntent: SignedCloseIntentStruct = {
 	partyA: ZeroAddress,
 	tradeId: 1,
 	deadline: 0,
-	price: 1,
 	quantity: e(1),
+	price: 1,
 	salt: keccak256(toUtf8Bytes("")),
 }
 

@@ -82,7 +82,7 @@ contract InstantActionsCloseFacet is Accessibility, Pausable, IInstantActionsClo
 	function instantCloseAndFillCloseIntent(
 		SignedCloseIntent calldata signedCloseIntent,
 		bytes calldata partyASignature,
-		SignedFillIntentById calldata signedFillCloseIntent,
+		SignedFillIntent calldata signedFillCloseIntent,
 		bytes calldata partyBSignature
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
 		uint256 intentId = InstantActionsCloseFacetImpl.instantCloseAndFillCloseIntent(
