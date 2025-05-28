@@ -26,6 +26,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		partyB2 = new PartyB(context, context.signers.partyB2)
 
 		await partyA1.setBalances(context.collateral, e(100000), e(100000))
+		await partyA1.setBalances(context.collateralNL, e(100000), e(100000)) // as Fee token
 		await partyA2.setBalances(context.collateral, e(100000), e(100000))
 
 		const latestBlock = await ethers.provider.getBlock("latest")
@@ -206,7 +207,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 		it("Should failed when Global Paused", async () => {
 			await context.controlFacet.pauseGlobal()
-			await expect(partyB1.fillOpenIntent(1, 100, 7)).to.be.revertedWithCustomError(context.partyBOpenFacet, "GlobalPaused") // MarginType: 0 for  Isolated margin, 1 for Cross
+			await expect(partyB1.fillOpenIntent(1, 100, 7)).to.be.revertedWithCustomError(context.partyBOpenFacet, "GlobalPaused")
 		})
 
 		it("Should failed when PartyB action Paused", async () => {
@@ -503,7 +504,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			let initialIsolatedBalancePartyB = await context.viewFacet.balanceOf(partyB1.getSigner, await context.collateral.getAddress())
 
 			const latestBlock = await ethers.provider.getBlock("latest")
-			const request = openIntentRequestBuilder()
+			const requestIsolated = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB1.getSigner, partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
@@ -516,17 +517,30 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 				.marginType(MarginType.ISOLATED)
 				.build()
 
+			const requestCross = openIntentRequestBuilder()
+				.partyBsWhiteList([partyB1.getSigner])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateral)
+				.symbolId(1)
+				.deadline((latestBlock?.timestamp ?? 0) + 120)
+				.expirationTimestamp((latestBlock?.timestamp ?? 0) + 300)
+				.exerciseFee({ cap: e(1), rate: "0" })
+				.quantity(e(70))
+				.price(7)
+				.marginType(MarginType.CROSS)
+				.build()
+
 			// PartyA sends some Intents
-			expect(await partyA2.sendOpenIntent(request)).not.to.reverted // fee and premium for party A
-			expect(await partyA2.sendOpenIntent(request)).not.to.reverted
-			expect(await partyA2.sendOpenIntent(request)).not.to.reverted
-			expect(await partyA2.sendOpenIntent(request)).not.to.reverted
-			expect(await partyA2.sendOpenIntent(request)).not.to.reverted
-			expect(await partyA2.sendOpenIntent(request)).not.to.reverted
-			expect(await partyA2.sendOpenIntent(request)).not.to.reverted
-			expect(await partyA2.sendOpenIntent(request)).not.to.reverted
-			expect(await partyA2.sendOpenIntent(request)).not.to.reverted
-			expect(await partyA2.sendOpenIntent(request)).not.to.reverted
+			expect(await partyA2.sendOpenIntent(requestIsolated)).not.to.reverted // fee and premium for party A
+			expect(await partyA2.sendOpenIntent(requestIsolated)).not.to.reverted
+			expect(await partyA2.sendOpenIntent(requestIsolated)).not.to.reverted
+			expect(await partyA2.sendOpenIntent(requestCross)).not.to.reverted
+			expect(await partyA2.sendOpenIntent(requestCross)).not.to.reverted
+			expect(await partyA2.sendOpenIntent(requestCross)).not.to.reverted
+			expect(await partyA2.sendOpenIntent(requestCross)).not.to.reverted
+			expect(await partyA2.sendOpenIntent(requestCross)).not.to.reverted
+			expect(await partyA2.sendOpenIntent(requestIsolated)).not.to.reverted
+			expect(await partyA2.sendOpenIntent(requestIsolated)).not.to.reverted
 
 			let openIntents: OpenIntentStruct[] = await context.viewFacet.getOpenIntentsOf(partyA2.getSigner, 0, 100)
 			for (let openIntent of openIntents) {
@@ -542,7 +556,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 			let partyAFeesPaid = BigInt(openIntents.length) * (tradingFeeFromView + affiliateFeeFromView)
 			let partyAPremiumPaid = BigInt(openIntents.length) * premiumFromView
-
+			//OI == open intent
 			let send_OI_IsolatedBalancePartyA = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress())
 
 			// some time elapses

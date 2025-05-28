@@ -14,10 +14,10 @@ struct SettlementState {
 struct SettlementPriceSig {
 	bytes reqId;
 	uint256 timestamp;
-	uint256 symbolId;
-	uint256 settlementPrice;
+	uint256 symbolId;	// contract(option) token symbol of type put or call 
+	uint256 settlementPrice; // contract(option) token price
 	uint256 settlementTimestamp;
-	uint256 collateralPrice;
+	uint256 collateralPrice;  // collateral token price 
 	bytes gatewaySignature;
 	SchnorrSign sigs;
 }

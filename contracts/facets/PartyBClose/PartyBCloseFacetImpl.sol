@@ -74,7 +74,7 @@ library PartyBCloseFacetImpl {
 			revert PartyBCloseFacetErrors.TradeExpired(intent.tradeId, block.timestamp, trade.tradeAgreements.expirationTimestamp);
 
 		if (
-			(trade.tradeAgreements.tradeSide == TradeSide.BUY && price < intent.price) ||
+			(trade.tradeAgreements.tradeSide == TradeSide.BUY && price < intent.price) || // here we consider the option trade side and not option type([put/call]) and the reason is we are considering the option value not the underlying token
 			(trade.tradeAgreements.tradeSide == TradeSide.SELL && price > intent.price)
 		) revert PartyBCloseFacetErrors.InvalidClosedPrice(price, intent.price);
 
@@ -82,7 +82,7 @@ library PartyBCloseFacetImpl {
 		if (trade.tradeAgreements.tradeSide == TradeSide.BUY) {
 			if (trade.tradeAgreements.marginType == MarginType.ISOLATED) {
 				accountLayout.balances[trade.partyB][symbol.collateral].instantIsolatedAdd(
-					(trade.getPremium() * quantity) / trade.tradeAgreements.quantity,
+					(trade.getPremium() * quantity) / trade.tradeAgreements.quantity, 
 					IncreaseBalanceReason.PREMIUM
 				);
 			} else {
@@ -94,7 +94,7 @@ library PartyBCloseFacetImpl {
 				);
 			}
 
-			accountLayout.balances[trade.partyB][symbol.collateral].subForCounterParty(
+			accountLayout.balances[trade.partyB][symbol.collateral].subForCounterParty( 
 				trade.partyA,
 				pnl,
 				trade.tradeAgreements.marginType,
@@ -133,7 +133,7 @@ library PartyBCloseFacetImpl {
 		trade.closedAmountBeforeExpiration += quantity;
 		intent.filledAmount += quantity;
 
-		if (trade.tradeAgreements.marginType == MarginType.CROSS) {
+		if (trade.tradeAgreements.marginType == MarginType.CROSS) { //ASK nonces?
 			accountLayout.nonces[trade.partyA][trade.partyB] += 1;
 			accountLayout.nonces[trade.partyB][trade.partyA] += 1;
 		}
@@ -147,7 +147,7 @@ library PartyBCloseFacetImpl {
 				trade.statusModifyTimestamp = block.timestamp;
 				trade.remove();
 			}
-		} else if (intent.status == IntentStatus.CANCEL_PENDING) {
+		} else if (intent.status == IntentStatus.CANCEL_PENDING) { 
 			intent.status = IntentStatus.CANCELED;
 			intent.statusModifyTimestamp = block.timestamp;
 			intent.remove();

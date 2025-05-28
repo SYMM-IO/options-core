@@ -22,7 +22,7 @@ import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelatio
 import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
 import { LibTradeOps } from "../../libraries/LibTrade.sol";
 
-import { ScheduledReleaseBalance } from "../../types/BalanceTypes.sol";
+import { ScheduledReleaseBalance, CrossEntry } from "../../types/BalanceTypes.sol";
 import { Trade } from "../../types/TradeTypes.sol";
 import { Withdraw } from "../../types/WithdrawTypes.sol";
 import { BridgeTransaction } from "../../types/BridgeTypes.sol";
@@ -47,6 +47,10 @@ contract ViewFacet is IViewFacet {
 	 */
 	function balanceOf(address user, address collateral) external view returns (uint256) {
 		return AccountStorage.layout().balances[user][collateral].isolatedBalance;
+	}
+
+	function crossBalance(address user, address collateral, address counterParty) external view returns (CrossEntry memory) {
+		return AccountStorage.layout().balances[user][collateral].crossBalance[counterParty];
 	}
 
 	function getIsolatedLockedBalance(address user, address collateral) external view returns (uint256) {
@@ -642,9 +646,10 @@ contract ViewFacet is IViewFacet {
 		if (intentLayout.closeIntentIdsOf[tradeId].length < start + size) {
 			size = intentLayout.closeIntentIdsOf[tradeId].length - start;
 		}
+		uint256 j = 0;
 		uint256[] memory closeIntentIds = new uint256[](size);
-		for (uint256 i = start; i < start + size; i++) {
-			closeIntentIds[i - start] = intentLayout.closeIntentIdsOf[tradeId][i];
+		for (uint256 i = start; i < size; i++) {
+			closeIntentIds[j++] = intentLayout.closeIntentIdsOf[tradeId][i];
 		}
 		return closeIntentIds;
 	}
@@ -661,9 +666,10 @@ contract ViewFacet is IViewFacet {
 		if (intentLayout.closeIntentIdsOf[tradeId].length < start + size) {
 			size = intentLayout.closeIntentIdsOf[tradeId].length - start;
 		}
+		uint256 j = 0;
 		CloseIntent[] memory closeIntents = new CloseIntent[](size);
-		for (uint256 i = start; i < start + size; i++) {
-			closeIntents[i - start] = intentLayout.closeIntents[intentLayout.closeIntentIdsOf[tradeId][i]];
+		for (uint256 i = start; i < size; i++) {
+			closeIntents[j++] = intentLayout.closeIntents[intentLayout.closeIntentIdsOf[tradeId][i]];
 		}
 		return closeIntents;
 	}

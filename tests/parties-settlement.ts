@@ -15,6 +15,7 @@ import { SettlementPriceSigStruct } from "../types/contracts/facets/TradeSettlem
 import { settlementSigBuilder } from "./models/builders/settlement.builder"
 import { TradeStruct } from "../types/contracts/interfaces/ISymmio"
 import { request } from "http"
+import { getLatestBlockTime } from "../utils/time"
 
 export function shouldBehaveLikeSettlementFacet(): void {
 	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyB1: PartyB, partyB2: PartyB
@@ -32,7 +33,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 		await partyA2.setBalances(context.collateral, e(100000), e(100000))
 
 		const latestBlock = await ethers.provider.getBlock("latest")
-		
+
 		const request = openIntentRequestBuilder()
 			.partyBsWhiteList([partyB1.getSigner])
 			.affiliate(context.signers.affiliate1)
@@ -45,8 +46,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			.strikePrice(60)
 			.price(7)
 			.build()
-		
-		
+
 		await partyA1.sendOpenIntent(request)
 		await partyB1.lockOpenIntent(1)
 		await partyB1.fillOpenIntent(1, e(100), 7)
@@ -98,31 +98,28 @@ export function shouldBehaveLikeSettlementFacet(): void {
 		})
 
 		it("Should be when executed with option carried out as 'Isolated Buy' ", async () => {
-			
 			const latestBlock = await ethers.provider.getBlock("latest")
 			const request = openIntentRequestBuilder()
-			.partyBsWhiteList([partyB2.getSigner])
-			.affiliate(context.signers.affiliate1)
-			.feeToken(context.collateral)
-			.symbolId(1)
-			.deadline((latestBlock?.timestamp ?? 0) + 140)
-			.expirationTimestamp((latestBlock?.timestamp ?? 0) + 150)
-			.exerciseFee({ cap: e(1), rate: e(1) })
-			.quantity(e(100))
-			.strikePrice(60)
-			.price(7)
-			.build()
-		
-		
+				.partyBsWhiteList([partyB2.getSigner])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateral)
+				.symbolId(1)
+				.deadline((latestBlock?.timestamp ?? 0) + 140)
+				.expirationTimestamp((latestBlock?.timestamp ?? 0) + 150)
+				.exerciseFee({ cap: e(1), rate: e(1) })
+				.quantity(e(100))
+				.strikePrice(60)
+				.price(7)
+				.build()
+
 			await partyA2.sendOpenIntent(request)
 			await partyB2.lockOpenIntent(2)
 			const intentPremium = await context.viewFacet.getPremium(2)
 			await partyB2.fillOpenIntent(2, e(100), 7)
 
-			await partyA2.sendCloseIntent(2, 7, e(50), (latestBlock?.timestamp ?? 0) + 120)
+			await partyA2.sendCloseIntent(2, 7, e(50), (await getLatestBlockTime()) + 120)
 			await partyB2.fillCloseIntent(2, e(50), 7)
-				
-			
+
 			const timestamp = (await ethers.provider.getBlock("latest"))?.timestamp ?? 0
 			const ID = 2
 			const priceSig: SettlementPriceSigStruct = {
@@ -140,6 +137,8 @@ export function shouldBehaveLikeSettlementFacet(): void {
 				},
 			}
 
+			// await partyA2.sendCloseIntent(2, 7, e(10), (await getLatestBlockTime() + 120))
+			// await partyB2.fillCloseIntent(2, e(10), 7)
 
 			const newBlock = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 170
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
@@ -147,19 +146,23 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			const openAmount = await context.viewFacet.getOpenAmount(2)
 			const premium = await context.viewFacet.getTradePremium(2)
-			
-			const trade:TradeStruct = await context.viewFacet.getTrade(2)
-			const pnl = await context.viewFacet.getPnL(2,priceSig.settlementPrice,openAmount)
-			const exerciseFee = await context.viewFacet.getExerciseFee(2, priceSig.settlementPrice,pnl) 			
+
+			const trade: TradeStruct = await context.viewFacet.getTrade(2)
+			const pnl = await context.viewFacet.getPnL(2, priceSig.settlementPrice, openAmount)
+			const exerciseFee = await context.viewFacet.getExerciseFee(2, priceSig.settlementPrice, pnl)
 
 			const optionSymbol = await context.viewFacet.getSymbol(trade.tradeAgreements.symbolId)
 			const partyABalanceBeforeSettlement = await context.viewFacet.balanceOf(partyA2.getSigner, await context.collateral.getAddress())
-			const partyABalanceBeforeSettlementLocked = await context.viewFacet.getIsolatedLockedBalance(partyA2.getSigner, await context.collateral.getAddress())
+			const partyABalanceBeforeSettlementLocked = await context.viewFacet.getIsolatedLockedBalance(
+				partyA2.getSigner,
+				await context.collateral.getAddress(),
+			)
 			const partyBBalanceBeforeSettlement = await context.viewFacet.balanceOf(partyB2.getSigner, await context.collateral.getAddress())
-			const partyBBalanceBeforeSettlementLocked = await context.viewFacet.getIsolatedLockedBalance(partyB2.getSigner, await context.collateral.getAddress())
+			const partyBBalanceBeforeSettlementLocked = await context.viewFacet.getIsolatedLockedBalance(
+				partyB2.getSigner,
+				await context.collateral.getAddress(),
+			)
 
-
-			
 			console.log("Trade Open quantity:", openAmount)
 			console.log("Trade Strike price:", trade.tradeAgreements.strikePrice)
 			console.log("Trade Settlement price:", priceSig.settlementPrice)
@@ -174,12 +177,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			console.log("Trade PartyB collateral balance:", partyBBalanceBeforeSettlement)
 			console.log("Trade PartyB collateral locked balance:", partyBBalanceBeforeSettlementLocked)
 
-
 			// expect(await context.tradeSettlementFacet.executeTrade(ID, priceSig)).to.be.not.reverted
-
-
-
-
 		})
 
 		it("Should be when executed with option carried out as 'Cross Buy' ", async () => {
@@ -222,7 +220,6 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			}
 
 			expect(await context.tradeSettlementFacet.executeTrade(ID, priceSig)).to.be.not.reverted
-
 		})
 
 		it("Should be when executed with option carried out as 'Cross Sell' ", async () => {
@@ -245,6 +242,5 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			expect(await context.tradeSettlementFacet.executeTrade(ID, priceSig)).to.be.not.reverted
 		})
-		
 	})
 }

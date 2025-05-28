@@ -79,12 +79,12 @@ library TradeSettlementFacetImpl {
 					);
 			}
 
-			uint256 pnl = trade.getPnl(sig.settlementPrice, trade.getOpenAmount());
+			uint256 pnl = trade.getPnl(sig.settlementPrice, trade.getOpenAmount()); // pnl is of type option underlying token value not price
 
-			uint256 exerciseFee = trade.getExerciseFee(sig.settlementPrice, pnl);
-			uint256 amountToTransfer = pnl - exerciseFee;
+			uint256 exerciseFee = trade.getExerciseFee(sig.settlementPrice, pnl); // it is a fraction of pnl
+			uint256 amountToTransfer = pnl - exerciseFee; // of type option underlying token
 
-			amountToTransfer = (amountToTransfer * 1e18) / sig.collateralPrice;
+			amountToTransfer = (amountToTransfer * 1e18) / sig.collateralPrice; // scale it to the collateral value for calculations
 
 			trade.settledPrice = sig.settlementPrice;
 
