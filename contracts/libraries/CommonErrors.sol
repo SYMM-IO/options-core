@@ -13,6 +13,8 @@ library CommonErrors {
 
 	error InvalidSymbol(uint256 symbolId);
 
+	error InvalidIntentId(uint256 intentId);
+
 	error LowDeadline(uint256 deadline, uint256 current);
 
 	error InvalidAmount(string property, uint256 amount, uint8 operator, uint256 required); // 0: gt | 1: lt | 2: eq

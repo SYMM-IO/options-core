@@ -51,15 +51,8 @@ export function shouldBehaveLikeInstantActionsPartyBOpenFacet(): void {
 				.feeToken(context.collateral)
 				.expirationTimestamp(latestBlock + 120)
 				.deadline(latestBlock + 150)
-				.symbolId(1)
-				.exerciseFee({ cap: e(1), rate: "0" })
-				.marginType(0) // 0 Isolated, 1 Cross
-				.tradeSide(0) // 0 Buy, 1 Sell
-				.quantity(e(100))
-				.price(7)
 				.build()
 
-			// Create and fill open intent
 			await partyA1.sendOpenIntent(request)
 		})
 
@@ -116,15 +109,8 @@ export function shouldBehaveLikeInstantActionsPartyBOpenFacet(): void {
 				.feeToken(context.collateral)
 				.expirationTimestamp(latestBlock + 120)
 				.deadline(latestBlock + 150)
-				.symbolId(1)
-				.exerciseFee({ cap: e(1), rate: "0" })
-				.marginType(0) // 0 Isolated, 1 Cross
-				.tradeSide(0) // 0 Buy, 1 Sell
-				.quantity(e(100))
-				.price(7)
 				.build()
 
-			// Create and fill open intent
 			await partyA1.sendOpenIntent(request)
 			await partyB1.lockOpenIntent(1)
 		})
@@ -177,7 +163,7 @@ export function shouldBehaveLikeInstantActionsPartyBOpenFacet(): void {
 			).to.not.reverted
 
 			const intent = await context.viewFacet.getOpenIntent(1)
-			expect(intent.status).to.equal(0) // 1 is PENDING
+			expect(intent.status).to.equal(0) // 0 is PENDING
 		})
 	})
 
@@ -191,15 +177,8 @@ export function shouldBehaveLikeInstantActionsPartyBOpenFacet(): void {
 				.feeToken(context.collateral)
 				.expirationTimestamp(latestBlock + 120)
 				.deadline(latestBlock + 150)
-				.symbolId(1)
-				.exerciseFee({ cap: e(1), rate: "0" })
-				.marginType(0) // 0 Isolated, 1 Cross
-				.tradeSide(0) // 0 Buy, 1 Sell
-				.quantity(e(100))
-				.price(7)
 				.build()
 
-			// Create and fill open intent
 			await partyA1.sendOpenIntent(request)
 			await partyB1.lockOpenIntent(1)
 		})
@@ -242,7 +221,7 @@ export function shouldBehaveLikeInstantActionsPartyBOpenFacet(): void {
 		})
 
 		it("Should instant fill intent successfully", async function () {
-			const signedFillOpenIntent = SignedFillIntentByIdBuilder().partyB(partyB1.address).quantity(e(100)).price("7").build()
+			const signedFillOpenIntent = SignedFillIntentByIdBuilder().partyB(partyB1.address).build()
 			const signedFillOpenIntentHash = hashSignedFillOpenIntentById(signedFillOpenIntent, context.common.chainId, context.common.diamondAddress)
 			await expect(
 				await context.InstantActionsPartyBOpenFacet.connect(partyB1.getSigner).instantFillOpenIntent(
@@ -253,6 +232,9 @@ export function shouldBehaveLikeInstantActionsPartyBOpenFacet(): void {
 
 			const intent = await context.viewFacet.getOpenIntent(1)
 			expect(intent.status).to.equal(4) // 4 is FILLED
+
+			const trade = await context.viewFacet.getTrade(1)
+			expect(trade.status).to.equal(0) // 4 is OPENED
 		})
 	})
 }
