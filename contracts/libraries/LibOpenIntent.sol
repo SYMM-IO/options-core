@@ -119,7 +119,7 @@ library LibOpenIntentOps {
 				} else {
 					partyAFeeBalance.isolatedSub(tradingFee + affiliateFee, DecreaseBalanceReason.FEE);
 				}
-				partyABalance.isolatedLock(premium);  // premium is payed in symbol underlying token collateral means the 'price' in option is of kind symbol underlying token collateral
+				partyABalance.isolatedLock(premium);
 			} else {
 				if (self.partyBsWhiteList.length == 1) {
 					partyAFeeBalance.scheduledAdd(
@@ -134,7 +134,7 @@ library LibOpenIntentOps {
 
 				partyABalance.isolatedUnlock(premium);
 			}
-		} else { // cross
+		} else {
 			if (isUserPaying) {
 				partyAFeeBalance.subForCounterParty(
 					self.partyBsWhiteList[0],

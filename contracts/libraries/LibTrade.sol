@@ -33,11 +33,11 @@ library LibTradeOps {
 		return self.tradeAgreements.quantity - self.closedAmountBeforeExpiration - self.closePendingAmount;
 	}
 
-	function getPnl(Trade memory self, uint256 currentPrice, uint256 filledAmount) internal view returns (uint256 pnl) { //suggestion: settlement price or current price
+	function getPnl(Trade memory self, uint256 currentPrice, uint256 filledAmount) internal view returns (uint256 pnl) {
 		Symbol storage symbol = SymbolStorage.layout().symbols[self.tradeAgreements.symbolId];
 
 		if (currentPrice > self.tradeAgreements.strikePrice && symbol.optionType == OptionType.CALL) {
-			pnl = ((currentPrice - self.tradeAgreements.strikePrice) * filledAmount) / 1e18; //Important  of  type option underlying token 
+			pnl = ((currentPrice - self.tradeAgreements.strikePrice) * filledAmount) / 1e18;
 		} else if (currentPrice < self.tradeAgreements.strikePrice && symbol.optionType == OptionType.PUT) {
 			pnl = ((self.tradeAgreements.strikePrice - currentPrice) * filledAmount) / 1e18;
 		}
