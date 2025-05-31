@@ -32,15 +32,13 @@ export function shouldBehaveLikeSettlementFacet(): void {
 		await partyA1.setBalances(context.collateral, e(100000), e(100000))
 		await partyA2.setBalances(context.collateral, e(100000), e(100000))
 
-		const latestBlock = await ethers.provider.getBlock("latest")
-
 		const request = openIntentRequestBuilder()
 			.partyBsWhiteList([partyB1.getSigner])
 			.affiliate(context.signers.affiliate1)
 			.feeToken(context.collateral)
 			.symbolId(1)
-			.deadline((latestBlock?.timestamp ?? 0) + 140)
-			.expirationTimestamp((latestBlock?.timestamp ?? 0) + 150)
+			.deadline((await getLatestBlockTime()) + 140)
+			.expirationTimestamp((await getLatestBlockTime()) + 150)
 			.exerciseFee({ cap: e(1), rate: e(1) })
 			.quantity(e(100))
 			.strikePrice(60)
@@ -50,17 +48,17 @@ export function shouldBehaveLikeSettlementFacet(): void {
 		await partyA1.sendOpenIntent(request)
 		await partyB1.lockOpenIntent(1)
 		await partyB1.fillOpenIntent(1, e(100), 7)
-		await partyA1.sendCloseIntent(1, 7, e(50), (latestBlock?.timestamp ?? 0) + 120)
+		await partyA1.sendCloseIntent(1, 7, e(50), (await getLatestBlockTime()) + 120)
 		await partyB1.fillCloseIntent(1, e(50), 7)
 
-		const newBlock = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 170
+		const newBlock = (await getLatestBlockTime()) + 170
 		await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
 		await network.provider.send("evm_mine")
 	})
 
 	describe("executeTrade", async function () {
 		it("Should be failed when Globally Paused", async () => {
-			const timestamp = (await ethers.provider.getBlock("latest"))?.timestamp ?? 0
+			const timestamp = await getLatestBlockTime()
 			await context.controlFacet.pauseGlobal()
 
 			const ID = 1
@@ -73,7 +71,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 		it("Should failed when PartyB action Paused", async () => {
 			await context.controlFacet.pausePartyBActions()
-			const timestamp = (await ethers.provider.getBlock("latest"))?.timestamp ?? 0
+			const timestamp = await getLatestBlockTime()
 
 			const ID = 1
 			const priceSig: SettlementPriceSigStruct = {
@@ -98,14 +96,13 @@ export function shouldBehaveLikeSettlementFacet(): void {
 		})
 
 		it("Should be when executed with option carried out as 'Isolated Buy' ", async () => {
-			const latestBlock = await ethers.provider.getBlock("latest")
 			const request = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.symbolId(1)
-				.deadline((latestBlock?.timestamp ?? 0) + 140)
-				.expirationTimestamp((latestBlock?.timestamp ?? 0) + 150)
+				.deadline((await getLatestBlockTime()) + 140)
+				.expirationTimestamp((await getLatestBlockTime()) + 150)
 				.exerciseFee({ cap: e(1), rate: e(1) })
 				.quantity(e(100))
 				.strikePrice(60)
@@ -120,7 +117,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			await partyA2.sendCloseIntent(2, 7, e(50), (await getLatestBlockTime()) + 120)
 			await partyB2.fillCloseIntent(2, e(50), 7)
 
-			const timestamp = (await ethers.provider.getBlock("latest"))?.timestamp ?? 0
+			const timestamp = await getLatestBlockTime()
 			const ID = 2
 			const priceSig: SettlementPriceSigStruct = {
 				reqId: ethers.toUtf8Bytes("1"), // or a Buffer/hex string
@@ -137,10 +134,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 				},
 			}
 
-			// await partyA2.sendCloseIntent(2, 7, e(10), (await getLatestBlockTime() + 120))
-			// await partyB2.fillCloseIntent(2, e(10), 7)
-
-			const newBlock = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 170
+			const newBlock = (await getLatestBlockTime()) + 170
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
 			await network.provider.send("evm_mine")
 
@@ -181,7 +175,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 		})
 
 		it("Should be when executed with option carried out as 'Cross Buy' ", async () => {
-			const timestamp = (await ethers.provider.getBlock("latest"))?.timestamp ?? 0
+			const timestamp = await getLatestBlockTime()
 			const ID = 1
 			const priceSig: SettlementPriceSigStruct = {
 				reqId: ethers.toUtf8Bytes("1"), // or a Buffer/hex string
@@ -198,11 +192,11 @@ export function shouldBehaveLikeSettlementFacet(): void {
 				},
 			}
 
-			expect(await context.tradeSettlementFacet.executeTrade(ID, priceSig)).to.be.not.reverted
+			await expect(context.tradeSettlementFacet.executeTrade(ID, priceSig)).to.be.not.reverted
 		})
 
 		it("Should be when executed with option carried out as 'Isolated Sell' ", async () => {
-			const timestamp = (await ethers.provider.getBlock("latest"))?.timestamp ?? 0
+			const timestamp = await getLatestBlockTime()
 			const ID = 1
 			const priceSig: SettlementPriceSigStruct = {
 				reqId: ethers.toUtf8Bytes("1"), // or a Buffer/hex string
@@ -218,12 +212,11 @@ export function shouldBehaveLikeSettlementFacet(): void {
 					nonce: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
 				},
 			}
-
-			expect(await context.tradeSettlementFacet.executeTrade(ID, priceSig)).to.be.not.reverted
+			await expect(context.tradeSettlementFacet.executeTrade(ID, priceSig)).to.be.not.reverted
 		})
 
 		it("Should be when executed with option carried out as 'Cross Sell' ", async () => {
-			const timestamp = (await ethers.provider.getBlock("latest"))?.timestamp ?? 0
+			const timestamp = await getLatestBlockTime()
 			const ID = 1
 			const priceSig: SettlementPriceSigStruct = {
 				reqId: ethers.toUtf8Bytes("1"), // or a Buffer/hex string

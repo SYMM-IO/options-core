@@ -13,6 +13,7 @@ import { partyAClose } from "../types/contracts/facets"
 import { TradeStructOutput } from "../types/contracts/facets/ViewFacet/IViewFacet"
 import exp from "constants"
 import { CloseIntentStruct, SymbolStruct, TradeStruct } from "../types/contracts/interfaces/ISymmio"
+import { getLatestBlockTime } from "../utils/time"
 
 export function shouldBehaveLikePartyBCloseFacet(): void {
 	let context: RunContext, partyA1: PartyA, partyB1: PartyB, partyB2: PartyB
@@ -27,14 +28,13 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 		await partyA1.setBalances(context.collateral, e(100000), e(100000))
 		await partyA1.setBalances(context.collateralNL, e(100000), e(100000))
 
-		const latestBlock = await ethers.provider.getBlock("latest")
 		const request = openIntentRequestBuilder()
 			.partyBsWhiteList([partyB1.getSigner])
 			.affiliate(context.signers.affiliate1)
 			.feeToken(context.collateralNL)
 			.symbolId(1)
-			.deadline((latestBlock?.timestamp ?? 0) + 140)
-			.expirationTimestamp((latestBlock?.timestamp ?? 0) + 150)
+			.deadline((await getLatestBlockTime()) + 140)
+			.expirationTimestamp((await getLatestBlockTime()) + 150)
 			.exerciseFee({ cap: e(1), rate: "0" })
 			.quantity(e(100))
 			.price(7)
@@ -46,8 +46,8 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			.affiliate(context.signers.affiliate1)
 			.feeToken(context.collateralNL)
 			.symbolId(1)
-			.deadline((latestBlock?.timestamp ?? 0) + 140)
-			.expirationTimestamp((latestBlock?.timestamp ?? 0) + 150)
+			.deadline((await getLatestBlockTime()) + 140)
+			.expirationTimestamp((await getLatestBlockTime()) + 150)
 			.exerciseFee({ cap: e(1), rate: "0" })
 			.quantity(e(100))
 			.price(7)
@@ -60,8 +60,8 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 		await partyB1.lockOpenIntent(2)
 		await partyB1.fillOpenIntent(1, e(100), 7)
 		await partyB1.fillOpenIntent(2, e(100), 7)
-		await partyA1.sendCloseIntent(1, 7, e(100), (latestBlock?.timestamp ?? 0) + 120)
-		await partyA1.sendCloseIntent(2, 7, e(100), (latestBlock?.timestamp ?? 0) + 120)
+		await partyA1.sendCloseIntent(1, 7, e(100), (await getLatestBlockTime()) + 120)
+		await partyA1.sendCloseIntent(2, 7, e(100), (await getLatestBlockTime()) + 120)
 	})
 
 	describe("fillCloseIntent", async function () {
@@ -78,11 +78,11 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 		it("Should failed when amount to fill not in range", async () => {
 			await partyB1.fillCloseIntent(1, 5, 7)
 			await expect(partyB1.fillCloseIntent(1, e(101), 7)).to.revertedWithCustomError(context.partyBCloseFacet, "InvalidFilledAmount")
-			await expect(await partyB1.fillCloseIntent(1, e(95), 7)).not.to.revertedWithCustomError(context.partyBCloseFacet, "InvalidFilledAmount")
+			await expect(partyB1.fillCloseIntent(1, e(95), 7)).not.to.revertedWithCustomError(context.partyBCloseFacet, "InvalidFilledAmount")
 		})
 
 		it("Should failed when Close Intent is expired", async () => {
-			const newBlock = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 150
+			const newBlock = (await getLatestBlockTime()) + 150
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
 			await network.provider.send("evm_mine")
 
@@ -90,7 +90,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 		})
 
 		it("Should failed when Trade is expired", async () => {
-			const newBlockTime = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 150
+			const newBlockTime = (await getLatestBlockTime()) + 150
 
 			await partyA1.sendOpenIntent(
 				openIntentRequestBuilder()
@@ -119,10 +119,10 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			let trade: TradeStructOutput = await context.viewFacet.getTrade(1)
 			if (trade.tradeAgreements.tradeSide == e(TradeSide.BUY)) {
 				await expect(partyB1.fillCloseIntent(1, e(96), 5)).to.revertedWithCustomError(context.partyBCloseFacet, "InvalidClosedPrice")
-				expect(await partyB1.fillCloseIntent(1, 96, 10)).not.to.revertedWithCustomError(context.partyBCloseFacet, "InvalidClosedPrice")
+				expect(partyB1.fillCloseIntent(1, 96, 10)).not.to.revertedWithCustomError(context.partyBCloseFacet, "InvalidClosedPrice")
 			} else if (trade.tradeAgreements.tradeSide == BigInt(TradeSide.SELL)) {
 				await expect(partyB1.fillCloseIntent(1, 96, 10)).to.revertedWithCustomError(context.partyBCloseFacet, "InvalidClosedPrice")
-				expect(await partyB1.fillCloseIntent(1, 96, 5)).not.to.revertedWithCustomError(context.partyBCloseFacet, "InvalidClosedPrice")
+				expect(partyB1.fillCloseIntent(1, 96, 5)).not.to.revertedWithCustomError(context.partyBCloseFacet, "InvalidClosedPrice")
 			}
 		})
 
@@ -132,15 +132,15 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			const price = 8
 			const partyBBalanceBefore = await context.viewFacet.balanceOf(partyB1.getSigner, context.collateral)
 			const partyABalanceBefore = await context.viewFacet.balanceOf(partyA1.getSigner, context.collateral)
-			expect(await partyB1.fillCloseIntent(1, quantity, price)).to.not.be.reverted
+			await expect(partyB1.fillCloseIntent(1, quantity, price)).to.not.be.reverted
 
 			// some time pass for schedules
-			const newBlockTime = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 100
+			const newBlockTime = (await getLatestBlockTime()) + 100
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTime])
 			await network.provider.send("evm_mine")
 
 			// expect(partyBBalanceBefore - partyBBalanceAfter).to.be.equal(100) // pnl - premium
-			expect(await partyB1.fillCloseIntent(1, quantity, price)).to.not.be.reverted
+			await expect(partyB1.fillCloseIntent(1, quantity, price)).to.not.be.reverted
 
 			const closeIntent: CloseIntentStruct = await context.viewFacet.getCloseIntent(1)
 			const trade: TradeStruct = await context.viewFacet.getTrade(closeIntent.tradeId)

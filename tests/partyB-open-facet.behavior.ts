@@ -9,11 +9,12 @@ import { PartyB } from "./models/partyB.model"
 import { ethers, network } from "hardhat"
 import { e } from "../utils/e"
 import { ZeroAddress } from "ethers"
-import { bigint } from "hardhat/internal/core/params/argumentTypes"
+import { bigint, int } from "hardhat/internal/core/params/argumentTypes"
 import { config } from "dotenv"
 import { OpenIntentStruct, OpenIntentStructOutput } from "../types/contracts/interfaces/ISymmio"
 
 import { MarginType } from "./option-enums"
+import { getLatestBlockTime } from "../utils/time"
 
 export function shouldBehaveLikePartyBOpenFacet(): void {
 	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyB1: PartyB, partyB2: PartyB
@@ -29,15 +30,15 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		await partyA1.setBalances(context.collateralNL, e(100000), e(100000)) // as Fee token
 		await partyA2.setBalances(context.collateral, e(100000), e(100000))
 
-		const latestBlock = await ethers.provider.getBlock("latest")
+		const latestBlock = await getLatestBlockTime()
 		await partyA1.sendOpenIntent(
 			openIntentRequestBuilder()
 				.partyBsWhiteList([partyB1.getSigner])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.symbolId(1)
-				.deadline((latestBlock?.timestamp ?? 0) + 140)
-				.expirationTimestamp((latestBlock?.timestamp ?? 0) + 120)
+				.deadline(latestBlock + 140)
+				.expirationTimestamp(latestBlock + 120)
 				.exerciseFee({ cap: e(1), rate: "0" })
 				.quantity(e(100))
 				.price(7)
@@ -98,7 +99,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 
 		it("Should failed when intent deadline reached", async () => {
-			const newBlock = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 150
+			const newBlock = (await getLatestBlockTime()) + 150
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
 			await network.provider.send("evm_mine")
 
@@ -106,7 +107,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 
 		it("Should failed when symbol is not valid", async () => {
-			const latestBlock = await ethers.provider.getBlock("latest")
+			const latestBlock = await getLatestBlockTime()
 			await partyA1.setBalances(context.collateralNL, e(10000), e(10000))
 
 			const request = openIntentRequestBuilder()
@@ -114,8 +115,8 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateralNL)
 				.symbolId(2)
-				.deadline((latestBlock?.timestamp ?? 0) + 140)
-				.expirationTimestamp((latestBlock?.timestamp ?? 0) + 120)
+				.deadline(latestBlock + 140)
+				.expirationTimestamp(latestBlock + 120)
 				.exerciseFee({ cap: e(1), rate: "0" })
 				.quantity(e(10))
 				.price(1)
@@ -127,7 +128,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 
 		it("should revert when partB symbol type mismatch intent symbol type", async () => {
-			const latestBlock = await ethers.provider.getBlock("latest")
+			const latestBlock = await getLatestBlockTime()
 
 			await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
 				isActive: true,
@@ -140,7 +141,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 
 		it("Should failed when intent expiration has been passed", async () => {
-			const newBlock = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 130
+			const newBlock = (await getLatestBlockTime()) + 130
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
 
 			await expect(partyB1.lockOpenIntent(1)).to.revertedWithCustomError(context.partyBOpenFacet, "ExpirationTimestampPassed")
@@ -259,15 +260,14 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 		it("Should failed when intent not in Valid state", async () => {
 			await partyA2.setBalances(context.collateral, e(100000), e(100000))
-			const latestBlock = await ethers.provider.getBlock("latest")
 
 			const request = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.symbolId(1)
-				.deadline((latestBlock?.timestamp ?? 0) + 140)
-				.expirationTimestamp((latestBlock?.timestamp ?? 0) + 120)
+				.deadline((await getLatestBlockTime()) + 140)
+				.expirationTimestamp((await getLatestBlockTime()) + 120)
 				.exerciseFee({ cap: e(1), rate: "0" })
 				.quantity(e(5))
 				.price(2)
@@ -282,7 +282,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 
 		it("Should failed when deadline passed", async () => {
-			const newBlock = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 150
+			const newBlock = (await getLatestBlockTime()) + 150
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
 			await network.provider.send("evm_mine")
 
@@ -290,7 +290,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 
 		it("Should failed when expiration passed", async () => {
-			const newBlock = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 130
+			const newBlock = (await getLatestBlockTime()) + 130
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
 			await network.provider.send("evm_mine")
 
@@ -314,14 +314,14 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 
 		it("Should fail when partyA active trades more than max active trades", async function () {
-			const latestBlock = await ethers.provider.getBlock("latest")
+			let timestamp = await getLatestBlockTime()
 			const request = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner, partyB1.getSigner])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.symbolId(1)
-				.deadline((latestBlock?.timestamp ?? 0) + 120)
-				.expirationTimestamp((latestBlock?.timestamp ?? 0) + 120)
+				.deadline(timestamp + 120)
+				.expirationTimestamp(timestamp + 120)
 				.exerciseFee({ cap: e(1), rate: "0" })
 				.quantity(e(10))
 				.price(e(5))
@@ -334,14 +334,14 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 
 		it("Should failed when PartyA have more than max Active Trade", async () => {
-			const latestBlock = await ethers.provider.getBlock("latest")
+			const latestBlock = await getLatestBlockTime()
 			const request = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.symbolId(1)
-				.deadline((latestBlock?.timestamp ?? 0) + 120)
-				.expirationTimestamp((latestBlock?.timestamp ?? 0) + 120)
+				.deadline(latestBlock + 120)
+				.expirationTimestamp(latestBlock + 120)
 				.exerciseFee({ cap: e(1), rate: "0" })
 				.quantity(e(10))
 				.price(e(5))
@@ -393,14 +393,14 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 
 		it("Should failed when intent status not LOCKED", async () => {
-			const latestBlock = await ethers.provider.getBlock("latest")
+			const latestBlock = await getLatestBlockTime()
 			const request = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner, partyB1.getSigner])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.symbolId(1)
-				.deadline((latestBlock?.timestamp ?? 0) + 120)
-				.expirationTimestamp((latestBlock?.timestamp ?? 0) + 120)
+				.deadline(latestBlock + 120)
+				.expirationTimestamp(latestBlock + 120)
 				.exerciseFee({ cap: e(1), rate: "0" })
 				.quantity(e(10))
 				.price(e(5))
@@ -419,7 +419,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 		it("Should change intent status to EXPIRED when deadline reached", async () => {
 			// TODO ::: as title
-			// const newBlock = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 150
+			// const newBlock = await getLatestBlockTime() + 150
 			// await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
 			// expect(await context.partyBOpenFacet.connect(partyB1.getSigner).unlockOpenIntent(1)).to.not.reverted
 			// const intent = await context.viewFacet.getOpenIntent(1)
@@ -469,12 +469,12 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 
 		it("Should update status modifying timestamp", async function () {
-			const latestBlock = await ethers.provider.getBlock("latest")
+			const latestBlock = await getLatestBlockTime()
 			expect(await partyA1.sendCancelOpenIntent(["1"])).not.to.be.reverted
 			expect(await partyB1.acceptCancelOpenIntent(1)).to.not.reverted
 
 			let intent = await context.viewFacet.getOpenIntent(1)
-			expect(intent.statusModifyTimestamp).to.be.approximately(latestBlock?.timestamp, 3)
+			expect(intent.statusModifyTimestamp).to.be.approximately(latestBlock, 3)
 		})
 
 		it("Should remove intent", async () => {
@@ -495,6 +495,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 	})
 
+	// TODO ::: its part of the integration test
 	describe("sendOpenIntent memory management", async function () {
 		beforeEach(async () => {})
 
@@ -503,14 +504,14 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			let initialIsolatedBalancePartyA = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress())
 			let initialIsolatedBalancePartyB = await context.viewFacet.balanceOf(partyB1.getSigner, await context.collateral.getAddress())
 
-			const latestBlock = await ethers.provider.getBlock("latest")
+			const latestBlock = await getLatestBlockTime()
 			const requestIsolated = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB1.getSigner, partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.symbolId(1)
-				.deadline((latestBlock?.timestamp ?? 0) + 120)
-				.expirationTimestamp((latestBlock?.timestamp ?? 0) + 300)
+				.deadline(latestBlock + 120)
+				.expirationTimestamp(latestBlock + 300)
 				.exerciseFee({ cap: e(1), rate: "0" })
 				.quantity(e(70))
 				.price(7)
@@ -522,8 +523,8 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.symbolId(1)
-				.deadline((latestBlock?.timestamp ?? 0) + 120)
-				.expirationTimestamp((latestBlock?.timestamp ?? 0) + 300)
+				.deadline(latestBlock + 120)
+				.expirationTimestamp(latestBlock + 300)
 				.exerciseFee({ cap: e(1), rate: "0" })
 				.quantity(e(70))
 				.price(7)
@@ -531,6 +532,11 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 				.build()
 
 			// PartyA sends some Intents
+			const testTable = [requestIsolated, requestIsolated, requestIsolated, requestCross]
+
+			// testTable.forEach(async c => {
+			// 	await expect(partyA2.sendOpenIntent(c.request))
+			// })
 			expect(await partyA2.sendOpenIntent(requestIsolated)).not.to.reverted // fee and premium for party A
 			expect(await partyA2.sendOpenIntent(requestIsolated)).not.to.reverted
 			expect(await partyA2.sendOpenIntent(requestIsolated)).not.to.reverted
@@ -560,7 +566,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			let send_OI_IsolatedBalancePartyA = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress())
 
 			// some time elapses
-			let newBlockTimeStamp = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 20
+			let newBlockTimeStamp = (await getLatestBlockTime()) + 20
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
 			await network.provider.send("evm_mine")
 
@@ -579,7 +585,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 			let lockIsolatedBalancePartyB = await context.viewFacet.balanceOf(partyB1.getSigner, await context.collateral.getAddress())
 
-			newBlockTimeStamp = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 20 // Time passes
+			newBlockTimeStamp = (await getLatestBlockTime()) + 20 // Time passes
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
 			await network.provider.send("evm_mine")
 
@@ -590,7 +596,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 			let unlockIsolatedBalancePartyB = await context.viewFacet.balanceOf(partyB1.getSigner, await context.collateral.getAddress())
 
-			newBlockTimeStamp = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 20 // Time passes
+			newBlockTimeStamp = (await getLatestBlockTime()) + 20 // Time passes
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
 			await network.provider.send("evm_mine")
 
@@ -625,7 +631,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 				)
 			}
 
-			newBlockTimeStamp = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 140 // Time passes
+			newBlockTimeStamp = (await getLatestBlockTime()) + 140 // Time passes
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
 			await network.provider.send("evm_mine")
 

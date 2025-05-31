@@ -34,7 +34,7 @@ library TradeSettlementFacetImpl {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		Trade storage trade = TradeStorage.layout().trades[tradeId];
 		Symbol storage symbol = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId];
-		// LibMuon.verifySettlementPriceSig(sig);
+		LibMuon.verifySettlementPriceSig(sig);
 
 		if (trade.tradeAgreements.marginType == MarginType.CROSS) {
 			trade.partyA.requireSolvent(trade.partyB, symbol.collateral, trade.tradeAgreements.marginType);

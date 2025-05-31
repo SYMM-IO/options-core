@@ -7,6 +7,7 @@ import { openIntentRequestBuilder } from "./models/builders/send-open-intent.bui
 import { PartyB } from "./models/partyB.model"
 import { ethers, network } from "hardhat"
 import { e } from "../utils/e"
+import { getLatestBlockTime } from "../utils/time"
 
 export function shouldBehaveLikePartyACloseFacet(): void {
 	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyB1: PartyB, partyB2: PartyB
@@ -27,15 +28,15 @@ export function shouldBehaveLikePartyACloseFacet(): void {
 
 	describe("sendCloseIntent", async function () {
 		beforeEach(async () => {
-			const latestBlock = await ethers.provider.getBlock("latest")
+			const latestBlock = await getLatestBlockTime()
 
 			let request = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB1.getSigner])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.symbolId(1)
-				.deadline((latestBlock?.timestamp ?? 0) + 120)
-				.expirationTimestamp((latestBlock?.timestamp ?? 0) + 120)
+				.deadline(latestBlock + 120)
+				.expirationTimestamp(latestBlock + 120)
 				.exerciseFee({ cap: e(1), rate: "0" })
 				.quantity(e(100))
 				.price(7)
@@ -49,8 +50,8 @@ export function shouldBehaveLikePartyACloseFacet(): void {
 					.affiliate(context.signers.affiliate1)
 					.feeToken(context.collateral)
 					.symbolId(1)
-					.deadline((latestBlock?.timestamp ?? 0) + 120)
-					.expirationTimestamp((latestBlock?.timestamp ?? 0) + 120)
+					.deadline(latestBlock + 120)
+					.expirationTimestamp(latestBlock + 120)
 					.exerciseFee({ cap: e(1), rate: "0" })
 					.quantity(e(100))
 					.price(7)
@@ -66,8 +67,8 @@ export function shouldBehaveLikePartyACloseFacet(): void {
 
 		it("Should fail when partyA actions paused", async function () {
 			await context.controlFacet.pausePartyAActions()
-			const latestBlock = await ethers.provider.getBlock("latest")
-			await expect(partyA2.sendCloseIntent(1, 7, 100, (latestBlock?.timestamp ?? 0) + 140)).to.be.revertedWithCustomError(
+			const latestBlock = await getLatestBlockTime()
+			await expect(partyA2.sendCloseIntent(1, 7, 100, latestBlock + 140)).to.be.revertedWithCustomError(
 				context.partyACloseFacet,
 				"PartyAActionsPaused",
 			)
@@ -75,16 +76,13 @@ export function shouldBehaveLikePartyACloseFacet(): void {
 
 		it("Should fail when global paused", async function () {
 			await context.controlFacet.pauseGlobal()
-			const latestBlock = await ethers.provider.getBlock("latest")
-			await expect(partyA2.sendCloseIntent(1, 7, 100, (latestBlock?.timestamp ?? 0) + 140)).to.be.revertedWithCustomError(
-				context.partyACloseFacet,
-				"GlobalPaused",
-			)
+			const latestBlock = await getLatestBlockTime()
+			await expect(partyA2.sendCloseIntent(1, 7, 100, latestBlock + 140)).to.be.revertedWithCustomError(context.partyACloseFacet, "GlobalPaused")
 		})
 
 		it("Should fail when msgSender not be PartyA", async function () {
-			const latestBlock = await ethers.provider.getBlock("latest")
-			// await expect(partyA1.sendCloseIntent(2, 7, 100, (latestBlock?.timestamp ?? 0) + 140)).to.be.revertedWithCustomError(
+			const latestBlock = await getLatestBlockTime()
+			// await expect(partyA1.sendCloseIntent(2, 7, 100, (latestBlock) + 140)).to.be.revertedWithCustomError(
 			// 	context.partyACloseFacet,
 			// 	"UnauthorizedSender",
 			// )
@@ -93,24 +91,21 @@ export function shouldBehaveLikePartyACloseFacet(): void {
 
 		it("Should fail when instant action mode is active", async function () {
 			await context.controlFacet.setInstantActionsMode(partyA1.getSigner, true)
-			const latestBlock = await ethers.provider.getBlock("latest")
-			await expect(partyA1.sendCloseIntent(1, 7, 100, (latestBlock?.timestamp ?? 0) + 140)).to.be.revertedWithCustomError(
+			const latestBlock = await getLatestBlockTime()
+			await expect(partyA1.sendCloseIntent(1, 7, 100, latestBlock + 140)).to.be.revertedWithCustomError(
 				context.partyACloseFacet,
 				"InstantActionModeActive",
 			)
 		})
 
 		it("Should fail when msgSender not be PartyA", async function () {
-			const latestBlock = await ethers.provider.getBlock("latest")
-			await expect(partyA2.sendCloseIntent(1, 7, 100, (latestBlock?.timestamp ?? 0) + 140)).to.be.revertedWithCustomError(
-				context.partyACloseFacet,
-				"NotPartyAOfTrade",
-			)
+			const latestBlock = await getLatestBlockTime()
+			await expect(partyA2.sendCloseIntent(1, 7, 100, latestBlock + 140)).to.be.revertedWithCustomError(context.partyACloseFacet, "NotPartyAOfTrade")
 		})
 
 		it("Should fail when Trade in Invalid state", async function () {
-			const latestBlock = await ethers.provider.getBlock("latest")
-			// await expect(partyA1.sendCloseIntent(3, 7, 100, latestBlock?.timestamp ?? 0)).to.be.revertedWithCustomError(
+			const latestBlock = await getLatestBlockTime()
+			// await expect(partyA1.sendCloseIntent(3, 7, 100, latestBlock)).to.be.revertedWithCustomError(
 			// 	context.partyACloseFacet,
 			// 	"InvalidState",
 			// )
@@ -118,30 +113,21 @@ export function shouldBehaveLikePartyACloseFacet(): void {
 		})
 
 		it("Should fail when deadline low", async function () {
-			const latestBlock = await ethers.provider.getBlock("latest")
-			await expect(partyA1.sendCloseIntent(1, 7, 100, latestBlock?.timestamp ?? 0)).to.be.revertedWithCustomError(
-				context.partyACloseFacet,
-				"LowDeadline",
-			)
+			const latestBlock = await getLatestBlockTime()
+			await expect(partyA1.sendCloseIntent(1, 7, 100, latestBlock)).to.be.revertedWithCustomError(context.partyACloseFacet, "LowDeadline")
 		})
 
 		it("Should fail when invalid quantity", async function () {
-			const latestBlock = await ethers.provider.getBlock("latest")
-			await partyA1.sendCloseIntent(1, 7, e(5), (latestBlock?.timestamp ?? 0) + 140)
-			await expect(partyA1.sendCloseIntent(1, 7, e(96), (latestBlock?.timestamp ?? 0) + 140)).to.be.revertedWithCustomError(
-				context.partyACloseFacet,
-				"InvalidQuantity",
-			)
+			const latestBlock = await getLatestBlockTime()
+			await partyA1.sendCloseIntent(1, 7, e(5), latestBlock + 140)
+			await expect(partyA1.sendCloseIntent(1, 7, e(96), latestBlock + 140)).to.be.revertedWithCustomError(context.partyACloseFacet, "InvalidQuantity")
 			//TODO ::: Quantity order in parameter must be changed with price
 		})
 
 		it("Should fail when invalid quantity", async function () {
-			const latestBlock = await ethers.provider.getBlock("latest")
-			await partyA1.sendCloseIntent(1, 7, 5, (latestBlock?.timestamp ?? 0) + 140)
-			await expect(partyA1.sendCloseIntent(1, 7, 5, (latestBlock?.timestamp ?? 0) + 140)).to.be.revertedWithCustomError(
-				context.partyACloseFacet,
-				"TooManyCloseOrders",
-			)
+			const latestBlock = await getLatestBlockTime()
+			await partyA1.sendCloseIntent(1, 7, 5, latestBlock + 140)
+			await expect(partyA1.sendCloseIntent(1, 7, 5, latestBlock + 140)).to.be.revertedWithCustomError(context.partyACloseFacet, "TooManyCloseOrders")
 		})
 	})
 }
