@@ -79,6 +79,7 @@
 		"lint": "yarn lint:sol && yarn lint:ts",
 		"lint:sol": "solhint --config ./.solhint.json --max-warnings 0 \"contracts/**/*.sol\"",
 		"test": "hardhat test",
+		"test:uncheck-muon": "./utils/runTest.sh",
 		"typechain": "cross-env TS_NODE_TRANSPILE_ONLY=true hardhat typechain",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
