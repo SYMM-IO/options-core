@@ -9,6 +9,8 @@ import { shouldBehaveLikePartyAOpenFacet } from "./partyA-open-facet.behavior"
 import { shouldBehaveLikePartyBCloseFacet } from "./partyB-close-facet.behavior"
 import { shouldBehaveLikePartyBOpenFacet } from "./partyB-open-facet.behavior"
 import { shouldBehaveLikeSettlementFacet } from "./parties-settlement"
+import { shouldBehaveLikeInstantActionCloseFacet } from "./instant-action-close.behavior"
+import { shouldBehaveLikeInstantActionsPartyBOpenFacet } from "./instant-actions-partyb-open-facet.behavior"
 
 describe(`${name}-v${version}`, () => {
 	if (process.env.TEST_MODE === TestModeEnum.UNIT_TEST) {
@@ -34,6 +36,14 @@ describe(`${name}-v${version}`, () => {
 
 		describe("Facets_InstantActionOpenFacet", async function () {
 			shouldBehaveLikeInstantActionOpenFacet()
+		})
+
+		describe("Facets_InstantActionCloseFacet", async function () {
+			shouldBehaveLikeInstantActionCloseFacet()
+		})
+
+		describe("shouldBehaveLikeInstantActionsPartyBOpenFacet", async function () {
+			shouldBehaveLikeInstantActionsPartyBOpenFacet()
 		})
 
 		describe("Facets_PartyBCloseFacet", async function () {

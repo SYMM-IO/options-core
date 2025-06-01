@@ -12,7 +12,6 @@ import { PartyA } from "./models/partyA.model"
 import { PartyB } from "./models/partyB.model"
 import { e } from "../utils/e"
 import { openIntentRequestBuilder } from "./models/builders/send-open-intent.builder"
-import { MarginType } from "./option-enums"
 import { signedSimpleActionIntentBuilder } from "./models/builders/signed-simple-action-intent.builder"
 import { getLatestBlockTime } from "../utils/time"
 
@@ -43,13 +42,11 @@ export function shouldBehaveLikeInstantActionOpenFacet(): void {
 
 		await partyB1.setBalances(undefined, e(100000), e(100000))
 		await partyA1.setBalances(undefined, e(100000), e(100000))
+
+		await context.controlFacet.setMaxTradePerPartyA(3)
 	})
 
 	describe("instantCreateAndFillOpenIntent", function () {
-		beforeEach(async () => {
-			await context.controlFacet.setMaxTradePerPartyA(3)
-		})
-
 		it("Should reverts if partyB actions are paused", async function () {
 			await context.controlFacet.pausePartyBActions()
 			const blockTime = await getLatestBlockTime()
@@ -59,15 +56,16 @@ export function shouldBehaveLikeInstantActionOpenFacet(): void {
 				.feeToken(await context.collateral.getAddress())
 				.deadline(blockTime)
 				.expirationTimestamp(blockTime + 120)
-				.price(7)
+				.partyA(partyA1.address)
+				.partyB(partyB1.address)
 				.build()
 
-			const hash = hashSignedOpenIntent(signedOpenIntent, context.common.chainId, context.common.diamondAddress)
+			const signedOpenIntentHash = hashSignedOpenIntent(signedOpenIntent, context.common.chainId, context.common.diamondAddress)
 
 			const signedFillIntent = signedFillIntentBuilder()
 				.quantity(signedOpenIntent.quantity)
 				.deadline(signedOpenIntent.deadline)
-				.intentHash(hash)
+				.intentHash(signedOpenIntentHash)
 				.partyB(partyB1.address)
 				.build()
 
@@ -76,7 +74,7 @@ export function shouldBehaveLikeInstantActionOpenFacet(): void {
 					.connect(partyA1.getSigner)
 					.instantCreateAndFillOpenIntent(
 						signedOpenIntent,
-						await partyA1.sign(hash),
+						await partyA1.sign(signedOpenIntentHash),
 						signedFillIntent,
 						await partyB1.sign(hashSignedFillOpenIntent(signedFillIntent, context.common.chainId, context.common.diamondAddress)),
 					),
@@ -92,15 +90,16 @@ export function shouldBehaveLikeInstantActionOpenFacet(): void {
 				.feeToken(await context.collateral.getAddress())
 				.deadline(blockTime + 120)
 				.expirationTimestamp(blockTime + 120)
-				.price(7)
+				.partyA(partyA1.address)
+				.partyB(partyB1.address)
 				.build()
 
-			const hash = hashSignedOpenIntent(signedOpenIntent, context.common.chainId, context.common.diamondAddress)
+			const signedOpenIntentHash = hashSignedOpenIntent(signedOpenIntent, context.common.chainId, context.common.diamondAddress)
 
 			const signedFillIntent = signedFillIntentBuilder()
 				.quantity(signedOpenIntent.quantity)
 				.deadline(signedOpenIntent.deadline)
-				.intentHash(hash)
+				.intentHash(signedOpenIntentHash)
 				.partyB(partyB1.address)
 				.build()
 
@@ -109,7 +108,7 @@ export function shouldBehaveLikeInstantActionOpenFacet(): void {
 					.connect(partyA1.getSigner)
 					.instantCreateAndFillOpenIntent(
 						signedOpenIntent,
-						await partyA1.sign(hash),
+						await partyA1.sign(signedOpenIntentHash),
 						signedFillIntent,
 						await partyB1.sign(hashSignedFillOpenIntent(signedFillIntent, context.common.chainId, context.common.diamondAddress)),
 					),
@@ -124,16 +123,16 @@ export function shouldBehaveLikeInstantActionOpenFacet(): void {
 				.feeToken(await context.collateral.getAddress())
 				.deadline(blockTime + 120)
 				.expirationTimestamp(blockTime + 120)
-				.price(7)
-				.partyA(partyB1.address) // Wrong partyA
+				.partyA(partyA2.address) // Wrong partyA
+				.partyB(partyB1.address)
 				.build()
 
-			const hash = hashSignedOpenIntent(signedOpenIntent, context.common.chainId, context.common.diamondAddress)
+			const signedOpenIntentHash = hashSignedOpenIntent(signedOpenIntent, context.common.chainId, context.common.diamondAddress)
 
 			const signedFillIntent = signedFillIntentBuilder()
 				.quantity(signedOpenIntent.quantity)
 				.deadline(signedOpenIntent.deadline)
-				.intentHash(hash)
+				.intentHash(signedOpenIntentHash)
 				.partyB(partyB1.address)
 				.build()
 
@@ -142,7 +141,7 @@ export function shouldBehaveLikeInstantActionOpenFacet(): void {
 					.connect(partyA1.getSigner)
 					.instantCreateAndFillOpenIntent(
 						signedOpenIntent,
-						await partyA1.sign(hash),
+						await partyA1.sign(signedOpenIntentHash),
 						signedFillIntent,
 						await partyB1.sign(hashSignedFillOpenIntent(signedFillIntent, context.common.chainId, context.common.diamondAddress)),
 					),
@@ -157,17 +156,17 @@ export function shouldBehaveLikeInstantActionOpenFacet(): void {
 				.feeToken(await context.collateral.getAddress())
 				.deadline(blockTime + 120)
 				.expirationTimestamp(blockTime + 120)
-				.price(7)
 				.partyA(partyA1.address)
+				.partyB(partyB1.address)
 				.build()
 
-			const hash = hashSignedOpenIntent(signedOpenIntent, context.common.chainId, context.common.diamondAddress)
+			const signedOpenIntentHash = hashSignedOpenIntent(signedOpenIntent, context.common.chainId, context.common.diamondAddress)
 
 			const signedFillIntent = signedFillIntentBuilder()
 				.quantity(signedOpenIntent.quantity)
 				.deadline(signedOpenIntent.deadline)
-				.intentHash(hash)
-				.partyB(partyA1.address) // Wrong partyB
+				.intentHash(signedOpenIntentHash)
+				.partyB(partyB2.address) // Wrong partyB
 				.build()
 
 			await expect(
@@ -175,7 +174,7 @@ export function shouldBehaveLikeInstantActionOpenFacet(): void {
 					.connect(partyA1.getSigner)
 					.instantCreateAndFillOpenIntent(
 						signedOpenIntent,
-						await partyA1.sign(hash),
+						await partyA1.sign(signedOpenIntentHash),
 						signedFillIntent,
 						await partyB1.sign(hashSignedFillOpenIntent(signedFillIntent, context.common.chainId, context.common.diamondAddress)),
 					),
@@ -190,17 +189,16 @@ export function shouldBehaveLikeInstantActionOpenFacet(): void {
 				.feeToken(await context.collateral.getAddress())
 				.deadline(blockTime + 120)
 				.expirationTimestamp(blockTime + 120)
-				.price(7)
 				.partyA(partyA1.address)
 				.partyB(partyB1.address)
 				.build()
 
-			const hash = hashSignedOpenIntent(signedOpenIntent, context.common.chainId, context.common.diamondAddress)
+			const signedOpenIntentHash = hashSignedOpenIntent(signedOpenIntent, context.common.chainId, context.common.diamondAddress)
 
 			const signedFillIntent = signedFillIntentBuilder()
 				.quantity(signedOpenIntent.quantity)
 				.deadline(signedOpenIntent.deadline)
-				.intentHash(hash)
+				.intentHash(signedOpenIntentHash)
 				.partyB(partyB1.address)
 				.build()
 
@@ -209,7 +207,7 @@ export function shouldBehaveLikeInstantActionOpenFacet(): void {
 					.connect(partyA1.getSigner)
 					.instantCreateAndFillOpenIntent(
 						signedOpenIntent,
-						await partyA1.sign(hash),
+						await partyA1.sign(signedOpenIntentHash),
 						signedFillIntent,
 						await partyB1.sign(hashSignedFillOpenIntent(signedFillIntent, context.common.chainId, context.common.diamondAddress)),
 					),
@@ -219,14 +217,12 @@ export function shouldBehaveLikeInstantActionOpenFacet(): void {
 
 			expect(intent.partyA).to.be.equal(partyA1.address)
 			expect(intent.partyB).to.be.equal(partyB1.address)
-			expect(intent.status).to.be.equal(4) // IntentStatus.Open
+			expect(intent.status).to.be.equal(4) // IntentStatus.FILLED
 		})
 	})
 
 	describe("instantCancelOpenIntent", function () {
 		beforeEach(async () => {
-			await context.controlFacet.setMaxTradePerPartyA(3)
-
 			const blockTime = await getLatestBlockTime()
 			const sendOpenIntentReq = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB1.getSigner])
@@ -242,6 +238,7 @@ export function shouldBehaveLikeInstantActionOpenFacet(): void {
 
 		it("should reverts if partyB actions are paused", async function () {
 			await context.controlFacet.pausePartyBActions()
+
 			const signedCancelOpenIntent = signedSimpleActionIntentBuilder().signer(partyA1.address).build()
 			const signedAcceptCancelOpenIntent = signedSimpleActionIntentBuilder().signer(partyB1.address).build()
 
@@ -360,9 +357,8 @@ export function shouldBehaveLikeInstantActionOpenFacet(): void {
 					),
 			).to.not.reverted
 
-			const deletedIntent = await context.viewFacet.getOpenIntent(1)
-
-			expect(deletedIntent.status).eq(3) // IntentStatus.CANCELED
+			const intent = await context.viewFacet.getOpenIntent(signedCancelOpenIntent.intentId)
+			expect(intent.status).eq(3) // IntentStatus.CANCELED
 		})
 	})
 }

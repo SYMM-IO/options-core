@@ -79,13 +79,13 @@ contract InstantActionsCloseFacet is Accessibility, Pausable, IInstantActionsClo
 	 * @param signedFillCloseIntent The fill parameters from PartyB (price and quantity)
 	 * @param partyBSignature Cryptographic signature from PartyB authorizing the fill
 	 */
-	function instantCreateAndFillCloseIntent(
+	function instantCloseAndFillCloseIntent(
 		SignedCloseIntent calldata signedCloseIntent,
 		bytes calldata partyASignature,
 		SignedFillIntent calldata signedFillCloseIntent,
 		bytes calldata partyBSignature
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		uint256 intentId = InstantActionsCloseFacetImpl.instantCreateAndFillCloseIntent(
+		uint256 intentId = InstantActionsCloseFacetImpl.instantCloseAndFillCloseIntent(
 			signedCloseIntent,
 			partyASignature,
 			signedFillCloseIntent,

@@ -13,6 +13,7 @@ import {
 	ForceActionsFacet,
 	InstantActionsCloseFacet,
 	InstantActionsOpenFacet,
+	InstantActionsPartyBOpenFacet,
 	PartyACloseFacet,
 	PartyAOpenFacet,
 	PartyBCloseFacet,
@@ -36,6 +37,7 @@ export class RunContext {
 	forceActionsFacet!: ForceActionsFacet
 	instantActionOpenFacet!: InstantActionsOpenFacet
 	instantActionCloseFacet!: InstantActionsCloseFacet
+	InstantActionsPartyBOpenFacet!: InstantActionsPartyBOpenFacet
 	clearingHouse!: ClearingHouseFacet
 
 	signers!: {
@@ -96,6 +98,7 @@ export async function createRunContext(
 	context.forceActionsFacet = await ethers.getContractAt("ForceActionsFacet", diamond)
 	context.instantActionCloseFacet = await ethers.getContractAt("InstantActionsCloseFacet", diamond)
 	context.instantActionOpenFacet = await ethers.getContractAt("InstantActionsOpenFacet", diamond)
+	context.InstantActionsPartyBOpenFacet = await ethers.getContractAt("InstantActionsPartyBOpenFacet", diamond)
 	context.signatureVerifier = await ethers.getContractAt("SignatureVerifier", signatureVerifier)
 	context.clearingHouse = await ethers.getContractAt("ClearingHouseFacet", diamond)
 

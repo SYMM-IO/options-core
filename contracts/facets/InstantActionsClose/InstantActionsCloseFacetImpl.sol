@@ -46,7 +46,7 @@ library InstantActionsCloseFacetImpl {
 		);
 	}
 
-	function instantCreateAndFillCloseIntent(
+	function instantCloseAndFillCloseIntent(
 		SignedCloseIntent calldata signedCloseIntent,
 		bytes calldata partyASignature,
 		SignedFillIntent calldata signedFillCloseIntent,
@@ -61,8 +61,8 @@ library InstantActionsCloseFacetImpl {
 		intentId = PartyACloseFacetImpl.sendCloseIntent(
 			signedCloseIntent.partyA,
 			signedCloseIntent.tradeId,
-			signedCloseIntent.price,
 			signedCloseIntent.quantity,
+			signedCloseIntent.price,
 			signedCloseIntent.deadline
 		);
 
