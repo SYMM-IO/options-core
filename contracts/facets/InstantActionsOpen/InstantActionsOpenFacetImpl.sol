@@ -7,9 +7,9 @@ pragma solidity >=0.8.19;
 import { LibHash } from "../../libraries/LibHash.sol";
 import { LibSignature } from "../../libraries/LibSignature.sol";
 
-import { IntentStatus } from "../../types/IntentTypes.sol";
+import { OpenIntentStatus } from "../../types/IntentTypes.sol";
 import { TradeAgreements } from "../../types/BaseTypes.sol";
-import { SignedFillIntentById, SignedSimpleActionIntent, SignedOpenIntent, SignedFillIntent } from "../../types/SignedIntentTypes.sol";
+import { SignedSimpleActionIntent, SignedOpenIntent, SignedFillIntent } from "../../types/SignedIntentTypes.sol";
 
 import { PartyBOpenFacetImpl } from "../PartyBOpen/PartyBOpenFacetImpl.sol";
 import { PartyAOpenFacetImpl } from "../PartyAOpen/PartyAOpenFacetImpl.sol";
@@ -64,19 +64,19 @@ library InstantActionsOpenFacetImpl {
 		bytes calldata partyASignature,
 		SignedSimpleActionIntent calldata signedAcceptCancelOpenIntent,
 		bytes calldata partyBSignature
-	) internal returns (IntentStatus status, bool approvedByPartyB) {
+	) internal returns (OpenIntentStatus status, bool approvedByPartyB) {
 		bytes32 cancelIntentHash = LibHash.hashSignedCancelOpenIntent(signedCancelOpenIntent);
 		LibSignature.verifySignature(cancelIntentHash, partyASignature, signedCancelOpenIntent.signer);
 
 		status = PartyAOpenFacetImpl.cancelOpenIntent(signedCancelOpenIntent.signer, signedCancelOpenIntent.intentId);
 
-		if (status == IntentStatus.CANCEL_PENDING) {
+		if (status == OpenIntentStatus.CANCEL_PENDING) {
 			approvedByPartyB = true;
 			bytes32 acceptCancelIntentHash = LibHash.hashSignedAcceptCancelOpenIntent(signedAcceptCancelOpenIntent);
 			LibSignature.verifySignature(acceptCancelIntentHash, partyBSignature, signedAcceptCancelOpenIntent.signer);
 
 			PartyBOpenFacetImpl.acceptCancelOpenIntent(signedAcceptCancelOpenIntent.signer, signedAcceptCancelOpenIntent.intentId);
-			status = IntentStatus.CANCELED;
+			status = OpenIntentStatus.CANCELED;
 		}
 	}
 }

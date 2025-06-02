@@ -17,7 +17,7 @@ import { CloseIntentStorage } from "../../storages/CloseIntentStorage.sol";
 
 import { Trade, TradeStatus } from "../../types/TradeTypes.sol";
 import { ScheduledReleaseBalance } from "../../types/BalanceTypes.sol";
-import { CloseIntent, IntentStatus } from "../../types/IntentTypes.sol";
+import { CloseIntent, CloseIntentStatus } from "../../types/IntentTypes.sol";
 import { MarginType } from "../../types/BaseTypes.sol";
 
 import { ITradeNFT } from "../../interfaces/ITradeNFT.sol";
@@ -51,7 +51,7 @@ library PartyACloseFacetImpl {
 			price: price,
 			quantity: quantity,
 			filledAmount: 0,
-			status: IntentStatus.PENDING,
+			status: CloseIntentStatus.PENDING,
 			createTimestamp: block.timestamp,
 			statusModifyTimestamp: block.timestamp,
 			deadline: deadline
@@ -60,21 +60,21 @@ library PartyACloseFacetImpl {
 		intent.save();
 	}
 
-	function cancelCloseIntent(address sender, uint256 intentId) internal returns (IntentStatus) {
+	function cancelCloseIntent(address sender, uint256 intentId) internal returns (CloseIntentStatus) {
 		CloseIntent storage intent = CloseIntentStorage.layout().closeIntents[intentId];
 		Trade storage trade = TradeStorage.layout().trades[intent.tradeId];
 
 		if (trade.partyA != sender) revert CommonErrors.UnauthorizedSender(sender, trade.partyA);
 
-		CommonErrors.requireStatus("IntentStatus", uint8(intent.status), uint8(IntentStatus.PENDING));
+		CommonErrors.requireStatus("CloseIntentStatus", uint8(intent.status), uint8(CloseIntentStatus.PENDING));
 
 		if (block.timestamp > intent.deadline) {
 			intent.expire();
-			return IntentStatus.EXPIRED;
+			return CloseIntentStatus.EXPIRED;
 		} else {
 			intent.statusModifyTimestamp = block.timestamp;
-			intent.status = IntentStatus.CANCEL_PENDING;
-			return IntentStatus.CANCEL_PENDING;
+			intent.status = CloseIntentStatus.CANCEL_PENDING;
+			return CloseIntentStatus.CANCEL_PENDING;
 		}
 	}
 

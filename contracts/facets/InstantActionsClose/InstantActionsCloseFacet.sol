@@ -5,7 +5,7 @@
 pragma solidity >=0.8.19;
 
 import { Trade } from "../../types/TradeTypes.sol";
-import { IntentStatus } from "../../types/IntentTypes.sol";
+import { CloseIntentStatus } from "../../types/IntentTypes.sol";
 import { SignedFillIntentById, SignedCloseIntent, SignedFillIntent, SignedSimpleActionIntent } from "../../types/SignedIntentTypes.sol";
 
 import { Pausable } from "../../utils/Pausable.sol";
@@ -39,13 +39,13 @@ contract InstantActionsCloseFacet is Accessibility, Pausable, IInstantActionsClo
 		SignedSimpleActionIntent calldata signedAcceptCancelCloseIntent,
 		bytes calldata partyBSignature
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		IntentStatus result = InstantActionsCloseFacetImpl.instantCancelCloseIntent(
+		CloseIntentStatus result = InstantActionsCloseFacetImpl.instantCancelCloseIntent(
 			signedCancelCloseIntent,
 			partyASignature,
 			signedAcceptCancelCloseIntent,
 			partyBSignature
 		);
-		if (result == IntentStatus.EXPIRED) {
+		if (result == CloseIntentStatus.EXPIRED) {
 			emit ExpireCloseIntent(signedCancelCloseIntent.intentId);
 		} else {
 			emit CancelCloseIntent(signedCancelCloseIntent.intentId);

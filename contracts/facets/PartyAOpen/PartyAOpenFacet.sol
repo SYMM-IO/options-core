@@ -8,7 +8,7 @@ import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
 
 import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
 
-import { OpenIntent, IntentStatus } from "../../types/IntentTypes.sol";
+import { OpenIntent, OpenIntentStatus } from "../../types/IntentTypes.sol";
 import { ExerciseFee, TradeSide, TradeAgreements, MarginType } from "../../types/BaseTypes.sol";
 
 import { Pausable } from "../../utils/Pausable.sol";
@@ -124,11 +124,11 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 	 */
 	function cancelOpenIntent(uint256[] memory intentIds) external whenNotPartyAActionsPaused inactiveInstantMode(msg.sender) {
 		for (uint256 i; i < intentIds.length; i++) {
-			IntentStatus result = PartyAOpenFacetImpl.cancelOpenIntent(msg.sender, intentIds[i]);
+			OpenIntentStatus result = PartyAOpenFacetImpl.cancelOpenIntent(msg.sender, intentIds[i]);
 
-			if (result == IntentStatus.EXPIRED) {
+			if (result == OpenIntentStatus.EXPIRED) {
 				emit ExpireOpenIntent(intentIds[i]);
-			} else if (result == IntentStatus.CANCELED || result == IntentStatus.CANCEL_PENDING) {
+			} else if (result == OpenIntentStatus.CANCELED || result == OpenIntentStatus.CANCEL_PENDING) {
 				emit CancelOpenIntent(intentIds[i], result);
 			}
 		}

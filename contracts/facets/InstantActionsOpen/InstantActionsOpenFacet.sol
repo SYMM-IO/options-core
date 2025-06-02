@@ -6,7 +6,7 @@ pragma solidity >=0.8.19;
 
 import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
 
-import { OpenIntent, IntentStatus } from "../../types/IntentTypes.sol";
+import { OpenIntent, OpenIntentStatus } from "../../types/IntentTypes.sol";
 import { SignedSimpleActionIntent, SignedOpenIntent, SignedFillIntent } from "../../types/SignedIntentTypes.sol";
 
 import { Pausable } from "../../utils/Pausable.sol";
@@ -39,16 +39,16 @@ contract InstantActionsOpenFacet is Accessibility, Pausable, IInstantActionsOpen
 		SignedSimpleActionIntent calldata signedAcceptCancelOpenIntent,
 		bytes calldata partyBSignature
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		(IntentStatus finalStatus, bool approvedByPartyB) = InstantActionsOpenFacetImpl.instantCancelOpenIntent(
+		(OpenIntentStatus finalStatus, bool approvedByPartyB) = InstantActionsOpenFacetImpl.instantCancelOpenIntent(
 			signedCancelOpenIntent,
 			partyASignature,
 			signedAcceptCancelOpenIntent,
 			partyBSignature
 		);
-		if (finalStatus == IntentStatus.EXPIRED) {
+		if (finalStatus == OpenIntentStatus.EXPIRED) {
 			emit ExpireOpenIntent(signedCancelOpenIntent.intentId);
-		} else if (finalStatus == IntentStatus.CANCELED) {
-			emit CancelOpenIntent(signedCancelOpenIntent.intentId, IntentStatus.CANCELED);
+		} else if (finalStatus == OpenIntentStatus.CANCELED) {
+			emit CancelOpenIntent(signedCancelOpenIntent.intentId, OpenIntentStatus.CANCELED);
 			if (approvedByPartyB) {
 				emit AcceptCancelOpenIntent(signedCancelOpenIntent.intentId);
 			}

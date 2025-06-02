@@ -16,7 +16,7 @@ import { SymbolStorage } from "../../storages/SymbolStorage.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 
 import { TradeSide, MarginType } from "../../types/BaseTypes.sol";
-import { IntentStatus } from "../../types/IntentTypes.sol";
+import { CloseIntentStatus } from "../../types/IntentTypes.sol";
 import { Trade, TradeStatus } from "../../types/TradeTypes.sol";
 import { Symbol, OptionType } from "../../types/SymbolTypes.sol";
 import { SettlementPriceSig } from "../../types/SettlementTypes.sol";
@@ -56,7 +56,7 @@ library TradeSettlementFacetImpl {
 				isExpired = false;
 			} else {
 				trade.settledPrice = sig.settlementPrice;
-				trade.close(TradeStatus.EXPIRED, IntentStatus.CANCELED);
+				trade.close(TradeStatus.EXPIRED, CloseIntentStatus.CANCELED);
 				isExpired = true;
 			}
 		} else {			
@@ -64,7 +64,7 @@ library TradeSettlementFacetImpl {
 				isExpired = false;
 			} else {
 				trade.settledPrice = sig.settlementPrice;
-				trade.close(TradeStatus.EXPIRED, IntentStatus.CANCELED);
+				trade.close(TradeStatus.EXPIRED, CloseIntentStatus.CANCELED);
 				isExpired = true;
 			}
 		}
@@ -134,7 +134,7 @@ library TradeSettlementFacetImpl {
 				);
 			}
 
-			trade.close(TradeStatus.EXERCISED, IntentStatus.CANCELED);
+			trade.close(TradeStatus.EXERCISED, CloseIntentStatus.CANCELED);
 		}
 		if (trade.tradeAgreements.marginType == MarginType.CROSS) {
 			accountLayout.nonces[trade.partyA][trade.partyB] += 1;

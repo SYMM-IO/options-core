@@ -9,7 +9,7 @@ import { LibCloseIntentOps } from "../../libraries/LibCloseIntent.sol";
 import { CloseIntentStorage } from "../../storages/CloseIntentStorage.sol";
 
 import { Trade } from "../../types/TradeTypes.sol";
-import { CloseIntent, IntentStatus } from "../../types/IntentTypes.sol";
+import { CloseIntent, CloseIntentStatus } from "../../types/IntentTypes.sol";
 
 import { Pausable } from "../../utils/Pausable.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
@@ -67,10 +67,10 @@ contract PartyACloseFacet is Accessibility, Pausable, IPartyACloseFacet {
 	 */
 	function cancelCloseIntent(uint256[] memory intentIds) external whenNotPartyAActionsPaused inactiveInstantMode(msg.sender) {
 		for (uint256 i; i < intentIds.length; i++) {
-			IntentStatus result = PartyACloseFacetImpl.cancelCloseIntent(msg.sender, intentIds[i]);
-			if (result == IntentStatus.EXPIRED) {
+			CloseIntentStatus result = PartyACloseFacetImpl.cancelCloseIntent(msg.sender, intentIds[i]);
+			if (result == CloseIntentStatus.EXPIRED) {
 				emit ExpireCloseIntent(intentIds[i]);
-			} else if (result == IntentStatus.CANCEL_PENDING) {
+			} else if (result == CloseIntentStatus.CANCEL_PENDING) {
 				emit CancelCloseIntent(intentIds[i]);
 			}
 		}

@@ -6,9 +6,17 @@ pragma solidity >=0.8.19;
 
 import { TradeAgreements, TradingFee } from "./BaseTypes.sol";
 
-enum IntentStatus {
+enum OpenIntentStatus {
 	PENDING,
 	LOCKED,
+	CANCEL_PENDING,
+	CANCELED,
+	FILLED,
+	EXPIRED
+}
+
+enum CloseIntentStatus {
+	PENDING,
 	CANCEL_PENDING,
 	CANCELED,
 	FILLED,
@@ -23,7 +31,7 @@ struct OpenIntent {
 	address partyA;
 	address partyB;
 	address[] partyBsWhiteList;
-	IntentStatus status;
+	OpenIntentStatus status;
 	uint256 parentId;
 	uint256 createTimestamp;
 	uint256 statusModifyTimestamp;
@@ -39,7 +47,7 @@ struct CloseIntent {
 	uint256 price;
 	uint256 quantity;
 	uint256 filledAmount;
-	IntentStatus status;
+	CloseIntentStatus status;
 	uint256 createTimestamp;
 	uint256 statusModifyTimestamp;
 	uint256 deadline;

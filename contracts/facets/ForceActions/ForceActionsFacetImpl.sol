@@ -12,7 +12,7 @@ import { AppStorage } from "../../storages/AppStorage.sol";
 import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
 import { CloseIntentStorage } from "../../storages/CloseIntentStorage.sol";
 
-import { IntentStatus } from "../../types/IntentTypes.sol";
+import { OpenIntentStatus, CloseIntentStatus } from "../../types/IntentTypes.sol";
 import { OpenIntent, CloseIntent } from "../../types/IntentTypes.sol";
 
 library ForceActionsFacetImpl {
@@ -22,7 +22,7 @@ library ForceActionsFacetImpl {
 	function forceCancelOpenIntent(uint256 intentId) internal {
 		OpenIntent storage intent = OpenIntentStorage.layout().openIntents[intentId];
 
-		CommonErrors.requireStatus("IntentStatus", uint8(intent.status), uint8(IntentStatus.CANCEL_PENDING));
+		CommonErrors.requireStatus("OpenIntentStatus", uint8(intent.status), uint8(OpenIntentStatus.CANCEL_PENDING));
 
 		if (block.timestamp <= intent.statusModifyTimestamp + AppStorage.layout().forceCancelOpenIntentTimeout)
 			revert CommonErrors.CooldownNotOver(
@@ -32,7 +32,7 @@ library ForceActionsFacetImpl {
 			);
 
 		intent.statusModifyTimestamp = block.timestamp;
-		intent.status = IntentStatus.CANCELED;
+		intent.status = OpenIntentStatus.CANCELED;
 		intent.handleFeesAndPremium(false);
 		intent.remove(false);
 	}
@@ -40,7 +40,7 @@ library ForceActionsFacetImpl {
 	function forceCancelCloseIntent(uint256 intentId) internal {
 		CloseIntent storage intent = CloseIntentStorage.layout().closeIntents[intentId];
 
-		CommonErrors.requireStatus("IntentStatus", uint8(intent.status), uint8(IntentStatus.CANCEL_PENDING));
+		CommonErrors.requireStatus("CloseIntentStatus", uint8(intent.status), uint8(CloseIntentStatus.CANCEL_PENDING));
 
 		if (block.timestamp <= intent.statusModifyTimestamp + AppStorage.layout().forceCancelCloseIntentTimeout)
 			revert CommonErrors.CooldownNotOver(
@@ -50,7 +50,7 @@ library ForceActionsFacetImpl {
 			);
 
 		intent.statusModifyTimestamp = block.timestamp;
-		intent.status = IntentStatus.CANCELED;
+		intent.status = CloseIntentStatus.CANCELED;
 		intent.remove();
 	}
 }

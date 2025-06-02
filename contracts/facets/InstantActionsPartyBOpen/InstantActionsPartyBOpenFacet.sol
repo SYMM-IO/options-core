@@ -6,8 +6,8 @@ pragma solidity >=0.8.19;
 
 import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
 
-import { OpenIntent, IntentStatus } from "../../types/IntentTypes.sol";
-import { SignedFillIntentById, SignedSimpleActionIntent, SignedOpenIntent, SignedFillIntent } from "../../types/SignedIntentTypes.sol";
+import { OpenIntent, OpenIntentStatus } from "../../types/IntentTypes.sol";
+import { SignedFillIntentById, SignedSimpleActionIntent } from "../../types/SignedIntentTypes.sol";
 
 import { Pausable } from "../../utils/Pausable.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
@@ -49,10 +49,10 @@ contract InstantActionsPartyBOpenFacet is Accessibility, Pausable, IInstantActio
 		SignedSimpleActionIntent calldata signedUnlockIntent,
 		bytes calldata partyBSignature
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		IntentStatus finalStatus = InstantActionsPartyBOpenFacetImpl.instantUnlock(signedUnlockIntent, partyBSignature);
-		if (finalStatus == IntentStatus.EXPIRED) {
+		OpenIntentStatus finalStatus = InstantActionsPartyBOpenFacetImpl.instantUnlock(signedUnlockIntent, partyBSignature);
+		if (finalStatus == OpenIntentStatus.EXPIRED) {
 			emit ExpireOpenIntent(signedUnlockIntent.intentId);
-		} else if (finalStatus == IntentStatus.PENDING) {
+		} else if (finalStatus == OpenIntentStatus.PENDING) {
 			emit UnlockOpenIntent(signedUnlockIntent.intentId);
 		}
 	}
@@ -90,8 +90,8 @@ contract InstantActionsPartyBOpenFacet is Accessibility, Pausable, IInstantActio
 					newIntent.deadline
 				)
 			);
-			if (newIntent.status == IntentStatus.CANCELED) {
-				emit CancelOpenIntent(newIntentId, IntentStatus.CANCEL_PENDING);
+			if (newIntent.status == OpenIntentStatus.CANCELED) {
+				emit CancelOpenIntent(newIntentId, OpenIntentStatus.CANCEL_PENDING);
 				emit AcceptCancelOpenIntent(newIntent.id);
 			}
 		}

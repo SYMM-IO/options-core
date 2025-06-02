@@ -13,7 +13,7 @@ import { CloseIntentStorage } from "../storages/CloseIntentStorage.sol";
 import { Trade, TradeStatus } from "../types/TradeTypes.sol";
 import { Symbol, OptionType } from "../types/SymbolTypes.sol";
 import { ScheduledReleaseBalance } from "../types/BalanceTypes.sol";
-import { CloseIntent, IntentStatus } from "../types/IntentTypes.sol";
+import { CloseIntent, CloseIntentStatus } from "../types/IntentTypes.sol";
 
 import { LibCloseIntentOps } from "./LibCloseIntent.sol";
 import { ScheduledReleaseBalanceOps } from "./LibScheduledReleaseBalance.sol";
@@ -96,7 +96,7 @@ library LibTradeOps {
 		tradeLayout.partyBTradesIndex[self.id] = 0;
 	}
 
-	function close(Trade storage self, TradeStatus tradeStatus, IntentStatus intentStatus) internal {
+	function close(Trade storage self, TradeStatus tradeStatus, CloseIntentStatus intentStatus) internal {
 		uint256 len = self.activeCloseIntentIds.length;
 		for (uint8 i = 0; i < len; i++) {
 			CloseIntent storage intent = CloseIntentStorage.layout().closeIntents[self.activeCloseIntentIds[0]];

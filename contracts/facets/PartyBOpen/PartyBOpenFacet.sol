@@ -7,7 +7,7 @@ pragma solidity >=0.8.19;
 import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
 
 import { MarginType } from "../../types/BaseTypes.sol";
-import { OpenIntent, IntentStatus } from "../../types/IntentTypes.sol";
+import { OpenIntent, OpenIntentStatus } from "../../types/IntentTypes.sol";
 
 import { Pausable } from "../../utils/Pausable.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
@@ -38,10 +38,10 @@ contract PartyBOpenFacet is Accessibility, Pausable, IPartyBOpenFacet {
 	 * @param intentId The unique identifier of the open intent to be unlocked
 	 */
 	function unlockOpenIntent(uint256 intentId) external whenNotPartyBActionsPaused {
-		IntentStatus finalStatus = PartyBOpenFacetImpl.unlockOpenIntent(msg.sender, intentId);
-		if (finalStatus == IntentStatus.EXPIRED) {
+		OpenIntentStatus finalStatus = PartyBOpenFacetImpl.unlockOpenIntent(msg.sender, intentId);
+		if (finalStatus == OpenIntentStatus.EXPIRED) {
 			emit ExpireOpenIntent(intentId);
-		} else if (finalStatus == IntentStatus.PENDING) {
+		} else if (finalStatus == OpenIntentStatus.PENDING) {
 			emit UnlockOpenIntent(intentId);
 		}
 	}
@@ -71,7 +71,7 @@ contract PartyBOpenFacet is Accessibility, Pausable, IPartyBOpenFacet {
 		emit FillOpenIntent(intentId, tradeId, quantity, price);
 		if (newIntentId != 0) {
 			OpenIntent storage newIntent = OpenIntentStorage.layout().openIntents[newIntentId];
-			if (newIntent.status == IntentStatus.PENDING) {
+			if (newIntent.status == OpenIntentStatus.PENDING) {
 				emit SendOpenIntent(
 					newIntent.partyA,
 					newIntent.id,
@@ -90,7 +90,7 @@ contract PartyBOpenFacet is Accessibility, Pausable, IPartyBOpenFacet {
 						newIntent.deadline
 					)
 				);
-			} else if (newIntent.status == IntentStatus.CANCELED) {
+			} else if (newIntent.status == OpenIntentStatus.CANCELED) {
 				emit AcceptCancelOpenIntent(newIntent.id);
 			}
 		}

@@ -17,7 +17,7 @@ import { StateControlStorage } from "../../storages/StateControlStorage.sol";
 import { FeeManagementStorage } from "../../storages/FeeManagementStorage.sol";
 import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
 
-import { OpenIntent, IntentStatus } from "../../types/IntentTypes.sol";
+import { OpenIntent, OpenIntentStatus } from "../../types/IntentTypes.sol";
 import { ScheduledReleaseBalance } from "../../types/BalanceTypes.sol";
 import { ExerciseFee, TradingFee, TradeSide, TradeAgreements, MarginType } from "../../types/BaseTypes.sol";
 
@@ -91,7 +91,7 @@ library PartyAOpenFacetImpl {
 			partyA: sender,
 			partyB: address(0),
 			partyBsWhiteList: partyBsWhiteList,
-			status: IntentStatus.PENDING,
+			status: OpenIntentStatus.PENDING,
 			parentId: 0,
 			createTimestamp: block.timestamp,
 			statusModifyTimestamp: block.timestamp,
@@ -113,27 +113,27 @@ library PartyAOpenFacetImpl {
 		intent.handleFeesAndPremium(true);
 	}
 
-	function cancelOpenIntent(address sender, uint256 intentId) internal returns (IntentStatus finalStatus) {
+	function cancelOpenIntent(address sender, uint256 intentId) internal returns (OpenIntentStatus finalStatus) {
 		OpenIntent storage intent = OpenIntentStorage.layout().openIntents[intentId];
 
-		if (!(intent.status == IntentStatus.PENDING || intent.status == IntentStatus.LOCKED)) {
+		if (!(intent.status == OpenIntentStatus.PENDING || intent.status == OpenIntentStatus.LOCKED)) {
 			uint8[] memory requiredStatuses = new uint8[](2);
-			requiredStatuses[0] = uint8(IntentStatus.PENDING);
-			requiredStatuses[1] = uint8(IntentStatus.LOCKED);
+			requiredStatuses[0] = uint8(OpenIntentStatus.PENDING);
+			requiredStatuses[1] = uint8(OpenIntentStatus.LOCKED);
 
-			revert CommonErrors.InvalidState("intent", uint8(intent.status), requiredStatuses);
+			revert CommonErrors.InvalidState("OpenIntentStatus", uint8(intent.status), requiredStatuses);
 		}
 
 		if (intent.partyA != sender) revert CommonErrors.UnauthorizedSender(sender, intent.partyA);
 		if (block.timestamp > intent.deadline) {
 			intent.expire();
-		} else if (intent.status == IntentStatus.PENDING) {
-			intent.status = IntentStatus.CANCELED;
+		} else if (intent.status == OpenIntentStatus.PENDING) {
+			intent.status = OpenIntentStatus.CANCELED;
 			intent.handleFeesAndPremium(false);
 			intent.remove(false);
 		} else {
 			// LOCKED
-			intent.status = IntentStatus.CANCEL_PENDING;
+			intent.status = OpenIntentStatus.CANCEL_PENDING;
 		}
 		intent.statusModifyTimestamp = block.timestamp;
 		return intent.status;

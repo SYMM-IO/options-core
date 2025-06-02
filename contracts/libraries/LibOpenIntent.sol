@@ -9,7 +9,7 @@ import { OpenIntentStorage } from "../storages/OpenIntentStorage.sol";
 import { Symbol, SymbolStorage } from "../storages/SymbolStorage.sol";
 
 import { TradeSide, MarginType } from "../types/BaseTypes.sol";
-import { OpenIntent, IntentStatus } from "../types/IntentTypes.sol";
+import { OpenIntent, OpenIntentStatus } from "../types/IntentTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../types/BalanceTypes.sol";
 
 import { ScheduledReleaseBalanceOps } from "./LibScheduledReleaseBalance.sol";
@@ -39,7 +39,7 @@ library LibOpenIntentOps {
 		openIntentLayout.openIntents[self.id] = self;
 		openIntentLayout.openIntentsOf[msg.sender].push(self.id);
 
-		if (self.status == IntentStatus.PENDING) {
+		if (self.status == OpenIntentStatus.PENDING) {
 			openIntentLayout.activeOpenIntentsOf[self.partyA].push(self.id);
 			openIntentLayout.activeOpenIntentsCount[self.partyA] += 1;
 			openIntentLayout.partyAOpenIntentsIndex[self.id] = openIntentLayout.activeOpenIntentsOf[self.partyA].length - 1;
@@ -80,16 +80,16 @@ library LibOpenIntentOps {
 	function expire(OpenIntent storage self) internal {
 		if (block.timestamp <= self.deadline) revert IntentNotExpired(self.id, block.timestamp, self.deadline);
 
-		if (!(self.status == IntentStatus.PENDING || self.status == IntentStatus.CANCEL_PENDING || self.status == IntentStatus.LOCKED)) {
+		if (!(self.status == OpenIntentStatus.PENDING || self.status == OpenIntentStatus.CANCEL_PENDING || self.status == OpenIntentStatus.LOCKED)) {
 			uint8[] memory requiredStatuses = new uint8[](3);
-			requiredStatuses[0] = uint8(IntentStatus.PENDING);
-			requiredStatuses[1] = uint8(IntentStatus.CANCEL_PENDING);
-			requiredStatuses[2] = uint8(IntentStatus.LOCKED);
+			requiredStatuses[0] = uint8(OpenIntentStatus.PENDING);
+			requiredStatuses[1] = uint8(OpenIntentStatus.CANCEL_PENDING);
+			requiredStatuses[2] = uint8(OpenIntentStatus.LOCKED);
 
-			revert CommonErrors.InvalidState("IntentStatus", uint8(self.status), requiredStatuses);
+			revert CommonErrors.InvalidState("OpenIntentStatus", uint8(self.status), requiredStatuses);
 		}
 
-		self.status = IntentStatus.EXPIRED;
+		self.status = OpenIntentStatus.EXPIRED;
 		self.statusModifyTimestamp = block.timestamp;
 
 		handleFeesAndPremium(self, false);

@@ -16,7 +16,7 @@ import { CloseIntentStorage } from "../../storages/CloseIntentStorage.sol";
 
 import { TradeSide, MarginType } from "../../types/BaseTypes.sol";
 import { Trade, TradeStatus } from "../../types/TradeTypes.sol";
-import { CloseIntent, IntentStatus } from "../../types/IntentTypes.sol";
+import { CloseIntent, CloseIntentStatus } from "../../types/IntentTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 
 import { CommonErrors } from "../../libraries/CommonErrors.sol";
@@ -35,10 +35,10 @@ library PartyBCloseFacetImpl {
 
 		if (trade.partyB != sender) revert CommonErrors.UnauthorizedSender(sender, trade.partyB);
 
-		CommonErrors.requireStatus("IntentStatus", uint8(intent.status), uint8(IntentStatus.CANCEL_PENDING));
+		CommonErrors.requireStatus("CloseIntentStatus", uint8(intent.status), uint8(CloseIntentStatus.CANCEL_PENDING));
 
 		intent.statusModifyTimestamp = block.timestamp;
-		intent.status = IntentStatus.CANCELED;
+		intent.status = CloseIntentStatus.CANCELED;
 		intent.remove();
 	}
 
@@ -59,11 +59,11 @@ library PartyBCloseFacetImpl {
 		if (quantity == 0 || quantity > intent.quantity - intent.filledAmount)
 			revert PartyBCloseFacetErrors.InvalidFilledAmount(quantity, intent.quantity - intent.filledAmount);
 
-		if (!(intent.status == IntentStatus.PENDING || intent.status == IntentStatus.CANCEL_PENDING)) {
+		if (!(intent.status == CloseIntentStatus.PENDING || intent.status == CloseIntentStatus.CANCEL_PENDING)) {
 			uint8[] memory requiredStatuses = new uint8[](2);
-			requiredStatuses[0] = uint8(IntentStatus.PENDING);
-			requiredStatuses[1] = uint8(IntentStatus.CANCEL_PENDING);
-			revert CommonErrors.InvalidState("IntentStatus", uint8(intent.status), requiredStatuses);
+			requiredStatuses[0] = uint8(CloseIntentStatus.PENDING);
+			requiredStatuses[1] = uint8(CloseIntentStatus.CANCEL_PENDING);
+			revert CommonErrors.InvalidState("CloseIntentStatus", uint8(intent.status), requiredStatuses);
 		}
 
 		CommonErrors.requireStatus("TradeStatus", uint8(trade.status), uint8(TradeStatus.OPENED));
@@ -140,15 +140,15 @@ library PartyBCloseFacetImpl {
 
 		if (intent.filledAmount == intent.quantity) {
 			intent.statusModifyTimestamp = block.timestamp;
-			intent.status = IntentStatus.FILLED;
+			intent.status = CloseIntentStatus.FILLED;
 			intent.remove();
 			if (trade.tradeAgreements.quantity == trade.closedAmountBeforeExpiration) {
 				trade.status = TradeStatus.CLOSED;
 				trade.statusModifyTimestamp = block.timestamp;
 				trade.remove();
 			}
-		} else if (intent.status == IntentStatus.CANCEL_PENDING) { 
-			intent.status = IntentStatus.CANCELED;
+		} else if (intent.status == CloseIntentStatus.CANCEL_PENDING) { 
+			intent.status = CloseIntentStatus.CANCELED;
 			intent.statusModifyTimestamp = block.timestamp;
 			intent.remove();
 		}

@@ -20,7 +20,7 @@ import { StateControlStorage } from "../../storages/StateControlStorage.sol";
 import { FeeManagementStorage } from "../../storages/FeeManagementStorage.sol";
 
 import { Trade, TradeStatus } from "../../types/TradeTypes.sol";
-import { OpenIntent, IntentStatus } from "../../types/IntentTypes.sol";
+import { OpenIntent, OpenIntentStatus } from "../../types/IntentTypes.sol";
 import { TradeAgreements, TradeSide, MarginType } from "../../types/BaseTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 
@@ -49,7 +49,7 @@ library PartyBOpenFacetImpl {
 
 		if (intentId > intentLayout.lastOpenIntentId) revert PartyBOpenFacetErrors.InvalidIntentId(intentId, intentLayout.lastOpenIntentId);
 
-		CommonErrors.requireStatus("IntentStatus", uint8(intent.status), uint8(IntentStatus.PENDING));
+		CommonErrors.requireStatus("OpenIntentStatus", uint8(intent.status), uint8(OpenIntentStatus.PENDING));
 
 		if (block.timestamp > intent.deadline) revert PartyBOpenFacetErrors.IntentExpired(intentId, block.timestamp, intent.deadline);
 
@@ -81,42 +81,42 @@ library PartyBOpenFacetImpl {
 		sender.requireSolvent(intent.partyA, symbol.collateral, MarginType.ISOLATED);
 
 		intent.statusModifyTimestamp = block.timestamp;
-		intent.status = IntentStatus.LOCKED;
+		intent.status = OpenIntentStatus.LOCKED;
 		intent.partyB = sender;
 		intent.saveForPartyB();
 	}
 
-	function unlockOpenIntent(address sender, uint256 intentId) internal returns (IntentStatus) {
+	function unlockOpenIntent(address sender, uint256 intentId) internal returns (OpenIntentStatus) {
 		OpenIntentStorage.Layout storage intentLayout = OpenIntentStorage.layout();
 		OpenIntent storage intent = intentLayout.openIntents[intentId];
 
 		if (intent.partyB != sender) revert CommonErrors.UnauthorizedSender(sender, intent.partyB);
 
-		CommonErrors.requireStatus("IntentStatus", uint8(intent.status), uint8(IntentStatus.LOCKED));
+		CommonErrors.requireStatus("OpenIntentStatus", uint8(intent.status), uint8(OpenIntentStatus.LOCKED));
 
 		sender.requireSolvent(intent.partyA, SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId].collateral, MarginType.ISOLATED);
 
 		if (block.timestamp > intent.deadline) {
 			intent.expire();
-			return IntentStatus.EXPIRED;
+			return OpenIntentStatus.EXPIRED;
 		} else {
 			intent.statusModifyTimestamp = block.timestamp;
-			intent.status = IntentStatus.PENDING;
+			intent.status = OpenIntentStatus.PENDING;
 			intent.remove(true);
 			intent.partyB = address(0); // should be after remove
-			return IntentStatus.PENDING;
+			return OpenIntentStatus.PENDING;
 		}
 	}
 
 	function acceptCancelOpenIntent(address sender, uint256 intentId) internal {
 		OpenIntent storage intent = OpenIntentStorage.layout().openIntents[intentId];
 
-		CommonErrors.requireStatus("IntentStatus", uint8(intent.status), uint8(IntentStatus.CANCEL_PENDING));
+		CommonErrors.requireStatus("OpenIntentStatus", uint8(intent.status), uint8(OpenIntentStatus.CANCEL_PENDING));
 
 		if (intent.partyB != sender) revert CommonErrors.UnauthorizedSender(sender, intent.partyB);
 
 		intent.statusModifyTimestamp = block.timestamp;
-		intent.status = IntentStatus.CANCELED;
+		intent.status = OpenIntentStatus.CANCELED;
 		intent.handleFeesAndPremium(false);
 		intent.remove(false);
 	}
@@ -146,11 +146,11 @@ library PartyBOpenFacetImpl {
 
 		if (!symbol.isValid) revert CommonErrors.InvalidSymbol(intent.tradeAgreements.symbolId);
 
-		if (intent.status != IntentStatus.LOCKED && intent.status != IntentStatus.CANCEL_PENDING) {
+		if (intent.status != OpenIntentStatus.LOCKED && intent.status != OpenIntentStatus.CANCEL_PENDING) {
 			uint8[] memory requiredStatuses = new uint8[](2);
-			requiredStatuses[0] = uint8(IntentStatus.LOCKED);
-			requiredStatuses[1] = uint8(IntentStatus.CANCEL_PENDING);
-			revert CommonErrors.InvalidState("IntentStatus", uint8(intent.status), requiredStatuses);
+			requiredStatuses[0] = uint8(OpenIntentStatus.LOCKED);
+			requiredStatuses[1] = uint8(OpenIntentStatus.CANCEL_PENDING);
+			revert CommonErrors.InvalidState("OpenIntentStatus", uint8(intent.status), requiredStatuses);
 		}
 
 		if (intent.tradeAgreements.marginType == MarginType.CROSS) {
@@ -218,11 +218,11 @@ library PartyBOpenFacetImpl {
 		// partially fill
 		if (intent.tradeAgreements.quantity > quantity) {
 			newIntentId = ++intentLayout.lastOpenIntentId;
-			IntentStatus newStatus;
-			if (intent.status == IntentStatus.CANCEL_PENDING) {
-				newStatus = IntentStatus.CANCELED;
+			OpenIntentStatus newStatus;
+			if (intent.status == OpenIntentStatus.CANCEL_PENDING) {
+				newStatus = OpenIntentStatus.CANCELED;
 			} else {
-				newStatus = IntentStatus.PENDING;
+				newStatus = OpenIntentStatus.PENDING;
 			}
 
 			OpenIntent memory newIntent = OpenIntent({
@@ -254,7 +254,7 @@ library PartyBOpenFacetImpl {
 
 			newIntent.save();
 
-			if (newStatus == IntentStatus.CANCELED) {
+			if (newStatus == OpenIntentStatus.CANCELED) {
 				newIntent.handleFeesAndPremium(false);
 			}
 
@@ -262,7 +262,7 @@ library PartyBOpenFacetImpl {
 		}
 
 		intent.tradeId = tradeId;
-		intent.status = IntentStatus.FILLED;
+		intent.status = OpenIntentStatus.FILLED;
 		intent.statusModifyTimestamp = block.timestamp;
 
 		intent.remove(false);

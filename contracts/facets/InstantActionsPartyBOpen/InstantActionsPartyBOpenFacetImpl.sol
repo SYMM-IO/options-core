@@ -7,12 +7,10 @@ pragma solidity >=0.8.19;
 import { LibHash } from "../../libraries/LibHash.sol";
 import { LibSignature } from "../../libraries/LibSignature.sol";
 
-import { IntentStatus } from "../../types/IntentTypes.sol";
-import { TradeAgreements } from "../../types/BaseTypes.sol";
-import { SignedFillIntentById, SignedSimpleActionIntent, SignedOpenIntent, SignedFillIntent } from "../../types/SignedIntentTypes.sol";
+import { OpenIntentStatus } from "../../types/IntentTypes.sol";
+import { SignedFillIntentById, SignedSimpleActionIntent } from "../../types/SignedIntentTypes.sol";
 
 import { PartyBOpenFacetImpl } from "../PartyBOpen/PartyBOpenFacetImpl.sol";
-import { PartyAOpenFacetImpl } from "../PartyAOpen/PartyAOpenFacetImpl.sol";
 
 library InstantActionsPartyBOpenFacetImpl {
 	function instantFillOpenIntent(
@@ -37,7 +35,7 @@ library InstantActionsPartyBOpenFacetImpl {
 		PartyBOpenFacetImpl.lockOpenIntent(signedLockIntent.signer, signedLockIntent.intentId);
 	}
 
-	function instantUnlock(SignedSimpleActionIntent calldata signedUnlockIntent, bytes calldata partyBSignature) internal returns (IntentStatus) {
+	function instantUnlock(SignedSimpleActionIntent calldata signedUnlockIntent, bytes calldata partyBSignature) internal returns (OpenIntentStatus) {
 		bytes32 unlockIntentHash = LibHash.hashSignedUnlockIntent(signedUnlockIntent);
 		LibSignature.verifySignature(unlockIntentHash, partyBSignature, signedUnlockIntent.signer);
 

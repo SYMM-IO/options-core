@@ -20,7 +20,7 @@ import { CloseIntentStorage } from "../../storages/CloseIntentStorage.sol";
 import { SymbolStorage } from "../../storages/SymbolStorage.sol";
 
 import { MarginType } from "../../types/BaseTypes.sol";
-import { IntentStatus, OpenIntent, CloseIntent } from "../../types/IntentTypes.sol";
+import { OpenIntentStatus, CloseIntentStatus, OpenIntent, CloseIntent } from "../../types/IntentTypes.sol";
 import { Trade, TradeStatus } from "../../types/TradeTypes.sol";
 import { Withdraw, WithdrawStatus } from "../../types/WithdrawTypes.sol";
 import { LiquidationStatus, LiquidationDetail, LiquidationSide } from "../../types/LiquidationTypes.sol";
@@ -221,7 +221,7 @@ library ClearingHouseFacetImpl {
 			}
 
 			trade.settledPrice = price;
-			trade.close(TradeStatus.LIQUIDATED, IntentStatus.CANCELED);
+			trade.close(TradeStatus.LIQUIDATED, CloseIntentStatus.CANCELED);
 		}
 	}
 
@@ -291,12 +291,12 @@ library ClearingHouseFacetImpl {
 		for (uint256 i = 0; i < intentIds.length; i++) {
 			OpenIntent storage intent = openIntentLayout.openIntents[intentIds[i]];
 
-			if (!(intent.status == IntentStatus.PENDING || intent.status == IntentStatus.LOCKED)) {
+			if (!(intent.status == OpenIntentStatus.PENDING || intent.status == OpenIntentStatus.LOCKED)) {
 				uint8[] memory requiredStatuses = new uint8[](2);
-				requiredStatuses[0] = uint8(IntentStatus.PENDING);
-				requiredStatuses[1] = uint8(IntentStatus.LOCKED);
+				requiredStatuses[0] = uint8(OpenIntentStatus.PENDING);
+				requiredStatuses[1] = uint8(OpenIntentStatus.LOCKED);
 
-				revert CommonErrors.InvalidState("intent", uint8(intent.status), requiredStatuses);
+				revert CommonErrors.InvalidState("OpenIntentStatus", uint8(intent.status), requiredStatuses);
 			}
 			address collateral = SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId].collateral;
 			bool partyAIsSolvent = intent.partyA.isSolvent(intent.partyB, collateral, intent.tradeAgreements.marginType);
@@ -309,7 +309,7 @@ library ClearingHouseFacetImpl {
 			if (block.timestamp > intent.deadline) {
 				intent.expire();
 			} else {
-				intent.status = IntentStatus.CANCELED;
+				intent.status = OpenIntentStatus.CANCELED;
 				intent.handleFeesAndPremium(false);
 				intent.remove(false);
 			}
@@ -324,7 +324,7 @@ library ClearingHouseFacetImpl {
 		for (uint256 i = 0; i < intentIds.length; i++) {
 			CloseIntent storage intent = closeIntentLayout.closeIntents[intentIds[i]];
 			Trade memory trade = tradeLayout.trades[intent.tradeId];
-			CommonErrors.requireStatus("IntentStatus", uint8(intent.status), uint8(IntentStatus.PENDING));
+			CommonErrors.requireStatus("CloseIntentStatus", uint8(intent.status), uint8(CloseIntentStatus.PENDING));
 
 			address collateral = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId].collateral;
 			bool partyAIsSolvent = trade.partyA.isSolvent(trade.partyB, collateral, trade.tradeAgreements.marginType);
@@ -337,7 +337,7 @@ library ClearingHouseFacetImpl {
 			if (block.timestamp > intent.deadline) {
 				intent.expire();
 			} else {
-				intent.status = IntentStatus.CANCELED;
+				intent.status = CloseIntentStatus.CANCELED;
 				intent.statusModifyTimestamp = block.timestamp;
 				intent.remove();
 			}

@@ -7,7 +7,7 @@ pragma solidity >=0.8.19;
 import { LibHash } from "../../libraries/LibHash.sol";
 import { LibSignature } from "../../libraries/LibSignature.sol";
 
-import { IntentStatus } from "../../types/IntentTypes.sol";
+import { CloseIntentStatus } from "../../types/IntentTypes.sol";
 import { SignedFillIntentById, SignedSimpleActionIntent, SignedFillIntent, SignedCloseIntent } from "../../types/SignedIntentTypes.sol";
 
 import { PartyBCloseFacetImpl } from "../PartyBClose/PartyBCloseFacetImpl.sol";
@@ -19,18 +19,18 @@ library InstantActionsCloseFacetImpl {
 		bytes calldata partyASignature,
 		SignedSimpleActionIntent calldata signedAcceptCancelCloseIntent,
 		bytes calldata partyBSignature
-	) internal returns (IntentStatus status) {
+	) internal returns (CloseIntentStatus status) {
 		bytes32 cancelIntentHash = LibHash.hashSignedCancelCloseIntent(signedCancelCloseIntent);
 		LibSignature.verifySignature(cancelIntentHash, partyASignature, signedCancelCloseIntent.signer);
 
 		status = PartyACloseFacetImpl.cancelCloseIntent(signedCancelCloseIntent.signer, signedCancelCloseIntent.intentId);
 
-		if (status == IntentStatus.CANCEL_PENDING) {
+		if (status == CloseIntentStatus.CANCEL_PENDING) {
 			bytes32 acceptCancelIntentHash = LibHash.hashSignedAcceptCancelCloseIntent(signedAcceptCancelCloseIntent);
 			LibSignature.verifySignature(acceptCancelIntentHash, partyBSignature, signedAcceptCancelCloseIntent.signer);
 
 			PartyBCloseFacetImpl.acceptCancelCloseIntent(signedAcceptCancelCloseIntent.signer, signedAcceptCancelCloseIntent.intentId);
-			status = IntentStatus.CANCELED;
+			status = CloseIntentStatus.CANCELED;
 		}
 	}
 
