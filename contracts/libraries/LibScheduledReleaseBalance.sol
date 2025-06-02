@@ -337,7 +337,7 @@ library ScheduledReleaseBalanceOps {
 		uint256 thisTransitionTimestamp = entry.lastTransitionTimestamp + entry.releaseInterval;
 		// uint256 nextTransitionTimestamp = thisTransitionTimestamp + entry.releaseInterval; // +1 interval
 
-		if (block.timestamp >= thisTransitionTimestamp * 2) {
+		if (block.timestamp >= thisTransitionTimestamp + entry.releaseInterval) {
 			// second bus arrived → everything free
 			self.isolatedBalance += (entry.scheduled + entry.transitioning);
 			entry.scheduled = 0;

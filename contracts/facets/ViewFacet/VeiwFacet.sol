@@ -18,9 +18,11 @@ import { AccessControlStorage } from "../../storages/AccessControlStorage.sol";
 import { FeeManagementStorage } from "../../storages/FeeManagementStorage.sol";
 import { SymbolStorage, Symbol, Oracle } from "../../storages/SymbolStorage.sol";
 import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
-import { ScheduledReleaseBalance } from "../../types/BalanceTypes.sol";
-import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
 
+import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
+import { LibTradeOps } from "../../libraries/LibTrade.sol";
+
+import { ScheduledReleaseBalance, CrossEntry } from "../../types/BalanceTypes.sol";
 import { Trade } from "../../types/TradeTypes.sol";
 import { Withdraw } from "../../types/WithdrawTypes.sol";
 import { BridgeTransaction } from "../../types/BridgeTypes.sol";
@@ -35,6 +37,7 @@ contract ViewFacet is IViewFacet {
 	using EnumerableSet for EnumerableSet.AddressSet;
 	using LibParty for address;
 	using LibOpenIntentOps for OpenIntent;
+	using LibTradeOps for Trade;
 
 	/**
 	 * @notice Returns the balance for a specified user and collateral type.
@@ -44,6 +47,10 @@ contract ViewFacet is IViewFacet {
 	 */
 	function balanceOf(address user, address collateral) external view returns (uint256) {
 		return AccountStorage.layout().balances[user][collateral].isolatedBalance;
+	}
+
+	function crossBalance(address user, address collateral, address counterParty) external view returns (CrossEntry memory) {
+		return AccountStorage.layout().balances[user][collateral].crossBalance[counterParty];
 	}
 
 	function getIsolatedLockedBalance(address user, address collateral) external view returns (uint256) {
@@ -60,10 +67,40 @@ contract ViewFacet is IViewFacet {
 		return self.getAffiliateFee();
 	}
 
+
 	function getPremium(uint256 openIntentId) external view returns (uint256) {
 		OpenIntent memory self = OpenIntentStorage.layout().openIntents[openIntentId];
 		return self.getPremium();
 	}
+
+	
+//////////////////////////////////////////////////
+//// TRADE //////
+//////////////////////////////////////////////////
+
+	function getPnL(uint256 tradeID, uint256 settlementPrice, uint256 filledAmount) external view returns (uint256 pnl) {
+		Trade memory self = TradeStorage.layout().trades[tradeID];
+		pnl = self.getPnl(settlementPrice,filledAmount);	
+	}
+	
+	function getExerciseFee(uint256 tradeID, uint256 settlementPrice, uint256 pnl) external view returns (uint256 exerciseFee) {
+		Trade memory self = TradeStorage.layout().trades[tradeID];
+		exerciseFee = self.getExerciseFee(settlementPrice,pnl);	
+	}
+
+	function getTradePremium(uint256 tradeID) external view returns (uint256 premium) {
+		Trade memory self = TradeStorage.layout().trades[tradeID];
+		premium = self.getPremium();
+	}
+
+	function getOpenAmount(uint256 tradeID) external view returns (uint256 openAmount) {
+		Trade memory self = TradeStorage.layout().trades[tradeID];
+		openAmount = self.getOpenAmount();
+	}
+
+
+
+
 
 	/**
 	 * @notice Returns max connected partyBs.
@@ -609,9 +646,10 @@ contract ViewFacet is IViewFacet {
 		if (intentLayout.closeIntentIdsOf[tradeId].length < start + size) {
 			size = intentLayout.closeIntentIdsOf[tradeId].length - start;
 		}
+		uint256 j = 0;
 		uint256[] memory closeIntentIds = new uint256[](size);
-		for (uint256 i = start; i < start + size; i++) {
-			closeIntentIds[i - start] = intentLayout.closeIntentIdsOf[tradeId][i];
+		for (uint256 i = start; i < size; i++) {
+			closeIntentIds[j++] = intentLayout.closeIntentIdsOf[tradeId][i];
 		}
 		return closeIntentIds;
 	}
@@ -628,9 +666,10 @@ contract ViewFacet is IViewFacet {
 		if (intentLayout.closeIntentIdsOf[tradeId].length < start + size) {
 			size = intentLayout.closeIntentIdsOf[tradeId].length - start;
 		}
+		uint256 j = 0;
 		CloseIntent[] memory closeIntents = new CloseIntent[](size);
-		for (uint256 i = start; i < start + size; i++) {
-			closeIntents[i - start] = intentLayout.closeIntents[intentLayout.closeIntentIdsOf[tradeId][i]];
+		for (uint256 i = start; i < size; i++) {
+			closeIntents[j++] = intentLayout.closeIntents[intentLayout.closeIntentIdsOf[tradeId][i]];
 		}
 		return closeIntents;
 	}

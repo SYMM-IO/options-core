@@ -59,8 +59,7 @@ library TradeSettlementFacetImpl {
 				trade.close(TradeStatus.EXPIRED, IntentStatus.CANCELED);
 				isExpired = true;
 			}
-		} else {
-			// == OptionType.CALL
+		} else {			
 			if (sig.settlementPrice > trade.tradeAgreements.strikePrice) {
 				isExpired = false;
 			} else {
@@ -82,7 +81,7 @@ library TradeSettlementFacetImpl {
 			uint256 pnl = trade.getPnl(sig.settlementPrice, trade.getOpenAmount());
 
 			uint256 exerciseFee = trade.getExerciseFee(sig.settlementPrice, pnl);
-			uint256 amountToTransfer = pnl - exerciseFee;
+			uint256 amountToTransfer = pnl - exerciseFee; 
 
 			amountToTransfer = (amountToTransfer * 1e18) / sig.collateralPrice;
 
@@ -91,7 +90,7 @@ library TradeSettlementFacetImpl {
 			if (trade.tradeAgreements.tradeSide == TradeSide.BUY) {
 				if (trade.tradeAgreements.marginType == MarginType.ISOLATED) {
 					accountLayout.balances[trade.partyB][symbol.collateral].instantIsolatedAdd(
-						(trade.getPremium() * trade.getOpenAmount()) / trade.tradeAgreements.quantity, // TODO ::: refactor(complex calculation)
+						(trade.getPremium() * trade.getOpenAmount()) / trade.tradeAgreements.quantity,
 						IncreaseBalanceReason.PREMIUM
 					);
 				} else {

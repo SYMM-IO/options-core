@@ -268,13 +268,13 @@ library PartyBOpenFacetImpl {
 		intent.remove(false);
 
 		trade.save();
-		accountLayout.balances[trade.partyB][symbol.collateral].setup(trade.partyB, symbol.collateral);
+		accountLayout.balances[trade.partyB][symbol.collateral].setup(trade.partyB, symbol.collateral); 
 
 		if (intent.tradeAgreements.tradeSide == TradeSide.BUY) {
 			if (intent.tradeAgreements.marginType == MarginType.CROSS) {
 				accountLayout.balances[trade.partyA][symbol.collateral].crossUnlock(trade.partyB, intent.getPremium());
 			} else {
-				accountLayout.balances[trade.partyA][symbol.collateral].isolatedUnlock(intent.getPremium());
+				accountLayout.balances[trade.partyA][symbol.collateral].isolatedUnlock(intent.getPremium()); 
 			}
 			accountLayout.balances[trade.partyA][symbol.collateral].subForCounterParty(
 				trade.partyB,

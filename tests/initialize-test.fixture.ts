@@ -51,6 +51,7 @@ export async function initializeTestFixture(): Promise<RunContext> {
 	await context.controlFacet.setDefaultFeeCollector(context.signers.feeCollector)
 	await context.controlFacet.setMaxCloseOrdersLength(1)
 	await context.controlFacet.setAffiliateFeesCollector(context.signers.affiliate1, context.signers.feeCollector)
+	await context.controlFacet.setDefaultReleaseInterval(12)
 
 	await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
 		isActive: true,
@@ -66,16 +67,18 @@ export async function initializeTestFixture(): Promise<RunContext> {
 		symbolType: 0,
 	})
 
-	await context.controlFacet.setAffiliateStatus(context.signers.affiliate1, true)
-	await context.controlFacet.setAffiliateFees(context.signers.affiliate1, 1, 500)
-
-	await context.controlFacet.addOracle("test oracle", context.signers.oracle1)
+	await context.controlFacet.addOracle("test oracle", context.oracle)
 	await context.controlFacet.setPriceOracleAddress(context.oracle)
 
-	await context.controlFacet.addSymbol("BTC", 0, 1, context.collateral.getAddress(), 0, 0)
+	await context.controlFacet.addSymbol("BTC_PUT", OptionType.PUT, 1, context.collateral.getAddress(), 0, 0)
+	await context.controlFacet.addSymbol("BTC_CALL", OptionType.CALL, 1, context.collateral.getAddress(), 0, 0)
 	await context.controlFacet.addSymbol("USDT", 0, 1, context.collateralNL.getAddress(), 0, 0)
 	await context.controlFacet.connect(context.signers.admin).whiteListCollateral(await context.collateral.getAddress())
 	await context.controlFacet.connect(context.signers.admin).whiteListCollateral(await context.collateralNL.getAddress())
+
+	await context.controlFacet.setAffiliateStatus(context.signers.affiliate1, true)
+	await context.controlFacet.setAffiliateFees(context.signers.affiliate1, 1, e(50))
+	await context.controlFacet.setSymbolTradingFee(1, e(100))
 
 	await context.controlFacet.setSignatureVerifier(context.signatureVerifier)
 	return context

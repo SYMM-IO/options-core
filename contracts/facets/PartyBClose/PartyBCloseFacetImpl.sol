@@ -82,7 +82,7 @@ library PartyBCloseFacetImpl {
 		if (trade.tradeAgreements.tradeSide == TradeSide.BUY) {
 			if (trade.tradeAgreements.marginType == MarginType.ISOLATED) {
 				accountLayout.balances[trade.partyB][symbol.collateral].instantIsolatedAdd(
-					(trade.getPremium() * quantity) / trade.tradeAgreements.quantity,
+					(trade.getPremium() * quantity) / trade.tradeAgreements.quantity, 
 					IncreaseBalanceReason.PREMIUM
 				);
 			} else {
@@ -94,7 +94,7 @@ library PartyBCloseFacetImpl {
 				);
 			}
 
-			accountLayout.balances[trade.partyB][symbol.collateral].subForCounterParty(
+			accountLayout.balances[trade.partyB][symbol.collateral].subForCounterParty( 
 				trade.partyA,
 				pnl,
 				trade.tradeAgreements.marginType,
@@ -147,7 +147,7 @@ library PartyBCloseFacetImpl {
 				trade.statusModifyTimestamp = block.timestamp;
 				trade.remove();
 			}
-		} else if (intent.status == IntentStatus.CANCEL_PENDING) {
+		} else if (intent.status == IntentStatus.CANCEL_PENDING) { 
 			intent.status = IntentStatus.CANCELED;
 			intent.statusModifyTimestamp = block.timestamp;
 			intent.remove();
