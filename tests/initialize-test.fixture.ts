@@ -67,7 +67,7 @@ export async function initializeTestFixture(): Promise<RunContext> {
 		symbolType: 0,
 	})
 
-	await context.controlFacet.addOracle("test oracle", context.signers.oracle1)
+	await context.controlFacet.addOracle("test oracle", context.oracle)
 	await context.controlFacet.setPriceOracleAddress(context.oracle)
 
 	await context.controlFacet.addSymbol("BTC_PUT", OptionType.PUT, 1, context.collateral.getAddress(), 0, 0)

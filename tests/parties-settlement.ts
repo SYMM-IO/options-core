@@ -90,8 +90,33 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			}
 
 			await expect(context.tradeSettlementFacet.executeTrade(ID, priceSig)).to.be.revertedWithCustomError(
-				context.partyBOpenFacet,
+				context.tradeSettlementFacet,
 				"PartyBActionsPaused",
+			)
+		})
+
+		it("Should failed when signature symbol not as trade symbol action Paused", async () => {
+			const timestamp = await getLatestBlockTime()
+
+			const ID = 1
+			const priceSig: SettlementPriceSigStruct = {
+				reqId: ethers.toUtf8Bytes("1"), // or a Buffer/hex string
+				timestamp: timestamp + 100,
+				symbolId: 2,
+				settlementPrice: 40,
+				settlementTimestamp: timestamp,
+				collateralPrice: 30,
+				gatewaySignature: "0xabcdef",
+				sigs: {
+					signature: 0x1234567890,
+					owner: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+					nonce: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+				},
+			}
+
+			await expect(context.tradeSettlementFacet.executeTrade(ID, priceSig)).to.be.revertedWithCustomError(
+				context.tradeSettlementFacet,
+				"InvalidSymbolId",
 			)
 		})
 
@@ -171,7 +196,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			console.log("Trade PartyB collateral balance:", partyBBalanceBeforeSettlement)
 			console.log("Trade PartyB collateral locked balance:", partyBBalanceBeforeSettlementLocked)
 
-			// expect(await context.tradeSettlementFacet.executeTrade(ID, priceSig)).to.be.not.reverted
+			expect(await context.tradeSettlementFacet.executeTrade(ID, priceSig)).to.be.not.reverted
 		})
 
 		it("Should be when executed with option carried out as 'Cross Buy' ", async () => {
