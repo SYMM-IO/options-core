@@ -146,7 +146,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			const ID = 2
 			const priceSig: SettlementPriceSigStruct = {
 				reqId: ethers.toUtf8Bytes("1"), // or a Buffer/hex string
-				timestamp: timestamp + 100,
+				timestamp: timestamp + 180,
 				symbolId: 1, // put option
 				settlementPrice: 40,
 				settlementTimestamp: timestamp,
