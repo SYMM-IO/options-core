@@ -45,7 +45,7 @@ interface IViewFacet {
 
 	function getBridgeTransactionIds(address bridge) external view returns (uint256[] memory);
 
-	function getLastBridgeId() external view returns (uint256);
+	function getLastBridgeTransactionId() external view returns (uint256);
 
 	function getInvalidBridgedAmountsPool() external view returns (address);
 	///////////////////////////////////////////

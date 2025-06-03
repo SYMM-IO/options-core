@@ -13,7 +13,7 @@ library BridgeStorage {
 		mapping(address => bool) bridges;
 		mapping(uint256 => BridgeTransaction) bridgeTransactions;
 		mapping(address => uint256[]) bridgeTransactionIds;
-		uint256 lastBridgeId;
+		uint256 lastBridgeTransactionId;
 		address invalidBridgedAmountsPool;
 	}
 

@@ -45,7 +45,7 @@ library LibBridge {
 
 		if (CounterPartyRelationsStorage.layout().instantActionsMode[msg.sender]) revert Accessibility.InstantActionModeActive(msg.sender);
 
-		currentId = ++bridgeLayout.lastBridgeId;
+		currentId = ++bridgeLayout.lastBridgeTransactionId;
 		BridgeTransaction memory bridgeTransaction = BridgeTransaction({
 			id: currentId,
 			amount: amount,
@@ -69,7 +69,7 @@ library LibBridge {
 
 		address collateral = bridgeLayout.bridgeTransactions[transactionIds[0]].collateral;
 		for (uint256 i = transactionIds.length; i != 0; i--) {
-			if (transactionIds[i - 1] > bridgeLayout.lastBridgeId) revert BridgeFacetErrors.InvalidBridgeTransactionId(transactionIds[i - 1]);
+			if (transactionIds[i - 1] > bridgeLayout.lastBridgeTransactionId) revert BridgeFacetErrors.InvalidBridgeTransactionId(transactionIds[i - 1]);
 
 			BridgeTransaction storage bridgeTransaction = bridgeLayout.bridgeTransactions[transactionIds[i - 1]];
 
@@ -98,7 +98,7 @@ library LibBridge {
 		BridgeStorage.Layout storage bridgeLayout = BridgeStorage.layout();
 		BridgeTransaction storage bridgeTransaction = bridgeLayout.bridgeTransactions[transactionId];
 
-		if (transactionId > bridgeLayout.lastBridgeId) revert BridgeFacetErrors.InvalidBridgeTransactionId(transactionId);
+		if (transactionId > bridgeLayout.lastBridgeTransactionId) revert BridgeFacetErrors.InvalidBridgeTransactionId(transactionId);
 
 		CommonErrors.requireStatus("BridgeTransactionStatus", uint8(bridgeTransaction.status), uint8(BridgeTransactionStatus.RECEIVED));
 
