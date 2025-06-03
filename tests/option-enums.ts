@@ -22,3 +22,11 @@ export enum OptionType {
 	PUT,
 	CALL,
 }
+
+export enum TradeStatus {
+	OPENED,
+	CLOSED,
+	EXERCISED,
+	EXPIRED,
+	LIQUIDATED
+}

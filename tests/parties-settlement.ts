@@ -13,7 +13,7 @@ import { partyAClose } from "../types/contracts/facets"
 import { TradeStructOutput } from "../types/contracts/facets/ViewFacet/IViewFacet"
 import { SettlementPriceSigStruct } from "../types/contracts/facets/TradeSettlement/ITradeSettlementFacet"
 import { settlementSigBuilder } from "./models/builders/settlement.builder"
-import { TradeStruct } from "../types/contracts/interfaces/ISymmio"
+import { CloseIntentStruct, TradeStruct } from "../types/contracts/interfaces/ISymmio"
 import { request } from "http"
 import { getLatestBlockTime } from "../utils/time"
 
@@ -95,7 +95,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			)
 		})
 
-		it("Should failed when signature symbol not as trade symbol action Paused", async () => {
+		it("Should failed when signature symbol not as trade symbol", async () => {
 			const timestamp = await getLatestBlockTime()
 
 			const ID = 1
@@ -103,6 +103,56 @@ export function shouldBehaveLikeSettlementFacet(): void {
 				reqId: ethers.toUtf8Bytes("1"), // or a Buffer/hex string
 				timestamp: timestamp + 100,
 				symbolId: 2,
+				settlementPrice: 40,
+				settlementTimestamp: timestamp,
+				collateralPrice: 30,
+				gatewaySignature: "0xabcdef",
+				sigs: {
+					signature: 0x1234567890,
+					owner: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+					nonce: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+				},
+			}
+
+			await expect(context.tradeSettlementFacet.executeTrade(ID, priceSig)).to.be.revertedWithCustomError(
+				context.tradeSettlementFacet,
+				"InvalidSymbolId",
+			)
+		})
+
+		it("Should failed when trade has no open amount", async () => {
+			const request = openIntentRequestBuilder()
+				.partyBsWhiteList([partyB1.getSigner])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateral)
+				.symbolId(1)
+				.deadline((await getLatestBlockTime()) + 140)
+				.expirationTimestamp((await getLatestBlockTime()) + 150)
+				.exerciseFee({ cap: e(1), rate: e(1) })
+				.quantity(e(100))
+				.strikePrice(60)
+				.price(7)
+				.build()
+
+			await partyA1.sendOpenIntent(request)
+			await partyB1.lockOpenIntent(2)
+			await partyB1.fillOpenIntent(2, e(100), 7)
+			await partyA1.sendCloseIntent(2, 7, e(100), (await getLatestBlockTime()) + 120)
+			let closeIntent: CloseIntentStruct = await context.viewFacet.getCloseIntent(2)
+			console.log("Settlement Close Intent Quantity: ", closeIntent.quantity)
+			console.log("Settlement Close Intent Filled Amount: ", closeIntent.filledAmount)
+			
+			await partyB1.fillCloseIntent(2, e(100), 7)
+			closeIntent = await context.viewFacet.getCloseIntent(2)
+			console.log("Settlement After Fill Close Intent Quantity: ", closeIntent.quantity)
+			console.log("Settlement After Fill Close Intent Filled Amount: ", closeIntent.filledAmount)
+			
+			const timestamp = await getLatestBlockTime()
+			const ID = 1
+			const priceSig: SettlementPriceSigStruct = {
+				reqId: ethers.toUtf8Bytes("1"), // or a Buffer/hex string
+				timestamp: timestamp + 100,
+				symbolId: 1,
 				settlementPrice: 40,
 				settlementTimestamp: timestamp,
 				collateralPrice: 30,
