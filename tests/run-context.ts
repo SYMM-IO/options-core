@@ -51,8 +51,8 @@ export class RunContext {
 		partyB2: SignerWithAddress
 		oracle1: SignerWithAddress
 		affiliate1: SignerWithAddress
-		bridge1:SignerWithAddress,
-		bridge2:SignerWithAddress,
+		bridge1: SignerWithAddress
+		bridge2: SignerWithAddress
 		others: SignerWithAddress[]
 	}
 	collateral!: FakeStablecoin
