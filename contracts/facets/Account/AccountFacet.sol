@@ -5,18 +5,19 @@
 pragma solidity >=0.8.19;
 
 import { LibAccessibility } from "../../libraries/LibAccessibility.sol";
+import { LibPartyBManagement } from "../../libraries/LibPartyBManagement.sol";
+import { LibBalanceOperations } from "../../libraries/LibBalanceOperations.sol";
+import { LibAllocationOperations } from "../../libraries/LibAllocationOperations.sol";
 
 import { AccountStorage, Withdraw } from "../../storages/AccountStorage.sol";
 import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
 
-import { MarginType } from "../../types/BaseTypes.sol";
 import { UpnlSig } from "../../types/WithdrawTypes.sol";
 
 import { Pausable } from "../../utils/Pausable.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
 
 import { IAccountFacet } from "./IAccountFacet.sol";
-import { AccountFacetImpl } from "./AccountFacetImpl.sol";
 
 /**
  * @title AccountFacet
@@ -31,7 +32,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @param amount The amount of collateral to be deposited, specified in collateral decimals
 	 */
 	function deposit(address collateral, uint256 amount) external whenNotDepositingPaused notSuspended(msg.sender) {
-		AccountFacetImpl.deposit(collateral, msg.sender, amount);
+		LibBalanceOperations.deposit(collateral, msg.sender, amount);
 		emit Deposit(msg.sender, msg.sender, collateral, amount, AccountStorage.layout().balances[msg.sender][collateral].isolatedBalance);
 	}
 
@@ -47,7 +48,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		address user,
 		uint256 amount
 	) external whenNotDepositingPaused notSuspended(user) onlyRole(LibAccessibility.SECURED_DEPOSITOR_ROLE) {
-		AccountFacetImpl.securedDepositFor(collateral, user, amount);
+		LibBalanceOperations.securedDepositFor(collateral, user, amount);
 		emit Deposit(msg.sender, user, collateral, amount, AccountStorage.layout().balances[user][collateral].isolatedBalance);
 	}
 
@@ -63,7 +64,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		address user,
 		uint256 amount
 	) external whenNotDepositingPaused notSuspended(msg.sender) notSuspended(user) {
-		AccountFacetImpl.deposit(collateral, user, amount);
+		LibBalanceOperations.deposit(collateral, user, amount);
 		emit Deposit(msg.sender, user, collateral, amount, AccountStorage.layout().balances[user][collateral].isolatedBalance);
 	}
 
@@ -79,7 +80,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		address user,
 		uint256 amount
 	) external whenNotInternalTransferPaused notSuspended(msg.sender) notSuspended(user) notPartyB {
-		AccountFacetImpl.internalTransfer(collateral, user, amount);
+		LibBalanceOperations.internalTransfer(collateral, msg.sender, user, amount);
 		emit InternalTransfer(
 			msg.sender,
 			user,
@@ -102,7 +103,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		uint256 amount,
 		address to
 	) external whenNotWithdrawingPaused notSuspended(msg.sender) notSuspended(to) {
-		uint256 id = AccountFacetImpl.initiateWithdraw(collateral, amount, to);
+		uint256 id = LibBalanceOperations.initiateWithdraw(msg.sender, collateral, amount, to);
 		emit InitiateWithdraw(id, msg.sender, to, collateral, amount, AccountStorage.layout().balances[msg.sender][collateral].isolatedBalance);
 	}
 
@@ -112,7 +113,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @param id The unique identifier of the withdrawal request to complete
 	 */
 	function completeWithdraw(uint256 id) external whenNotWithdrawingPaused notSuspendedWithdrawal(id) {
-		AccountFacetImpl.completeWithdraw(id);
+		LibBalanceOperations.completeWithdraw(id);
 		emit CompleteWithdraw(id);
 	}
 
@@ -123,7 +124,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 */
 	function cancelWithdraw(uint256 id) external whenNotWithdrawingPaused notSuspendedWithdrawal(id) {
 		Withdraw storage withdrawObject = AccountStorage.layout().withdrawals[id];
-		AccountFacetImpl.cancelWithdraw(id);
+		LibBalanceOperations.cancelWithdraw(id);
 		emit CancelWithdraw(
 			id,
 			withdrawObject.user,
@@ -138,7 +139,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @dev Only callable by PartyA accounts, not PartyB
 	 */
 	function activateInstantActionMode() external notPartyB {
-		AccountFacetImpl.activateInstantActionMode();
+		LibPartyBManagement.activateInstantActionMode();
 		emit ActivateInstantActionMode(msg.sender, block.timestamp);
 	}
 
@@ -147,7 +148,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @dev Only callable by PartyA accounts, starts a time-delayed process
 	 */
 	function proposeToDeactivateInstantActionMode() external notPartyB {
-		AccountFacetImpl.proposeToDeactivateInstantActionMode();
+		LibPartyBManagement.proposeToDeactivateInstantActionMode();
 		emit ProposeToDeactivateInstantActionMode(msg.sender, block.timestamp);
 	}
 
@@ -156,7 +157,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @dev Only callable by PartyA accounts after the waiting period has passed
 	 */
 	function deactivateInstantActionMode() external notPartyB {
-		AccountFacetImpl.deactivateInstantActionMode();
+		LibPartyBManagement.deactivateInstantActionMode();
 		emit DeactivateInstantActionMode(msg.sender, block.timestamp);
 	}
 
@@ -166,7 +167,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @param partyB The address of the PartyB to establish a relationship with
 	 */
 	function bindToPartyB(address partyB) external notPartyB whenNotPartyAActionsPaused {
-		AccountFacetImpl.bindToPartyB(partyB);
+		LibPartyBManagement.bindToPartyB(partyB);
 		emit BindToPartyB(msg.sender, partyB);
 	}
 
@@ -175,7 +176,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @dev Starts a cooldown period before the unbinding can be completed
 	 */
 	function initiateUnbindingFromPartyB() external notPartyB whenNotPartyAActionsPaused {
-		AccountFacetImpl.initiateUnbindingFromPartyB();
+		LibPartyBManagement.initiateUnbindingFromPartyB();
 		emit InitiateUnbindingFromPartyB(msg.sender, CounterPartyRelationsStorage.layout().boundPartyB[msg.sender], block.timestamp);
 	}
 
@@ -185,7 +186,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 */
 	function completeUnbindingFromPartyB() external notPartyB whenNotPartyAActionsPaused {
 		address previousPartyB = CounterPartyRelationsStorage.layout().boundPartyB[msg.sender];
-		AccountFacetImpl.completeUnbindingFromPartyB();
+		LibPartyBManagement.completeUnbindingFromPartyB();
 		emit CompleteUnbindingFromPartyB(msg.sender, previousPartyB);
 	}
 
@@ -194,7 +195,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @dev Can only be called during the cooldown period after initiation
 	 */
 	function cancelUnbindingFromPartyB() external notPartyB whenNotPartyAActionsPaused {
-		AccountFacetImpl.cancelUnbindingFromPartyB();
+		LibPartyBManagement.cancelUnbindingFromPartyB();
 		emit CancelUnbindingFromPartyB(msg.sender, CounterPartyRelationsStorage.layout().boundPartyB[msg.sender]);
 	}
 
@@ -206,7 +207,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @param partyBs Array of PartyB addresses with which to synchronize balances
 	 */
 	function syncBalances(address collateral, address partyA, address[] calldata partyBs) external {
-		AccountFacetImpl.syncBalances(collateral, partyA, partyBs);
+		LibBalanceOperations.syncBalances(collateral, partyA, partyBs);
 	}
 
 	/**
@@ -216,7 +217,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @param amount The amount of collateral to be allocated
 	 */
 	function allocate(address collateral, address counterParty, uint256 amount) external notSuspended(msg.sender) {
-		AccountFacetImpl.allocate(collateral, counterParty, amount);
+		LibAllocationOperations.allocate(collateral, counterParty, amount);
 		emit Allocate(
 			msg.sender,
 			collateral,
@@ -242,7 +243,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		bool isPartyB,
 		UpnlSig memory upnlSig
 	) external notSuspended(msg.sender) {
-		AccountFacetImpl.deallocate(collateral, counterParty, amount, isPartyB, upnlSig);
+		LibAllocationOperations.deallocate(collateral, counterParty, amount, isPartyB, upnlSig);
 		emit Deallocate(
 			msg.sender,
 			collateral,
@@ -259,7 +260,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @param amount The amount of collateral to be allocated
 	 */
 	function allocateToReserveBalance(address collateral, uint256 amount) external {
-		AccountFacetImpl.allocateToReserveBalance(collateral, amount);
+		LibAllocationOperations.allocateToReserveBalance(collateral, amount);
 		emit AllocateToReserveBalance(msg.sender, collateral, amount, AccountStorage.layout().balances[msg.sender][collateral].isolatedBalance);
 	}
 
@@ -269,7 +270,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @param amount The amount of collateral to be deallocated
 	 */
 	function deallocateFromReserveBalance(address collateral, uint256 amount) external {
-		AccountFacetImpl.deallocateFromReserveBalance(collateral, amount);
+		LibAllocationOperations.deallocateFromReserveBalance(collateral, amount);
 		emit DeallocateFromReserveBalance(msg.sender, collateral, amount, AccountStorage.layout().balances[msg.sender][collateral].isolatedBalance);
 	}
 }
