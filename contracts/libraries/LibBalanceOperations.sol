@@ -86,8 +86,6 @@ library LibBalanceOperations {
 				appLayout.balanceLimitPerUser[collateral]
 			);
 
-		if (CounterPartyRelationsStorage.layout().instantActionsMode[sender]) revert AccountFacetErrors.InstantActionModeActive(sender);
-
 		sourceBalance.isolatedSub(amount, DecreaseBalanceReason.INTERNAL_TRANSFER);
 		targetBalance.setup(receiver, collateral);
 		targetBalance.instantIsolatedAdd(amount, IncreaseBalanceReason.INTERNAL_TRANSFER);
@@ -108,7 +106,6 @@ library LibBalanceOperations {
 		if (available < amount) {
 			revert CommonErrors.InsufficientBalance(sender, collateral, amount, available);
 		}
-		if (CounterPartyRelationsStorage.layout().instantActionsMode[sender]) revert AccountFacetErrors.InstantActionModeActive(sender);
 		sender.requireSolvent(address(0), collateral, MarginType.ISOLATED);
 
 		accountLayout.balances[sender][collateral].isolatedSub(amount, DecreaseBalanceReason.WITHDRAW);

@@ -18,6 +18,7 @@ import { Pausable } from "../../utils/Pausable.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
 
 import { IAccountFacet } from "./IAccountFacet.sol";
+import { AccountFacetErrors } from "./AccountFacetErrors.sol";
 
 /**
  * @title AccountFacet
@@ -80,6 +81,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		address user,
 		uint256 amount
 	) external whenNotInternalTransferPaused notSuspended(msg.sender) notSuspended(user) notPartyB {
+		if (CounterPartyRelationsStorage.layout().instantActionsMode[msg.sender]) revert AccountFacetErrors.InstantActionModeActive(msg.sender);
 		LibBalanceOperations.internalTransfer(collateral, msg.sender, user, amount);
 		emit InternalTransfer(
 			msg.sender,
@@ -103,6 +105,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		uint256 amount,
 		address to
 	) external whenNotWithdrawingPaused notSuspended(msg.sender) notSuspended(to) {
+		if (CounterPartyRelationsStorage.layout().instantActionsMode[msg.sender]) revert AccountFacetErrors.InstantActionModeActive(msg.sender);
 		uint256 id = LibBalanceOperations.initiateWithdraw(msg.sender, collateral, amount, to);
 		emit InitiateWithdraw(id, msg.sender, to, collateral, amount, AccountStorage.layout().balances[msg.sender][collateral].isolatedBalance);
 	}
