@@ -205,7 +205,7 @@ export function shouldBehaveLikeInstantActionCloseFacet(): void {
 
 			const close = await context.viewFacet.getCloseIntent(1)
 
-			expect(close.status).to.equal(3) // 3 is CANCELLED
+			expect(close.status).to.equal(2) // 2 is CANCELLED
 		})
 	})
 
@@ -270,7 +270,7 @@ export function shouldBehaveLikeInstantActionCloseFacet(): void {
 			expect(trade.status).to.equal(1) // 1 is CLOSE
 
 			const closeIntent = await context.viewFacet.getCloseIntent(1)
-			expect(closeIntent.status).to.equal(4) // 4 is FILL
+			expect(closeIntent.status).to.equal(3) // 3 is FILL
 		})
 	})
 
@@ -387,7 +387,7 @@ export function shouldBehaveLikeInstantActionCloseFacet(): void {
 			expect(trade.status).to.equal(1) // 1 is CLOSE
 
 			const closeIntent = await context.viewFacet.getCloseIntent(1)
-			expect(closeIntent.status).to.equal(4) // 4 is FILL
+			expect(closeIntent.status).to.equal(3) // 3 is FILL
 		})
 	})
 }

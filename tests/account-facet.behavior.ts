@@ -5,14 +5,25 @@ import { PartyA } from "./models/partyA.model"
 import { RunContext } from "./run-context"
 import { ZeroAddress } from "ethers"
 import { ethers, network } from "hardhat"
+import { PartyB } from "./models/partyB.model"
 
 export function shouldBehaveLikeAccountFacet(): void {
-	let context: RunContext, partyA1: PartyA
+	let context: RunContext, partyA1: PartyA, partyB1: PartyB
 
 	beforeEach(async function () {
 		context = await loadFixture(initializeTestFixture)
 		partyA1 = new PartyA(context, context.signers.partyA1)
+		partyB1 = new PartyB(context, context.signers.partyB1)
 		await partyA1.setBalances(context.collateral, "500", "100")
+
+		await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
+			isActive: true,
+			lossCoverage: 0,
+			oracleId: 0,
+			symbolType: 0,
+		})
+
+		await context.controlFacet.setUnbindingCooldown(120)
 	})
 
 	describe("Deposit", async function () {
@@ -48,7 +59,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 			expect(await context.accountFacet.connect(partyA1.getSigner).deposit(await context.collateral.getAddress(), "100")).to.be.not.reverted
 
 			expect(await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress())).to.be.equal("200")
-			expect(await context.collateral.balanceOf(partyA1.getSigner)).to.be.equal("300")
+			expect(await context.collateral.balanceOf(partyA1.getSigner)).to.be. equal("300")
 		})
 	})
 
@@ -339,6 +350,21 @@ export function shouldBehaveLikeAccountFacet(): void {
 	})
 
 	describe("activateInstantActionMode", async function () {
+		beforeEach(async () => {
+			await context.accountFacet.connect(partyA1.getSigner).bindToPartyB(partyB1.address)
+		})
+
+		it("Should fail when not bound to any partyB", async function () {
+			await context.accountFacet.connect(partyA1.getSigner).initiateUnbindingFromPartyB()
+			const newBlock = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 120
+			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
+			await context.accountFacet.connect(partyA1.getSigner).completeUnbindingFromPartyB()
+			await expect(context.accountFacet.connect(partyA1.getSigner).activateInstantActionMode()).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"NotBoundToAnyPartyB",
+			)
+		})
+
 		it("Should fail when msgSender be PartyB", async function () {
 			await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
 				isActive: true,
@@ -354,7 +380,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 		})
 
 		it("Should fail when instance mode is active", async function () {
-			context.accountFacet.connect(partyA1.getSigner).activateInstantActionMode()
+			await context.accountFacet.connect(partyA1.getSigner).activateInstantActionMode()
 			await expect(context.accountFacet.connect(partyA1.getSigner).activateInstantActionMode()).to.be.revertedWithCustomError(
 				context.accountFacet,
 				"InstantActionModeAlreadyActivated",
@@ -368,6 +394,9 @@ export function shouldBehaveLikeAccountFacet(): void {
 	})
 
 	describe("proposeToDeactivateInstantActionMode", async function () {
+		beforeEach(async () => {
+			await context.accountFacet.connect(partyA1.getSigner).bindToPartyB(partyB1.address)
+		})
 		it("Should fail when msgSender be PartyB", async function () {
 			await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
 				isActive: true,
@@ -403,6 +432,9 @@ export function shouldBehaveLikeAccountFacet(): void {
 	})
 
 	describe("deactivateInstantActionMode", async function () {
+		beforeEach(async () => {
+			await context.accountFacet.connect(partyA1.getSigner).bindToPartyB(partyB1.address)
+		})
 		it("Should fail when msgSender be PartyB", async function () {
 			await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
 				isActive: true,
@@ -578,17 +610,6 @@ export function shouldBehaveLikeAccountFacet(): void {
 	})
 
 	describe("completeUnbindingFromPartyB", async function () {
-		beforeEach(async () => {
-			await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
-				isActive: true,
-				lossCoverage: 0,
-				oracleId: 0,
-				symbolType: 0,
-			})
-
-			await context.controlFacet.setUnbindingCooldown(120)
-		})
-
 		it("Should fail when msgSender be PartyB", async function () {
 			await expect(context.accountFacet.connect(context.signers.partyB1).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(
 				context.accountFacet,

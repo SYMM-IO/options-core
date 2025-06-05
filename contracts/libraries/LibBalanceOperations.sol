@@ -31,11 +31,11 @@ library LibBalanceOperations {
 	uint256 private constant PRECISION_FACTOR = 1e18;
 
 	function deposit(address collateral, address user, uint256 amount) internal {
-		_deposit(collateral, user, amount, false);
+		_deposit(collateral, user, amount, true);
 	}
 
 	function securedDepositFor(address collateral, address user, uint256 amount) internal {
-		_deposit(collateral, user, amount, true);
+		_deposit(collateral, user, amount, false);
 	}
 
 	function _deposit(address collateral, address user, uint256 amount, bool doTransfer) internal {
