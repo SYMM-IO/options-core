@@ -59,7 +59,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 			expect(await context.accountFacet.connect(partyA1.getSigner).deposit(await context.collateral.getAddress(), "100")).to.be.not.reverted
 
 			expect(await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress())).to.be.equal("200")
-			expect(await context.collateral.balanceOf(partyA1.getSigner)).to.be. equal("300")
+			expect(await context.collateral.balanceOf(partyA1.getSigner)).to.be.equal("300")
 		})
 	})
 
