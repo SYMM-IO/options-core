@@ -121,7 +121,6 @@ export function shouldBehaveLikePartyACloseFacet(): void {
 			const latestBlock = await getLatestBlockTime()
 			await partyA1.sendCloseIntent(1, 7, e(5), latestBlock + 140)
 			await expect(partyA1.sendCloseIntent(1, 7, e(96), latestBlock + 140)).to.be.revertedWithCustomError(context.partyACloseFacet, "InvalidQuantity")
-			//TODO ::: Quantity order in parameter must be changed with price
 		})
 
 		it("Should fail when invalid quantity", async function () {

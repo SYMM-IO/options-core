@@ -8,6 +8,14 @@ export enum IntentStatus {
 	EXPIRED,
 }
 
+export enum CloseIntentStatus {
+	PENDING,
+	CANCEL_PENDING,
+	CANCELED,
+	FILLED,
+	EXPIRED,
+}
+
 export enum TradeSide {
 	BUY,
 	SELL,
@@ -21,4 +29,12 @@ export enum MarginType {
 export enum OptionType {
 	PUT,
 	CALL,
+}
+
+export enum TradeStatus {
+	OPENED,
+	CLOSED,
+	EXERCISED,
+	EXPIRED,
+	LIQUIDATED,
 }
