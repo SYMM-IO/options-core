@@ -206,7 +206,7 @@ export function shouldBehaveLikeInstantActionCloseFacet(): void {
 
 			const close = await context.viewFacet.getCloseIntent(1)
 
-			expect(close.status).to.equal(CloseIntentStatus.CANCELED) 
+			expect(close.status).to.equal(CloseIntentStatus.CANCELED)
 		})
 	})
 
@@ -268,7 +268,7 @@ export function shouldBehaveLikeInstantActionCloseFacet(): void {
 				.to.not.reverted
 
 			const trade = await context.viewFacet.getTrade(1)
-			expect(trade.status).to.equal(TradeStatus.CLOSED) 
+			expect(trade.status).to.equal(TradeStatus.CLOSED)
 
 			const closeIntent = await context.viewFacet.getCloseIntent(1)
 			expect(closeIntent.status).to.equal(CloseIntentStatus.FILLED)
@@ -388,7 +388,7 @@ export function shouldBehaveLikeInstantActionCloseFacet(): void {
 			expect(trade.status).to.equal(TradeStatus.CLOSED)
 
 			const closeIntent = await context.viewFacet.getCloseIntent(1)
-			expect(closeIntent.status).to.equal(CloseIntentStatus.FILLED) 
+			expect(closeIntent.status).to.equal(CloseIntentStatus.FILLED)
 		})
 	})
 }

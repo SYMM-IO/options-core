@@ -75,27 +75,27 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			await expect(partyB1.fillCloseIntent(1, 100, 7)).to.be.revertedWithCustomError(context.partyBOpenFacet, "PartyBActionsPaused")
 		})
 
-		it("Should failed when amount to fill not in range", async () => {			
+		it("Should failed when amount to fill not in range", async () => {
 			const closeIntent: CloseIntentStruct = await context.viewFacet.getCloseIntent(1)
 			console.log("Close Intent Quantity: ", closeIntent.quantity)
 			console.log("Close Intent Filled Amount: ", closeIntent.filledAmount)
-			
+
 			await expect(partyB1.fillCloseIntent(1, e(101), 7)).to.revertedWithCustomError(context.partyBCloseFacet, "InvalidFilledAmount")
 			await expect(partyB1.fillCloseIntent(1, e(100), 7)).not.to.reverted
 		})
-		
+
 		it("Should set the Trade as Closed when close Quantity match trade quantity", async () => {
 			await expect(partyB1.fillCloseIntent(1, e(100), 7)).not.to.reverted
 			let trade = await context.viewFacet.getTrade(1)
 
-			console.log("Trade Status: ", trade.status == BigInt(TradeStatus.CLOSED)?"Closed":trade.status)
+			console.log("Trade Status: ", trade.status == BigInt(TradeStatus.CLOSED) ? "Closed" : trade.status)
 			expect(trade.status).to.be.equal(TradeStatus.CLOSED)
 		})
 
 		it("Should fail when Trade status not OPEN", async () => {
 			let timeToTime = (await getLatestBlockTime()) + 120
 			await expect(partyB1.fillCloseIntent(1, e(100), 7)).not.to.reverted
-			await expect(partyA1.sendCloseIntent(1,7,e(1), timeToTime)).to.be.revertedWithCustomError(context.partyACloseFacet,"InvalidState")
+			await expect(partyA1.sendCloseIntent(1, 7, e(1), timeToTime)).to.be.revertedWithCustomError(context.partyACloseFacet, "InvalidState")
 		})
 
 		it("Should failed when Close Intent is expired", async () => {

@@ -13,7 +13,7 @@ export enum CloseIntentStatus {
 	CANCEL_PENDING,
 	CANCELED,
 	FILLED,
-	EXPIRED
+	EXPIRED,
 }
 
 export enum TradeSide {
@@ -36,5 +36,5 @@ export enum TradeStatus {
 	CLOSED,
 	EXERCISED,
 	EXPIRED,
-	LIQUIDATED
+	LIQUIDATED,
 }
