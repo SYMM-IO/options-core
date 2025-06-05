@@ -8,6 +8,14 @@ export enum IntentStatus {
 	EXPIRED,
 }
 
+export enum CloseIntentStatus {
+	PENDING,
+	CANCEL_PENDING,
+	CANCELED,
+	FILLED,
+	EXPIRED
+}
+
 export enum TradeSide {
 	BUY,
 	SELL,

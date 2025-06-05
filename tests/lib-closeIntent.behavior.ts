@@ -9,6 +9,7 @@ import { RunContext } from "./run-context"
 import { tradeBuilder } from "./models/builders/trade.builder"
 import { closeIntentBuilder } from "./models/builders/close-intent.builder"
 import { TradeStruct } from "../types/contracts/interfaces/ISymmio"
+import { CloseIntentStatus } from "./option-enums"
 
 export function shouldBehaveLikeLibCloseIntent(): void {
 	let context: RunContext
@@ -75,7 +76,7 @@ export function shouldBehaveLikeLibCloseIntent(): void {
 
 			it("should revert if status is not PENDING or CANCEL_PENDING", async () => {
 				const closeIntent = closeIntentBuilderInstance
-					.status(3) // e.g. status = FILLED
+					.status(CloseIntentStatus.FILLED) // e.g. status = FILLED
 					.deadline(latestTimestamp - 10) // to avoid IntentNotExpired revert
 					.build()
 
@@ -101,7 +102,7 @@ export function shouldBehaveLikeLibCloseIntent(): void {
 
 				const storedIntent = await context.mocks.libCloseIntentMock.getCloseIntent(closeIntent.id)
 				expect(storedIntent.statusModifyTimestamp).to.approximately(latestTimestamp, 12)
-				expect(storedIntent.status).to.equal(4) // IntentStatus.EXPIRED
+				expect(storedIntent.status).to.equal(CloseIntentStatus.EXPIRED) // IntentStatus.EXPIRED
 			})
 		})
 	})
