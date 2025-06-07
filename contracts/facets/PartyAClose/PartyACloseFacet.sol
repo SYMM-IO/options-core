@@ -4,7 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { LibCloseIntentOps } from "../../libraries/LibCloseIntent.sol";
+import { LibCloseIntentOps } from "../../libraries/models/LibCloseIntent.sol";
 
 import { CloseIntentStorage } from "../../storages/CloseIntentStorage.sol";
 

@@ -4,8 +4,8 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { SignedOpenIntent, SignedCloseIntent, SignedFillIntent, SignedFillIntentById, SignedSimpleActionIntent } from "../types/SignedIntentTypes.sol";
-import { SignedInternalTransfer, SignedWithdraw } from "../types/SignedAccountTypes.sol";
+import { SignedOpenIntent, SignedCloseIntent, SignedFillIntent, SignedFillIntentById, SignedSimpleActionIntent } from "../../types/SignedIntentTypes.sol";
+import { SignedInternalTransfer, SignedWithdraw } from "../../types/SignedAccountTypes.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 library LibHash {

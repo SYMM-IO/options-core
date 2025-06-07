@@ -6,7 +6,7 @@ pragma solidity >=0.8.19;
 * EIP-2535 Diamonds: https://eips.ethereum.org/EIPS/eip-2535
 /******************************************************************************/
 
-import { LibDiamond } from "../../libraries/LibDiamond.sol";
+import { LibDiamond } from "../../libraries/core/LibDiamond.sol";
 
 import { IERC165 } from "../../interfaces/IERC165.sol";
 

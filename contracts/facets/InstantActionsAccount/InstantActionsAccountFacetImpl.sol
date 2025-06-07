@@ -4,9 +4,9 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { LibHash } from "../../libraries/LibHash.sol";
-import { LibSignature } from "../../libraries/LibSignature.sol";
-import { LibBalanceOperations } from "../../libraries/LibBalanceOperations.sol";
+import { LibHash } from "../../libraries/utils/LibHash.sol";
+import { LibSignature } from "../../libraries/services/LibSignature.sol";
+import { LibBalanceOperations } from "../../libraries/core/LibBalanceOperations.sol";
 
 import { SignedInternalTransfer, SignedWithdraw } from "../../types/SignedAccountTypes.sol";
 

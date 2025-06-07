@@ -4,7 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { LibAccessibility } from "../../libraries/LibAccessibility.sol";
+import { LibAccessibility } from "../../libraries/core/LibAccessibility.sol";
 
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 

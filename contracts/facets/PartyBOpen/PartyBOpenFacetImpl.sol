@@ -4,12 +4,12 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { LibParty } from "../../libraries/LibParty.sol";
-import { LibTradeOps } from "../../libraries/LibTrade.sol";
-import { LibUserData } from "../../libraries/LibUserData.sol";
-import { CommonErrors } from "../../libraries/CommonErrors.sol";
-import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
-import { ScheduledReleaseBalanceOps } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { LibParty } from "../../libraries/models/LibParty.sol";
+import { LibTradeOps } from "../../libraries/models/LibTrade.sol";
+import { LibUserData } from "../../libraries/utils/LibUserData.sol";
+import { CommonErrors } from "../../libraries/utils/CommonErrors.sol";
+import { LibOpenIntentOps } from "../../libraries/models/LibOpenIntent.sol";
+import { ScheduledReleaseBalanceOps } from "../../libraries/models/LibScheduledReleaseBalance.sol";
 
 import { AppStorage } from "../../storages/AppStorage.sol";
 import { TradeStorage } from "../../storages/TradeStorage.sol";

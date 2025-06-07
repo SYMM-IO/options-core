@@ -4,15 +4,16 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { LibHash } from "../../libraries/LibHash.sol";
-import { LibSignature } from "../../libraries/LibSignature.sol";
+import { LibHash } from "../../libraries/utils/LibHash.sol";
+import { LibSignature } from "../../libraries/services/LibSignature.sol";
 
 import { OpenIntentStatus } from "../../types/IntentTypes.sol";
 import { TradeAgreements } from "../../types/BaseTypes.sol";
 import { SignedSimpleActionIntent, SignedOpenIntent, SignedFillIntent } from "../../types/SignedIntentTypes.sol";
 
 import { PartyBOpenFacetImpl } from "../PartyBOpen/PartyBOpenFacetImpl.sol";
-import { PartyAOpenFacetImpl } from "../PartyAOpen/PartyAOpenFacetImpl.sol";
+import { LibPartyAOpen } from "../../libraries/core/LibPartyAOpen.sol";
+
 
 library InstantActionsOpenFacetImpl {
 	function instantCreateAndFillOpenIntent(
@@ -30,7 +31,7 @@ library InstantActionsOpenFacetImpl {
 		address[] memory partyBsWhitelist = new address[](1);
 		partyBsWhitelist[0] = signedOpenIntent.partyB;
 
-		intentId = PartyAOpenFacetImpl.sendOpenIntent(
+		intentId = LibPartyAOpen.sendOpenIntent(
 			signedOpenIntent.partyA,
 			partyBsWhitelist,
 			TradeAgreements({
@@ -68,7 +69,7 @@ library InstantActionsOpenFacetImpl {
 		bytes32 cancelIntentHash = LibHash.hashSignedCancelOpenIntent(signedCancelOpenIntent);
 		LibSignature.verifySignature(cancelIntentHash, partyASignature, signedCancelOpenIntent.signer);
 
-		status = PartyAOpenFacetImpl.cancelOpenIntent(signedCancelOpenIntent.signer, signedCancelOpenIntent.intentId);
+		status = LibPartyAOpen.cancelOpenIntent(signedCancelOpenIntent.signer, signedCancelOpenIntent.intentId);
 
 		if (status == OpenIntentStatus.CANCEL_PENDING) {
 			approvedByPartyB = true;
