@@ -11,8 +11,8 @@ import { OpenIntentStatus } from "../../types/IntentTypes.sol";
 import { TradeAgreements } from "../../types/BaseTypes.sol";
 import { SignedSimpleActionIntent, SignedOpenIntent, SignedFillIntent } from "../../types/SignedIntentTypes.sol";
 
-import { PartyBOpenFacetImpl } from "../PartyBOpen/PartyBOpenFacetImpl.sol";
 import { LibPartyAOpen } from "../../libraries/core/LibPartyAOpen.sol";
+import { LibPartyBOpen } from "../../libraries/core/LibPartyBOpen.sol";
 
 
 library InstantActionsOpenFacetImpl {
@@ -51,8 +51,8 @@ library InstantActionsOpenFacetImpl {
 			signedOpenIntent.userData
 		);
 
-		PartyBOpenFacetImpl.lockOpenIntent(signedFillOpenIntent.partyB, intentId);
-		(tradeId, newIntentId) = PartyBOpenFacetImpl.fillOpenIntent(
+		LibPartyBOpen.lockOpenIntent(signedFillOpenIntent.partyB, intentId);
+		(tradeId, newIntentId) = LibPartyBOpen.fillOpenIntent(
 			signedFillOpenIntent.partyB,
 			intentId,
 			signedFillOpenIntent.quantity,
@@ -76,7 +76,7 @@ library InstantActionsOpenFacetImpl {
 			bytes32 acceptCancelIntentHash = LibHash.hashSignedAcceptCancelOpenIntent(signedAcceptCancelOpenIntent);
 			LibSignature.verifySignature(acceptCancelIntentHash, partyBSignature, signedAcceptCancelOpenIntent.signer);
 
-			PartyBOpenFacetImpl.acceptCancelOpenIntent(signedAcceptCancelOpenIntent.signer, signedAcceptCancelOpenIntent.intentId);
+			LibPartyBOpen.acceptCancelOpenIntent(signedAcceptCancelOpenIntent.signer, signedAcceptCancelOpenIntent.intentId);
 			status = OpenIntentStatus.CANCELED;
 		}
 	}

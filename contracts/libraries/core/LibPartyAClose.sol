@@ -4,11 +4,11 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { LibParty } from "../../libraries/models/LibParty.sol";
-import { LibTradeOps } from "../../libraries/models/LibTrade.sol";
-import { CommonErrors } from "../../libraries/utils/CommonErrors.sol";
-import { LibCloseIntentOps } from "../../libraries/models/LibCloseIntent.sol";
-import { ScheduledReleaseBalanceOps } from "../../libraries/models/LibScheduledReleaseBalance.sol";
+import { LibParty } from "../models/LibParty.sol";
+import { LibTradeOps } from "../models/LibTrade.sol";
+import { CommonErrors } from "../utils/CommonErrors.sol";
+import { LibCloseIntentOps } from "../models/LibCloseIntent.sol";
+import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance.sol";
 
 import { AppStorage } from "../../storages/AppStorage.sol";
 import { TradeStorage } from "../../storages/TradeStorage.sol";
@@ -21,9 +21,9 @@ import { CloseIntent, CloseIntentStatus } from "../../types/IntentTypes.sol";
 import { MarginType } from "../../types/BaseTypes.sol";
 
 import { ITradeNFT } from "../../interfaces/ITradeNFT.sol";
-import { PartyACloseFacetErrors } from "./PartyACloseFacetErrors.sol";
+import { PartyACloseFacetErrors } from "../../facets/PartyAClose/PartyACloseFacetErrors.sol";
 
-library PartyACloseFacetImpl {
+library LibPartyAClose {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibCloseIntentOps for CloseIntent;
 	using LibTradeOps for Trade;
