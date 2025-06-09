@@ -4,11 +4,11 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { AccountStorage } from "../storages/AccountStorage.sol";
-import { AppStorage } from "../storages/AppStorage.sol";
-import { LiquidationStorage } from "../storages/LiquidationStorage.sol";
+import { AccountStorage } from "../../storages/AccountStorage.sol";
+import { AppStorage } from "../../storages/AppStorage.sol";
+import { LiquidationStorage } from "../../storages/LiquidationStorage.sol";
 
-import { MarginType } from "../types/BaseTypes.sol";
+import { MarginType } from "../../types/BaseTypes.sol";
 
 library LibParty {
 	// Custom errors

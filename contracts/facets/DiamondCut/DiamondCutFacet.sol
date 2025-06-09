@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity >=0.8.19;
 
-import { LibDiamond } from "../../libraries/LibDiamond.sol";
+import { LibDiamond } from "../../libraries/core/LibDiamond.sol";
 
 import { AppStorage } from "../../storages/AppStorage.sol";
 

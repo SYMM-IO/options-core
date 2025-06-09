@@ -4,20 +4,20 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { LibParty } from "./LibParty.sol";
-import { LibMuon } from "./LibMuon.sol";
-import { CommonErrors } from "./CommonErrors.sol";
-import { ScheduledReleaseBalanceOps } from "./LibScheduledReleaseBalance.sol";
+import { LibParty } from "../models/LibParty.sol";
+import { LibMuon } from "../services/LibMuon.sol";
+import { CommonErrors } from "../utils/CommonErrors.sol";
+import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance.sol";
 
-import { AppStorage, PartyBConfig } from "../storages/AppStorage.sol";
-import { AccountStorage } from "../storages/AccountStorage.sol";
-import { CounterPartyRelationsStorage } from "../storages/CounterPartyRelationsStorage.sol";
+import { AppStorage, PartyBConfig } from "../../storages/AppStorage.sol";
+import { AccountStorage } from "../../storages/AccountStorage.sol";
+import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
 
-import { MarginType } from "../types/BaseTypes.sol";
-import { UpnlSig } from "../types/WithdrawTypes.sol";
-import { ScheduledReleaseBalance, CrossEntry } from "../types/BalanceTypes.sol";
+import { MarginType } from "../../types/BaseTypes.sol";
+import { UpnlSig } from "../../types/WithdrawTypes.sol";
+import { ScheduledReleaseBalance, CrossEntry } from "../../types/BalanceTypes.sol";
 
-import { AccountFacetErrors } from "../facets/Account/AccountFacetErrors.sol";
+import { AccountFacetErrors } from "../../facets/Account/AccountFacetErrors.sol";
 
 library LibAllocationOperations {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;

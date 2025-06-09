@@ -4,12 +4,12 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { CommonErrors } from "./CommonErrors.sol";
+import { CommonErrors } from "../utils/CommonErrors.sol";
 
-import { AppStorage } from "../storages/AppStorage.sol";
-import { CounterPartyRelationsStorage } from "../storages/CounterPartyRelationsStorage.sol";
+import { AppStorage } from "../../storages/AppStorage.sol";
+import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
 
-import { AccountFacetErrors } from "../facets/Account/AccountFacetErrors.sol";
+import { AccountFacetErrors } from "../../facets/Account/AccountFacetErrors.sol";
 
 library LibPartyBManagement {
 	function activateInstantActionMode() internal {

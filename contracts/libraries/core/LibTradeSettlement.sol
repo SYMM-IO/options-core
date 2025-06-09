@@ -4,11 +4,11 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { LibMuon } from "../../libraries/LibMuon.sol";
-import { LibParty } from "../../libraries/LibParty.sol";
-import { LibTradeOps } from "../../libraries/LibTrade.sol";
-import { CommonErrors } from "../../libraries/CommonErrors.sol";
-import { ScheduledReleaseBalanceOps } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { LibMuon } from "../../libraries/services/LibMuon.sol";
+import { LibParty } from "../../libraries/models/LibParty.sol";
+import { LibTradeOps } from "../../libraries/models/LibTrade.sol";
+import { CommonErrors } from "../../libraries/utils/CommonErrors.sol";
+import { ScheduledReleaseBalanceOps } from "../../libraries/models/LibScheduledReleaseBalance.sol";
 
 import { AppStorage } from "../../storages/AppStorage.sol";
 import { TradeStorage } from "../../storages/TradeStorage.sol";
@@ -22,9 +22,9 @@ import { Symbol, OptionType } from "../../types/SymbolTypes.sol";
 import { SettlementPriceSig } from "../../types/SettlementTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 
-import { TradeSettlementFacetErrors } from "./TradeSettlementFacetErrors.sol";
+import { TradeSettlementFacetErrors } from "../../facets/TradeSettlement/TradeSettlementFacetErrors.sol";
 
-library TradeSettlementFacetImpl {
+library LibTradeSettlement {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibTradeOps for Trade;
 	using LibParty for address;

@@ -4,11 +4,11 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { LibUserData } from "../../libraries/LibUserData.sol";
-import { LibParty } from "../../libraries/LibParty.sol";
-import { CommonErrors } from "../../libraries/CommonErrors.sol";
-import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
-import { ScheduledReleaseBalanceOps } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { LibUserData } from "../utils/LibUserData.sol";
+import { LibParty } from "../models/LibParty.sol";
+import { CommonErrors } from "../utils/CommonErrors.sol";
+import { LibOpenIntentOps } from "../models/LibOpenIntent.sol";
+import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance.sol";
 
 import { AppStorage } from "../../storages/AppStorage.sol";
 import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
@@ -22,9 +22,9 @@ import { ScheduledReleaseBalance } from "../../types/BalanceTypes.sol";
 import { ExerciseFee, TradingFee, TradeSide, TradeAgreements, MarginType } from "../../types/BaseTypes.sol";
 
 import { IPriceOracle } from "../../interfaces/IPriceOracle.sol";
-import { PartyAOpenFacetErrors } from "./PartyAOpenFacetErrors.sol";
+import { PartyAOpenFacetErrors } from "../../facets/PartyAOpen/PartyAOpenFacetErrors.sol";
 
-library PartyAOpenFacetImpl {
+library LibPartyAOpen {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibOpenIntentOps for OpenIntent;
 	using LibParty for address;

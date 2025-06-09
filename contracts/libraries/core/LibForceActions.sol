@@ -4,9 +4,9 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { CommonErrors } from "../../libraries/CommonErrors.sol";
-import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
-import { LibCloseIntentOps } from "../../libraries/LibCloseIntent.sol";
+import { CommonErrors } from "../../libraries/utils/CommonErrors.sol";
+import { LibOpenIntentOps } from "../../libraries/models/LibOpenIntent.sol";
+import { LibCloseIntentOps } from "../../libraries/models/LibCloseIntent.sol";
 
 import { AppStorage } from "../../storages/AppStorage.sol";
 import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
@@ -15,7 +15,7 @@ import { CloseIntentStorage } from "../../storages/CloseIntentStorage.sol";
 import { OpenIntentStatus, CloseIntentStatus } from "../../types/IntentTypes.sol";
 import { OpenIntent, CloseIntent } from "../../types/IntentTypes.sol";
 
-library ForceActionsFacetImpl {
+library LibForceActions {
 	using LibOpenIntentOps for OpenIntent;
 	using LibCloseIntentOps for CloseIntent;
 

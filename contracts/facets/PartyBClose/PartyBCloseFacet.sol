@@ -10,7 +10,7 @@ import { Pausable } from "../../utils/Pausable.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
 
 import { IPartyBCloseFacet } from "./IPartyBCloseFacet.sol";
-import { PartyBCloseFacetImpl } from "./PartyBCloseFacetImpl.sol";
+import { LibPartyBClose } from "../../libraries/core/LibPartyBClose.sol";
 
 /**
  * @title PartyBCloseFacet
@@ -24,7 +24,7 @@ contract PartyBCloseFacet is Accessibility, Pausable, IPartyBCloseFacet {
 	 * @param intentId The unique identifier of the close intent for which the cancellation request is being accepted
 	 */
 	function acceptCancelCloseIntent(uint256 intentId) external whenNotPartyBActionsPaused {
-		PartyBCloseFacetImpl.acceptCancelCloseIntent(msg.sender, intentId);
+		LibPartyBClose.acceptCancelCloseIntent(msg.sender, intentId);
 		emit AcceptCancelCloseIntent(intentId);
 	}
 
@@ -36,7 +36,7 @@ contract PartyBCloseFacet is Accessibility, Pausable, IPartyBCloseFacet {
 	 * @param price The execution price at which the trade is being closed, must be favorable to PartyA compared to their requested price
 	 */
 	function fillCloseIntent(uint256 intentId, uint256 quantity, uint256 price) external whenNotPartyBActionsPaused {
-		PartyBCloseFacetImpl.fillCloseIntent(msg.sender, intentId, quantity, price);
+		LibPartyBClose.fillCloseIntent(msg.sender, intentId, quantity, price);
 		emit FillCloseIntent(intentId, quantity, price);
 	}
 }

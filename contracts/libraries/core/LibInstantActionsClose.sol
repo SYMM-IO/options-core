@@ -4,16 +4,16 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { LibHash } from "../../libraries/LibHash.sol";
-import { LibSignature } from "../../libraries/LibSignature.sol";
+import { LibHash } from "../utils/LibHash.sol";
+import { LibSignature } from "../services/LibSignature.sol";
 
 import { CloseIntentStatus } from "../../types/IntentTypes.sol";
 import { SignedFillIntentById, SignedSimpleActionIntent, SignedFillIntent, SignedCloseIntent } from "../../types/SignedIntentTypes.sol";
 
-import { PartyBCloseFacetImpl } from "../PartyBClose/PartyBCloseFacetImpl.sol";
-import { PartyACloseFacetImpl } from "../PartyAClose/PartyACloseFacetImpl.sol";
+import { LibPartyBClose } from "../core/LibPartyBClose.sol";
+import { LibPartyAClose } from "../core/LibPartyAClose.sol";
 
-library InstantActionsCloseFacetImpl {
+library LibInstantActionsClose {
 	function instantCancelCloseIntent(
 		SignedSimpleActionIntent calldata signedCancelCloseIntent,
 		bytes calldata partyASignature,
@@ -23,13 +23,13 @@ library InstantActionsCloseFacetImpl {
 		bytes32 cancelIntentHash = LibHash.hashSignedCancelCloseIntent(signedCancelCloseIntent);
 		LibSignature.verifySignature(cancelIntentHash, partyASignature, signedCancelCloseIntent.signer);
 
-		status = PartyACloseFacetImpl.cancelCloseIntent(signedCancelCloseIntent.signer, signedCancelCloseIntent.intentId);
+		status = LibPartyAClose.cancelCloseIntent(signedCancelCloseIntent.signer, signedCancelCloseIntent.intentId);
 
 		if (status == CloseIntentStatus.CANCEL_PENDING) {
 			bytes32 acceptCancelIntentHash = LibHash.hashSignedAcceptCancelCloseIntent(signedAcceptCancelCloseIntent);
 			LibSignature.verifySignature(acceptCancelIntentHash, partyBSignature, signedAcceptCancelCloseIntent.signer);
 
-			PartyBCloseFacetImpl.acceptCancelCloseIntent(signedAcceptCancelCloseIntent.signer, signedAcceptCancelCloseIntent.intentId);
+			LibPartyBClose.acceptCancelCloseIntent(signedAcceptCancelCloseIntent.signer, signedAcceptCancelCloseIntent.intentId);
 			status = CloseIntentStatus.CANCELED;
 		}
 	}
@@ -38,7 +38,7 @@ library InstantActionsCloseFacetImpl {
 		bytes32 fillCloseIntentHash = LibHash.hashSignedFillCloseIntentById(signedFillCloseIntent);
 		LibSignature.verifySignature(fillCloseIntentHash, partyBSignature, signedFillCloseIntent.partyB);
 
-		PartyBCloseFacetImpl.fillCloseIntent(
+		LibPartyBClose.fillCloseIntent(
 			signedFillCloseIntent.partyB,
 			signedFillCloseIntent.intentId,
 			signedFillCloseIntent.quantity,
@@ -58,7 +58,7 @@ library InstantActionsCloseFacetImpl {
 		bytes32 fillCloseIntentHash = LibHash.hashSignedFillCloseIntent(signedFillCloseIntent);
 		LibSignature.verifySignature(fillCloseIntentHash, partyBSignature, signedFillCloseIntent.partyB);
 
-		intentId = PartyACloseFacetImpl.sendCloseIntent(
+		intentId = LibPartyAClose.sendCloseIntent(
 			signedCloseIntent.partyA,
 			signedCloseIntent.tradeId,
 			signedCloseIntent.quantity,
@@ -66,6 +66,6 @@ library InstantActionsCloseFacetImpl {
 			signedCloseIntent.deadline
 		);
 
-		PartyBCloseFacetImpl.fillCloseIntent(signedFillCloseIntent.partyB, intentId, signedFillCloseIntent.quantity, signedFillCloseIntent.price);
+		LibPartyBClose.fillCloseIntent(signedFillCloseIntent.partyB, intentId, signedFillCloseIntent.quantity, signedFillCloseIntent.price);
 	}
 }

@@ -4,17 +4,18 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { LibHash } from "../../libraries/LibHash.sol";
-import { LibSignature } from "../../libraries/LibSignature.sol";
+import { LibHash } from "../utils/LibHash.sol";
+import { LibSignature } from "../services/LibSignature.sol";
 
 import { OpenIntentStatus } from "../../types/IntentTypes.sol";
 import { TradeAgreements } from "../../types/BaseTypes.sol";
 import { SignedSimpleActionIntent, SignedOpenIntent, SignedFillIntent } from "../../types/SignedIntentTypes.sol";
 
-import { PartyBOpenFacetImpl } from "../PartyBOpen/PartyBOpenFacetImpl.sol";
-import { PartyAOpenFacetImpl } from "../PartyAOpen/PartyAOpenFacetImpl.sol";
+import { LibPartyAOpen } from "../core/LibPartyAOpen.sol";
+import { LibPartyBOpen } from "../core/LibPartyBOpen.sol";
 
-library InstantActionsOpenFacetImpl {
+
+library LibInstantActionsOpen {
 	function instantCreateAndFillOpenIntent(
 		SignedOpenIntent calldata signedOpenIntent,
 		bytes calldata partyASignature,
@@ -30,7 +31,7 @@ library InstantActionsOpenFacetImpl {
 		address[] memory partyBsWhitelist = new address[](1);
 		partyBsWhitelist[0] = signedOpenIntent.partyB;
 
-		intentId = PartyAOpenFacetImpl.sendOpenIntent(
+		intentId = LibPartyAOpen.sendOpenIntent(
 			signedOpenIntent.partyA,
 			partyBsWhitelist,
 			TradeAgreements({
@@ -50,8 +51,8 @@ library InstantActionsOpenFacetImpl {
 			signedOpenIntent.userData
 		);
 
-		PartyBOpenFacetImpl.lockOpenIntent(signedFillOpenIntent.partyB, intentId);
-		(tradeId, newIntentId) = PartyBOpenFacetImpl.fillOpenIntent(
+		LibPartyBOpen.lockOpenIntent(signedFillOpenIntent.partyB, intentId);
+		(tradeId, newIntentId) = LibPartyBOpen.fillOpenIntent(
 			signedFillOpenIntent.partyB,
 			intentId,
 			signedFillOpenIntent.quantity,
@@ -68,14 +69,14 @@ library InstantActionsOpenFacetImpl {
 		bytes32 cancelIntentHash = LibHash.hashSignedCancelOpenIntent(signedCancelOpenIntent);
 		LibSignature.verifySignature(cancelIntentHash, partyASignature, signedCancelOpenIntent.signer);
 
-		status = PartyAOpenFacetImpl.cancelOpenIntent(signedCancelOpenIntent.signer, signedCancelOpenIntent.intentId);
+		status = LibPartyAOpen.cancelOpenIntent(signedCancelOpenIntent.signer, signedCancelOpenIntent.intentId);
 
 		if (status == OpenIntentStatus.CANCEL_PENDING) {
 			approvedByPartyB = true;
 			bytes32 acceptCancelIntentHash = LibHash.hashSignedAcceptCancelOpenIntent(signedAcceptCancelOpenIntent);
 			LibSignature.verifySignature(acceptCancelIntentHash, partyBSignature, signedAcceptCancelOpenIntent.signer);
 
-			PartyBOpenFacetImpl.acceptCancelOpenIntent(signedAcceptCancelOpenIntent.signer, signedAcceptCancelOpenIntent.intentId);
+			LibPartyBOpen.acceptCancelOpenIntent(signedAcceptCancelOpenIntent.signer, signedAcceptCancelOpenIntent.intentId);
 			status = OpenIntentStatus.CANCELED;
 		}
 	}

@@ -4,7 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { LibCloseIntentOps } from "../../libraries/LibCloseIntent.sol";
+import { LibCloseIntentOps } from "../../libraries/models/LibCloseIntent.sol";
 
 import { CloseIntentStorage } from "../../storages/CloseIntentStorage.sol";
 
@@ -15,7 +15,7 @@ import { Pausable } from "../../utils/Pausable.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
 
 import { IPartyACloseFacet } from "./IPartyACloseFacet.sol";
-import { PartyACloseFacetImpl } from "./PartyACloseFacetImpl.sol";
+import { LibPartyAClose } from "../../libraries/core/LibPartyAClose.sol";
 
 /**
  * @title PartyACloseFacet
@@ -40,7 +40,7 @@ contract PartyACloseFacet is Accessibility, Pausable, IPartyACloseFacet {
 		uint256 price,
 		uint256 deadline
 	) external whenNotPartyAActionsPaused onlyPartyAOfTrade(tradeId) inactiveInstantMode(msg.sender) {
-		uint256 intentId = PartyACloseFacetImpl.sendCloseIntent(msg.sender, tradeId, price, quantity, deadline);
+		uint256 intentId = LibPartyAClose.sendCloseIntent(msg.sender, tradeId, price, quantity, deadline);
 		emit SendCloseIntent(tradeId, intentId, price, quantity, deadline);
 	}
 
@@ -67,7 +67,7 @@ contract PartyACloseFacet is Accessibility, Pausable, IPartyACloseFacet {
 	 */
 	function cancelCloseIntent(uint256[] memory intentIds) external whenNotPartyAActionsPaused inactiveInstantMode(msg.sender) {
 		for (uint256 i; i < intentIds.length; i++) {
-			CloseIntentStatus result = PartyACloseFacetImpl.cancelCloseIntent(msg.sender, intentIds[i]);
+			CloseIntentStatus result = LibPartyAClose.cancelCloseIntent(msg.sender, intentIds[i]);
 			if (result == CloseIntentStatus.EXPIRED) {
 				emit ExpireCloseIntent(intentIds[i]);
 			} else if (result == CloseIntentStatus.CANCEL_PENDING) {
@@ -87,7 +87,7 @@ contract PartyACloseFacet is Accessibility, Pausable, IPartyACloseFacet {
 		address receiver,
 		uint256 tradeId
 	) external whenNotPartyAActionsPaused onlyPartyAOfTrade(tradeId) notSuspended(msg.sender) notSuspended(receiver) {
-		PartyACloseFacetImpl.transferTrade(receiver, tradeId);
+		LibPartyAClose.transferTrade(receiver, tradeId);
 		emit TransferTradeByPartyA(msg.sender, receiver, tradeId);
 	}
 
@@ -104,7 +104,7 @@ contract PartyACloseFacet is Accessibility, Pausable, IPartyACloseFacet {
 		address receiver,
 		uint256 tradeId
 	) external whenNotPartyAActionsPaused notSuspended(sender) notSuspended(receiver) {
-		PartyACloseFacetImpl.transferTradeFromNFT(sender, receiver, tradeId);
+		LibPartyAClose.transferTradeFromNFT(sender, receiver, tradeId);
 		emit TransferTradeByPartyA(sender, receiver, tradeId);
 	}
 }

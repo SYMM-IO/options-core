@@ -4,14 +4,14 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { LibAccessibility } from "../../libraries/LibAccessibility.sol";
+import { LibAccessibility } from "../../libraries/core/LibAccessibility.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 
 import { Pausable } from "../../utils/Pausable.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
 
 import { IBridgeFacet } from "./IBridgeFacet.sol";
-import { BridgeFacetImpl } from "./BridgeFacetImpl.sol";
+import { LibBridge } from "../../libraries/core/LibBridge.sol";
 
 /**
  * @title BridgeFacet
@@ -33,7 +33,7 @@ contract BridgeFacet is Accessibility, Pausable, IBridgeFacet {
 		address bridgeAddress,
 		address receiver
 	) external whenNotBridgePaused notSuspended(msg.sender) notPartyB {
-		uint256 transactionId = BridgeFacetImpl.transferToBridge(collateral, amount, bridgeAddress, receiver);
+		uint256 transactionId = LibBridge.transferToBridge(collateral, amount, bridgeAddress, receiver);
 		emit TransferToBridge(
 			msg.sender,
 			receiver,
@@ -51,7 +51,7 @@ contract BridgeFacet is Accessibility, Pausable, IBridgeFacet {
 	 * @param transactionIds An array of transaction IDs for which the received bridge values will be withdrawn
 	 */
 	function withdrawReceivedBridgeValues(uint256[] memory transactionIds) external whenNotBridgeWithdrawPaused notSuspended(msg.sender) {
-		BridgeFacetImpl.withdrawReceivedBridgeValues(transactionIds);
+		LibBridge.withdrawReceivedBridgeValues(transactionIds);
 		emit WithdrawReceivedBridgeValues(transactionIds);
 	}
 
@@ -61,7 +61,7 @@ contract BridgeFacet is Accessibility, Pausable, IBridgeFacet {
 	 * @param transactionId The transaction ID of the bridge transaction to be suspended
 	 */
 	function suspendBridgeTransaction(uint256 transactionId) external onlyRole(LibAccessibility.SUSPENDER_ROLE) {
-		BridgeFacetImpl.suspendBridgeTransaction(transactionId);
+		LibBridge.suspendBridgeTransaction(transactionId);
 		emit SuspendBridgeTransaction(transactionId);
 	}
 
@@ -72,7 +72,7 @@ contract BridgeFacet is Accessibility, Pausable, IBridgeFacet {
 	 * @param validAmount The verified amount to be processed, which may differ from the original amount
 	 */
 	function restoreBridgeTransaction(uint256 transactionId, uint256 validAmount) external onlyRole(LibAccessibility.DISPUTE_ROLE) {
-		BridgeFacetImpl.restoreBridgeTransaction(transactionId, validAmount);
+		LibBridge.restoreBridgeTransaction(transactionId, validAmount);
 		emit RestoreBridgeTransaction(transactionId, validAmount);
 	}
 }

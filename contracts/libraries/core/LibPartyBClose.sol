@@ -4,10 +4,10 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { LibParty } from "../../libraries/LibParty.sol";
-import { LibTradeOps } from "../../libraries/LibTrade.sol";
-import { LibCloseIntentOps } from "../../libraries/LibCloseIntent.sol";
-import { ScheduledReleaseBalanceOps } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { LibParty } from "../models/LibParty.sol";
+import { LibTradeOps } from "../models/LibTrade.sol";
+import { LibCloseIntentOps } from "../models/LibCloseIntent.sol";
+import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance.sol";
 
 import { TradeStorage } from "../../storages/TradeStorage.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
@@ -19,10 +19,10 @@ import { Trade, TradeStatus } from "../../types/TradeTypes.sol";
 import { CloseIntent, CloseIntentStatus } from "../../types/IntentTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 
-import { CommonErrors } from "../../libraries/CommonErrors.sol";
-import { PartyBCloseFacetErrors } from "./PartyBCloseFacetErrors.sol";
+import { CommonErrors } from "../utils/CommonErrors.sol";
+import { PartyBCloseFacetErrors } from "../../facets/PartyBClose/PartyBCloseFacetErrors.sol";
 
-library PartyBCloseFacetImpl {
+library LibPartyBClose {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibCloseIntentOps for CloseIntent;
 	using LibTradeOps for Trade;

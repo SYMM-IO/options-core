@@ -4,7 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
+import { LibOpenIntentOps } from "../../libraries/models/LibOpenIntent.sol";
 
 import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
 
@@ -15,7 +15,9 @@ import { Pausable } from "../../utils/Pausable.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
 
 import { IPartyAOpenFacet } from "./IPartyAOpenFacet.sol";
-import { PartyAOpenFacetImpl } from "./PartyAOpenFacetImpl.sol";
+
+import { LibPartyAOpen } from "../../libraries/core/LibPartyAOpen.sol";
+
 
 /**
  * @title PartyAOpenFacet
@@ -60,7 +62,7 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 		address affiliate,
 		bytes memory userData
 	) external whenNotPartyAActionsPaused inactiveInstantMode(msg.sender) returns (uint256 intentId) {
-		intentId = PartyAOpenFacetImpl.sendOpenIntent(
+		intentId = LibPartyAOpen.sendOpenIntent(
 			msg.sender,
 			partyBsWhiteList,
 			TradeAgreements({
@@ -124,7 +126,7 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 	 */
 	function cancelOpenIntent(uint256[] memory intentIds) external whenNotPartyAActionsPaused inactiveInstantMode(msg.sender) {
 		for (uint256 i; i < intentIds.length; i++) {
-			OpenIntentStatus result = PartyAOpenFacetImpl.cancelOpenIntent(msg.sender, intentIds[i]);
+			OpenIntentStatus result = LibPartyAOpen.cancelOpenIntent(msg.sender, intentIds[i]);
 
 			if (result == OpenIntentStatus.EXPIRED) {
 				emit ExpireOpenIntent(intentIds[i]);

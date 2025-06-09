@@ -4,10 +4,10 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { LibAccessibility } from "../../libraries/LibAccessibility.sol";
-import { LibPartyBManagement } from "../../libraries/LibPartyBManagement.sol";
-import { LibBalanceOperations } from "../../libraries/LibBalanceOperations.sol";
-import { LibAllocationOperations } from "../../libraries/LibAllocationOperations.sol";
+import { LibAccessibility } from "../../libraries/core/LibAccessibility.sol";
+import { LibPartyBManagement } from "../../libraries/core/LibPartyBManagement.sol";
+import { LibBalanceOperations } from "../../libraries/core/LibBalanceOperations.sol";
+import { LibAllocationOperations } from "../../libraries/core/LibAllocationOperations.sol";
 
 import { AccountStorage, Withdraw } from "../../storages/AccountStorage.sol";
 import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";

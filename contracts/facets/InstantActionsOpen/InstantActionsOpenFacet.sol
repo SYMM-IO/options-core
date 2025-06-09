@@ -13,7 +13,7 @@ import { Pausable } from "../../utils/Pausable.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
 
 import { IInstantActionsOpenFacet } from "./IInstantActionsOpenFacet.sol";
-import { InstantActionsOpenFacetImpl } from "./InstantActionsOpenFacetImpl.sol";
+import { LibInstantActionsOpen } from "../../libraries/core/LibInstantActionsOpen.sol";
 
 /**
  * @title InstantActionsOpenFacet
@@ -39,7 +39,7 @@ contract InstantActionsOpenFacet is Accessibility, Pausable, IInstantActionsOpen
 		SignedSimpleActionIntent calldata signedAcceptCancelOpenIntent,
 		bytes calldata partyBSignature
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		(OpenIntentStatus finalStatus, bool approvedByPartyB) = InstantActionsOpenFacetImpl.instantCancelOpenIntent(
+		(OpenIntentStatus finalStatus, bool approvedByPartyB) = LibInstantActionsOpen.instantCancelOpenIntent(
 			signedCancelOpenIntent,
 			partyASignature,
 			signedAcceptCancelOpenIntent,
@@ -70,7 +70,7 @@ contract InstantActionsOpenFacet is Accessibility, Pausable, IInstantActionsOpen
 		SignedFillIntent calldata signedFillOpenIntent,
 		bytes calldata partyBSignature
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		(uint256 intentId, uint256 tradeId, uint256 newIntentId) = InstantActionsOpenFacetImpl.instantCreateAndFillOpenIntent(
+		(uint256 intentId, uint256 tradeId, uint256 newIntentId) = LibInstantActionsOpen.instantCreateAndFillOpenIntent(
 			signedOpenIntent,
 			partyASignature,
 			signedFillOpenIntent,

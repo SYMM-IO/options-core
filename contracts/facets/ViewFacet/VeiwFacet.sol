@@ -4,7 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { LibParty } from "../../libraries/LibParty.sol";
+import { LibParty } from "../../libraries/models/LibParty.sol";
 
 import { TradeStorage } from "../../storages/TradeStorage.sol";
 import { BridgeStorage } from "../../storages/BridgeStorage.sol";
@@ -19,8 +19,8 @@ import { FeeManagementStorage } from "../../storages/FeeManagementStorage.sol";
 import { SymbolStorage, Symbol, Oracle } from "../../storages/SymbolStorage.sol";
 import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
 
-import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
-import { LibTradeOps } from "../../libraries/LibTrade.sol";
+import { LibOpenIntentOps } from "../../libraries/models/LibOpenIntent.sol";
+import { LibTradeOps } from "../../libraries/models/LibTrade.sol";
 
 import { ScheduledReleaseBalance, CrossEntry } from "../../types/BalanceTypes.sol";
 import { Trade } from "../../types/TradeTypes.sol";

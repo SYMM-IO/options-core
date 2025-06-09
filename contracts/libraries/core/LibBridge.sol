@@ -4,8 +4,8 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { CommonErrors } from "../../libraries/CommonErrors.sol";
-import { ScheduledReleaseBalanceOps } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { CommonErrors } from "../utils/CommonErrors.sol";
+import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance.sol";
 
 import { AppStorage } from "../../storages/AppStorage.sol";
 import { BridgeStorage } from "../../storages/BridgeStorage.sol";
@@ -19,10 +19,10 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import { BridgeFacetErrors } from "./BridgeFacetErrors.sol";
+import { BridgeFacetErrors } from "../../facets/Bridge/BridgeFacetErrors.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
 
-library BridgeFacetImpl {
+library LibBridge {
 	using SafeERC20 for IERC20;
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 

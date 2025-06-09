@@ -4,16 +4,16 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { AccountStorage } from "../storages/AccountStorage.sol";
-import { OpenIntentStorage } from "../storages/OpenIntentStorage.sol";
-import { Symbol, SymbolStorage } from "../storages/SymbolStorage.sol";
+import { AccountStorage } from "../../storages/AccountStorage.sol";
+import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
+import { Symbol, SymbolStorage } from "../../storages/SymbolStorage.sol";
 
-import { TradeSide, MarginType } from "../types/BaseTypes.sol";
-import { OpenIntent, OpenIntentStatus } from "../types/IntentTypes.sol";
-import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../types/BalanceTypes.sol";
+import { TradeSide, MarginType } from "../../types/BaseTypes.sol";
+import { OpenIntent, OpenIntentStatus } from "../../types/IntentTypes.sol";
+import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 
-import { ScheduledReleaseBalanceOps } from "./LibScheduledReleaseBalance.sol";
-import { CommonErrors } from "./CommonErrors.sol";
+import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance.sol";
+import { CommonErrors } from "../utils/CommonErrors.sol";
 
 library LibOpenIntentOps {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;

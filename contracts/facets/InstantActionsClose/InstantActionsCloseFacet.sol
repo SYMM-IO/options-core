@@ -12,7 +12,7 @@ import { Pausable } from "../../utils/Pausable.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
 
 import { IInstantActionsCloseFacet } from "./IInstantActionsCloseFacet.sol";
-import { InstantActionsCloseFacetImpl } from "./InstantActionsCloseFacetImpl.sol";
+import { LibInstantActionsClose } from "../../libraries/core/LibInstantActionsClose.sol";
 
 /**
  * @title InstantActionsCloseFacet
@@ -39,7 +39,7 @@ contract InstantActionsCloseFacet is Accessibility, Pausable, IInstantActionsClo
 		SignedSimpleActionIntent calldata signedAcceptCancelCloseIntent,
 		bytes calldata partyBSignature
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		CloseIntentStatus result = InstantActionsCloseFacetImpl.instantCancelCloseIntent(
+		CloseIntentStatus result = LibInstantActionsClose.instantCancelCloseIntent(
 			signedCancelCloseIntent,
 			partyASignature,
 			signedAcceptCancelCloseIntent,
@@ -65,7 +65,7 @@ contract InstantActionsCloseFacet is Accessibility, Pausable, IInstantActionsClo
 		SignedFillIntentById calldata signedFillCloseIntent,
 		bytes calldata partyBSignature
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		InstantActionsCloseFacetImpl.instantFillCloseIntent(signedFillCloseIntent, partyBSignature);
+		LibInstantActionsClose.instantFillCloseIntent(signedFillCloseIntent, partyBSignature);
 		emit FillCloseIntent(signedFillCloseIntent.intentId, signedFillCloseIntent.quantity, signedFillCloseIntent.price);
 	}
 
@@ -85,7 +85,7 @@ contract InstantActionsCloseFacet is Accessibility, Pausable, IInstantActionsClo
 		SignedFillIntent calldata signedFillCloseIntent,
 		bytes calldata partyBSignature
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		uint256 intentId = InstantActionsCloseFacetImpl.instantCloseAndFillCloseIntent(
+		uint256 intentId = LibInstantActionsClose.instantCloseAndFillCloseIntent(
 			signedCloseIntent,
 			partyASignature,
 			signedFillCloseIntent,

@@ -10,7 +10,7 @@ import { Pausable } from "../../utils/Pausable.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
 
 import { ITradeSettlementFacet } from "./ITradeSettlementFacet.sol";
-import { TradeSettlementFacetImpl } from "./TradeSettlementFacetImpl.sol";
+import { LibTradeSettlement } from "../../libraries/core/LibTradeSettlement.sol";
 
 /**
  * @title TradeSettlementFacet
@@ -30,7 +30,7 @@ contract TradeSettlementFacet is Accessibility, Pausable, ITradeSettlementFacet 
 		uint256 tradeId,
 		SettlementPriceSig memory settlementPriceSig
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		bool isExpired = TradeSettlementFacetImpl.executeTrade(tradeId, settlementPriceSig);
+		bool isExpired = LibTradeSettlement.executeTrade(tradeId, settlementPriceSig);
 		emit ExecuteTrade(msg.sender, tradeId, settlementPriceSig.settlementPrice, settlementPriceSig.collateralPrice, isExpired);
 	}
 }

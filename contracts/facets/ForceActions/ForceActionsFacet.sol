@@ -7,7 +7,7 @@ pragma solidity >=0.8.19;
 import { Pausable } from "../../utils/Pausable.sol";
 
 import { IForceActionsFacet } from "./IForceActionsFacet.sol";
-import { ForceActionsFacetImpl } from "./ForceActionsFacetImpl.sol";
+import { LibForceActions } from "../../libraries/core/LibForceActions.sol";
 
 /**
  * @title ForceActionsFacet
@@ -23,7 +23,7 @@ contract ForceActionsFacet is Pausable, IForceActionsFacet {
 	 * @param intentId The unique identifier of the open intent to be forcibly canceled
 	 */
 	function forceCancelOpenIntent(uint256 intentId) external whenNotPartyAActionsPaused {
-		ForceActionsFacetImpl.forceCancelOpenIntent(intentId);
+		LibForceActions.forceCancelOpenIntent(intentId);
 		emit ForceCancelOpenIntent(intentId);
 	}
 
@@ -34,7 +34,7 @@ contract ForceActionsFacet is Pausable, IForceActionsFacet {
 	 * @param intentId The unique identifier of the close intent to be forcibly canceled
 	 */
 	function forceCancelCloseIntent(uint256 intentId) external whenNotPartyAActionsPaused {
-		ForceActionsFacetImpl.forceCancelCloseIntent(intentId);
+		LibForceActions.forceCancelCloseIntent(intentId);
 		emit ForceCancelCloseIntent(intentId);
 	}
 

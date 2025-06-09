@@ -4,7 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { LibAccessibility } from "../../libraries/LibAccessibility.sol";
+import { LibAccessibility } from "../../libraries/core/LibAccessibility.sol";
 
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 
@@ -12,7 +12,7 @@ import { Pausable } from "../../utils/Pausable.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
 
 import { IClearingHouseFacet } from "./IClearingHouseFacet.sol";
-import { ClearingHouseFacetImpl } from "./ClearingHouseFacetImpl.sol";
+import { LibClearingHouse } from "../../libraries/core/LibClearingHouse.sol";
 
 import { MarginType } from "../../types/BaseTypes.sol";
 
@@ -26,7 +26,7 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 		address partyB,
 		address collateral
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-		ClearingHouseFacetImpl.flagIsolatedPartyBLiquidation(partyB, collateral);
+		LibClearingHouse.flagIsolatedPartyBLiquidation(partyB, collateral);
 		emit FlagIsolatedPartyBLiquidation(msg.sender, partyB, collateral);
 	}
 
@@ -39,7 +39,7 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 		address partyB,
 		address collateral
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-		ClearingHouseFacetImpl.unflagIsolatedPartyBLiquidation(partyB, collateral);
+		LibClearingHouse.unflagIsolatedPartyBLiquidation(partyB, collateral);
 		emit UnflagIsolatedPartyBLiquidation(msg.sender, partyB, collateral);
 	}
 
@@ -56,7 +56,7 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 		int256 upnl,
 		uint256 collateralPrice
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-		ClearingHouseFacetImpl.liquidateIsolatedPartyB(partyB, collateral, upnl, collateralPrice);
+		LibClearingHouse.liquidateIsolatedPartyB(partyB, collateral, upnl, collateralPrice);
 		emit LiquidateIsolatedPartyB(
 			msg.sender,
 			partyB,
@@ -71,12 +71,12 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 		uint256 liquidationId,
 		uint256 amount
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-		ClearingHouseFacetImpl.confiscatePartyA(liquidationId, amount);
+		LibClearingHouse.confiscatePartyA(liquidationId, amount);
 		emit ConfiscatePartyA(liquidationId, amount);
 	}
 
 	function confiscatePartyBWithdrawal(uint256 withdrawId) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-		ClearingHouseFacetImpl.confiscatePartyBWithdrawal(withdrawId);
+		LibClearingHouse.confiscatePartyBWithdrawal(withdrawId);
 		emit ConfiscatePartyBWithdrawal(withdrawId);
 	}
 
@@ -87,7 +87,7 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 		address[] memory partyAs,
 		uint256[] memory amounts
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-		ClearingHouseFacetImpl.distributeCollateral(partyB, collateral,marginType, partyAs, amounts);
+		LibClearingHouse.distributeCollateral(partyB, collateral,marginType, partyAs, amounts);
 		emit DistributeCollateral(msg.sender, partyB, collateral, partyAs, amounts);
 		// if (isLiquidationFinished) {
 		// 	emit FullyLiquidated(partyB, liquidationId);
@@ -99,7 +99,7 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 		address partyA,
 		address collateral
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-		ClearingHouseFacetImpl.flagCrossPartyBLiquidation(partyB, partyA, collateral);
+		LibClearingHouse.flagCrossPartyBLiquidation(partyB, partyA, collateral);
 		emit FlagCrossPartyBLiquidation(msg.sender, partyB, partyA, collateral);
 	}
 
@@ -108,7 +108,7 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 		address partyA,
 		address collateral
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-		ClearingHouseFacetImpl.unflagCrossPartyBLiquidation(partyB, partyA, collateral);
+		LibClearingHouse.unflagCrossPartyBLiquidation(partyB, partyA, collateral);
 		emit UnflagCrossPartyBLiquidation(msg.sender, partyB, partyA, collateral);
 	}
 
@@ -119,7 +119,7 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 		int256 upnl,
 		uint256 collateralPrice
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-		ClearingHouseFacetImpl.liquidateCrossPartyB(partyB, partyA, collateral, upnl, collateralPrice);
+		LibClearingHouse.liquidateCrossPartyB(partyB, partyA, collateral, upnl, collateralPrice);
 		emit LiquidateCrossPartyB(msg.sender, partyB, partyA, collateral, upnl, collateralPrice);
 	}
 
@@ -128,7 +128,7 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 		address partyB,
 		address collateral
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-		ClearingHouseFacetImpl.flagPartyALiquidation(partyA, partyB, collateral);
+		LibClearingHouse.flagPartyALiquidation(partyA, partyB, collateral);
 		emit FlagPartyALiquidation(msg.sender, partyA, partyB, collateral);
 	}
 
@@ -137,7 +137,7 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 		address partyB,
 		address collateral
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-		ClearingHouseFacetImpl.unflagPartyALiquidation(partyA, partyB, collateral);
+		LibClearingHouse.unflagPartyALiquidation(partyA, partyB, collateral);
 		emit UnflagPartyALiquidation(msg.sender, partyA, partyB, collateral);
 	}
 
@@ -149,7 +149,7 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 		int256 upnl,
 		uint256 collateralPrice
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-		ClearingHouseFacetImpl.liquidateCrossPartyA(liquidationId, upnl, collateralPrice);
+		LibClearingHouse.liquidateCrossPartyA(liquidationId, upnl, collateralPrice);
 		emit LiquidateCrossPartyA(msg.sender, liquidationId, partyA, partyB, collateral, upnl, collateralPrice);
 	}
 
@@ -158,7 +158,7 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 		uint256[] memory tradeIds,
 		uint256[] memory prices
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-		ClearingHouseFacetImpl.closeTrades(liquidationId, tradeIds, prices);
+		LibClearingHouse.closeTrades(liquidationId, tradeIds, prices);
 		emit CloseTradesForLiquidation(msg.sender, tradeIds, prices);
 	}
 
@@ -168,20 +168,20 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 		address collateral,
 		uint256 amount
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-		ClearingHouseFacetImpl.allocateFromReserveToCross(party, counterParty, collateral, amount);
+		LibClearingHouse.allocateFromReserveToCross(party, counterParty, collateral, amount);
 	}
 
     function cancelOpenIntents(
         uint256[] calldata intentIds
     ) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-        ClearingHouseFacetImpl.cancelOpenIntents(intentIds);
+        LibClearingHouse.cancelOpenIntents(intentIds);
 		emit CancelOpenIntentsForLiquidation(msg.sender, intentIds);
     }
 
     function cancelCloseIntents(
         uint256[] calldata intentIds
     ) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-        ClearingHouseFacetImpl.cancelCloseIntents(intentIds);
+        LibClearingHouse.cancelCloseIntents(intentIds);
 		emit CancelCloseIntentsForLiquidation(msg.sender, intentIds);
     }
 }

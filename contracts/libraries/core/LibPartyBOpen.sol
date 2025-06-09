@@ -4,12 +4,12 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { LibParty } from "../../libraries/LibParty.sol";
-import { LibTradeOps } from "../../libraries/LibTrade.sol";
-import { LibUserData } from "../../libraries/LibUserData.sol";
-import { CommonErrors } from "../../libraries/CommonErrors.sol";
-import { LibOpenIntentOps } from "../../libraries/LibOpenIntent.sol";
-import { ScheduledReleaseBalanceOps } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { LibParty } from "../models/LibParty.sol";
+import { LibTradeOps } from "../models/LibTrade.sol";
+import { LibUserData } from "../utils/LibUserData.sol";
+import { CommonErrors } from "../utils/CommonErrors.sol";
+import { LibOpenIntentOps } from "../models/LibOpenIntent.sol";
+import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance.sol";
 
 import { AppStorage } from "../../storages/AppStorage.sol";
 import { TradeStorage } from "../../storages/TradeStorage.sol";
@@ -24,9 +24,9 @@ import { OpenIntent, OpenIntentStatus } from "../../types/IntentTypes.sol";
 import { TradeAgreements, TradeSide, MarginType } from "../../types/BaseTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 
-import { PartyBOpenFacetErrors } from "./PartyBOpenFacetErrors.sol";
+import { PartyBOpenFacetErrors } from "../../facets/PartyBOpen/PartyBOpenFacetErrors.sol";
 
-library PartyBOpenFacetImpl {
+library LibPartyBOpen {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibOpenIntentOps for OpenIntent;
 	using LibTradeOps for Trade;
