@@ -4,16 +4,16 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { LibHash } from "../../libraries/utils/LibHash.sol";
-import { LibSignature } from "../../libraries/services/LibSignature.sol";
+import { LibHash } from "../utils/LibHash.sol";
+import { LibSignature } from "../services/LibSignature.sol";
 
 import { CloseIntentStatus } from "../../types/IntentTypes.sol";
 import { SignedFillIntentById, SignedSimpleActionIntent, SignedFillIntent, SignedCloseIntent } from "../../types/SignedIntentTypes.sol";
 
-import { LibPartyBClose } from "../../libraries/core/LibPartyBClose.sol";
-import { LibPartyAClose } from "../../libraries/core/LibPartyAClose.sol";
+import { LibPartyBClose } from "../core/LibPartyBClose.sol";
+import { LibPartyAClose } from "../core/LibPartyAClose.sol";
 
-library InstantActionsCloseFacetImpl {
+library LibInstantActionsClose {
 	function instantCancelCloseIntent(
 		SignedSimpleActionIntent calldata signedCancelCloseIntent,
 		bytes calldata partyASignature,

@@ -4,12 +4,12 @@
 // For more information, see https://docs.symm.io/legal‑disclaimer/license
 pragma solidity >=0.8.19;
 
-import { LibParty } from "../../libraries/models/LibParty.sol";
-import { LibTradeOps } from "../../libraries/models/LibTrade.sol";
-import { CommonErrors } from "../../libraries/utils/CommonErrors.sol";
-import { ScheduledReleaseBalanceOps } from "../../libraries/models/LibScheduledReleaseBalance.sol";
-import { LibOpenIntentOps } from "../../libraries/models/LibOpenIntent.sol";
-import { LibCloseIntentOps } from "../../libraries/models/LibCloseIntent.sol";
+import { LibParty } from "../models/LibParty.sol";
+import { LibTradeOps } from "../models/LibTrade.sol";
+import { CommonErrors } from "../utils/CommonErrors.sol";
+import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance.sol";
+import { LibOpenIntentOps } from "../models/LibOpenIntent.sol";
+import { LibCloseIntentOps } from "../models/LibCloseIntent.sol";
 
 import { AppStorage } from "../../storages/AppStorage.sol";
 import { TradeStorage } from "../../storages/TradeStorage.sol";
@@ -26,9 +26,9 @@ import { Withdraw, WithdrawStatus } from "../../types/WithdrawTypes.sol";
 import { LiquidationStatus, LiquidationDetail, LiquidationSide } from "../../types/LiquidationTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason, CrossEntry } from "../../types/BalanceTypes.sol";
 
-import { ClearingHouseFacetErrors } from "./ClearingHouseFacetErrors.sol";
+import { ClearingHouseFacetErrors } from "../../facets/ClearingHouse/ClearingHouseFacetErrors.sol";
 
-library ClearingHouseFacetImpl {
+library LibClearingHouse {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibTradeOps for Trade;
 	using LibParty for address;

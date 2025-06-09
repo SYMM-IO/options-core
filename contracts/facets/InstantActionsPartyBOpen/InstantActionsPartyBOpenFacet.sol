@@ -13,7 +13,7 @@ import { Pausable } from "../../utils/Pausable.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
 
 import { IInstantActionsPartyBOpenFacet } from "./IInstantActionsPartyBOpenFacet.sol";
-import { InstantActionsPartyBOpenFacetImpl } from "./InstantActionsPartyBOpenFacetImpl.sol";
+import { LibInstantActionsPartyBOpen } from "../../libraries/core/LibInstantActionsPartyBOpen.sol";
 
 /**
  * @title InstantActionsOpenFacet
@@ -34,7 +34,7 @@ contract InstantActionsPartyBOpenFacet is Accessibility, Pausable, IInstantActio
 		SignedSimpleActionIntent calldata signedLockIntent,
 		bytes calldata partyBSignature
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		InstantActionsPartyBOpenFacetImpl.instantLock(signedLockIntent, partyBSignature);
+		LibInstantActionsPartyBOpen.instantLock(signedLockIntent, partyBSignature);
 		emit LockOpenIntent(signedLockIntent.intentId, signedLockIntent.signer);
 	}
 
@@ -49,7 +49,7 @@ contract InstantActionsPartyBOpenFacet is Accessibility, Pausable, IInstantActio
 		SignedSimpleActionIntent calldata signedUnlockIntent,
 		bytes calldata partyBSignature
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		OpenIntentStatus finalStatus = InstantActionsPartyBOpenFacetImpl.instantUnlock(signedUnlockIntent, partyBSignature);
+		OpenIntentStatus finalStatus = LibInstantActionsPartyBOpen.instantUnlock(signedUnlockIntent, partyBSignature);
 		if (finalStatus == OpenIntentStatus.EXPIRED) {
 			emit ExpireOpenIntent(signedUnlockIntent.intentId);
 		} else if (finalStatus == OpenIntentStatus.PENDING) {
@@ -68,7 +68,7 @@ contract InstantActionsPartyBOpenFacet is Accessibility, Pausable, IInstantActio
 		SignedFillIntentById calldata signedFillOpenIntent,
 		bytes calldata partyBSignature
 	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
-		(uint256 tradeId, uint256 newIntentId) = InstantActionsPartyBOpenFacetImpl.instantFillOpenIntent(signedFillOpenIntent, partyBSignature);
+		(uint256 tradeId, uint256 newIntentId) = LibInstantActionsPartyBOpen.instantFillOpenIntent(signedFillOpenIntent, partyBSignature);
 		emit FillOpenIntent(signedFillOpenIntent.intentId, tradeId, signedFillOpenIntent.quantity, signedFillOpenIntent.price);
 		if (newIntentId != 0) {
 			OpenIntent storage newIntent = OpenIntentStorage.layout().openIntents[newIntentId];

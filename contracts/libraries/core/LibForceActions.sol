@@ -15,7 +15,7 @@ import { CloseIntentStorage } from "../../storages/CloseIntentStorage.sol";
 import { OpenIntentStatus, CloseIntentStatus } from "../../types/IntentTypes.sol";
 import { OpenIntent, CloseIntent } from "../../types/IntentTypes.sol";
 
-library ForceActionsFacetImpl {
+library LibForceActions {
 	using LibOpenIntentOps for OpenIntent;
 	using LibCloseIntentOps for CloseIntent;
 

@@ -4,18 +4,18 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { LibHash } from "../../libraries/utils/LibHash.sol";
-import { LibSignature } from "../../libraries/services/LibSignature.sol";
+import { LibHash } from "../utils/LibHash.sol";
+import { LibSignature } from "../services/LibSignature.sol";
 
 import { OpenIntentStatus } from "../../types/IntentTypes.sol";
 import { TradeAgreements } from "../../types/BaseTypes.sol";
 import { SignedSimpleActionIntent, SignedOpenIntent, SignedFillIntent } from "../../types/SignedIntentTypes.sol";
 
-import { LibPartyAOpen } from "../../libraries/core/LibPartyAOpen.sol";
-import { LibPartyBOpen } from "../../libraries/core/LibPartyBOpen.sol";
+import { LibPartyAOpen } from "../core/LibPartyAOpen.sol";
+import { LibPartyBOpen } from "../core/LibPartyBOpen.sol";
 
 
-library InstantActionsOpenFacetImpl {
+library LibInstantActionsOpen {
 	function instantCreateAndFillOpenIntent(
 		SignedOpenIntent calldata signedOpenIntent,
 		bytes calldata partyASignature,

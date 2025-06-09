@@ -22,9 +22,9 @@ import { Symbol, OptionType } from "../../types/SymbolTypes.sol";
 import { SettlementPriceSig } from "../../types/SettlementTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 
-import { TradeSettlementFacetErrors } from "./TradeSettlementFacetErrors.sol";
+import { TradeSettlementFacetErrors } from "../../facets/TradeSettlement/TradeSettlementFacetErrors.sol";
 
-library TradeSettlementFacetImpl {
+library LibTradeSettlement {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibTradeOps for Trade;
 	using LibParty for address;
