@@ -145,42 +145,76 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 
 		it("Should change balances for parties as expected in Isolated mode", async () => {
 			//take balance snapshot
-			const quantity = e(50)
+			const quantity = e(20)
 			const price = 8
+			const closeIntentID = 1
 			const partyBBalanceBefore = await context.viewFacet.balanceOf(partyB1.getSigner, context.collateral)
 			const partyABalanceBefore = await context.viewFacet.balanceOf(partyA1.getSigner, context.collateral)
-			await expect(partyB1.fillCloseIntent(1, quantity, price)).to.not.be.reverted
+			await expect(partyB1.fillCloseIntent(closeIntentID, quantity, price)).to.not.be.reverted
 
-			// some time pass for schedules
-			const newBlockTime = (await getLatestBlockTime()) + 100
+			// 2 intervals pass for schedules
+			let newBlockTime = (await getLatestBlockTime()) + 24
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTime])
 			await network.provider.send("evm_mine")
 
 			// expect(partyBBalanceBefore - partyBBalanceAfter).to.be.equal(100) // pnl - premium
-			await expect(partyB1.fillCloseIntent(1, quantity, price)).to.not.be.reverted
+			await expect(partyB1.fillCloseIntent(closeIntentID, quantity, price)).to.not.be.reverted
 
 			const closeIntent: CloseIntentStruct = await context.viewFacet.getCloseIntent(1)
 			const trade: TradeStruct = await context.viewFacet.getTrade(closeIntent.tradeId)
 			const symbol: SymbolStruct = await context.viewFacet.getSymbol(trade.tradeAgreements.symbolId)
 			const partyBBalanceAfter = await context.viewFacet.balanceOf(trade.partyB, symbol.collateral)
 			const premium = await context.viewFacet.getTradePremium(closeIntent.tradeId)
-			const partyABalanceAfter = await context.viewFacet.balanceOf(partyA1.getSigner, context.collateral)
+			let partyABalanceAfter = await context.viewFacet.balanceOf(partyA1.getSigner, context.collateral)
+			let scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA1.getSigner, context.collateral, partyB1.getSigner)
+			const pnl = (BigInt(price) * BigInt(2n * quantity)) / BigInt(1000000000000000000)
+			const finalPremium = (premium * 2n * quantity) / BigInt(trade.tradeAgreements.quantity)
 
 			console.log("PartyB balance before fill to close intent:", partyBBalanceBefore)
 			console.log("PartyA balance before fill to close intent:", partyABalanceBefore)
 			console.log("PartyB balance after fill to close intent:", partyBBalanceAfter)
 			console.log("PartyA balance after fill to close intent:", partyABalanceAfter)
+			console.log("PartyA balance Scheduled:", scheduleEntry.scheduled)
+			console.log("PartyA balance Transitioning:", scheduleEntry.transitioning)
+			console.log("PartyA balance Last Timestamp:", scheduleEntry.lastTransitionTimestamp)
+			console.log("PartyA balance Release Interval:", scheduleEntry.releaseInterval)
 			console.log("Trade agreement Quantity:", trade.tradeAgreements.quantity)
 			console.log("Fill Close Intent Quantity:", quantity)
 			console.log("Fill Close Intent Price:", price)
-			console.log("Calculation:", (premium * quantity) / BigInt(trade.tradeAgreements.quantity))
+			console.log("Premium Calculation:", finalPremium)
+			console.log("PNL Calculation:", pnl)
 
-			let pnl = (BigInt(price) * BigInt(quantity)) / BigInt(1000000000000000000)
-
-			// base on input quantity that is 100 and the price 8, we expect the balances to be
-			expect(partyBBalanceAfter - partyBBalanceBefore).to.be.equal(premium - (pnl + pnl))
+			// base on close quantity that is 100(two 50) and the price 8, we expect the balances to be(2pnl as we have 2*50 quantity)
+			expect(partyBBalanceAfter - partyBBalanceBefore).to.be.equal(finalPremium - pnl)
 
 			//for party A we expect to have half of its output as the balance is scheduled and updated using sync function
+			expect(partyABalanceAfter - partyABalanceBefore).to.be.equal(pnl / 2n)
+
+			newBlockTime = (await getLatestBlockTime()) + 12
+			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTime])
+			await network.provider.send("evm_mine")
+
+			expect(scheduleEntry.scheduled).to.be.equal(pnl / 2n)
+
+			await context.controlFacet.syncTradeWindow(partyA1.getSigner, context.collateral, partyB1.getSigner)
+			scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA1.getSigner, context.collateral, partyB1.getSigner)
+
+			expect(scheduleEntry.transitioning).to.be.equal(pnl / 2n)
+
+			newBlockTime = (await getLatestBlockTime()) + 12
+			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTime])
+			await network.provider.send("evm_mine")
+
+			await context.controlFacet.syncTradeWindow(partyA1.getSigner, context.collateral, partyB1.getSigner)
+			partyABalanceAfter = await context.viewFacet.balanceOf(partyA1.getSigner, context.collateral)
+			scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA1.getSigner, context.collateral, partyB1.getSigner)
+
+			console.log("PartyA balance after window sync:", partyABalanceAfter)
+			console.log("PartyA balance Scheduled:", scheduleEntry.scheduled)
+			console.log("PartyA balance Transitioning:", scheduleEntry.transitioning)
+			console.log("PartyA balance Last Timestamp:", scheduleEntry.lastTransitionTimestamp)
+			console.log("PartyA balance Release Interval:", scheduleEntry.releaseInterval)
+
 			expect(partyABalanceAfter - partyABalanceBefore).to.be.equal(pnl)
 		})
 
