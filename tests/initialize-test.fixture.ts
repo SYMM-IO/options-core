@@ -40,6 +40,10 @@ export async function initializeTestFixture(): Promise<RunContext> {
 		.connect(context.signers.admin)
 		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("UNPAUSER_ROLE")))
 
+	await context.controlFacet
+		.connect(context.signers.admin)
+		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("WINDOW_UPDATER_ROLE")))
+
 	await context.controlFacet.connect(context.signers.admin).unpauseGlobal()
 
 	await context.controlFacet.setDeactiveInstantActionModeCooldown(120)

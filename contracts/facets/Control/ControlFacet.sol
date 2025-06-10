@@ -101,7 +101,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		emit ForceCancelOpenIntentTimeoutUpdated(_timeout);
 	}
 
-	function syncTradeWindow(address user, address collateral, address counterParty) external onlyRole(LibAccessibility.SETTER_ROLE) {
+	function syncTradeWindow(address user, address collateral, address counterParty) external onlyRole(LibAccessibility.WINDOW_UPDATER_ROLE) {
 		ScheduledReleaseBalance storage schedule = AccountStorage.layout().balances[user][collateral];
 		schedule.sync(counterParty);
 		emit UserWindowUpdated(user, collateral, counterParty);

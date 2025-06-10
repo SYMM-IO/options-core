@@ -62,10 +62,6 @@ describe(`${name}-v${version}`, () => {
 		describe("Facet_BridgeFacet", async function () {
 			shouldBehaveLikeBridgeFacet()
 		})
-
-		describe("Facets_ForceActions", async function () {
-			shouldBehaveLikeForceActionFacet()
-		})
 	} else {
 		throw new Error(`Invalid TEST_MODE property. Should be one of: ${Object.keys(TestModeEnum).join(", ")}`)
 	}

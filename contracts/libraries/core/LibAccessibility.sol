@@ -18,6 +18,7 @@ library LibAccessibility {
 	bytes32 public constant CLEARING_HOUSE_ROLE = keccak256("CLEARING_HOUSE_ROLE");
 	bytes32 public constant DISPUTE_ROLE = keccak256("DISPUTE_ROLE");
 	bytes32 public constant SECURED_DEPOSITOR_ROLE = keccak256("SECURED_DEPOSITOR_ROLE");
+	bytes32 public constant WINDOW_UPDATER_ROLE = keccak256("WINDOW_UPDATER_ROLE");
 
 	/**
 	 * @notice Checks if a user has a specific role.
