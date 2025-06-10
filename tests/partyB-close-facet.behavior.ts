@@ -145,9 +145,13 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 
 		it("Should change balances for parties as expected in Isolated mode", async () => {
 			//take balance snapshot
-			const quantity = e(20)
-			const price = 8
+
 			const closeIntentID = 1
+			const closeIntent: CloseIntentStruct = await context.viewFacet.getCloseIntent(closeIntentID)
+			closeIntent.quantity
+
+			const quantity = BigInt(closeIntent.quantity) / 2n
+			const price = 8
 			const partyBBalanceBefore = await context.viewFacet.balanceOf(partyB1.getSigner, context.collateral)
 			const partyABalanceBefore = await context.viewFacet.balanceOf(partyA1.getSigner, context.collateral)
 			await expect(partyB1.fillCloseIntent(closeIntentID, quantity, price)).to.not.be.reverted
@@ -157,10 +161,8 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTime])
 			await network.provider.send("evm_mine")
 
-			// expect(partyBBalanceBefore - partyBBalanceAfter).to.be.equal(100) // pnl - premium
 			await expect(partyB1.fillCloseIntent(closeIntentID, quantity, price)).to.not.be.reverted
 
-			const closeIntent: CloseIntentStruct = await context.viewFacet.getCloseIntent(1)
 			const trade: TradeStruct = await context.viewFacet.getTrade(closeIntent.tradeId)
 			const symbol: SymbolStruct = await context.viewFacet.getSymbol(trade.tradeAgreements.symbolId)
 			const partyBBalanceAfter = await context.viewFacet.balanceOf(trade.partyB, symbol.collateral)

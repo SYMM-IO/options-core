@@ -193,8 +193,13 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			const partyBBalanceBeforeSettlementInit = await context.viewFacet.balanceOf(partyB2.getSigner, await context.collateral.getAddress())
 			await partyB2.fillOpenIntent(intentID, e(100), 7)
 
-			// await partyA2.sendCloseIntent(tradeID, 7, e(50), (await getLatestBlockTime()) + 120)
-			// await partyB2.fillCloseIntent(tradeID, e(50), 7)
+			const closePrice = 7
+			const closeQuantity = e(50)
+			await partyA2.sendCloseIntent(tradeID, closePrice, closeQuantity, (await getLatestBlockTime()) + 120)
+			const closeIntent = await context.viewFacet.getCloseIntent(1)
+			await partyB2.fillCloseIntent(tradeID, closeIntent.quantity, closeIntent.price)
+
+			const closePNL = (BigInt(closeIntent.price) * BigInt(closeIntent.quantity)) / BigInt(1000000000000000000)
 
 			const timestamp = await getLatestBlockTime()
 			const priceSig: SettlementPriceSigStruct = {
@@ -226,7 +231,6 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			const exerciseFee = await context.viewFacet.getExerciseFee(tradeID, priceSig.settlementPrice, pnl)
 
 			const amountToTransfer = ethers.parseUnits((pnl - exerciseFee).toString(), 18) / BigInt(priceSig.collateralPrice)
-			// const amountToTransfer = ethers.formatUnits((pnl - exerciseFee) / BigInt(priceSig.collateralPrice), 18)
 
 			const optionSymbol = await context.viewFacet.getSymbol(trade.tradeAgreements.symbolId)
 			const partyABalanceBeforeSettlement = await context.viewFacet.balanceOf(partyA2.getSigner, await context.collateral.getAddress())
@@ -272,7 +276,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA2.getSigner, optionSymbol.collateral, partyB2.getSigner)
 
 			let lastTimestamp = await getLatestBlockTime()
-			newBlock = (await getLatestBlockTime()) + Number(releaseInterval) * 3
+			newBlock = (await getLatestBlockTime()) + Number(releaseInterval) * 2
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
 			await network.provider.send("evm_mine")
 
@@ -297,7 +301,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			// Party B
 			expect(partyBBalanceAfterSettlement - partyBBalanceBeforeSettlement).to.be.equal(tradePremiumSettled - amountToTransfer)
 			// Party A
-			expect(partyABalanceAfterSettlementSchedule - partyABalanceBeforeSettlement).to.be.equal(amountToTransfer)
+			expect(partyABalanceAfterSettlementSchedule - partyABalanceBeforeSettlement).to.be.equal(amountToTransfer + closePNL)
 		})
 
 		it("Should be when executed with option carried out as 'Cross Buy' ", async () => {
