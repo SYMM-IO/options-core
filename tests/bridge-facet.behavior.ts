@@ -26,6 +26,7 @@ export function shouldBehaveLikeBridgeFacet(): void {
 		})
 
 		await partyA1.setBalances(context.collateral, e(100000), e(100000))
+		await partyA1.setBalances(context.collateralNL, e(100000), e(100000))
 
 		await context.controlFacet.setBridgeStatus(context.signers.bridge1, true)
 
@@ -212,7 +213,19 @@ export function shouldBehaveLikeBridgeFacet(): void {
 			).to.be.revertedWithCustomError(context.bridgeFacet, "UnauthorizedSender")
 		})
 
-		it("Should transfer to bridge successfully", async function () {
+		it("Should fail when multi transactionId collateral not same", async function () {
+			await context.bridgeFacet
+				.connect(partyA1.getSigner)
+				.transferToBridge(context.collateralNL, e(1000), context.signers.bridge1.address, partyA1.address)
+
+			await expect(
+				context.bridgeFacet
+					.connect(context.signers.bridge1)
+					.withdrawReceivedBridgeValues([LastBridgeTransactionId, LastBridgeTransactionId + BigInt(1)]),
+			).to.be.revertedWithCustomError(context.bridgeFacet, "BridgeCollateralMismatch")
+		})
+
+		it("Should transfer to bridge successfully single transactionId", async function () {
 			const beforeBalance = await context.collateral.balanceOf(context.signers.bridge1)
 			await moveTime(ONE_DAY_IN_SEC)
 			await expect(context.bridgeFacet.connect(context.signers.bridge1).withdrawReceivedBridgeValues([LastBridgeTransactionId])).to.not.reverted
@@ -229,6 +242,35 @@ export function shouldBehaveLikeBridgeFacet(): void {
 			expect(bridgeTx.status).to.be.equal(2) // BridgeTransactionStatus.WITHDRAWN
 
 			expect(afterBalance).equal(beforeBalance + bridgeTx.amount)
+		})
+
+		it("Should transfer to bridge successfully with bulk transactionIds", async function () {
+			// Create a second bridge transaction
+			await context.bridgeFacet
+				.connect(partyA1.getSigner)
+				.transferToBridge(context.collateral, e(1000), context.signers.bridge1.address, partyA1.address)
+
+			const txIds = [LastBridgeTransactionId, LastBridgeTransactionId + BigInt(1)]
+
+			const beforeBalance = await context.collateral.balanceOf(context.signers.bridge1)
+			await moveTime(ONE_DAY_IN_SEC)
+
+			await expect(context.bridgeFacet.connect(context.signers.bridge1).withdrawReceivedBridgeValues(txIds)).to.not.reverted
+
+			const afterBalance = await context.collateral.balanceOf(context.signers.bridge1)
+
+			for (const txId of txIds) {
+				const bridgeTx = await context.viewFacet.getBridgeTransaction(txId)
+				expect(bridgeTx.amount).to.be.equal(e(1000))
+				expect(bridgeTx.id).to.be.equal(txId)
+				expect(bridgeTx.collateral).to.be.equal(await context.collateral.getAddress())
+				expect(bridgeTx.sender).to.be.equal(partyA1.address)
+				expect(bridgeTx.receiver).to.be.equal(partyA1.address)
+				expect(bridgeTx.bridge).to.be.equal(context.signers.bridge1)
+				expect(bridgeTx.status).to.be.equal(2) // BridgeTransactionStatus.WITHDRAWN
+			}
+
+			expect(afterBalance).to.equal(beforeBalance + e(2000))
 		})
 	})
 }
