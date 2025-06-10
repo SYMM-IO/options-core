@@ -20,7 +20,7 @@ import { Trade } from "../../types/TradeTypes.sol";
 
 import { Symbol, Oracle, OptionType } from "../../types/SymbolTypes.sol";
 import { ScheduledReleaseBalance, CrossEntry, ScheduledReleaseEntry } from "../../types/BalanceTypes.sol";
-import { ScheduledReleaseBalanceOps } from "../../libraries/LibScheduledReleaseBalance.sol";
+import { ScheduledReleaseBalanceOps } from "../../libraries/models/LibScheduledReleaseBalance.sol";
 
 import { Ownable } from "../../utils/Ownable.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
