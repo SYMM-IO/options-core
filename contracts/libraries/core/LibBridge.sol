@@ -74,10 +74,8 @@ library LibBridge {
 
 			BridgeTransaction storage bridgeTransaction = bridgeLayout.bridgeTransactions[transactionIds[i - 1]];
 
-			// ! -------------------
 			if (collateral != bridgeTransaction.collateral)
 				revert BridgeFacetErrors.BridgeCollateralMismatch(collateral, bridgeTransaction.collateral);
-			// ! -------------------
 
 			CommonErrors.requireStatus("BridgeTransactionStatus", uint8(bridgeTransaction.status), uint8(BridgeTransactionStatus.RECEIVED));
 
