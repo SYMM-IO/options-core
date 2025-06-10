@@ -281,24 +281,27 @@ export function shouldBehaveLikeBridgeFacet(): void {
 		it("Should only SUSPENDER_ROLE can call it", async function () {
 			await context.controlFacet.revokeRole(context.signers.admin, ethers.keccak256(toUtf8Bytes("SUSPENDER_ROLE")))
 
-			await expect(
-				context.bridgeFacet.suspendBridgeTransaction(LastBridgeTransactionId),
-			).to.be.revertedWithCustomError(context.bridgeFacet, "MissingRole")
+			await expect(context.bridgeFacet.suspendBridgeTransaction(LastBridgeTransactionId)).to.be.revertedWithCustomError(
+				context.bridgeFacet,
+				"MissingRole",
+			)
 		})
 
 		it("Should fail if transactionId invalid", async function () {
-			await expect(
-				context.bridgeFacet.suspendBridgeTransaction(LastBridgeTransactionId + BigInt(10)),
-			).to.be.revertedWithCustomError(context.bridgeFacet, "InvalidBridgeTransactionId")
+			await expect(context.bridgeFacet.suspendBridgeTransaction(LastBridgeTransactionId + BigInt(10))).to.be.revertedWithCustomError(
+				context.bridgeFacet,
+				"InvalidBridgeTransactionId",
+			)
 		})
 
 		it("Should transaction status be RECEIVED", async function () {
 			await context.controlFacet.grantRole(context.signers.admin, ethers.keccak256(toUtf8Bytes("SUSPENDER_ROLE")))
 
 			await context.bridgeFacet.suspendBridgeTransaction(LastBridgeTransactionId)
-			await expect(
-				context.bridgeFacet.suspendBridgeTransaction(LastBridgeTransactionId),
-			).to.be.revertedWithCustomError(context.bridgeFacet, "InvalidState")
+			await expect(context.bridgeFacet.suspendBridgeTransaction(LastBridgeTransactionId)).to.be.revertedWithCustomError(
+				context.bridgeFacet,
+				"InvalidState",
+			)
 		})
 
 		it("Should suspend bridge transaction successfully", async function () {
@@ -313,6 +316,71 @@ export function shouldBehaveLikeBridgeFacet(): void {
 			expect(bridgeTx.receiver).to.be.equal(partyA1.address)
 			expect(bridgeTx.bridge).to.be.equal(context.signers.bridge1)
 			expect(bridgeTx.status).to.be.equal(1) // BridgeTransactionStatus.SUSPENDED
+		})
+	})
+
+	describe("restoreBridgeTransaction", async () => {
+		let LastBridgeTransactionId = BigInt(0)
+		beforeEach(async () => {
+			await context.bridgeFacet
+				.connect(partyA1.getSigner)
+				.transferToBridge(context.collateral, e(1000), context.signers.bridge1.address, partyA1.address)
+
+			LastBridgeTransactionId = await context.viewFacet.getLastBridgeTransactionId()
+
+			await context.controlFacet.grantRole(context.signers.admin, ethers.keccak256(toUtf8Bytes("SUSPENDER_ROLE")))
+			await context.controlFacet.grantRole(context.signers.admin, ethers.keccak256(toUtf8Bytes("DISPUTE_ROLE")))
+
+			await context.bridgeFacet.suspendBridgeTransaction(LastBridgeTransactionId)
+		})
+
+		it("Should fail if transaction is not suspended", async function () {
+			await context.controlFacet.setInvalidBridgedAmountsPool(context.signers.others[0])
+
+			// restoreBridgeTransaction requires status SUSPENDED
+			await context.bridgeFacet.restoreBridgeTransaction(LastBridgeTransactionId, e(900))
+			// Try restoring again (now status is RECEIVED)
+			await expect(context.bridgeFacet.restoreBridgeTransaction(LastBridgeTransactionId, e(800))).to.be.revertedWithCustomError(
+				context.bridgeFacet,
+				"InvalidState",
+			)
+		})
+
+		it("Should fail if invalidBridgedAmountsPool is zero address", async function () {
+			await expect(context.bridgeFacet.restoreBridgeTransaction(LastBridgeTransactionId, e(900))).to.be.revertedWithCustomError(
+				context.bridgeFacet,
+				"ZeroAddress",
+			)
+		})
+
+		it("Should fail if validAmount > transaction.amount", async function () {
+			await context.controlFacet.setInvalidBridgedAmountsPool(context.signers.others[0])
+			await expect(context.bridgeFacet.restoreBridgeTransaction(LastBridgeTransactionId, e(2000))).to.be.revertedWithCustomError(
+				context.bridgeFacet,
+				"HighValidAmount",
+			)
+		})
+
+		it("Should restore bridge transaction successfully", async function () {
+			await context.controlFacet.setInvalidBridgedAmountsPool(context.signers.others[0])
+			const txBefore = await context.viewFacet.getBridgeTransaction(LastBridgeTransactionId)
+			expect(txBefore.status).to.equal(1) // SUSPENDED
+
+			await expect(context.bridgeFacet.restoreBridgeTransaction(LastBridgeTransactionId, e(900))).to.not.reverted
+
+			const txAfter = await context.viewFacet.getBridgeTransaction(LastBridgeTransactionId)
+			expect(txAfter.status).to.equal(0) // RECEIVED
+			expect(txAfter.amount).to.equal(e(900))
+		})
+
+		it("Should update invalidBridgedAmountsPool balance", async function () {
+			await context.controlFacet.setInvalidBridgedAmountsPool(context.signers.others[0])
+
+			const pool = await context.viewFacet.getInvalidBridgedAmountsPool()
+			const before = await context.viewFacet.balanceOf(pool, context.collateral)
+			await context.bridgeFacet.restoreBridgeTransaction(LastBridgeTransactionId, e(900))
+			const after = await context.viewFacet.balanceOf(pool, context.collateral)
+			expect(after - before).to.equal(e(100)) // amount - validAmount
 		})
 	})
 }
