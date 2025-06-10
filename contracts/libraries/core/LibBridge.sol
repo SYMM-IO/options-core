@@ -69,12 +69,15 @@ library LibBridge {
 
 		address collateral = bridgeLayout.bridgeTransactions[transactionIds[0]].collateral;
 		for (uint256 i = transactionIds.length; i != 0; i--) {
-			if (transactionIds[i - 1] > bridgeLayout.lastBridgeTransactionId) revert BridgeFacetErrors.InvalidBridgeTransactionId(transactionIds[i - 1]);
+			if (transactionIds[i - 1] > bridgeLayout.lastBridgeTransactionId)
+				revert BridgeFacetErrors.InvalidBridgeTransactionId(transactionIds[i - 1]);
 
 			BridgeTransaction storage bridgeTransaction = bridgeLayout.bridgeTransactions[transactionIds[i - 1]];
 
+			// ! -------------------
 			if (collateral != bridgeTransaction.collateral)
 				revert BridgeFacetErrors.BridgeCollateralMismatch(collateral, bridgeTransaction.collateral);
+			// ! -------------------
 
 			CommonErrors.requireStatus("BridgeTransactionStatus", uint8(bridgeTransaction.status), uint8(BridgeTransactionStatus.RECEIVED));
 

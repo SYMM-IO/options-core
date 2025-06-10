@@ -6,11 +6,13 @@ import { RunContext } from "./run-context"
 import { PartyB } from "./models/partyB.model"
 import { ethers, network } from "hardhat"
 import { e } from "../utils/e"
-import { ZeroAddress } from "ethers"
+import { toUtf8Bytes, ZeroAddress } from "ethers"
+import { bigint } from "hardhat/internal/core/params/argumentTypes"
+import { moveTime } from "../utils/time"
 
 export function shouldBehaveLikeBridgeFacet(): void {
 	let context: RunContext, partyA1: PartyA, partyB1: PartyB
-
+	const ONE_DAY_IN_SEC = 86400
 	beforeEach(async function () {
 		context = await loadFixture(initializeTestFixture)
 		partyA1 = new PartyA(context, context.signers.partyA1)
@@ -26,6 +28,8 @@ export function shouldBehaveLikeBridgeFacet(): void {
 		await partyA1.setBalances(context.collateral, e(100000), e(100000))
 
 		await context.controlFacet.setBridgeStatus(context.signers.bridge1, true)
+
+		await context.controlFacet.setPartyADeallocateCooldown(ONE_DAY_IN_SEC)
 	})
 
 	describe("transferToBridge", async function () {
@@ -36,6 +40,15 @@ export function shouldBehaveLikeBridgeFacet(): void {
 					.connect(partyA1.getSigner)
 					.transferToBridge(context.collateral, e(1000), context.signers.bridge1.address, partyA1.address),
 			).to.be.revertedWithCustomError(context.bridgeFacet, "UserSuspended")
+		})
+
+		it("Should fail when system global Paused", async function () {
+			await context.controlFacet.pauseGlobal()
+			await expect(
+				context.bridgeFacet
+					.connect(partyA1.getSigner)
+					.transferToBridge(context.collateral, e(1000), context.signers.bridge1.address, partyA1.address),
+			).to.be.revertedWithCustomError(context.bridgeFacet, "GlobalPaused")
 		})
 
 		it("Should fail when msgSender be partyB", async function () {
@@ -94,6 +107,7 @@ export function shouldBehaveLikeBridgeFacet(): void {
 		})
 
 		it("Should fail when msgSender instant action mode active", async function () {
+			await context.accountFacet.connect(partyA1.getSigner).bindToPartyB(partyB1.address)
 			await context.accountFacet.connect(partyA1.getSigner).activateInstantActionMode()
 			await expect(
 				context.bridgeFacet
@@ -123,6 +137,98 @@ export function shouldBehaveLikeBridgeFacet(): void {
 
 			const currentIsolatedBalance = await context.viewFacet.balanceOf(partyA1.address, context.collateral)
 			expect(currentIsolatedBalance).to.be.equal(e(99000))
+		})
+	})
+
+	describe("withdrawReceivedBridgeValues", async function () {
+		let LastBridgeTransactionId = BigInt(0)
+		beforeEach(async () => {
+			await context.bridgeFacet
+				.connect(partyA1.getSigner)
+				.transferToBridge(context.collateral, e(1000), context.signers.bridge1.address, partyA1.address)
+
+			LastBridgeTransactionId = await context.viewFacet.getLastBridgeTransactionId()
+		})
+		it("Should fail when partyA Suspended", async function () {
+			await context.controlFacet.suspendAddress(context.signers.bridge1.address, true)
+			await expect(
+				context.bridgeFacet.connect(context.signers.bridge1).withdrawReceivedBridgeValues([LastBridgeTransactionId]),
+			).to.be.revertedWithCustomError(context.bridgeFacet, "UserSuspended")
+		})
+
+		it("Should fail when Bridge Withdraw Paused", async function () {
+			await context.controlFacet.setBridgeWithdrawPausedStatues(true)
+			await expect(
+				context.bridgeFacet.connect(context.signers.bridge1).withdrawReceivedBridgeValues([LastBridgeTransactionId]),
+			).to.be.revertedWithCustomError(context.bridgeFacet, "BridgeWithdrawPaused")
+		})
+
+		it("Should fail when system global Paused", async function () {
+			await context.controlFacet.pauseGlobal()
+			await expect(
+				context.bridgeFacet.connect(context.signers.bridge1).withdrawReceivedBridgeValues([LastBridgeTransactionId]),
+			).to.be.revertedWithCustomError(context.bridgeFacet, "GlobalPaused")
+		})
+
+		it("Should fail when transactionIds list be empty", async function () {
+			await expect(context.bridgeFacet.connect(context.signers.bridge1).withdrawReceivedBridgeValues([])).to.be.revertedWithCustomError(
+				context.bridgeFacet,
+				"EmptyList",
+			)
+		})
+
+		it("Should fail when transactionIds list be empty", async function () {
+			await expect(context.bridgeFacet.connect(context.signers.bridge1).withdrawReceivedBridgeValues([])).to.be.revertedWithCustomError(
+				context.bridgeFacet,
+				"EmptyList",
+			)
+		})
+
+		it("Should fail if transactionId invalid", async function () {
+			await expect(
+				context.bridgeFacet.connect(context.signers.bridge1).withdrawReceivedBridgeValues([LastBridgeTransactionId + BigInt(10)]),
+			).to.be.revertedWithCustomError(context.bridgeFacet, "InvalidBridgeTransactionId")
+		})
+
+		it("Should transaction status be RECEIVED", async function () {
+			await context.controlFacet.grantRole(context.signers.admin, ethers.keccak256(toUtf8Bytes("SUSPENDER_ROLE")))
+
+			await context.bridgeFacet.suspendBridgeTransaction(LastBridgeTransactionId)
+			await expect(
+				context.bridgeFacet.connect(context.signers.bridge1).withdrawReceivedBridgeValues([LastBridgeTransactionId]),
+			).to.be.revertedWithCustomError(context.bridgeFacet, "InvalidState")
+		})
+
+		it("Should fail when withdraw cooldown not pass", async function () {
+			await expect(
+				context.bridgeFacet.connect(context.signers.bridge1).withdrawReceivedBridgeValues([LastBridgeTransactionId]),
+			).to.be.revertedWithCustomError(context.bridgeFacet, "CooldownNotOver")
+		})
+
+		it("Should fail when msgSender is not Bridge", async function () {
+			await moveTime(ONE_DAY_IN_SEC)
+			await expect(
+				context.bridgeFacet.connect(context.signers.bridge2).withdrawReceivedBridgeValues([LastBridgeTransactionId]),
+			).to.be.revertedWithCustomError(context.bridgeFacet, "UnauthorizedSender")
+		})
+
+		it("Should transfer to bridge successfully", async function () {
+			const beforeBalance = await context.collateral.balanceOf(context.signers.bridge1)
+			await moveTime(ONE_DAY_IN_SEC)
+			await expect(context.bridgeFacet.connect(context.signers.bridge1).withdrawReceivedBridgeValues([LastBridgeTransactionId])).to.not.reverted
+			const afterBalance = await context.collateral.balanceOf(context.signers.bridge1)
+
+			const bridgeTx = await context.viewFacet.getBridgeTransaction(LastBridgeTransactionId)
+
+			expect(bridgeTx.amount).to.be.equal(e(1000))
+			expect(bridgeTx.id).to.be.equal(LastBridgeTransactionId)
+			expect(bridgeTx.collateral).to.be.equal(await context.collateral.getAddress())
+			expect(bridgeTx.sender).to.be.equal(partyA1.address)
+			expect(bridgeTx.receiver).to.be.equal(partyA1.address)
+			expect(bridgeTx.bridge).to.be.equal(context.signers.bridge1)
+			expect(bridgeTx.status).to.be.equal(2) // BridgeTransactionStatus.WITHDRAWN
+
+			expect(afterBalance).equal(beforeBalance + bridgeTx.amount)
 		})
 	})
 }

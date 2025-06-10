@@ -356,9 +356,12 @@ export function shouldBehaveLikeAccountFacet(): void {
 
 		it("Should fail when not bound to any partyB", async function () {
 			await context.accountFacet.connect(partyA1.getSigner).initiateUnbindingFromPartyB()
+
 			const newBlock = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 120
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
+
 			await context.accountFacet.connect(partyA1.getSigner).completeUnbindingFromPartyB()
+
 			await expect(context.accountFacet.connect(partyA1.getSigner).activateInstantActionMode()).to.be.revertedWithCustomError(
 				context.accountFacet,
 				"NotBoundToAnyPartyB",
