@@ -74,16 +74,16 @@
 	},
 	"scripts": {
 		"clean": "shx rm -rf ./artifacts ./cache ./coverage ./src/types ./coverage.json && yarn typechain",
-		"compile": "cross-env TS_NODE_TRANSPILE_ONLY=true hardhat compile",
+		"compile": "symsec --project options-core run npx hardhat compile",
 		"coverage": "hardhat coverage --testfiles \"tests/**/*.ts\"",
 		"lint": "yarn lint:sol && yarn lint:ts",
 		"lint:sol": "solhint --config ./.solhint.json --max-warnings 0 \"contracts/**/*.sol\"",
-		"test": "hardhat test",
+		"test": "symsec --project options-core run npx hardhat test",
 		"test:uncheck-muon": "./utils/runTest.sh",
-		"typechain": "cross-env TS_NODE_TRANSPILE_ONLY=true hardhat typechain",
+		"typechain": "symsec --project options-core run npx hardhat typechain",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
-		"precommit": "yarn format && yarn compile && yarn test"
+		"precommit": "symsec --project options-core run yarn format && symsec --project options-core run  yarn compile && symsec --project options-core run  yarn test"
 	},
 	"dependencies": {
 		"@secretlint/secretlint-rule-no-dotenv": "^9.3.2",
