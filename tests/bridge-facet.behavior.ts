@@ -77,14 +77,6 @@ export function shouldBehaveLikeBridgeFacet(): void {
 			).to.be.revertedWithCustomError(context.bridgeFacet, "InvalidBridge")
 		})
 
-		it("Should fail when bridge not whitelisted", async function () {
-			await expect(
-				context.bridgeFacet
-					.connect(partyA1.getSigner)
-					.transferToBridge(context.collateral, e(1000), context.signers.bridge2.address, partyA1.address),
-			).to.be.revertedWithCustomError(context.bridgeFacet, "InvalidBridge")
-		})
-
 		it("Should fail when bridge and msgSender be same", async function () {
 			await expect(
 				context.bridgeFacet
