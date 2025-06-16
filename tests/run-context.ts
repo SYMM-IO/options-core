@@ -3,6 +3,7 @@ import { ethers } from "hardhat"
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers"
 import {
 	AccountFacet,
+	BridgeFacet,
 	ClearingHouseFacet,
 	CloseIntentOpsMock,
 	ControlFacet,
@@ -39,6 +40,7 @@ export class RunContext {
 	instantActionCloseFacet!: InstantActionsCloseFacet
 	InstantActionsPartyBOpenFacet!: InstantActionsPartyBOpenFacet
 	clearingHouse!: ClearingHouseFacet
+	bridgeFacet!: BridgeFacet
 
 	signers!: {
 		admin: SignerWithAddress
@@ -49,6 +51,8 @@ export class RunContext {
 		partyB2: SignerWithAddress
 		oracle1: SignerWithAddress
 		affiliate1: SignerWithAddress
+		bridge1: SignerWithAddress
+		bridge2: SignerWithAddress
 		others: SignerWithAddress[]
 	}
 	collateral!: FakeStablecoin
@@ -83,7 +87,9 @@ export async function createRunContext(
 		partyB2: signers[5],
 		oracle1: signers[6],
 		affiliate1: signers[7],
-		others: [signers[8], signers[9]],
+		bridge1: signers[8],
+		bridge2: signers[9],
+		others: [signers[10], signers[11]],
 	}
 
 	context.collateral = await ethers.getContractAt("FakeStablecoin", collateral[0])
@@ -107,6 +113,7 @@ export async function createRunContext(
 
 	context.partyBCloseFacet = await ethers.getContractAt("PartyBCloseFacet", diamond)
 	context.partyBOpenFacet = await ethers.getContractAt("PartyBOpenFacet", diamond)
+	context.bridgeFacet = await ethers.getContractAt("BridgeFacet", diamond)
 
 	context.tradeSettlementFacet = await ethers.getContractAt("TradeSettlementFacet", diamond)
 

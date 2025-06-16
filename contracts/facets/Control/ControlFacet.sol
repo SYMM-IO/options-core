@@ -14,6 +14,7 @@ import { StateControlStorage } from "../../storages/StateControlStorage.sol";
 import { AccessControlStorage } from "../../storages/AccessControlStorage.sol";
 import { FeeManagementStorage } from "../../storages/FeeManagementStorage.sol";
 import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
+import { BridgeStorage } from "../../storages/BridgeStorage.sol";
 
 import { Symbol, Oracle, OptionType } from "../../types/SymbolTypes.sol";
 
@@ -344,5 +345,28 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	function setSignatureVerifier(address _verifier) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		AppStorage.layout().signatureVerifier = _verifier;
 		emit SignatureVerifierUpdated(_verifier);
+	}
+
+	function setBridgeStatus(address _bridgeAddress, bool _isActive) external onlyRole(LibAccessibility.SETTER_ROLE) {
+		if (_bridgeAddress == address(0)) revert CommonErrors.ZeroAddress("bridgeAddress");
+		BridgeStorage.Layout storage s = BridgeStorage.layout();
+
+		s.bridges[_bridgeAddress] = _isActive;
+		emit SetBridgeStatus(_bridgeAddress, _isActive);
+	}
+
+	function setInvalidBridgedAmountsPool(address _pool) external onlyRole(LibAccessibility.SETTER_ROLE) {
+		if (_pool == address(0)) revert CommonErrors.ZeroAddress("pool");
+		BridgeStorage.Layout storage s = BridgeStorage.layout();
+
+		s.invalidBridgedAmountsPool = _pool;
+		emit SetInvalidBridgedAmountsPool(_pool);
+	}
+
+	function setBridgeWithdrawPausedStatues(bool _pause) external onlyRole(LibAccessibility.SETTER_ROLE) {
+		StateControlStorage.Layout storage s = StateControlStorage.layout();
+		s.bridgeWithdrawPaused = _pause;
+
+		emit SetBridgeWithdrawPausedStatues(_pause);
 	}
 }

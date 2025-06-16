@@ -18,6 +18,7 @@ import { AccessControlStorage } from "../../storages/AccessControlStorage.sol";
 import { FeeManagementStorage } from "../../storages/FeeManagementStorage.sol";
 import { SymbolStorage, Symbol, Oracle } from "../../storages/SymbolStorage.sol";
 import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
+import { BridgeStorage } from "../../storages/BridgeStorage.sol";
 
 import { LibOpenIntentOps } from "../../libraries/models/LibOpenIntent.sol";
 import { LibTradeOps } from "../../libraries/models/LibTrade.sol";
@@ -67,25 +68,23 @@ contract ViewFacet is IViewFacet {
 		return self.getAffiliateFee();
 	}
 
-
 	function getPremium(uint256 openIntentId) external view returns (uint256) {
 		OpenIntent memory self = OpenIntentStorage.layout().openIntents[openIntentId];
 		return self.getPremium();
 	}
 
-	
-//////////////////////////////////////////////////
-//// TRADE //////
-//////////////////////////////////////////////////
+	//////////////////////////////////////////////////
+	//// TRADE //////
+	//////////////////////////////////////////////////
 
 	function getPnL(uint256 tradeID, uint256 settlementPrice, uint256 filledAmount) external view returns (uint256 pnl) {
 		Trade memory self = TradeStorage.layout().trades[tradeID];
-		pnl = self.getPnl(settlementPrice,filledAmount);	
+		pnl = self.getPnl(settlementPrice, filledAmount);
 	}
-	
+
 	function getExerciseFee(uint256 tradeID, uint256 settlementPrice, uint256 pnl) external view returns (uint256 exerciseFee) {
 		Trade memory self = TradeStorage.layout().trades[tradeID];
-		exerciseFee = self.getExerciseFee(settlementPrice,pnl);	
+		exerciseFee = self.getExerciseFee(settlementPrice, pnl);
 	}
 
 	function getTradePremium(uint256 tradeID) external view returns (uint256 premium) {
@@ -97,10 +96,6 @@ contract ViewFacet is IViewFacet {
 		Trade memory self = TradeStorage.layout().trades[tradeID];
 		openAmount = self.getOpenAmount();
 	}
-
-
-
-
 
 	/**
 	 * @notice Returns max connected partyBs.
@@ -176,8 +171,8 @@ contract ViewFacet is IViewFacet {
 		return BridgeStorage.layout().bridgeTransactionIds[bridge];
 	}
 
-	function getLastBridgeId() external view returns (uint256) {
-		return BridgeStorage.layout().lastBridgeId;
+	function getLastBridgeTransactionId() external view returns (uint256) {
+		return BridgeStorage.layout().lastBridgeTransactionId;
 	}
 
 	function getInvalidBridgedAmountsPool() external view returns (address) {
@@ -880,4 +875,20 @@ contract ViewFacet is IViewFacet {
 	function getConfiguredReleaseInterval(address user) external view returns (bool, uint256) {
 		return (AccountStorage.layout().hasConfiguredInterval[user], AccountStorage.layout().releaseIntervals[user]);
 	}
+
+	// function getBridgeStatus(address _bridgeAddress) external view returns (bool) {
+	// 	return BridgeStorage.layout().bridges[_bridgeAddress];
+	// }
+
+	// function getBridgeTransaction(uint256 _id) external view returns (BridgeTransaction memory) {
+	// 	return BridgeStorage.layout().bridgeTransactions[_id];
+	// }
+
+	// function getLastBridgeTransactionId() external view returns (uint256) {
+	// 	return BridgeStorage.layout().lastBridgeTransactionId;
+	// }
+
+	// function getInvalidBridgedAmountsPoolAddress() external view returns (address) {
+	// 	return BridgeStorage.layout().invalidBridgedAmountsPool;
+	// }
 }

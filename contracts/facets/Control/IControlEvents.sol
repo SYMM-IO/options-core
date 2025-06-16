@@ -70,4 +70,7 @@ interface IControlEvents {
 	event PriceOracleAddressUpdated(address indexed oracle);
 	event SetManualSync(address user, bool isManual);
 	event SignatureVerifierUpdated(address indexed verifier);
+	event SetBridgeStatus(address indexed _bridgeAddress, bool _isActive);
+	event SetInvalidBridgedAmountsPool(address indexed _pool);
+	event SetBridgeWithdrawPausedStatues(bool _pause);
 }

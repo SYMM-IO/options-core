@@ -11,6 +11,7 @@ import { shouldBehaveLikePartyBOpenFacet } from "./partyB-open-facet.behavior"
 import { shouldBehaveLikeSettlementFacet } from "./parties-settlement"
 import { shouldBehaveLikeInstantActionCloseFacet } from "./instant-action-close.behavior"
 import { shouldBehaveLikeInstantActionsPartyBOpenFacet } from "./instant-actions-partyb-open-facet.behavior"
+import { shouldBehaveLikeBridgeFacet } from "./bridge-facet.behavior"
 
 describe(`${name}-v${version}`, () => {
 	if (process.env.TEST_MODE === TestModeEnum.UNIT_TEST) {
@@ -56,6 +57,10 @@ describe(`${name}-v${version}`, () => {
 
 		describe("Facets_ForceActions", async function () {
 			shouldBehaveLikeForceActionFacet()
+		})
+
+		describe("Facet_BridgeFacet", async function () {
+			shouldBehaveLikeBridgeFacet()
 		})
 	} else {
 		throw new Error(`Invalid TEST_MODE property. Should be one of: ${Object.keys(TestModeEnum).join(", ")}`)
