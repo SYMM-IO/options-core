@@ -315,7 +315,7 @@ library ScheduledReleaseBalanceOps {
 				entry.transitioning = 0;
 				entry.scheduled = 0;
 			} else {
-				entry.scheduled += entry.transitioning; // merge buckets
+				entry.scheduled += entry.transitioning; //merge buckets
 				entry.transitioning = 0;
 			}
 			emit SyncBalance(self.user, counterParty, self.collateral);
@@ -328,7 +328,7 @@ library ScheduledReleaseBalanceOps {
 		// Sanity check
 		if (block.timestamp < entry.lastTransitionTimestamp) revert InvalidSyncTimestamp(block.timestamp, entry.lastTransitionTimestamp);
 
-		uint256 intervals = (block.timestamp - entry.lastTransitionTimestamp) / entry.releaseInterval; // it is zero on the same block as calculations are base on integers
+		uint256 intervals = (block.timestamp - entry.lastTransitionTimestamp) / entry.releaseInterval;
 		if (intervals == 0) return;
 
 		// ---------------------------------------------------------------------

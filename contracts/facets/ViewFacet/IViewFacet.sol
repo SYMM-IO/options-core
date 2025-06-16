@@ -12,6 +12,7 @@ import { Withdraw } from "../../types/WithdrawTypes.sol";
 import { BridgeTransaction } from "../../types/BridgeTypes.sol";
 import { OpenIntent, CloseIntent } from "../../types/IntentTypes.sol";
 import { LiquidationDetail } from "../../types/LiquidationTypes.sol";
+import { ScheduledReleaseBalance, CrossEntry, ScheduledReleaseEntry } from "../../types/BalanceTypes.sol";
 
 interface IViewFacet {
 	struct Bitmap {
@@ -48,6 +49,10 @@ interface IViewFacet {
 	function getLastBridgeTransactionId() external view returns (uint256);
 
 	function getInvalidBridgedAmountsPool() external view returns (address);
+
+	function getScheduledReleaseEntry(address user, address collateral, address counterParty) external view returns (ScheduledReleaseEntry memory); 
+
+	function crossBalance(address user, address collateral, address counterParty) external view returns (CrossEntry memory);
 	///////////////////////////////////////////
 
 	// Symbols

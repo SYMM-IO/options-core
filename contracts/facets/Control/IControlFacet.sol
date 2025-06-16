@@ -99,4 +99,6 @@ interface IControlFacet is IControlEvents {
 	function setMaxConnectedCounterParties(uint256 _max) external;
 
 	function setManualSync(address user, bool isManual) external;
+
+	function syncTradeWindow(address user, address collateral, address counterParty) external;
 }

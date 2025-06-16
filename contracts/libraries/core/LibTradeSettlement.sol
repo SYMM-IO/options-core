@@ -108,7 +108,7 @@ library LibTradeSettlement {
 					DecreaseBalanceReason.REALIZED_PNL
 				);
 				accountLayout.balances[trade.partyA][symbol.collateral].scheduledAdd(
-					trade.partyA,
+					trade.partyB,
 					amountToTransfer,
 					trade.tradeAgreements.marginType,
 					IncreaseBalanceReason.REALIZED_PNL

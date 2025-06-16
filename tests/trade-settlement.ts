@@ -135,7 +135,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 				.build()
 
 			await partyA1.sendOpenIntent(request)
-			await partyB1.lockOpenIntent(2)
+			await partyB1.lockOpenIntent(2) // second (this) intent
 			await partyB1.fillOpenIntent(2, e(100), 7)
 			await partyA1.sendCloseIntent(2, 7, e(100), (await getLatestBlockTime()) + 120)
 			let closeIntent: CloseIntentStruct = await context.viewFacet.getCloseIntent(2)
@@ -148,7 +148,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			console.log("Settlement After Fill Close Intent Filled Amount: ", closeIntent.filledAmount)
 
 			const timestamp = await getLatestBlockTime()
-			const ID = 1
+			const tradeID = 2
 			const priceSig: SettlementPriceSigStruct = {
 				reqId: ethers.toUtf8Bytes("1"), // or a Buffer/hex string
 				timestamp: timestamp + 100,
@@ -164,14 +164,13 @@ export function shouldBehaveLikeSettlementFacet(): void {
 				},
 			}
 
-			//TODO
-			// await expect(context.tradeSettlementFacet.executeTrade(ID, priceSig)).to.be.revertedWithCustomError(
-			// 	context.tradeSettlementFacet,
-			// 	"InvalidSymbolId",
-			// )
+			await expect(context.tradeSettlementFacet.executeTrade(tradeID, priceSig)).to.be.revertedWithCustomError(
+				context.tradeSettlementFacet,
+				"InvalidState",
+			)
 		})
 
-		it("Should be when executed with option carried out as 'Isolated Buy' ", async () => {
+		it("Should be executed with option carried out as 'Isolated Buy' ", async () => {
 			const request = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
@@ -179,22 +178,30 @@ export function shouldBehaveLikeSettlementFacet(): void {
 				.symbolId(1)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
-				.exerciseFee({ cap: e(1), rate: e(1) })
+				.exerciseFee({ cap: e(0.01), rate: e(1) })
 				.quantity(e(100))
 				.strikePrice(60)
 				.price(7)
 				.build()
 
-			await partyA2.sendOpenIntent(request)
-			await partyB2.lockOpenIntent(2)
-			const intentPremium = await context.viewFacet.getPremium(2)
-			await partyB2.fillOpenIntent(2, e(100), 7)
+			const intentID = 2
+			const tradeID = 2
 
-			await partyA2.sendCloseIntent(2, 7, e(50), (await getLatestBlockTime()) + 120)
-			await partyB2.fillCloseIntent(2, e(50), 7)
+			await partyA2.sendOpenIntent(request)
+			await partyB2.lockOpenIntent(intentID)
+			const intentPremium = await context.viewFacet.getPremium(intentID)
+			const partyBBalanceBeforeSettlementInit = await context.viewFacet.balanceOf(partyB2.getSigner, await context.collateral.getAddress())
+			await partyB2.fillOpenIntent(intentID, e(100), 7)
+
+			const closePrice = 7
+			const closeQuantity = e(50)
+			await partyA2.sendCloseIntent(tradeID, closePrice, closeQuantity, (await getLatestBlockTime()) + 120)
+			const closeIntent = await context.viewFacet.getCloseIntent(1)
+			await partyB2.fillCloseIntent(tradeID, closeIntent.quantity, closeIntent.price)
+
+			const closePNL = (BigInt(closeIntent.price) * BigInt(closeIntent.quantity)) / BigInt(1000000000000000000)
 
 			const timestamp = await getLatestBlockTime()
-			const ID = 2
 			const priceSig: SettlementPriceSigStruct = {
 				reqId: ethers.toUtf8Bytes("1"), // or a Buffer/hex string
 				timestamp: timestamp + 180,
@@ -210,16 +217,20 @@ export function shouldBehaveLikeSettlementFacet(): void {
 				},
 			}
 
-			const newBlock = (await getLatestBlockTime()) + 170
+			const openAmount = await context.viewFacet.getOpenAmount(tradeID)
+			let tradePremium = await context.viewFacet.getTradePremium(tradeID)
+			const trade: TradeStruct = await context.viewFacet.getTrade(tradeID)
+
+			let newBlock = Number(trade.tradeAgreements.expirationTimestamp) + 12
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
 			await network.provider.send("evm_mine")
 
-			const openAmount = await context.viewFacet.getOpenAmount(2)
-			const premium = await context.viewFacet.getTradePremium(2)
+			let tradePremiumSettled = (tradePremium * openAmount) / BigInt(trade.tradeAgreements.quantity)
 
-			const trade: TradeStruct = await context.viewFacet.getTrade(2)
-			const pnl = await context.viewFacet.getPnL(2, priceSig.settlementPrice, openAmount)
-			const exerciseFee = await context.viewFacet.getExerciseFee(2, priceSig.settlementPrice, pnl)
+			const pnl = await context.viewFacet.getPnL(tradeID, priceSig.settlementPrice, openAmount)
+			const exerciseFee = await context.viewFacet.getExerciseFee(tradeID, priceSig.settlementPrice, pnl)
+
+			const amountToTransfer = ethers.parseUnits((pnl - exerciseFee).toString(), 18) / BigInt(priceSig.collateralPrice)
 
 			const optionSymbol = await context.viewFacet.getSymbol(trade.tradeAgreements.symbolId)
 			const partyABalanceBeforeSettlement = await context.viewFacet.balanceOf(partyA2.getSigner, await context.collateral.getAddress())
@@ -233,21 +244,64 @@ export function shouldBehaveLikeSettlementFacet(): void {
 				await context.collateral.getAddress(),
 			)
 
+			//Scheduling info
+			const releaseInterval = await context.viewFacet.getReleaseInterval(partyA2.getSigner)
+			let scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA2.getSigner, optionSymbol.collateral, partyB2.getSigner)
+
 			console.log("Trade Open quantity:", openAmount)
 			console.log("Trade Strike price:", trade.tradeAgreements.strikePrice)
 			console.log("Trade Settlement price:", priceSig.settlementPrice)
+			console.log("Trade Collateral price:", priceSig.collateralPrice)
 			console.log("Trade PNL:", pnl)
 			console.log("Intent Premium:", intentPremium)
-			console.log("Trade Premium:", premium)
+			console.log("Overall Trade Premium:", tradePremium)
+			console.log("This Trade Premium:", tradePremiumSettled)
+			console.log("Schedule Interval:", releaseInterval)
+			console.log("Schedule Entry Interval:", scheduleEntry.releaseInterval)
 			console.log("Trade Exercise Fee calculated:", exerciseFee)
 			console.log("Trade Exercise Fee, CAP:", trade.tradeAgreements.exerciseFee.cap)
 			console.log("Trade Exercise Fee, RATE:", trade.tradeAgreements.exerciseFee.rate)
+			console.log("Trade Value for PartyA(Amount to transfer):", amountToTransfer)
 			console.log("Trade PartyA collateral balance:", partyABalanceBeforeSettlement)
 			console.log("Trade PartyA collateral locked balance:", partyABalanceBeforeSettlementLocked)
-			console.log("Trade PartyB collateral balance:", partyBBalanceBeforeSettlement)
-			console.log("Trade PartyB collateral locked balance:", partyBBalanceBeforeSettlementLocked)
+			console.log("Trade PartyB collateral balance Init:", partyBBalanceBeforeSettlementInit)
+			console.log("Trade PartyB collateral balance After Fill:", partyBBalanceBeforeSettlement)
 
-			expect(await context.tradeSettlementFacet.executeTrade(ID, priceSig)).to.be.not.reverted
+			await expect(context.tradeSettlementFacet.executeTrade(tradeID, priceSig)).to.be.not.reverted
+
+			// instant premium add to partyB balance
+			const partyBBalanceAfterSettlement = await context.viewFacet.balanceOf(partyB2.getSigner, context.collateral)
+			const partyABalanceAfterSettlement = await context.viewFacet.balanceOf(partyA2.getSigner, context.collateral)
+
+			scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA2.getSigner, optionSymbol.collateral, partyB2.getSigner)
+
+			let lastTimestamp = await getLatestBlockTime()
+			newBlock = (await getLatestBlockTime()) + Number(releaseInterval) * 2
+			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
+			await network.provider.send("evm_mine")
+
+			await context.controlFacet.syncTradeWindow(partyA2.getSigner, context.collateral, partyB2.getSigner)
+
+			const partyABalanceAfterSettlementSchedule = await context.viewFacet.balanceOf(partyA2.getSigner, context.collateral)
+			const partyBBalanceAfterSettlementSchedule = await context.viewFacet.balanceOf(partyB2.getSigner, context.collateral)
+
+			console.log("Trade PartyB collateral balance After Settlement:", partyBBalanceAfterSettlement)
+			console.log("Trade PartyB collateral balance After Settlement schedule:", partyBBalanceAfterSettlementSchedule)
+			console.log("Trade PartyB collateral balance Diff from initial:", partyBBalanceBeforeSettlement - partyBBalanceAfterSettlementSchedule)
+			console.log("Trade PartyA collateral balance After Settlement:", partyABalanceAfterSettlement)
+			console.log("Trade PartyA collateral balance After Settlement schedule:", partyABalanceAfterSettlementSchedule)
+			console.log("Trade PartyA collateral balance Diff from initial:", partyABalanceBeforeSettlement - partyBBalanceAfterSettlementSchedule)
+			console.log("Schedule Entry Scheduled:", scheduleEntry.scheduled)
+			console.log("Schedule Entry Transitioning:", scheduleEntry.transitioning)
+			console.log("Schedule Entry last Timestamp:", scheduleEntry.lastTransitionTimestamp)
+			console.log("Schedule Entry Release Interval:", scheduleEntry.releaseInterval)
+			console.log("current Timestamp:", await getLatestBlockTime())
+			console.log("last Timestamp:", lastTimestamp)
+
+			// Party B
+			expect(partyBBalanceAfterSettlement - partyBBalanceBeforeSettlement).to.be.equal(tradePremiumSettled - amountToTransfer)
+			// Party A
+			expect(partyABalanceAfterSettlementSchedule - partyABalanceBeforeSettlement).to.be.equal(amountToTransfer + closePNL)
 		})
 
 		it("Should be when executed with option carried out as 'Cross Buy' ", async () => {

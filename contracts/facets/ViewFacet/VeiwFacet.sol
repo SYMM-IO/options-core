@@ -23,7 +23,7 @@ import { BridgeStorage } from "../../storages/BridgeStorage.sol";
 import { LibOpenIntentOps } from "../../libraries/models/LibOpenIntent.sol";
 import { LibTradeOps } from "../../libraries/models/LibTrade.sol";
 
-import { ScheduledReleaseBalance, CrossEntry } from "../../types/BalanceTypes.sol";
+import { ScheduledReleaseBalance, CrossEntry, ScheduledReleaseEntry } from "../../types/BalanceTypes.sol";
 import { Trade } from "../../types/TradeTypes.sol";
 import { Withdraw } from "../../types/WithdrawTypes.sol";
 import { BridgeTransaction } from "../../types/BridgeTypes.sol";
@@ -48,6 +48,10 @@ contract ViewFacet is IViewFacet {
 	 */
 	function balanceOf(address user, address collateral) external view returns (uint256) {
 		return AccountStorage.layout().balances[user][collateral].isolatedBalance;
+	}
+
+	function getScheduledReleaseEntry(address user, address collateral, address counterParty) external view returns (ScheduledReleaseEntry memory) {
+		return AccountStorage.layout().balances[user][collateral].counterPartySchedules[counterParty];
 	}
 
 	function crossBalance(address user, address collateral, address counterParty) external view returns (CrossEntry memory) {
