@@ -134,8 +134,6 @@ library LibBalanceOperations {
 
 		CommonErrors.requireStatus("WithdrawStatus", uint8(withdrawal.status), uint8(WithdrawStatus.INITIATED));
 
-		if (!appLayout.whiteListedCollateral[withdrawal.collateral]) revert CommonErrors.CollateralNotWhitelisted(withdrawal.collateral);
-
 		uint256 cooldownPeriod;
 		if (appLayout.partyBConfigs[withdrawal.user].isActive) {
 			cooldownPeriod = appLayout.partyBDeallocateCooldown;

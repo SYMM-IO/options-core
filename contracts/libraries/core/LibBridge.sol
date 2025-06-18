@@ -29,15 +29,14 @@ library LibBridge {
 	function transferToBridge(address collateral, uint256 amount, address bridge, address receiver) internal returns (uint256 currentId) {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		BridgeStorage.Layout storage bridgeLayout = BridgeStorage.layout();
-
-		if (!AppStorage.layout().whiteListedCollateral[collateral]) revert CommonErrors.CollateralNotWhitelisted(collateral);
+ 
 		if (!bridgeLayout.bridges[bridge]) revert BridgeFacetErrors.InvalidBridge(bridge);
 		if (bridge == msg.sender) revert BridgeFacetErrors.SameBridgeAndSender(bridge);
 		if (receiver == address(0)) revert CommonErrors.ZeroAddress("receiver");
 
 		accountLayout.balances[msg.sender][collateral].syncAll();
 
-		uint256 amountWith18Decimals = (amount * 1e18) / (10 ** IERC20Metadata(collateral).decimals()); //TODO: 1.utilize `normalize` and `denormalize` methods in `accountFacetImlp` and use'em here
+		uint256 amountWith18Decimals = (amount * 1e18) / (10 ** IERC20Metadata(collateral).decimals());
 		if (
 			accountLayout.balances[msg.sender][collateral].isolatedBalance - accountLayout.balances[msg.sender][collateral].isolatedLockedBalance <
 			amount
