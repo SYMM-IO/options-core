@@ -33,8 +33,7 @@ contract BridgeFacet is Accessibility, Pausable, IBridgeFacet {
 		uint256 amount,
 		address bridgeAddress,
 		address receiver
-	) external whenNotBridgePaused notSuspended(msg.sender) notPartyB {
-		if (CounterPartyRelationsStorage.layout().instantActionsMode[msg.sender]) revert Accessibility.InstantActionModeActive(msg.sender);
+	) external whenNotBridgePaused notSuspended(msg.sender) inactiveInstantMode(msg.sender) notPartyB {
 		uint256 transactionId = LibBridge.transferToBridge(msg.sender, collateral, amount, bridgeAddress, receiver);
 		emit TransferToBridge(
 			msg.sender,

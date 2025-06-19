@@ -34,3 +34,13 @@ struct SignedBridgeTransfer {
 	uint256 deadline;
 	uint256 salt;
 }
+
+struct SignedAllocate {
+	address signer;
+	address sender;
+	address counterParty;
+	uint256 amount;
+	address collateral;
+	uint256 deadline;
+	uint256 salt;
+}

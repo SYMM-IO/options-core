@@ -18,7 +18,6 @@ import { Pausable } from "../../utils/Pausable.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
 
 import { IAccountFacet } from "./IAccountFacet.sol";
-import { AccountFacetErrors } from "./AccountFacetErrors.sol";
 
 /**
  * @title AccountFacet
@@ -80,8 +79,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		address collateral,
 		address user,
 		uint256 amount
-	) external whenNotInternalTransferPaused notSuspended(msg.sender) notSuspended(user) notPartyB {
-		if (CounterPartyRelationsStorage.layout().instantActionsMode[msg.sender]) revert AccountFacetErrors.InstantActionModeActive(msg.sender);
+	) external whenNotInternalTransferPaused notSuspended(msg.sender) inactiveInstantMode(msg.sender) notSuspended(user) notPartyB {
 		LibBalanceOperations.internalTransfer(collateral, msg.sender, user, amount);
 		emit InternalTransfer(
 			msg.sender,
@@ -104,8 +102,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		address collateral,
 		uint256 amount,
 		address to
-	) external whenNotWithdrawingPaused notSuspended(msg.sender) notSuspended(to) {
-		if (CounterPartyRelationsStorage.layout().instantActionsMode[msg.sender]) revert AccountFacetErrors.InstantActionModeActive(msg.sender);
+	) external whenNotWithdrawingPaused notSuspended(msg.sender) inactiveInstantMode(msg.sender) notSuspended(to) {
 		uint256 id = LibBalanceOperations.initiateWithdraw(msg.sender, collateral, amount, to);
 		emit InitiateWithdraw(id, msg.sender, to, collateral, amount, AccountStorage.layout().balances[msg.sender][collateral].isolatedBalance);
 	}
@@ -219,8 +216,8 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @param counterParty The address of the counterparty
 	 * @param amount The amount of collateral to be allocated
 	 */
-	function allocate(address collateral, address counterParty, uint256 amount) external notSuspended(msg.sender) {
-		LibAllocationOperations.allocate(collateral, counterParty, amount);
+	function allocate(address collateral, address counterParty, uint256 amount) external notSuspended(msg.sender) inactiveInstantMode(msg.sender) {
+		LibAllocationOperations.allocate(msg.sender, collateral, counterParty, amount);
 		emit Allocate(
 			msg.sender,
 			collateral,

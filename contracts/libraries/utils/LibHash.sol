@@ -5,7 +5,7 @@
 pragma solidity >=0.8.19;
 
 import { SignedOpenIntent, SignedCloseIntent, SignedFillIntent, SignedFillIntentById, SignedSimpleActionIntent } from "../../types/SignedIntentTypes.sol";
-import { SignedInternalTransfer, SignedWithdraw, SignedBridgeTransfer } from "../../types/SignedAccountTypes.sol";
+import { SignedInternalTransfer, SignedWithdraw, SignedBridgeTransfer, SignedAllocate } from "../../types/SignedAccountTypes.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 library LibHash {
@@ -160,6 +160,16 @@ library LibHash {
 
 		return
 			keccak256(abi.encode(CHAIN_ID, addr, SIGN_PREFIX, req.signer, req.sender, req.receiver, req.collateral, req.amount, req.deadline, req.salt))
+				.toEthSignedMessageHash();
+	}
+
+	function hashSignedAllocate(SignedAllocate calldata req) internal view returns (bytes32) {
+		bytes32 SIGN_PREFIX = keccak256("SignedAllocate_v1");
+		uint256 CHAIN_ID = block.chainid;
+		address addr = address(this);
+
+		return
+			keccak256(abi.encode(CHAIN_ID, addr, SIGN_PREFIX, req.signer, req.sender, req.counterParty, req.collateral, req.amount, req.deadline, req.salt))
 				.toEthSignedMessageHash();
 	}
 }

@@ -24,10 +24,16 @@ library LibBridge {
 	using SafeERC20 for IERC20;
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 
-	function transferToBridge(address sender, address collateral, uint256 amount, address bridge, address receiver) internal returns (uint256 currentId) {
+	function transferToBridge(
+		address sender,
+		address collateral,
+		uint256 amount,
+		address bridge,
+		address receiver
+	) internal returns (uint256 currentId) {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		BridgeStorage.Layout storage bridgeLayout = BridgeStorage.layout();
- 
+
 		if (!bridgeLayout.bridges[bridge]) revert BridgeFacetErrors.InvalidBridge(bridge);
 		if (bridge == sender) revert BridgeFacetErrors.SameBridgeAndSender(bridge);
 		if (receiver == address(0)) revert CommonErrors.ZeroAddress("receiver");
@@ -35,10 +41,8 @@ library LibBridge {
 		accountLayout.balances[sender][collateral].syncAll();
 
 		uint256 amountWith18Decimals = (amount * 1e18) / (10 ** IERC20Metadata(collateral).decimals());
-		if (
-			accountLayout.balances[sender][collateral].isolatedBalance - accountLayout.balances[sender][collateral].isolatedLockedBalance <
-			amount
-		) revert CommonErrors.InsufficientBalance(sender, collateral, amount, accountLayout.balances[sender][collateral].isolatedBalance);
+		if (accountLayout.balances[sender][collateral].isolatedBalance - accountLayout.balances[sender][collateral].isolatedLockedBalance < amount)
+			revert CommonErrors.InsufficientBalance(sender, collateral, amount, accountLayout.balances[sender][collateral].isolatedBalance);
 
 		currentId = ++bridgeLayout.lastBridgeTransactionId;
 		BridgeTransaction memory bridgeTransaction = BridgeTransaction({
@@ -51,7 +55,7 @@ library LibBridge {
 			timestamp: block.timestamp,
 			status: BridgeTransactionStatus.RECEIVED
 		});
-		
+
 		accountLayout.balances[sender][collateral].isolatedSub(amountWith18Decimals, DecreaseBalanceReason.BRIDGE);
 
 		bridgeLayout.bridgeTransactions[currentId] = bridgeTransaction;
@@ -66,10 +70,10 @@ library LibBridge {
 
 		address collateral = bridgeLayout.bridgeTransactions[transactionIds[0]].collateral;
 		for (uint256 i = transactionIds.length; i != 0; i--) {
-			if (transactionIds[i - 1] > bridgeLayout.lastBridgeTransactionId)
-				revert BridgeFacetErrors.InvalidBridgeTransactionId(transactionIds[i - 1]);
+			uint256 txId = transactionIds[i - 1];
+			if (txId > bridgeLayout.lastBridgeTransactionId) revert BridgeFacetErrors.InvalidBridgeTransactionId(txId);
 
-			BridgeTransaction storage bridgeTransaction = bridgeLayout.bridgeTransactions[transactionIds[i - 1]];
+			BridgeTransaction storage bridgeTransaction = bridgeLayout.bridgeTransactions[txId];
 
 			if (collateral != bridgeTransaction.collateral)
 				revert BridgeFacetErrors.BridgeCollateralMismatch(collateral, bridgeTransaction.collateral);
@@ -118,8 +122,10 @@ library LibBridge {
 			bridgeLayout.invalidBridgedAmountsPool,
 			bridgeTransaction.collateral
 		);
+		uint256 invalidAmountWith18Decimals = ((bridgeTransaction.amount - validAmount) * 1e18) /
+			(10 ** IERC20Metadata(bridgeTransaction.collateral).decimals());
 		accountLayout.balances[bridgeLayout.invalidBridgedAmountsPool][bridgeTransaction.collateral].instantIsolatedAdd(
-			((bridgeTransaction.amount - validAmount) * (10 ** 18)) / (10 ** IERC20Metadata(bridgeTransaction.collateral).decimals()), //TODO: 1.
+			invalidAmountWith18Decimals,
 			IncreaseBalanceReason.BRIDGE
 		);
 		bridgeTransaction.status = BridgeTransactionStatus.RECEIVED;

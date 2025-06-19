@@ -8,7 +8,8 @@ import { LibInstantActionsAccount } from "../../libraries/core/LibInstantActions
 
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 
-import { SignedInternalTransfer, SignedWithdraw, SignedBridgeTransfer } from "../../types/SignedAccountTypes.sol";
+import { SignedInternalTransfer, SignedWithdraw, SignedBridgeTransfer, SignedAllocate } from "../../types/SignedAccountTypes.sol";
+import { ScheduledReleaseBalance } from "../../types/BalanceTypes.sol";
 
 import { Pausable } from "../../utils/Pausable.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
@@ -136,6 +137,33 @@ contract InstantActionsAccountFacet is Accessibility, Pausable, IInstantActionsA
 			signedBridgeTransferRequest.bridge,
 			bridgeTransactionId,
 			AccountStorage.layout().balances[signedBridgeTransferRequest.signer][signedBridgeTransferRequest.collateral].isolatedBalance
+		);
+	}
+
+	/**
+	 * @notice Allocates tokens from a user's isolated balance to their cross balance with a counterparty
+	 * @dev Combines the allocation request from PartyA and acceptance from PartyB in a single transaction
+	 * All actions are authorized through signatures, allowing execution by any third party
+	 * @param signedAllocateRequest The allocation request data from PartyA
+	 * @param partyASignature Cryptographic signature from PartyA authorizing the allocation request
+	 * @param signedAllocateAcceptance The allocation acceptance data from PartyB
+	 * @param partyBSignature Cryptographic signature from PartyB authorizing acceptance of the allocation
+	 */
+	function instantAllocate(
+		SignedAllocate calldata signedAllocateRequest,
+		bytes calldata partyASignature,
+		SignedAllocate calldata signedAllocateAcceptance,
+		bytes calldata partyBSignature
+	) external whenNotThirdPartyActionsPaused notSuspended(signedAllocateRequest.signer) {
+		LibInstantActionsAccount.instantAllocate(signedAllocateRequest, partyASignature, signedAllocateAcceptance, partyBSignature);
+		ScheduledReleaseBalance storage balance = AccountStorage.layout().balances[signedAllocateRequest.signer][signedAllocateRequest.collateral];
+		emit Allocate(
+			signedAllocateRequest.signer,
+			signedAllocateRequest.collateral,
+			signedAllocateRequest.counterParty,
+			signedAllocateRequest.amount,
+			balance.isolatedBalance,
+			balance.crossBalance[signedAllocateRequest.counterParty].balance
 		);
 	}
 }

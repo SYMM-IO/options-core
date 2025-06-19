@@ -8,8 +8,9 @@ import { LibHash } from "../../libraries/utils/LibHash.sol";
 import { LibSignature } from "../../libraries/services/LibSignature.sol";
 import { LibBalanceOperations } from "../../libraries/core/LibBalanceOperations.sol";
 import { LibBridge } from "../../libraries/core/LibBridge.sol";
+import { LibAllocationOperations } from "../../libraries/core/LibAllocationOperations.sol";
 
-import { SignedInternalTransfer, SignedWithdraw, SignedBridgeTransfer } from "../../types/SignedAccountTypes.sol";
+import { SignedInternalTransfer, SignedWithdraw, SignedBridgeTransfer, SignedAllocate } from "../../types/SignedAccountTypes.sol";
 
 library LibInstantActionsAccount {
 	error MismatchedSignatures();
@@ -113,5 +114,37 @@ library LibInstantActionsAccount {
 				signedBridgeTransferRequest.bridge,
 				signedBridgeTransferRequest.receiver
 			);
+	}
+
+	function instantAllocate(
+		SignedAllocate calldata signedAllocateRequest,
+		bytes calldata partyASignature,
+		SignedAllocate calldata signedAllocateAcceptance,
+		bytes calldata partyBSignature
+	) internal {
+		bytes32 bridgeTransferHash = LibHash.hashSignedAllocate(signedAllocateRequest);
+		LibSignature.verifySignature(bridgeTransferHash, partyASignature, signedAllocateRequest.signer);
+
+		bytes32 bridgeTransferAcceptanceHash = LibHash.hashSignedAllocate(signedAllocateAcceptance);
+		LibSignature.verifySignature(bridgeTransferAcceptanceHash, partyBSignature, signedAllocateAcceptance.signer);
+
+		if (signedAllocateRequest.deadline < block.timestamp) revert DeadlineExpired();
+
+		if (
+			signedAllocateRequest.sender != signedAllocateAcceptance.sender ||
+			signedAllocateRequest.signer != signedAllocateAcceptance.signer ||
+			signedAllocateRequest.counterParty != signedAllocateAcceptance.counterParty ||
+			signedAllocateRequest.collateral != signedAllocateAcceptance.collateral ||
+			signedAllocateRequest.amount != signedAllocateAcceptance.amount ||
+			signedAllocateRequest.deadline != signedAllocateAcceptance.deadline ||
+			signedAllocateRequest.salt != signedAllocateAcceptance.salt
+		) revert MismatchedSignatures();
+
+		LibAllocationOperations.allocate(
+			signedAllocateRequest.signer,
+			signedAllocateRequest.collateral,
+			signedAllocateRequest.counterParty,
+			signedAllocateRequest.amount
+		);
 	}
 }

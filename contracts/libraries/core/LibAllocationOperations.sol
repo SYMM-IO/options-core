@@ -11,7 +11,6 @@ import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance
 
 import { AppStorage, PartyBConfig } from "../../storages/AppStorage.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
-import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
 
 import { MarginType } from "../../types/BaseTypes.sol";
 import { UpnlSig } from "../../types/WithdrawTypes.sol";
@@ -23,30 +22,29 @@ library LibAllocationOperations {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibParty for address;
 
-	function allocate(address collateral, address counterParty, uint256 amount) internal {
+	function allocate(address sender, address collateral, address counterParty, uint256 amount) internal {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
 		if (
-			(!appLayout.partyBConfigs[counterParty].isActive && !appLayout.partyBConfigs[msg.sender].isActive) ||
-			(appLayout.partyBConfigs[counterParty].isActive && appLayout.partyBConfigs[msg.sender].isActive)
-		) revert AccountFacetErrors.InvalidCounterPartyToAllocate(msg.sender, counterParty);
-		if (CounterPartyRelationsStorage.layout().instantActionsMode[msg.sender]) revert AccountFacetErrors.InstantActionModeActive(msg.sender);
+			(!appLayout.partyBConfigs[counterParty].isActive && !appLayout.partyBConfigs[sender].isActive) ||
+			(appLayout.partyBConfigs[counterParty].isActive && appLayout.partyBConfigs[sender].isActive)
+		) revert AccountFacetErrors.InvalidCounterPartyToAllocate(sender, counterParty);
 		if (
-			!appLayout.partyBConfigs[msg.sender].isActive &&
-			(accountLayout.balances[msg.sender][collateral].crossBalance[counterParty].balance + int256(amount) >
+			!appLayout.partyBConfigs[sender].isActive &&
+			(accountLayout.balances[sender][collateral].crossBalance[counterParty].balance + int256(amount) >
 				int256(appLayout.balanceLimitPerUser[collateral]))
 		)
 			revert AccountFacetErrors.BalanceLimitPerUserReached(
-				accountLayout.balances[msg.sender][collateral].crossBalance[counterParty].balance,
+				accountLayout.balances[sender][collateral].crossBalance[counterParty].balance,
 				amount,
 				appLayout.balanceLimitPerUser[collateral]
 			);
 
-		msg.sender.requireSolvent(counterParty, collateral, MarginType.ISOLATED);
-		msg.sender.requireSolvent(counterParty, collateral, MarginType.CROSS);
+		sender.requireSolvent(counterParty, collateral, MarginType.ISOLATED);
+		sender.requireSolvent(counterParty, collateral, MarginType.CROSS);
 
-		accountLayout.balances[msg.sender][collateral].allocateBalance(counterParty, amount);
+		accountLayout.balances[sender][collateral].allocateBalance(counterParty, amount);
 	}
 
 	function deallocate(address collateral, address counterParty, uint256 amount, bool isPartyB, UpnlSig memory upnlSig) internal {

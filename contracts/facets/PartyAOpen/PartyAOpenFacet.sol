@@ -5,6 +5,7 @@
 pragma solidity >=0.8.19;
 
 import { LibOpenIntentOps } from "../../libraries/models/LibOpenIntent.sol";
+import { LibPartyAOpen } from "../../libraries/core/LibPartyAOpen.sol";
 
 import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
 
@@ -15,8 +16,6 @@ import { Pausable } from "../../utils/Pausable.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
 
 import { IPartyAOpenFacet } from "./IPartyAOpenFacet.sol";
-
-import { LibPartyAOpen } from "../../libraries/core/LibPartyAOpen.sol";
 
 
 /**
@@ -36,7 +35,7 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 	 * @param quantity Size of the trade in base units
 	 * @param strikePrice The strike price for the options contract
 	 * @param expirationTimestamp The timestamp when the options contract expires
-	 * @param mm The amount PartyA would pay to PartyB if the position gets liquidated as a liquidation margin
+	 * @param mm The amount PartyA would pay to PartyB if the position gets liquidated as a liquidation margin (Only in SELL)
 	 * @param tradeSide Direction of the trade (BUY or SELL)
 	 * @param marginType Type of margin used for the trade (e.g., ISOLATED, CROSS)
 	 * @param exerciseFee The fee structure applied during option exercise
