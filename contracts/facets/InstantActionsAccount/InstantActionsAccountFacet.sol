@@ -38,7 +38,14 @@ contract InstantActionsAccountFacet is Accessibility, Pausable, IInstantActionsA
 		bytes calldata partyASignature,
 		SignedInternalTransfer calldata signedInternalTransferAcceptance,
 		bytes calldata partyBSignature
-	) external whenNotThirdPartyActionsPaused {
+	)
+		external
+		whenNotThirdPartyActionsPaused
+		whenNotInternalTransferPaused
+		notSuspended(signedInternalTransferRequest.signer)
+		notSuspended(signedInternalTransferRequest.receiver)
+		userNotPartyB(signedInternalTransferRequest.signer)
+	{
 		LibInstantActionsAccount.instantInternalTransfer(
 			signedInternalTransferRequest,
 			partyASignature,
@@ -69,7 +76,14 @@ contract InstantActionsAccountFacet is Accessibility, Pausable, IInstantActionsA
 		bytes calldata partyASignature,
 		SignedWithdraw calldata signedWithdrawAcceptance,
 		bytes calldata partyBSignature
-	) external whenNotThirdPartyActionsPaused returns (uint256 withdrawId) {
+	)
+		external
+		whenNotThirdPartyActionsPaused
+		whenNotWithdrawingPaused
+		notSuspended(signedWithdrawRequest.signer)
+		notSuspended(signedWithdrawRequest.receiver)
+		returns (uint256 withdrawId)
+	{
 		withdrawId = LibInstantActionsAccount.instantInitiateWithdraw(
 			signedWithdrawRequest,
 			partyASignature,
@@ -100,7 +114,14 @@ contract InstantActionsAccountFacet is Accessibility, Pausable, IInstantActionsA
 		bytes calldata partyASignature,
 		SignedBridgeTransfer calldata signedBridgeTransferAcceptance,
 		bytes calldata partyBSignature
-	) external whenNotThirdPartyActionsPaused returns (uint256 bridgeTransactionId) {
+	)
+		external
+		whenNotThirdPartyActionsPaused
+		whenNotBridgePaused
+		notSuspended(signedBridgeTransferRequest.signer)
+		userNotPartyB(signedBridgeTransferRequest.signer)
+		returns (uint256 bridgeTransactionId)
+	{
 		bridgeTransactionId = LibInstantActionsAccount.instantTransferToBridge(
 			signedBridgeTransferRequest,
 			partyASignature,

@@ -51,7 +51,9 @@ library LibBridge {
 			timestamp: block.timestamp,
 			status: BridgeTransactionStatus.RECEIVED
 		});
+		
 		accountLayout.balances[sender][collateral].isolatedSub(amountWith18Decimals, DecreaseBalanceReason.BRIDGE);
+
 		bridgeLayout.bridgeTransactions[currentId] = bridgeTransaction;
 		bridgeLayout.bridgeTransactionIds[bridge].push(currentId);
 	}
