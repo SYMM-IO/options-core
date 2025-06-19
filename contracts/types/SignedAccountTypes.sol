@@ -23,3 +23,14 @@ struct SignedWithdraw {
 	uint256 deadline;
 	uint256 salt;
 }
+
+struct SignedBridgeTransfer {
+	address signer;
+	address sender;
+	address bridge;
+	address receiver;
+	uint256 amount;
+	address collateral;
+	uint256 deadline;
+	uint256 salt;
+}

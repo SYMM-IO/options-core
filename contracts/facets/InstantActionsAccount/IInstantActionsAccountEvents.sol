@@ -5,6 +5,7 @@
 pragma solidity >=0.8.19;
 
 import { IAccountEvents } from "../Account/IAccountEvents.sol";
+import { IBridgeEvents } from "../Bridge/IBridgeEvents.sol";
 
-interface IInstantActionsAccountEvents is IAccountEvents {
+interface IInstantActionsAccountEvents is IAccountEvents, IBridgeEvents {
 }

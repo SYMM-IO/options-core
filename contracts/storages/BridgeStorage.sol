@@ -10,9 +10,9 @@ library BridgeStorage {
 	bytes32 internal constant STORAGE_SLOT = keccak256("diamond.standard.storage.bridge");
 
 	struct Layout {
-		mapping(address => bool) bridges;
+		mapping(address => bool) bridges; // bridge -> isActive
 		mapping(uint256 => BridgeTransaction) bridgeTransactions;
-		mapping(address => uint256[]) bridgeTransactionIds;
+		mapping(address => uint256[]) bridgeTransactionIds; // bridge -> transactionIds
 		uint256 lastBridgeTransactionId;
 		address invalidBridgedAmountsPool;
 	}

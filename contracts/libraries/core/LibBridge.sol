@@ -26,36 +26,36 @@ library LibBridge {
 	using SafeERC20 for IERC20;
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 
-	function transferToBridge(address collateral, uint256 amount, address bridge, address receiver) internal returns (uint256 currentId) {
+	function transferToBridge(address sender, address collateral, uint256 amount, address bridge, address receiver) internal returns (uint256 currentId) {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		BridgeStorage.Layout storage bridgeLayout = BridgeStorage.layout();
  
 		if (!bridgeLayout.bridges[bridge]) revert BridgeFacetErrors.InvalidBridge(bridge);
-		if (bridge == msg.sender) revert BridgeFacetErrors.SameBridgeAndSender(bridge);
+		if (bridge == sender) revert BridgeFacetErrors.SameBridgeAndSender(bridge);
 		if (receiver == address(0)) revert CommonErrors.ZeroAddress("receiver");
 
-		accountLayout.balances[msg.sender][collateral].syncAll();
+		accountLayout.balances[sender][collateral].syncAll();
 
 		uint256 amountWith18Decimals = (amount * 1e18) / (10 ** IERC20Metadata(collateral).decimals());
 		if (
-			accountLayout.balances[msg.sender][collateral].isolatedBalance - accountLayout.balances[msg.sender][collateral].isolatedLockedBalance <
+			accountLayout.balances[sender][collateral].isolatedBalance - accountLayout.balances[sender][collateral].isolatedLockedBalance <
 			amount
-		) revert CommonErrors.InsufficientBalance(msg.sender, collateral, amount, accountLayout.balances[msg.sender][collateral].isolatedBalance);
+		) revert CommonErrors.InsufficientBalance(sender, collateral, amount, accountLayout.balances[sender][collateral].isolatedBalance);
 
-		if (CounterPartyRelationsStorage.layout().instantActionsMode[msg.sender]) revert Accessibility.InstantActionModeActive(msg.sender);
+		if (CounterPartyRelationsStorage.layout().instantActionsMode[sender]) revert Accessibility.InstantActionModeActive(sender);
 
 		currentId = ++bridgeLayout.lastBridgeTransactionId;
 		BridgeTransaction memory bridgeTransaction = BridgeTransaction({
 			id: currentId,
 			amount: amount,
 			collateral: collateral,
-			sender: msg.sender,
+			sender: sender,
 			receiver: receiver,
 			bridge: bridge,
 			timestamp: block.timestamp,
 			status: BridgeTransactionStatus.RECEIVED
 		});
-		accountLayout.balances[msg.sender][collateral].isolatedSub(amountWith18Decimals, DecreaseBalanceReason.BRIDGE);
+		accountLayout.balances[sender][collateral].isolatedSub(amountWith18Decimals, DecreaseBalanceReason.BRIDGE);
 		bridgeLayout.bridgeTransactions[currentId] = bridgeTransaction;
 		bridgeLayout.bridgeTransactionIds[bridge].push(currentId);
 	}

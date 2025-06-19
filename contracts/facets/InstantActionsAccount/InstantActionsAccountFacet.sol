@@ -4,15 +4,16 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
+import { LibInstantActionsAccount } from "../../libraries/core/LibInstantActionsAccount.sol";
+
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 
-import { SignedInternalTransfer, SignedWithdraw } from "../../types/SignedAccountTypes.sol";
+import { SignedInternalTransfer, SignedWithdraw, SignedBridgeTransfer } from "../../types/SignedAccountTypes.sol";
 
 import { Pausable } from "../../utils/Pausable.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
 
 import { IInstantActionsAccountFacet } from "./IInstantActionsAccountFacet.sol";
-import { InstantActionsAccountFacetImpl } from "./InstantActionsAccountFacetImpl.sol";
 
 /**
  * @title InstantActionsAccountFacet
@@ -38,18 +39,18 @@ contract InstantActionsAccountFacet is Accessibility, Pausable, IInstantActionsA
 		SignedInternalTransfer calldata signedInternalTransferAcceptance,
 		bytes calldata partyBSignature
 	) external whenNotThirdPartyActionsPaused {
-		InstantActionsAccountFacetImpl.instantInternalTransfer(
+		LibInstantActionsAccount.instantInternalTransfer(
 			signedInternalTransferRequest,
 			partyASignature,
 			signedInternalTransferAcceptance,
 			partyBSignature
 		);
 		emit InternalTransfer(
-			signedInternalTransferRequest.sender,
+			signedInternalTransferRequest.signer,
 			signedInternalTransferRequest.receiver,
 			signedInternalTransferRequest.collateral,
 			signedInternalTransferRequest.amount,
-			AccountStorage.layout().balances[signedInternalTransferRequest.sender][signedInternalTransferRequest.collateral].isolatedBalance,
+			AccountStorage.layout().balances[signedInternalTransferRequest.signer][signedInternalTransferRequest.collateral].isolatedBalance,
 			AccountStorage.layout().balances[signedInternalTransferRequest.receiver][signedInternalTransferRequest.collateral].isolatedBalance
 		);
 	}
@@ -69,7 +70,7 @@ contract InstantActionsAccountFacet is Accessibility, Pausable, IInstantActionsA
 		SignedWithdraw calldata signedWithdrawAcceptance,
 		bytes calldata partyBSignature
 	) external whenNotThirdPartyActionsPaused returns (uint256 withdrawId) {
-		withdrawId = InstantActionsAccountFacetImpl.instantInitiateWithdraw(
+		withdrawId = LibInstantActionsAccount.instantInitiateWithdraw(
 			signedWithdrawRequest,
 			partyASignature,
 			signedWithdrawAcceptance,
@@ -77,11 +78,43 @@ contract InstantActionsAccountFacet is Accessibility, Pausable, IInstantActionsA
 		);
 		emit InitiateWithdraw(
 			withdrawId,
-			signedWithdrawRequest.sender,
+			signedWithdrawRequest.signer,
 			signedWithdrawRequest.receiver,
 			signedWithdrawRequest.collateral,
 			signedWithdrawRequest.amount,
-			AccountStorage.layout().balances[signedWithdrawRequest.sender][signedWithdrawRequest.collateral].isolatedBalance
+			AccountStorage.layout().balances[signedWithdrawRequest.signer][signedWithdrawRequest.collateral].isolatedBalance
+		);
+	}
+
+	/**
+	 * @notice Transfer funds to bridge using signatures from both PartyA and PartyB
+	 * @dev Combines the bridge request from PartyA and acceptance from PartyB in a single transaction
+	 * All actions are authorized through signatures, allowing execution by any third party
+	 * @param signedBridgeTransferRequest The bridge transfer request data from PartyA
+	 * @param partyASignature Cryptographic signature from PartyA authorizing the bridge transfer request
+	 * @param signedBridgeTransferAcceptance The bridge transfer acceptance data from PartyB
+	 * @param partyBSignature Cryptographic signature from PartyB authorizing acceptance of the bridge transfer
+	 */
+	function instantTransferToBridge(
+		SignedBridgeTransfer calldata signedBridgeTransferRequest,
+		bytes calldata partyASignature,
+		SignedBridgeTransfer calldata signedBridgeTransferAcceptance,
+		bytes calldata partyBSignature
+	) external whenNotThirdPartyActionsPaused returns (uint256 bridgeTransactionId) {
+		bridgeTransactionId = LibInstantActionsAccount.instantTransferToBridge(
+			signedBridgeTransferRequest,
+			partyASignature,
+			signedBridgeTransferAcceptance,
+			partyBSignature
+		);
+		emit TransferToBridge(
+			signedBridgeTransferRequest.signer,
+			signedBridgeTransferRequest.receiver,
+			signedBridgeTransferRequest.collateral,
+			signedBridgeTransferRequest.amount,
+			signedBridgeTransferRequest.bridge,
+			bridgeTransactionId,
+			AccountStorage.layout().balances[signedBridgeTransferRequest.signer][signedBridgeTransferRequest.collateral].isolatedBalance
 		);
 	}
 }
