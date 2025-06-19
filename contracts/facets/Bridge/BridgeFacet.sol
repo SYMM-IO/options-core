@@ -6,6 +6,7 @@ pragma solidity >=0.8.19;
 
 import { LibAccessibility } from "../../libraries/core/LibAccessibility.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
+import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
 
 import { Pausable } from "../../utils/Pausable.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
@@ -33,6 +34,7 @@ contract BridgeFacet is Accessibility, Pausable, IBridgeFacet {
 		address bridgeAddress,
 		address receiver
 	) external whenNotBridgePaused notSuspended(msg.sender) notPartyB {
+		if (CounterPartyRelationsStorage.layout().instantActionsMode[msg.sender]) revert Accessibility.InstantActionModeActive(msg.sender);
 		uint256 transactionId = LibBridge.transferToBridge(msg.sender, collateral, amount, bridgeAddress, receiver);
 		emit TransferToBridge(
 			msg.sender,

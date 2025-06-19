@@ -10,7 +10,6 @@ import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance
 import { AppStorage } from "../../storages/AppStorage.sol";
 import { BridgeStorage } from "../../storages/BridgeStorage.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
-import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
 
 import { BridgeTransaction, BridgeTransactionStatus } from "../../types/BridgeTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
@@ -20,7 +19,6 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import { BridgeFacetErrors } from "../../facets/Bridge/BridgeFacetErrors.sol";
-import { Accessibility } from "../../utils/Accessibility.sol";
 
 library LibBridge {
 	using SafeERC20 for IERC20;
@@ -41,8 +39,6 @@ library LibBridge {
 			accountLayout.balances[sender][collateral].isolatedBalance - accountLayout.balances[sender][collateral].isolatedLockedBalance <
 			amount
 		) revert CommonErrors.InsufficientBalance(sender, collateral, amount, accountLayout.balances[sender][collateral].isolatedBalance);
-
-		if (CounterPartyRelationsStorage.layout().instantActionsMode[sender]) revert Accessibility.InstantActionModeActive(sender);
 
 		currentId = ++bridgeLayout.lastBridgeTransactionId;
 		BridgeTransaction memory bridgeTransaction = BridgeTransaction({
