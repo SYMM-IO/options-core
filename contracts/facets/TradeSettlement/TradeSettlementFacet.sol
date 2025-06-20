@@ -29,7 +29,7 @@ contract TradeSettlementFacet is Accessibility, Pausable, ITradeSettlementFacet 
 	function executeTrade(
 		uint256 tradeId,
 		SettlementPriceSig memory settlementPriceSig
-	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
+	) external whenNotThirdPartyActionsPaused {
 		bool isExpired = LibTradeSettlement.executeTrade(tradeId, settlementPriceSig);
 		emit ExecuteTrade(msg.sender, tradeId, settlementPriceSig.settlementPrice, settlementPriceSig.collateralPrice, isExpired);
 	}

@@ -34,7 +34,10 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @param collateral The address of the collateral token to deposit
 	 * @param amount The amount of collateral to be deposited, specified in collateral decimals
 	 */
-	function deposit(address collateral, uint256 amount) external whenNotDepositingPaused notSuspended(msg.sender) {
+	function deposit(
+		address collateral,
+		uint256 amount
+	) external whenDepositingNotPaused whenNotSuspended(msg.sender) whenPartyNotPaused(msg.sender) {
 		LibBalanceOperations.deposit(collateral, msg.sender, amount);
 		emit Deposit(msg.sender, msg.sender, collateral, amount, msg.sender.balanceOf(collateral).isolatedBalance);
 	}
@@ -50,7 +53,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		address collateral,
 		address user,
 		uint256 amount
-	) external whenNotDepositingPaused notSuspended(user) onlyRole(LibAccessibility.SECURED_DEPOSITOR_ROLE) {
+	) external whenDepositingNotPaused whenNotSuspended(user) onlyRole(LibAccessibility.SECURED_DEPOSITOR_ROLE) {
 		LibBalanceOperations.securedDepositFor(collateral, user, amount);
 		emit Deposit(msg.sender, user, collateral, amount, user.balanceOf(collateral).isolatedBalance);
 	}
@@ -66,7 +69,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		address collateral,
 		address user,
 		uint256 amount
-	) external whenNotDepositingPaused notSuspended(msg.sender) notSuspended(user) {
+	) external whenDepositingNotPaused whenNotSuspended(msg.sender) whenNotSuspended(user) whenPartyNotPaused(msg.sender) whenPartyNotPaused(user) {
 		LibBalanceOperations.deposit(collateral, user, amount);
 		emit Deposit(msg.sender, user, collateral, amount, user.balanceOf(collateral).isolatedBalance);
 	}
@@ -82,7 +85,16 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		address collateral,
 		address user,
 		uint256 amount
-	) external whenNotInternalTransferPaused notSuspended(msg.sender) inactiveInstantMode(msg.sender) notSuspended(user) notPartyB {
+	)
+		external
+		whenNotInternalTransferPaused
+		whenNotSuspended(msg.sender)
+		whenNotSuspended(user)
+		whenInstantModeIsNotActive(msg.sender)
+		whenPartyNotPaused(msg.sender)
+		whenPartyNotPaused(user)
+		onlyNotPartyB(msg.sender)
+	{
 		LibBalanceOperations.internalTransfer(collateral, msg.sender, user, amount);
 		emit InternalTransfer(
 			msg.sender,
@@ -105,7 +117,14 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		address collateral,
 		uint256 amount,
 		address to
-	) external whenNotWithdrawingPaused notSuspended(msg.sender) inactiveInstantMode(msg.sender) notSuspended(to) {
+	)
+		external
+		whenNotWithdrawingPaused
+		whenNotSuspended(msg.sender)
+		whenInstantModeIsNotActive(msg.sender)
+		whenNotSuspended(to)
+		whenPartyNotPaused(msg.sender)
+	{
 		uint256 id = LibBalanceOperations.initiateWithdraw(msg.sender, collateral, amount, to);
 		emit InitiateWithdraw(id, msg.sender, to, collateral, amount, msg.sender.balanceOf(collateral).isolatedBalance);
 	}
@@ -115,7 +134,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @dev Transfers the collateral to the destination address specified in the withdrawal request
 	 * @param id The unique identifier of the withdrawal request to complete
 	 */
-	function completeWithdraw(uint256 id) external whenNotWithdrawingPaused notSuspendedWithdrawal(id) {
+	function completeWithdraw(uint256 id) external whenNotWithdrawingPaused whenWithdrawalNotSuspended(id) whenPartyNotPaused(msg.sender) {
 		LibBalanceOperations.completeWithdraw(id);
 		emit CompleteWithdraw(id);
 	}
@@ -125,7 +144,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @dev Returns the funds back to the user's available balance
 	 * @param id The unique identifier of the withdrawal request to cancel
 	 */
-	function cancelWithdraw(uint256 id) external whenNotWithdrawingPaused notSuspendedWithdrawal(id) {
+	function cancelWithdraw(uint256 id) external whenNotWithdrawingPaused whenWithdrawalNotSuspended(id) whenPartyNotPaused(msg.sender) {
 		Withdraw storage withdrawObject = AccountStorage.layout().withdrawals[id];
 		LibBalanceOperations.cancelWithdraw(id);
 		emit CancelWithdraw(
@@ -141,7 +160,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @notice Enables the instant action mode for a PartyA
 	 * @dev Only callable by PartyA accounts, not PartyB
 	 */
-	function activateInstantActionMode() external notPartyB inactiveInstantMode(msg.sender) {
+	function activateInstantActionMode() external onlyNotPartyB(msg.sender) whenInstantModeIsNotActive(msg.sender) whenPartyNotPaused(msg.sender) {
 		LibPartyBManagement.activateInstantActionMode();
 		emit ActivateInstantActionMode(msg.sender, block.timestamp);
 	}
@@ -150,7 +169,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @notice Initiates the process to deactivate instant action mode
 	 * @dev Only callable by PartyA accounts, starts a time-delayed process
 	 */
-	function proposeToDeactivateInstantActionMode() external notPartyB activeInstantMode(msg.sender) {
+	function proposeToDeactivateInstantActionMode() external onlyNotPartyB(msg.sender) whenInstantModeIsActive(msg.sender) whenPartyNotPaused(msg.sender) {
 		LibPartyBManagement.proposeToDeactivateInstantActionMode();
 		emit ProposeToDeactivateInstantActionMode(msg.sender, block.timestamp);
 	}
@@ -159,7 +178,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @notice Completes the deactivation of instant action mode after proposal
 	 * @dev Only callable by PartyA accounts after the waiting period has passed
 	 */
-	function deactivateInstantActionMode() external notPartyB {
+	function deactivateInstantActionMode() external onlyNotPartyB(msg.sender) whenPartyNotPaused(msg.sender) {
 		LibPartyBManagement.deactivateInstantActionMode();
 		emit DeactivateInstantActionMode(msg.sender, block.timestamp);
 	}
@@ -169,7 +188,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @dev Only callable by PartyA accounts when PartyA actions are not paused
 	 * @param partyB The address of the PartyB to establish a relationship with
 	 */
-	function bindToPartyB(address partyB) external notPartyB whenNotPartyAActionsPaused {
+	function bindToPartyB(address partyB) external onlyNotPartyB(msg.sender) whenPartyNotPaused(msg.sender) {
 		LibPartyBManagement.bindToPartyB(partyB);
 		emit BindToPartyB(msg.sender, partyB);
 	}
@@ -178,7 +197,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @notice Begins the process of terminating a relationship with a PartyB
 	 * @dev Starts a cooldown period before the unbinding can be completed
 	 */
-	function initiateUnbindingFromPartyB() external notPartyB whenNotPartyAActionsPaused {
+	function initiateUnbindingFromPartyB() external onlyNotPartyB(msg.sender) whenPartyNotPaused(msg.sender) {
 		LibPartyBManagement.initiateUnbindingFromPartyB();
 		emit InitiateUnbindingFromPartyB(msg.sender, CounterPartyRelationsStorage.layout().boundPartyB[msg.sender], block.timestamp);
 	}
@@ -187,7 +206,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @notice Finalizes the unbinding process from a PartyB after the cooldown period
 	 * @dev Only callable after the required waiting period from initiation has passed
 	 */
-	function completeUnbindingFromPartyB() external notPartyB whenNotPartyAActionsPaused {
+	function completeUnbindingFromPartyB() external onlyNotPartyB(msg.sender) whenPartyNotPaused(msg.sender) {
 		address previousPartyB = CounterPartyRelationsStorage.layout().boundPartyB[msg.sender];
 		LibPartyBManagement.completeUnbindingFromPartyB();
 		emit CompleteUnbindingFromPartyB(msg.sender, previousPartyB);
@@ -197,7 +216,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @notice Revokes a pending request to unbind from a PartyB
 	 * @dev Can only be called during the cooldown period after initiation
 	 */
-	function cancelUnbindingFromPartyB() external notPartyB whenNotPartyAActionsPaused {
+	function cancelUnbindingFromPartyB() external onlyNotPartyB(msg.sender) whenPartyNotPaused(msg.sender) {
 		LibPartyBManagement.cancelUnbindingFromPartyB();
 		emit CancelUnbindingFromPartyB(msg.sender, CounterPartyRelationsStorage.layout().boundPartyB[msg.sender]);
 	}
@@ -219,7 +238,11 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @param counterParty The address of the counterparty
 	 * @param amount The amount of collateral to be allocated
 	 */
-	function allocate(address collateral, address counterParty, uint256 amount) external notSuspended(msg.sender) inactiveInstantMode(msg.sender) {
+	function allocate(
+		address collateral,
+		address counterParty,
+		uint256 amount
+	) external whenNotSuspended(msg.sender) whenInstantModeIsNotActive(msg.sender) whenPartyNotPaused(msg.sender) {
 		LibAllocationOperations.allocate(msg.sender, collateral, counterParty, amount);
 		emit Allocate(
 			msg.sender,
@@ -245,7 +268,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		uint256 amount,
 		bool isPartyB,
 		UpnlSig memory upnlSig
-	) external notSuspended(msg.sender) {
+	) external whenNotSuspended(msg.sender) whenPartyNotPaused(msg.sender) {
 		LibAllocationOperations.deallocate(collateral, counterParty, amount, isPartyB, upnlSig);
 		emit Deallocate(
 			msg.sender,
@@ -262,7 +285,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @param collateral The address of the collateral token to deallocate
 	 * @param amount The amount of collateral to be allocated
 	 */
-	function allocateToReserveBalance(address collateral, uint256 amount) external {
+	function allocateToReserveBalance(address collateral, uint256 amount) external whenPartyNotPaused(msg.sender) {
 		LibAllocationOperations.allocateToReserveBalance(collateral, amount);
 		emit AllocateToReserveBalance(msg.sender, collateral, amount, msg.sender.balanceOf(collateral).isolatedBalance);
 	}
@@ -272,7 +295,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @param collateral The address of the collateral token to deallocate
 	 * @param amount The amount of collateral to be deallocated
 	 */
-	function deallocateFromReserveBalance(address collateral, uint256 amount) external {
+	function deallocateFromReserveBalance(address collateral, uint256 amount) external whenPartyNotPaused(msg.sender) {
 		LibAllocationOperations.deallocateFromReserveBalance(collateral, amount);
 		emit DeallocateFromReserveBalance(msg.sender, collateral, amount, msg.sender.balanceOf(collateral).isolatedBalance);
 	}

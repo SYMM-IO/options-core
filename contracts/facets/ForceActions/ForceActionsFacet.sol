@@ -22,7 +22,7 @@ contract ForceActionsFacet is Pausable, IForceActionsFacet {
 	 * @dev Can only be executed after the forceCancelOpenIntentTimeout period has elapsed since locking
 	 * @param intentId The unique identifier of the open intent to be forcibly canceled
 	 */
-	function forceCancelOpenIntent(uint256 intentId) external whenNotPartyAActionsPaused {
+	function forceCancelOpenIntent(uint256 intentId) external whenPartyNotPaused(msg.sender) {
 		LibForceActions.forceCancelOpenIntent(intentId);
 		emit ForceCancelOpenIntent(intentId);
 	}
@@ -33,7 +33,7 @@ contract ForceActionsFacet is Pausable, IForceActionsFacet {
 	 *      This emergency mechanism prevents a trade from being locked in a pending close state indefinitely
 	 * @param intentId The unique identifier of the close intent to be forcibly canceled
 	 */
-	function forceCancelCloseIntent(uint256 intentId) external whenNotPartyAActionsPaused {
+	function forceCancelCloseIntent(uint256 intentId) external whenPartyNotPaused(msg.sender) {
 		LibForceActions.forceCancelCloseIntent(intentId);
 		emit ForceCancelCloseIntent(intentId);
 	}

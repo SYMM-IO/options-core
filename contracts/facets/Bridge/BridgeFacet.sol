@@ -33,7 +33,7 @@ contract BridgeFacet is Accessibility, Pausable, IBridgeFacet {
 		uint256 amount,
 		address bridgeAddress,
 		address receiver
-	) external whenNotBridgePaused notSuspended(msg.sender) inactiveInstantMode(msg.sender) notPartyB {
+	) external whenNotBridgePaused whenNotSuspended(msg.sender) whenInstantModeIsNotActive(msg.sender) onlyNotPartyB(msg.sender) {
 		uint256 transactionId = LibBridge.transferToBridge(msg.sender, collateral, amount, bridgeAddress, receiver);
 		emit TransferToBridge(
 			msg.sender,
@@ -51,7 +51,7 @@ contract BridgeFacet is Accessibility, Pausable, IBridgeFacet {
 	 * @dev Claims tokens that have been bridged to this bridge and updates internal accounting
 	 * @param transactionIds An array of transaction IDs for which the received bridge values will be withdrawn
 	 */
-	function withdrawReceivedBridgeValues(uint256[] memory transactionIds) external whenNotBridgeWithdrawPaused notSuspended(msg.sender) {
+	function withdrawReceivedBridgeValues(uint256[] memory transactionIds) external whenNotBridgeWithdrawPaused whenNotSuspended(msg.sender) {
 		LibBridge.withdrawReceivedBridgeValues(transactionIds);
 		emit WithdrawReceivedBridgeValues(transactionIds);
 	}

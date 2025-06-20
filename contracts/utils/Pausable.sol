@@ -4,9 +4,13 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
+import { LibParty } from "../libraries/models/LibParty.sol";
+
 import { StateControlStorage } from "../storages/StateControlStorage.sol";
 
 abstract contract Pausable {
+	using LibParty for address;
+
 	// Custom errors
 	error GlobalPaused();
 	error BridgePaused();
@@ -26,57 +30,82 @@ abstract contract Pausable {
 	}
 
 	modifier whenNotBridgePaused() {
-		if (StateControlStorage.layout().globalPaused) revert GlobalPaused();
-		if (StateControlStorage.layout().bridgePaused) revert BridgePaused();
+		StateControlStorage.Layout storage layout = StateControlStorage.layout();
+
+		if (layout.globalPaused) revert GlobalPaused();
+		if (layout.bridgePaused) revert BridgePaused();
 		_;
 	}
 
 	modifier whenNotBridgeWithdrawPaused() {
-		if (StateControlStorage.layout().globalPaused) revert GlobalPaused();
-		if (StateControlStorage.layout().bridgeWithdrawPaused) revert BridgeWithdrawPaused();
+		StateControlStorage.Layout storage layout = StateControlStorage.layout();
+
+		if (layout.globalPaused) revert GlobalPaused();
+		if (layout.bridgeWithdrawPaused) revert BridgeWithdrawPaused();
 		_;
 	}
 
-	modifier whenNotDepositingPaused() {
-		if (StateControlStorage.layout().globalPaused) revert GlobalPaused();
-		if (StateControlStorage.layout().depositingPaused) revert DepositingPaused();
+	modifier whenDepositingNotPaused() {
+		StateControlStorage.Layout storage layout = StateControlStorage.layout();
+
+		if (layout.globalPaused) revert GlobalPaused();
+		if (layout.depositingPaused) revert DepositingPaused();
 		_;
 	}
 
 	modifier whenNotInternalTransferPaused() {
-		if (StateControlStorage.layout().globalPaused) revert GlobalPaused();
-		if (StateControlStorage.layout().internalTransferPaused) revert InternalTransferPaused();
+		StateControlStorage.Layout storage layout = StateControlStorage.layout();
+
+		if (layout.globalPaused) revert GlobalPaused();
+		if (layout.internalTransferPaused) revert InternalTransferPaused();
 		_;
 	}
 
 	modifier whenNotWithdrawingPaused() {
-		if (StateControlStorage.layout().globalPaused) revert GlobalPaused();
-		if (StateControlStorage.layout().withdrawingPaused) revert WithdrawingPaused();
+		StateControlStorage.Layout storage layout = StateControlStorage.layout();
+
+		if (layout.globalPaused) revert GlobalPaused();
+		if (layout.withdrawingPaused) revert WithdrawingPaused();
 		_;
 	}
 
-	modifier whenNotPartyAActionsPaused() {
-		if (StateControlStorage.layout().globalPaused) revert GlobalPaused();
-		if (StateControlStorage.layout().partyAActionsPaused) revert PartyAActionsPaused();
+	modifier whenPartyNotPaused(address user) {
+		if (user.isPartyB()) {
+			_whenNotPartyBActionsPaused();
+		} else {
+			_whenNotPartyAActionsPaused();
+		}
 		_;
 	}
 
-	modifier whenNotPartyBActionsPaused() {
-		if (StateControlStorage.layout().globalPaused) revert GlobalPaused();
-		if (StateControlStorage.layout().partyBActionsPaused) revert PartyBActionsPaused();
-		if (StateControlStorage.layout().emergencyMode) revert EmergencyMode();
-		_;
+	function _whenNotPartyAActionsPaused() internal view {
+		StateControlStorage.Layout storage layout = StateControlStorage.layout();
+
+		if (layout.globalPaused) revert GlobalPaused();
+		if (layout.partyAActionsPaused) revert PartyAActionsPaused();
+	}
+
+	function _whenNotPartyBActionsPaused() internal view {
+		StateControlStorage.Layout storage layout = StateControlStorage.layout();
+
+		if (layout.globalPaused) revert GlobalPaused();
+		if (layout.partyBActionsPaused) revert PartyBActionsPaused();
+		if (layout.emergencyMode) revert EmergencyMode();
 	}
 
 	modifier whenNotThirdPartyActionsPaused() {
-		if (StateControlStorage.layout().globalPaused) revert GlobalPaused();
-		if (StateControlStorage.layout().thirdPartyActionsPaused) revert ThirdPartyActionsPaused();
+		StateControlStorage.Layout storage layout = StateControlStorage.layout();
+
+		if (layout.globalPaused) revert GlobalPaused();
+		if (layout.thirdPartyActionsPaused) revert ThirdPartyActionsPaused();
 		_;
 	}
 
 	modifier whenNotLiquidationPaused() {
-		if (StateControlStorage.layout().globalPaused) revert GlobalPaused();
-		if (StateControlStorage.layout().liquidatingPaused) revert LiquidatingPaused();
+		StateControlStorage.Layout storage layout = StateControlStorage.layout();
+
+		if (layout.globalPaused) revert GlobalPaused();
+		if (layout.liquidatingPaused) revert LiquidatingPaused();
 		_;
 	}
 }

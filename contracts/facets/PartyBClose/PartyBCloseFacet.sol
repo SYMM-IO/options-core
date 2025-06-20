@@ -23,7 +23,7 @@ contract PartyBCloseFacet is Accessibility, Pausable, IPartyBCloseFacet {
 	 * @dev When accepted, the close intent will be marked as canceled
 	 * @param intentId The unique identifier of the close intent for which the cancellation request is being accepted
 	 */
-	function acceptCancelCloseIntent(uint256 intentId) external whenNotPartyBActionsPaused {
+	function acceptCancelCloseIntent(uint256 intentId) external whenPartyNotPaused(msg.sender) {
 		LibPartyBClose.acceptCancelCloseIntent(msg.sender, intentId);
 		emit AcceptCancelCloseIntent(intentId);
 	}
@@ -35,7 +35,7 @@ contract PartyBCloseFacet is Accessibility, Pausable, IPartyBCloseFacet {
 	 * @param quantity The amount to be closed, which can be equal to or less than the original requested amount
 	 * @param price The execution price at which the trade is being closed, must be favorable to PartyA compared to their requested price
 	 */
-	function fillCloseIntent(uint256 intentId, uint256 quantity, uint256 price) external whenNotPartyBActionsPaused {
+	function fillCloseIntent(uint256 intentId, uint256 quantity, uint256 price) external whenPartyNotPaused(msg.sender) {
 		LibPartyBClose.fillCloseIntent(msg.sender, intentId, quantity, price);
 		emit FillCloseIntent(intentId, quantity, price);
 	}

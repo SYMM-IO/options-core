@@ -38,7 +38,7 @@ contract InstantActionsOpenFacet is Accessibility, Pausable, IInstantActionsOpen
 		bytes calldata partyASignature,
 		SignedSimpleActionIntent calldata signedAcceptCancelOpenIntent,
 		bytes calldata partyBSignature
-	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
+	) external whenPartyNotPaused(signedAcceptCancelOpenIntent.signer) whenNotThirdPartyActionsPaused {
 		(OpenIntentStatus finalStatus, bool approvedByPartyB) = LibInstantActionsOpen.instantCancelOpenIntent(
 			signedCancelOpenIntent,
 			partyASignature,
@@ -69,7 +69,7 @@ contract InstantActionsOpenFacet is Accessibility, Pausable, IInstantActionsOpen
 		bytes calldata partyASignature,
 		SignedFillIntent calldata signedFillOpenIntent,
 		bytes calldata partyBSignature
-	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
+	) external whenPartyNotPaused(signedFillOpenIntent.partyB) whenNotThirdPartyActionsPaused {
 		(uint256 intentId, uint256 tradeId, uint256 newIntentId) = LibInstantActionsOpen.instantCreateAndFillOpenIntent(
 			signedOpenIntent,
 			partyASignature,

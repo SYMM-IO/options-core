@@ -44,9 +44,9 @@ contract InstantActionsAccountFacet is Accessibility, Pausable, IInstantActionsA
 		external
 		whenNotThirdPartyActionsPaused
 		whenNotInternalTransferPaused
-		notSuspended(signedInternalTransferRequest.signer)
-		notSuspended(signedInternalTransferRequest.receiver)
-		userNotPartyB(signedInternalTransferRequest.signer)
+		whenNotSuspended(signedInternalTransferRequest.signer)
+		whenNotSuspended(signedInternalTransferRequest.receiver)
+		onlyNotPartyB(signedInternalTransferRequest.signer)
 	{
 		LibInstantActionsAccount.instantInternalTransfer(
 			signedInternalTransferRequest,
@@ -82,8 +82,8 @@ contract InstantActionsAccountFacet is Accessibility, Pausable, IInstantActionsA
 		external
 		whenNotThirdPartyActionsPaused
 		whenNotWithdrawingPaused
-		notSuspended(signedWithdrawRequest.signer)
-		notSuspended(signedWithdrawRequest.receiver)
+		whenNotSuspended(signedWithdrawRequest.signer)
+		whenNotSuspended(signedWithdrawRequest.receiver)
 		returns (uint256 withdrawId)
 	{
 		withdrawId = LibInstantActionsAccount.instantInitiateWithdraw(
@@ -120,8 +120,8 @@ contract InstantActionsAccountFacet is Accessibility, Pausable, IInstantActionsA
 		external
 		whenNotThirdPartyActionsPaused
 		whenNotBridgePaused
-		notSuspended(signedBridgeTransferRequest.signer)
-		userNotPartyB(signedBridgeTransferRequest.signer)
+		whenNotSuspended(signedBridgeTransferRequest.signer)
+		onlyNotPartyB(signedBridgeTransferRequest.signer)
 		returns (uint256 bridgeTransactionId)
 	{
 		bridgeTransactionId = LibInstantActionsAccount.instantTransferToBridge(
@@ -155,7 +155,7 @@ contract InstantActionsAccountFacet is Accessibility, Pausable, IInstantActionsA
 		bytes calldata partyASignature,
 		SignedAllocate calldata signedAllocateAcceptance,
 		bytes calldata partyBSignature
-	) external whenNotThirdPartyActionsPaused notSuspended(signedAllocateRequest.signer) {
+	) external whenNotThirdPartyActionsPaused whenNotSuspended(signedAllocateRequest.signer) {
 		LibInstantActionsAccount.instantAllocate(signedAllocateRequest, partyASignature, signedAllocateAcceptance, partyBSignature);
 		ScheduledReleaseBalance storage balance = signedAllocateRequest.signer.balanceOf(signedAllocateRequest.collateral);
 		emit Allocate(

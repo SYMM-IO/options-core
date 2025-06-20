@@ -38,7 +38,7 @@ contract InstantActionsCloseFacet is Accessibility, Pausable, IInstantActionsClo
 		bytes calldata partyASignature,
 		SignedSimpleActionIntent calldata signedAcceptCancelCloseIntent,
 		bytes calldata partyBSignature
-	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
+	) external whenPartyNotPaused(signedAcceptCancelCloseIntent.signer) whenNotThirdPartyActionsPaused {
 		CloseIntentStatus result = LibInstantActionsClose.instantCancelCloseIntent(
 			signedCancelCloseIntent,
 			partyASignature,
@@ -64,7 +64,7 @@ contract InstantActionsCloseFacet is Accessibility, Pausable, IInstantActionsClo
 	function instantFillCloseIntent(
 		SignedFillIntentById calldata signedFillCloseIntent,
 		bytes calldata partyBSignature
-	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
+	) external whenPartyNotPaused(signedFillCloseIntent.partyB) whenNotThirdPartyActionsPaused {
 		LibInstantActionsClose.instantFillCloseIntent(signedFillCloseIntent, partyBSignature);
 		emit FillCloseIntent(signedFillCloseIntent.intentId, signedFillCloseIntent.quantity, signedFillCloseIntent.price);
 	}
@@ -84,7 +84,7 @@ contract InstantActionsCloseFacet is Accessibility, Pausable, IInstantActionsClo
 		bytes calldata partyASignature,
 		SignedFillIntent calldata signedFillCloseIntent,
 		bytes calldata partyBSignature
-	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
+	) external whenPartyNotPaused(signedFillCloseIntent.partyB) whenNotThirdPartyActionsPaused {
 		uint256 intentId = LibInstantActionsClose.instantCloseAndFillCloseIntent(
 			signedCloseIntent,
 			partyASignature,

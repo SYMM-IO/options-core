@@ -26,7 +26,7 @@ contract PartyBOpenFacet is Accessibility, Pausable, IPartyBOpenFacet {
 	 * @dev Temporarily locks the intent to prevent other PartyBs from acting on it
 	 * @param intentId The unique identifier of the open intent to be locked
 	 */
-	function lockOpenIntent(uint256 intentId) external whenNotPartyBActionsPaused onlyPartyB {
+	function lockOpenIntent(uint256 intentId) external whenPartyNotPaused(msg.sender) onlyPartyB(msg.sender)  {
 		LibPartyBOpen.lockOpenIntent(msg.sender, intentId);
 		emit LockOpenIntent(intentId, msg.sender);
 	}
@@ -37,7 +37,7 @@ contract PartyBOpenFacet is Accessibility, Pausable, IPartyBOpenFacet {
 	 *      Only the PartyB who locked the intent can unlock it
 	 * @param intentId The unique identifier of the open intent to be unlocked
 	 */
-	function unlockOpenIntent(uint256 intentId) external whenNotPartyBActionsPaused {
+	function unlockOpenIntent(uint256 intentId) external whenPartyNotPaused(msg.sender) {
 		OpenIntentStatus finalStatus = LibPartyBOpen.unlockOpenIntent(msg.sender, intentId);
 		if (finalStatus == OpenIntentStatus.EXPIRED) {
 			emit ExpireOpenIntent(intentId);
@@ -52,7 +52,7 @@ contract PartyBOpenFacet is Accessibility, Pausable, IPartyBOpenFacet {
 	 *      Once accepted, the intent will be marked as canceled
 	 * @param intentId The unique identifier of the open intent for which the cancellation is being accepted
 	 */
-	function acceptCancelOpenIntent(uint256 intentId) external whenNotPartyBActionsPaused {
+	function acceptCancelOpenIntent(uint256 intentId) external whenPartyNotPaused(msg.sender) {
 		LibPartyBOpen.acceptCancelOpenIntent(msg.sender, intentId);
 		emit AcceptCancelOpenIntent(intentId);
 	}
@@ -66,7 +66,7 @@ contract PartyBOpenFacet is Accessibility, Pausable, IPartyBOpenFacet {
 	 * @param quantity The amount to be filled, which can be equal to or less than the original requested quantity
 	 * @param price The price at which the trade is being opened
 	 */
-	function fillOpenIntent(uint256 intentId, uint256 quantity, uint256 price) external whenNotPartyBActionsPaused {
+	function fillOpenIntent(uint256 intentId, uint256 quantity, uint256 price) external whenPartyNotPaused(msg.sender) {
 		(uint256 tradeId, uint256 newIntentId) = LibPartyBOpen.fillOpenIntent(msg.sender, intentId, quantity, price);
 		emit FillOpenIntent(intentId, tradeId, quantity, price);
 		if (newIntentId != 0) {

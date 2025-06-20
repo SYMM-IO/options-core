@@ -30,17 +30,12 @@ abstract contract Accessibility {
 	error InstantActionModeActive(address sender);
 	error InstantActionModeNotActive(address sender);
 
-	modifier onlyPartyB() {
-		if (!msg.sender.isPartyB()) revert NotPartyB(msg.sender);
+	modifier onlyPartyB(address user) {
+		if (!user.isPartyB()) revert NotPartyB(user);
 		_;
 	}
 
-	modifier notPartyB() {
-		if (msg.sender.isPartyB()) revert UserIsPartyB(msg.sender);
-		_;
-	}
-
-	modifier userNotPartyB(address user) {
+	modifier onlyNotPartyB(address user) {
 		if (user.isPartyB()) revert UserIsPartyB(user);
 		_;
 	}
@@ -62,12 +57,12 @@ abstract contract Accessibility {
 		_;
 	}
 
-	modifier notSuspended(address user) {
+	modifier whenNotSuspended(address user) {
 		if (StateControlStorage.layout().suspendedAddresses[user]) revert UserSuspended(user);
 		_;
 	}
 
-	modifier notSuspendedWithdrawal(uint256 withdrawId) {
+	modifier whenWithdrawalNotSuspended(uint256 withdrawId) {
 		checkNotSuspendedWithdrawal(withdrawId); // To reduce code size
 		_;
 	}
@@ -80,12 +75,12 @@ abstract contract Accessibility {
 		if (stateControlLayout.suspendedWithdrawal[withdrawId]) revert SuspendedWithdrawal(withdrawId);
 	}
 
-	modifier inactiveInstantMode(address sender) {
+	modifier whenInstantModeIsNotActive(address sender) {
 		if (CounterPartyRelationsStorage.layout().instantActionsMode[sender]) revert InstantActionModeActive(sender);
 		_;
 	}
 
-	modifier activeInstantMode(address sender) {
+	modifier whenInstantModeIsActive(address sender) {
 		if (!CounterPartyRelationsStorage.layout().instantActionsMode[sender]) revert InstantActionModeNotActive(sender);
 		_;
 	}

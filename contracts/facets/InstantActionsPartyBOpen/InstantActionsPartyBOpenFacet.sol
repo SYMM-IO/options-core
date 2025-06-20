@@ -33,7 +33,7 @@ contract InstantActionsPartyBOpenFacet is Accessibility, Pausable, IInstantActio
 	function instantLock(
 		SignedSimpleActionIntent calldata signedLockIntent,
 		bytes calldata partyBSignature
-	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
+	) external whenPartyNotPaused(signedLockIntent.signer) whenNotThirdPartyActionsPaused {
 		LibInstantActionsPartyBOpen.instantLock(signedLockIntent, partyBSignature);
 		emit LockOpenIntent(signedLockIntent.intentId, signedLockIntent.signer);
 	}
@@ -48,7 +48,7 @@ contract InstantActionsPartyBOpenFacet is Accessibility, Pausable, IInstantActio
 	function instantUnlock(
 		SignedSimpleActionIntent calldata signedUnlockIntent,
 		bytes calldata partyBSignature
-	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
+	) external whenPartyNotPaused(signedUnlockIntent.signer) whenNotThirdPartyActionsPaused {
 		OpenIntentStatus finalStatus = LibInstantActionsPartyBOpen.instantUnlock(signedUnlockIntent, partyBSignature);
 		if (finalStatus == OpenIntentStatus.EXPIRED) {
 			emit ExpireOpenIntent(signedUnlockIntent.intentId);
@@ -67,7 +67,7 @@ contract InstantActionsPartyBOpenFacet is Accessibility, Pausable, IInstantActio
 	function instantFillOpenIntent(
 		SignedFillIntentById calldata signedFillOpenIntent,
 		bytes calldata partyBSignature
-	) external whenNotPartyBActionsPaused whenNotThirdPartyActionsPaused {
+	) external whenPartyNotPaused(signedFillOpenIntent.partyB) whenNotThirdPartyActionsPaused {
 		(uint256 tradeId, uint256 newIntentId) = LibInstantActionsPartyBOpen.instantFillOpenIntent(signedFillOpenIntent, partyBSignature);
 		emit FillOpenIntent(signedFillOpenIntent.intentId, tradeId, signedFillOpenIntent.quantity, signedFillOpenIntent.price);
 		if (newIntentId != 0) {
