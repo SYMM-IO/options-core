@@ -4,7 +4,10 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { AccountStorage } from "../../storages/AccountStorage.sol";
+import { LibParty } from "../models/LibParty.sol";
+import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance.sol";
+import { CommonErrors } from "../utils/CommonErrors.sol";
+
 import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
 import { Symbol, SymbolStorage } from "../../storages/SymbolStorage.sol";
 
@@ -12,11 +15,9 @@ import { TradeSide, MarginType } from "../../types/BaseTypes.sol";
 import { OpenIntent, OpenIntentStatus } from "../../types/IntentTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 
-import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance.sol";
-import { CommonErrors } from "../utils/CommonErrors.sol";
-
 library LibOpenIntentOps {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
+	using LibParty for address;
 
 	// Custom errors
 	error IntentNotExpired(uint256 intentId, uint256 currentTime, uint256 deadline);
@@ -97,11 +98,9 @@ library LibOpenIntentOps {
 	}
 
 	function handleFeesAndPremium(OpenIntent memory self, bool isUserPaying) internal {
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-
 		Symbol memory symbol = SymbolStorage.layout().symbols[self.tradeAgreements.symbolId];
-		ScheduledReleaseBalance storage partyABalance = accountLayout.balances[self.partyA][symbol.collateral];
-		ScheduledReleaseBalance storage partyAFeeBalance = accountLayout.balances[self.partyA][self.tradingFee.feeToken];
+		ScheduledReleaseBalance storage partyABalance = self.partyA.balanceOf(symbol.collateral);
+		ScheduledReleaseBalance storage partyAFeeBalance = self.partyA.balanceOf(self.tradingFee.feeToken);
 
 		uint256 tradingFee = getTradingFee(self);
 		uint256 affiliateFee = getAffiliateFee(self);

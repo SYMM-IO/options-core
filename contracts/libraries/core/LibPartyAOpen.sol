@@ -45,7 +45,7 @@ library LibPartyAOpen {
 		Symbol memory symbol = SymbolStorage.layout().symbols[tradeAgreements.symbolId];
 
 		// validate sender
-		if (appLayout.partyBConfigs[sender].isActive) revert PartyAOpenFacetErrors.SenderIsPartyB(sender);
+		if (sender.isPartyB()) revert PartyAOpenFacetErrors.SenderIsPartyB(sender);
 		if (StateControlStorage.layout().suspendedAddresses[sender]) revert CommonErrors.SuspendedAddress(sender);
 		// validate partyB whitelist
 		for (uint8 i = 0; i < partyBsWhiteList.length; i++) {

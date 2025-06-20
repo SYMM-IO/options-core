@@ -5,6 +5,8 @@
 pragma solidity >=0.8.19;
 
 import { LibParty } from "../../libraries/models/LibParty.sol";
+import { LibOpenIntentOps } from "../../libraries/models/LibOpenIntent.sol";
+import { LibTradeOps } from "../../libraries/models/LibTrade.sol";
 
 import { TradeStorage } from "../../storages/TradeStorage.sol";
 import { BridgeStorage } from "../../storages/BridgeStorage.sol";
@@ -20,15 +22,12 @@ import { SymbolStorage, Symbol, Oracle } from "../../storages/SymbolStorage.sol"
 import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
 import { BridgeStorage } from "../../storages/BridgeStorage.sol";
 
-import { LibOpenIntentOps } from "../../libraries/models/LibOpenIntent.sol";
-import { LibTradeOps } from "../../libraries/models/LibTrade.sol";
-
-import { ScheduledReleaseBalance, CrossEntry, ScheduledReleaseEntry } from "../../types/BalanceTypes.sol";
 import { Trade } from "../../types/TradeTypes.sol";
 import { Withdraw } from "../../types/WithdrawTypes.sol";
 import { BridgeTransaction } from "../../types/BridgeTypes.sol";
 import { OpenIntent, CloseIntent } from "../../types/IntentTypes.sol";
 import { LiquidationDetail } from "../../types/LiquidationTypes.sol";
+import { ScheduledReleaseEntry, CrossEntry } from "../../types/BalanceTypes.sol";
 
 import { IViewFacet } from "./IViewFacet.sol";
 
@@ -47,19 +46,19 @@ contract ViewFacet is IViewFacet {
 	 * @return balance The balance of the user and specific collateral type.
 	 */
 	function balanceOf(address user, address collateral) external view returns (uint256) {
-		return AccountStorage.layout().balances[user][collateral].isolatedBalance;
+		return user.balanceOf(collateral).isolatedBalance;
 	}
 
 	function getScheduledReleaseEntry(address user, address collateral, address counterParty) external view returns (ScheduledReleaseEntry memory) {
-		return AccountStorage.layout().balances[user][collateral].counterPartySchedules[counterParty];
+		return user.balanceOf(collateral).counterPartySchedules[counterParty];
 	}
 
 	function crossBalance(address user, address collateral, address counterParty) external view returns (CrossEntry memory) {
-		return AccountStorage.layout().balances[user][collateral].crossBalance[counterParty];
+		return user.balanceOf(collateral).crossBalance[counterParty];
 	}
 
 	function getIsolatedLockedBalance(address user, address collateral) external view returns (uint256) {
-		return AccountStorage.layout().balances[user][collateral].isolatedLockedBalance;
+		return user.balanceOf(collateral).isolatedLockedBalance;
 	}
 
 	function getTradingFee(uint256 openIntentId) external view returns (uint256) {
@@ -123,12 +122,11 @@ contract ViewFacet is IViewFacet {
 	 * @return tradesOf The list of trades of Party A.
 	 */
 	function partyAStats(address partyA, address collateral) external view returns (bool, uint256, uint256[] memory, uint256[] memory) {
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		// MAStorage.Layout storage maLayout = MAStorage.layout();  #TODO 1: consider adding this after liquidation dev.
 		return (
 			// maLayout.liquidationStatus[partyA], #TODO 1
 			StateControlStorage.layout().suspendedAddresses[partyA],
-			accountLayout.balances[partyA][collateral].isolatedBalance,
+			partyA.balanceOf(collateral).isolatedBalance,
 			//TODO 2: consider adding AppStorage:partyAReimbursement after it's used
 			OpenIntentStorage.layout().openIntentsOf[partyA],
 			TradeStorage.layout().tradesOf[partyA]

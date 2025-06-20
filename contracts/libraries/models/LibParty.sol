@@ -9,6 +9,7 @@ import { AppStorage } from "../../storages/AppStorage.sol";
 import { LiquidationStorage } from "../../storages/LiquidationStorage.sol";
 
 import { MarginType } from "../../types/BaseTypes.sol";
+import { ScheduledReleaseBalance } from "../../types/BalanceTypes.sol";
 
 library LibParty {
 	// Custom errors
@@ -19,7 +20,7 @@ library LibParty {
 	}
 
 	function isSolvent(address self, address counterParty, address collateral, MarginType marginType) internal view returns (bool) {
-		if (AppStorage.layout().partyBConfigs[self].isActive) {
+		if (isPartyB(self)) {
 			return
 				LiquidationStorage.layout().inProgressLiquidationIds[marginType == MarginType.ISOLATED ? address(0) : counterParty][self][
 					collateral
@@ -27,6 +28,14 @@ library LibParty {
 		} else {
 			return marginType == MarginType.ISOLATED || LiquidationStorage.layout().inProgressLiquidationIds[self][counterParty][collateral] == 0;
 		}
+	}
+
+	function isPartyB(address self) internal view returns (bool) {
+		return AppStorage.layout().partyBConfigs[self].isActive;
+	}
+
+	function balanceOf(address self, address collateral) internal view returns (ScheduledReleaseBalance storage) {
+		return AccountStorage.layout().balances[self][collateral];
 	}
 
 	function getReleaseInterval(address user) internal view returns (uint256) {

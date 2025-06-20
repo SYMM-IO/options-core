@@ -5,8 +5,7 @@
 pragma solidity >=0.8.19;
 
 import { LibInstantActionsAccount } from "../../libraries/core/LibInstantActionsAccount.sol";
-
-import { AccountStorage } from "../../storages/AccountStorage.sol";
+import { LibParty } from "../../libraries/models/LibParty.sol";
 
 import { SignedInternalTransfer, SignedWithdraw, SignedBridgeTransfer, SignedAllocate } from "../../types/SignedAccountTypes.sol";
 import { ScheduledReleaseBalance } from "../../types/BalanceTypes.sol";
@@ -24,6 +23,8 @@ import { IInstantActionsAccountFacet } from "./IInstantActionsAccountFacet.sol";
  * without requiring direct blockchain interaction from either party
  */
 contract InstantActionsAccountFacet is Accessibility, Pausable, IInstantActionsAccountFacet {
+	using LibParty for address;
+
 	/**
 	 * @notice Executes an internal transfer between accounts using signatures from both PartyA and PartyB
 	 * @dev Requires signatures from both parties to execute the internal transfer in a single transaction
@@ -58,8 +59,8 @@ contract InstantActionsAccountFacet is Accessibility, Pausable, IInstantActionsA
 			signedInternalTransferRequest.receiver,
 			signedInternalTransferRequest.collateral,
 			signedInternalTransferRequest.amount,
-			AccountStorage.layout().balances[signedInternalTransferRequest.signer][signedInternalTransferRequest.collateral].isolatedBalance,
-			AccountStorage.layout().balances[signedInternalTransferRequest.receiver][signedInternalTransferRequest.collateral].isolatedBalance
+			signedInternalTransferRequest.signer.balanceOf(signedInternalTransferRequest.collateral).isolatedBalance,
+			signedInternalTransferRequest.receiver.balanceOf(signedInternalTransferRequest.collateral).isolatedBalance
 		);
 	}
 
@@ -97,7 +98,7 @@ contract InstantActionsAccountFacet is Accessibility, Pausable, IInstantActionsA
 			signedWithdrawRequest.receiver,
 			signedWithdrawRequest.collateral,
 			signedWithdrawRequest.amount,
-			AccountStorage.layout().balances[signedWithdrawRequest.signer][signedWithdrawRequest.collateral].isolatedBalance
+			signedWithdrawRequest.signer.balanceOf(signedWithdrawRequest.collateral).isolatedBalance
 		);
 	}
 
@@ -136,7 +137,7 @@ contract InstantActionsAccountFacet is Accessibility, Pausable, IInstantActionsA
 			signedBridgeTransferRequest.amount,
 			signedBridgeTransferRequest.bridge,
 			bridgeTransactionId,
-			AccountStorage.layout().balances[signedBridgeTransferRequest.signer][signedBridgeTransferRequest.collateral].isolatedBalance
+			signedBridgeTransferRequest.signer.balanceOf(signedBridgeTransferRequest.collateral).isolatedBalance
 		);
 	}
 
@@ -156,7 +157,7 @@ contract InstantActionsAccountFacet is Accessibility, Pausable, IInstantActionsA
 		bytes calldata partyBSignature
 	) external whenNotThirdPartyActionsPaused notSuspended(signedAllocateRequest.signer) {
 		LibInstantActionsAccount.instantAllocate(signedAllocateRequest, partyASignature, signedAllocateAcceptance, partyBSignature);
-		ScheduledReleaseBalance storage balance = AccountStorage.layout().balances[signedAllocateRequest.signer][signedAllocateRequest.collateral];
+		ScheduledReleaseBalance storage balance = signedAllocateRequest.signer.balanceOf(signedAllocateRequest.collateral);
 		emit Allocate(
 			signedAllocateRequest.signer,
 			signedAllocateRequest.collateral,

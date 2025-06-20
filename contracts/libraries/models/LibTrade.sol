@@ -4,10 +4,13 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
+import { LibCloseIntentOps } from "../models/LibCloseIntent.sol";
+import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance.sol";
+import { LibParty } from "../models/LibParty.sol";
+
 import { AppStorage } from "../../storages/AppStorage.sol";
 import { TradeStorage } from "../../storages/TradeStorage.sol";
 import { SymbolStorage } from "../../storages/SymbolStorage.sol";
-import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { CloseIntentStorage } from "../../storages/CloseIntentStorage.sol";
 
 import { Trade, TradeStatus } from "../../types/TradeTypes.sol";
@@ -15,12 +18,10 @@ import { Symbol, OptionType } from "../../types/SymbolTypes.sol";
 import { ScheduledReleaseBalance } from "../../types/BalanceTypes.sol";
 import { CloseIntent, CloseIntentStatus } from "../../types/IntentTypes.sol";
 
-import { LibCloseIntentOps } from "../models/LibCloseIntent.sol";
-import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance.sol";
-
 library LibTradeOps {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibCloseIntentOps for CloseIntent;
+	using LibParty for address;
 
 	// Custom errors
 	error TooManyActiveTradesForPartyA(address partyA, uint256 currentCount, uint256 maxCount);
@@ -55,7 +56,6 @@ library LibTradeOps {
 
 	function save(Trade memory self) internal {
 		TradeStorage.Layout storage tradeLayout = TradeStorage.layout();
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
 		if (tradeLayout.activeTradesOf[self.partyA].length >= AppStorage.layout().maxTradePerPartyA)
 			revert TooManyActiveTradesForPartyA(self.partyA, tradeLayout.activeTradesOf[self.partyA].length, AppStorage.layout().maxTradePerPartyA);
@@ -71,7 +71,7 @@ library LibTradeOps {
 		tradeLayout.partyATradesIndex[self.id] = tradeLayout.activeTradesOf[self.partyA].length - 1;
 		tradeLayout.partyBTradesIndex[self.id] = tradeLayout.activeTradesOfPartyB[self.partyB][symbol.collateral].length - 1;
 
-		accountLayout.balances[self.partyA][symbol.collateral].addCounterParty(self.partyB);
+		self.partyA.balanceOf(symbol.collateral).addCounterParty(self.partyB);
 	}
 
 	function remove(Trade memory self) internal {

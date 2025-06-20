@@ -5,8 +5,7 @@
 pragma solidity >=0.8.19;
 
 import { LibAccessibility } from "../../libraries/core/LibAccessibility.sol";
-import { AccountStorage } from "../../storages/AccountStorage.sol";
-import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
+import { LibParty } from "../../libraries/models/LibParty.sol";
 
 import { Pausable } from "../../utils/Pausable.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
@@ -20,6 +19,7 @@ import { LibBridge } from "../../libraries/core/LibBridge.sol";
  * @dev Implements the IBridgeFacet interface with access control and pausability mechanisms
  */
 contract BridgeFacet is Accessibility, Pausable, IBridgeFacet {
+	using LibParty for address;
 	/**
 	 * @notice Transfers collateral to a designated bridge to skip deallocate cooldown
 	 * @dev Generates a unique transaction ID for tracking the bridge transfer
@@ -42,7 +42,7 @@ contract BridgeFacet is Accessibility, Pausable, IBridgeFacet {
 			amount,
 			bridgeAddress,
 			transactionId,
-			AccountStorage.layout().balances[msg.sender][collateral].isolatedBalance
+			msg.sender.balanceOf(collateral).isolatedBalance
 		);
 	}
 

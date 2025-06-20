@@ -8,6 +8,7 @@ import { LibAccessibility } from "../../libraries/core/LibAccessibility.sol";
 import { LibPartyBManagement } from "../../libraries/core/LibPartyBManagement.sol";
 import { LibBalanceOperations } from "../../libraries/core/LibBalanceOperations.sol";
 import { LibAllocationOperations } from "../../libraries/core/LibAllocationOperations.sol";
+import { LibParty } from "../../libraries/models/LibParty.sol";
 
 import { AccountStorage, Withdraw } from "../../storages/AccountStorage.sol";
 import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
@@ -25,6 +26,8 @@ import { IAccountFacet } from "./IAccountFacet.sol";
  * @dev Implements the IAccountFacet interface with access control and pausability
  */
 contract AccountFacet is Accessibility, Pausable, IAccountFacet {
+	using LibParty for address;
+
 	/**
 	 * @notice Allows a user to deposit collateral into their own account
 	 * @dev Increases the sender's available balance for the specified collateral
@@ -33,7 +36,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 */
 	function deposit(address collateral, uint256 amount) external whenNotDepositingPaused notSuspended(msg.sender) {
 		LibBalanceOperations.deposit(collateral, msg.sender, amount);
-		emit Deposit(msg.sender, msg.sender, collateral, amount, AccountStorage.layout().balances[msg.sender][collateral].isolatedBalance);
+		emit Deposit(msg.sender, msg.sender, collateral, amount, msg.sender.balanceOf(collateral).isolatedBalance);
 	}
 
 	/**
@@ -49,7 +52,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		uint256 amount
 	) external whenNotDepositingPaused notSuspended(user) onlyRole(LibAccessibility.SECURED_DEPOSITOR_ROLE) {
 		LibBalanceOperations.securedDepositFor(collateral, user, amount);
-		emit Deposit(msg.sender, user, collateral, amount, AccountStorage.layout().balances[user][collateral].isolatedBalance);
+		emit Deposit(msg.sender, user, collateral, amount, user.balanceOf(collateral).isolatedBalance);
 	}
 
 	/**
@@ -65,7 +68,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		uint256 amount
 	) external whenNotDepositingPaused notSuspended(msg.sender) notSuspended(user) {
 		LibBalanceOperations.deposit(collateral, user, amount);
-		emit Deposit(msg.sender, user, collateral, amount, AccountStorage.layout().balances[user][collateral].isolatedBalance);
+		emit Deposit(msg.sender, user, collateral, amount, user.balanceOf(collateral).isolatedBalance);
 	}
 
 	/**
@@ -86,8 +89,8 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 			user,
 			collateral,
 			amount,
-			AccountStorage.layout().balances[user][collateral].isolatedBalance,
-			AccountStorage.layout().balances[msg.sender][collateral].isolatedBalance
+			user.balanceOf(collateral).isolatedBalance,
+			msg.sender.balanceOf(collateral).isolatedBalance
 		);
 	}
 
@@ -104,7 +107,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		address to
 	) external whenNotWithdrawingPaused notSuspended(msg.sender) inactiveInstantMode(msg.sender) notSuspended(to) {
 		uint256 id = LibBalanceOperations.initiateWithdraw(msg.sender, collateral, amount, to);
-		emit InitiateWithdraw(id, msg.sender, to, collateral, amount, AccountStorage.layout().balances[msg.sender][collateral].isolatedBalance);
+		emit InitiateWithdraw(id, msg.sender, to, collateral, amount, msg.sender.balanceOf(collateral).isolatedBalance);
 	}
 
 	/**
@@ -130,7 +133,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 			withdrawObject.user,
 			withdrawObject.collateral,
 			withdrawObject.amount,
-			AccountStorage.layout().balances[withdrawObject.user][withdrawObject.collateral].isolatedBalance
+			withdrawObject.user.balanceOf(withdrawObject.collateral).isolatedBalance
 		);
 	}
 
@@ -138,7 +141,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @notice Enables the instant action mode for a PartyA
 	 * @dev Only callable by PartyA accounts, not PartyB
 	 */
-	function activateInstantActionMode() external notPartyB {
+	function activateInstantActionMode() external notPartyB inactiveInstantMode(msg.sender) {
 		LibPartyBManagement.activateInstantActionMode();
 		emit ActivateInstantActionMode(msg.sender, block.timestamp);
 	}
@@ -147,7 +150,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @notice Initiates the process to deactivate instant action mode
 	 * @dev Only callable by PartyA accounts, starts a time-delayed process
 	 */
-	function proposeToDeactivateInstantActionMode() external notPartyB {
+	function proposeToDeactivateInstantActionMode() external notPartyB activeInstantMode(msg.sender) {
 		LibPartyBManagement.proposeToDeactivateInstantActionMode();
 		emit ProposeToDeactivateInstantActionMode(msg.sender, block.timestamp);
 	}
@@ -223,8 +226,8 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 			collateral,
 			counterParty,
 			amount,
-			AccountStorage.layout().balances[msg.sender][collateral].isolatedBalance,
-			AccountStorage.layout().balances[msg.sender][collateral].crossBalance[counterParty].balance
+			msg.sender.balanceOf(collateral).isolatedBalance,
+			msg.sender.balanceOf(collateral).crossBalance[counterParty].balance
 		);
 	}
 
@@ -249,8 +252,8 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 			collateral,
 			counterParty,
 			amount,
-			AccountStorage.layout().balances[msg.sender][collateral].isolatedBalance,
-			AccountStorage.layout().balances[msg.sender][collateral].crossBalance[counterParty].balance
+			msg.sender.balanceOf(collateral).isolatedBalance,
+			msg.sender.balanceOf(collateral).crossBalance[counterParty].balance
 		);
 	}
 
@@ -261,7 +264,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 */
 	function allocateToReserveBalance(address collateral, uint256 amount) external {
 		LibAllocationOperations.allocateToReserveBalance(collateral, amount);
-		emit AllocateToReserveBalance(msg.sender, collateral, amount, AccountStorage.layout().balances[msg.sender][collateral].isolatedBalance);
+		emit AllocateToReserveBalance(msg.sender, collateral, amount, msg.sender.balanceOf(collateral).isolatedBalance);
 	}
 
 	/**
@@ -271,6 +274,6 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 */
 	function deallocateFromReserveBalance(address collateral, uint256 amount) external {
 		LibAllocationOperations.deallocateFromReserveBalance(collateral, amount);
-		emit DeallocateFromReserveBalance(msg.sender, collateral, amount, AccountStorage.layout().balances[msg.sender][collateral].isolatedBalance);
+		emit DeallocateFromReserveBalance(msg.sender, collateral, amount, msg.sender.balanceOf(collateral).isolatedBalance);
 	}
 }

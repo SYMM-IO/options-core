@@ -6,6 +6,8 @@ pragma solidity >=0.8.19;
 
 import { CommonErrors } from "../../libraries/utils/CommonErrors.sol";
 import { LibAccessibility } from "../../libraries/core/LibAccessibility.sol";
+import { LibParty } from "../../libraries/models/LibParty.sol";
+import { ScheduledReleaseBalanceOps } from "../../libraries/models/LibScheduledReleaseBalance.sol";
 
 import { SymbolStorage } from "../../storages/SymbolStorage.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
@@ -15,12 +17,9 @@ import { AccessControlStorage } from "../../storages/AccessControlStorage.sol";
 import { FeeManagementStorage } from "../../storages/FeeManagementStorage.sol";
 import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
 import { BridgeStorage } from "../../storages/BridgeStorage.sol";
-import { TradeStorage } from "../../storages/TradeStorage.sol";
-import { Trade } from "../../types/TradeTypes.sol";
 
 import { Symbol, Oracle, OptionType } from "../../types/SymbolTypes.sol";
-import { ScheduledReleaseBalance, CrossEntry, ScheduledReleaseEntry } from "../../types/BalanceTypes.sol";
-import { ScheduledReleaseBalanceOps } from "../../libraries/models/LibScheduledReleaseBalance.sol";
+import { ScheduledReleaseBalance } from "../../types/BalanceTypes.sol";
 
 import { Ownable } from "../../utils/Ownable.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
@@ -33,6 +32,7 @@ import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableS
 contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	using EnumerableSet for EnumerableSet.AddressSet;
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
+	using LibParty for address;
 
 	function setAdmin(address _admin) external onlyOwner {
 		if (_admin == address(0)) revert CommonErrors.ZeroAddress("admin");
@@ -102,8 +102,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	}
 
 	function syncTradeWindow(address user, address collateral, address counterParty) external onlyRole(LibAccessibility.WINDOW_UPDATER_ROLE) {
-		ScheduledReleaseBalance storage schedule = AccountStorage.layout().balances[user][collateral];
-		schedule.sync(counterParty);
+		user.balanceOf(collateral).sync(counterParty);
 		emit UserWindowUpdated(user, collateral, counterParty);
 	}
 

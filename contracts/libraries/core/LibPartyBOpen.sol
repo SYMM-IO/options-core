@@ -176,17 +176,20 @@ library LibPartyBOpen {
 			(intent.tradeAgreements.tradeSide == TradeSide.SELL && price < intent.price)
 		) revert PartyBOpenFacetErrors.InvalidOpenPrice(price, intent.price);
 
-		address affiliateFeeCollector = feeLayout.affiliateFeeCollector[intent.affiliate] == address(0)
-			? feeLayout.defaultFeeCollector
-			: feeLayout.affiliateFeeCollector[intent.affiliate];
+		{
+			address affiliateFeeCollector = feeLayout.affiliateFeeCollector[intent.affiliate] == address(0)
+				? feeLayout.defaultFeeCollector
+				: feeLayout.affiliateFeeCollector[intent.affiliate];
+			address feeToken = intent.tradingFee.feeToken;
 
-		address feeToken = intent.tradingFee.feeToken;
+			ScheduledReleaseBalance storage defaultFeeCollectorBalance = feeLayout.defaultFeeCollector.balanceOf(feeToken);
+			defaultFeeCollectorBalance.setup(feeLayout.defaultFeeCollector, feeToken);
+			defaultFeeCollectorBalance.instantIsolatedAdd(intent.getTradingFee(), IncreaseBalanceReason.FEE);
 
-		accountLayout.balances[feeLayout.defaultFeeCollector][feeToken].setup(feeLayout.defaultFeeCollector, feeToken);
-		accountLayout.balances[feeLayout.defaultFeeCollector][feeToken].instantIsolatedAdd(intent.getTradingFee(), IncreaseBalanceReason.FEE);
-
-		accountLayout.balances[affiliateFeeCollector][feeToken].setup(affiliateFeeCollector, feeToken);
-		accountLayout.balances[affiliateFeeCollector][feeToken].instantIsolatedAdd(intent.getAffiliateFee(), IncreaseBalanceReason.FEE);
+			ScheduledReleaseBalance storage affiliateFeeCollectorBalance = affiliateFeeCollector.balanceOf(feeToken);
+			affiliateFeeCollectorBalance.setup(affiliateFeeCollector, feeToken);
+			affiliateFeeCollectorBalance.instantIsolatedAdd(intent.getAffiliateFee(), IncreaseBalanceReason.FEE);
+		}
 
 		tradeId = ++TradeStorage.layout().lastTradeId;
 		Trade memory trade = Trade({
@@ -268,37 +271,26 @@ library LibPartyBOpen {
 		intent.remove(false);
 
 		trade.save();
-		accountLayout.balances[trade.partyB][symbol.collateral].setup(trade.partyB, symbol.collateral); 
+
+		ScheduledReleaseBalance storage partyABalance = trade.partyA.balanceOf(symbol.collateral);
+		ScheduledReleaseBalance storage partyBBalance = trade.partyB.balanceOf(symbol.collateral);
+
+		partyBBalance.setup(trade.partyB, symbol.collateral);
 
 		if (intent.tradeAgreements.tradeSide == TradeSide.BUY) {
 			if (intent.tradeAgreements.marginType == MarginType.CROSS) {
-				accountLayout.balances[trade.partyA][symbol.collateral].crossUnlock(trade.partyB, intent.getPremium());
+				partyABalance.crossUnlock(trade.partyB, intent.getPremium());
 			} else {
-				accountLayout.balances[trade.partyA][symbol.collateral].isolatedUnlock(intent.getPremium()); 
+				partyABalance.isolatedUnlock(intent.getPremium());
 			}
-			accountLayout.balances[trade.partyA][symbol.collateral].subForCounterParty(
-				trade.partyB,
-				trade.getPremium(),
-				intent.tradeAgreements.marginType,
-				DecreaseBalanceReason.PREMIUM
-			);
+			partyABalance.subForCounterParty(trade.partyB, trade.getPremium(), intent.tradeAgreements.marginType, DecreaseBalanceReason.PREMIUM);
 		} else {
 			if (intent.tradeAgreements.marginType == MarginType.CROSS) {
-				accountLayout.balances[trade.partyA][symbol.collateral].crossUnlock(trade.partyB, trade.tradeAgreements.mm);
-				accountLayout.balances[trade.partyA][symbol.collateral].increaseMM(trade.partyB, trade.tradeAgreements.mm);
+				partyABalance.crossUnlock(trade.partyB, trade.tradeAgreements.mm);
+				partyABalance.increaseMM(trade.partyB, trade.tradeAgreements.mm);
 			}
-			accountLayout.balances[trade.partyB][symbol.collateral].subForCounterParty(
-				trade.partyA,
-				trade.getPremium(),
-				trade.tradeAgreements.marginType,
-				DecreaseBalanceReason.PREMIUM
-			);
-			accountLayout.balances[trade.partyA][symbol.collateral].scheduledAdd(
-				trade.partyB,
-				trade.getPremium(),
-				MarginType.CROSS,
-				IncreaseBalanceReason.PREMIUM
-			);
+			partyBBalance.subForCounterParty(trade.partyA, trade.getPremium(), trade.tradeAgreements.marginType, DecreaseBalanceReason.PREMIUM);
+			partyABalance.scheduledAdd(trade.partyB, trade.getPremium(), MarginType.CROSS, IncreaseBalanceReason.PREMIUM);
 		}
 		if (trade.tradeAgreements.marginType == MarginType.CROSS) {
 			accountLayout.nonces[trade.partyA][trade.partyB] += 1;

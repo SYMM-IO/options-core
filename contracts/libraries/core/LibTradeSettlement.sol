@@ -59,7 +59,7 @@ library LibTradeSettlement {
 				trade.close(TradeStatus.EXPIRED, CloseIntentStatus.CANCELED);
 				isExpired = true;
 			}
-		} else {			
+		} else {
 			if (sig.settlementPrice > trade.tradeAgreements.strikePrice) {
 				isExpired = false;
 			} else {
@@ -81,57 +81,46 @@ library LibTradeSettlement {
 			uint256 pnl = trade.getPnl(sig.settlementPrice, trade.getOpenAmount());
 
 			uint256 exerciseFee = trade.getExerciseFee(sig.settlementPrice, pnl);
-			uint256 amountToTransfer = pnl - exerciseFee; 
+			uint256 amountToTransfer = pnl - exerciseFee;
 
 			amountToTransfer = (amountToTransfer * 1e18) / sig.collateralPrice;
 
 			trade.settledPrice = sig.settlementPrice;
 
+			ScheduledReleaseBalance storage partyABalance = trade.partyA.balanceOf(symbol.collateral);
+			ScheduledReleaseBalance storage partyBBalance = trade.partyB.balanceOf(symbol.collateral);
+
 			if (trade.tradeAgreements.tradeSide == TradeSide.BUY) {
 				if (trade.tradeAgreements.marginType == MarginType.ISOLATED) {
-					accountLayout.balances[trade.partyB][symbol.collateral].instantIsolatedAdd(
+					partyBBalance.instantIsolatedAdd(
 						(trade.getPremium() * trade.getOpenAmount()) / trade.tradeAgreements.quantity,
 						IncreaseBalanceReason.PREMIUM
 					);
 				} else {
-					accountLayout.balances[trade.partyB][symbol.collateral].scheduledAdd(
+					partyBBalance.scheduledAdd(
 						trade.partyA,
 						(trade.getPremium() * trade.getOpenAmount()) / trade.tradeAgreements.quantity,
 						trade.tradeAgreements.marginType,
 						IncreaseBalanceReason.PREMIUM
 					);
 				}
-				accountLayout.balances[trade.partyB][symbol.collateral].subForCounterParty(
+				partyBBalance.subForCounterParty(
 					trade.partyA,
 					amountToTransfer,
 					trade.tradeAgreements.marginType,
 					DecreaseBalanceReason.REALIZED_PNL
 				);
-				accountLayout.balances[trade.partyA][symbol.collateral].scheduledAdd(
-					trade.partyB,
-					amountToTransfer,
-					trade.tradeAgreements.marginType,
-					IncreaseBalanceReason.REALIZED_PNL
-				);
+				partyABalance.scheduledAdd(trade.partyB, amountToTransfer, trade.tradeAgreements.marginType, IncreaseBalanceReason.REALIZED_PNL);
 			} else {
-				if (trade.tradeAgreements.marginType == MarginType.CROSS) {
-					accountLayout.balances[trade.partyA][symbol.collateral].decreaseMM(
-						trade.partyB,
-						(trade.tradeAgreements.mm * trade.getOpenAmount()) / trade.tradeAgreements.quantity
-					);
-				}
-				accountLayout.balances[trade.partyA][symbol.collateral].subForCounterParty(
+				if (trade.tradeAgreements.marginType == MarginType.CROSS)
+					partyABalance.decreaseMM(trade.partyB, (trade.tradeAgreements.mm * trade.getOpenAmount()) / trade.tradeAgreements.quantity);
+				partyABalance.subForCounterParty(
 					trade.partyB,
 					amountToTransfer,
 					trade.tradeAgreements.marginType,
 					DecreaseBalanceReason.REALIZED_PNL
 				);
-				accountLayout.balances[trade.partyB][symbol.collateral].scheduledAdd(
-					trade.partyB,
-					amountToTransfer,
-					trade.tradeAgreements.marginType,
-					IncreaseBalanceReason.REALIZED_PNL
-				);
+				partyBBalance.scheduledAdd(trade.partyB, amountToTransfer, trade.tradeAgreements.marginType, IncreaseBalanceReason.REALIZED_PNL);
 			}
 
 			trade.close(TradeStatus.EXERCISED, CloseIntentStatus.CANCELED);

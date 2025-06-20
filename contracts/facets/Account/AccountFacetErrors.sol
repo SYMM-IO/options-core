@@ -7,8 +7,6 @@ pragma solidity >=0.8.19;
 library AccountFacetErrors {
 	error BalanceLimitPerUserReached(int256 balance, uint256 amount, uint256 limit);
 	// Instant action mode errors
-	error InstantActionModeAlreadyActivated(address user);
-	error InstantActionModeNotActivated(address user);
 	error InstantActionModeActive(address user);
 	error InstantActionModeDeactivationNotProposed(address user);
 

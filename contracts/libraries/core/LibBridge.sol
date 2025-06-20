@@ -5,24 +5,25 @@
 pragma solidity >=0.8.19;
 
 import { CommonErrors } from "../utils/CommonErrors.sol";
+import { LibDecimals } from "../utils/LibDecimals.sol";
 import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance.sol";
+import { LibParty } from "../models/LibParty.sol";
 
 import { AppStorage } from "../../storages/AppStorage.sol";
 import { BridgeStorage } from "../../storages/BridgeStorage.sol";
-import { AccountStorage } from "../../storages/AccountStorage.sol";
 
 import { BridgeTransaction, BridgeTransactionStatus } from "../../types/BridgeTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import { BridgeFacetErrors } from "../../facets/Bridge/BridgeFacetErrors.sol";
 
 library LibBridge {
 	using SafeERC20 for IERC20;
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
+	using LibParty for address;
 
 	function transferToBridge(
 		address sender,
@@ -31,18 +32,17 @@ library LibBridge {
 		address bridge,
 		address receiver
 	) internal returns (uint256 currentId) {
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		BridgeStorage.Layout storage bridgeLayout = BridgeStorage.layout();
 
 		if (!bridgeLayout.bridges[bridge]) revert BridgeFacetErrors.InvalidBridge(bridge);
 		if (bridge == sender) revert BridgeFacetErrors.SameBridgeAndSender(bridge);
 		if (receiver == address(0)) revert CommonErrors.ZeroAddress("receiver");
 
-		accountLayout.balances[sender][collateral].syncAll();
+		ScheduledReleaseBalance storage balance = sender.balanceOf(collateral);
+		balance.syncAll();
 
-		uint256 amountWith18Decimals = (amount * 1e18) / (10 ** IERC20Metadata(collateral).decimals());
-		if (accountLayout.balances[sender][collateral].isolatedBalance - accountLayout.balances[sender][collateral].isolatedLockedBalance < amount)
-			revert CommonErrors.InsufficientBalance(sender, collateral, amount, accountLayout.balances[sender][collateral].isolatedBalance);
+		if (balance.isolatedBalance - balance.isolatedLockedBalance < amount)
+			revert CommonErrors.InsufficientBalance(sender, collateral, amount, balance.isolatedBalance);
 
 		currentId = ++bridgeLayout.lastBridgeTransactionId;
 		BridgeTransaction memory bridgeTransaction = BridgeTransaction({
@@ -56,7 +56,7 @@ library LibBridge {
 			status: BridgeTransactionStatus.RECEIVED
 		});
 
-		accountLayout.balances[sender][collateral].isolatedSub(amountWith18Decimals, DecreaseBalanceReason.BRIDGE);
+		balance.isolatedSub(LibDecimals.normalizeAmount(collateral, amount), DecreaseBalanceReason.BRIDGE);
 
 		bridgeLayout.bridgeTransactions[currentId] = bridgeTransaction;
 		bridgeLayout.bridgeTransactionIds[bridge].push(currentId);
@@ -109,7 +109,6 @@ library LibBridge {
 
 	function restoreBridgeTransaction(uint256 transactionId, uint256 validAmount) internal {
 		BridgeStorage.Layout storage bridgeLayout = BridgeStorage.layout();
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		BridgeTransaction storage bridgeTransaction = bridgeLayout.bridgeTransactions[transactionId];
 
 		CommonErrors.requireStatus("BridgeTransactionStatus", uint8(bridgeTransaction.status), uint8(BridgeTransactionStatus.SUSPENDED));
@@ -118,14 +117,11 @@ library LibBridge {
 
 		if (validAmount > bridgeTransaction.amount) revert BridgeFacetErrors.HighValidAmount(validAmount, bridgeTransaction.amount);
 
-		accountLayout.balances[bridgeLayout.invalidBridgedAmountsPool][bridgeTransaction.collateral].setup(
-			bridgeLayout.invalidBridgedAmountsPool,
-			bridgeTransaction.collateral
-		);
-		uint256 invalidAmountWith18Decimals = ((bridgeTransaction.amount - validAmount) * 1e18) /
-			(10 ** IERC20Metadata(bridgeTransaction.collateral).decimals());
-		accountLayout.balances[bridgeLayout.invalidBridgedAmountsPool][bridgeTransaction.collateral].instantIsolatedAdd(
-			invalidAmountWith18Decimals,
+		ScheduledReleaseBalance storage balance = bridgeLayout.invalidBridgedAmountsPool.balanceOf(bridgeTransaction.collateral);
+
+		balance.setup(bridgeLayout.invalidBridgedAmountsPool, bridgeTransaction.collateral);
+		balance.instantIsolatedAdd(
+			LibDecimals.normalizeAmount(bridgeTransaction.collateral, bridgeTransaction.amount - validAmount),
 			IncreaseBalanceReason.BRIDGE
 		);
 		bridgeTransaction.status = BridgeTransactionStatus.RECEIVED;

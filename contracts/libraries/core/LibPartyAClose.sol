@@ -91,7 +91,7 @@ library LibPartyAClose {
 
 		if (receiver == address(0)) revert CommonErrors.ZeroAddress("receiver");
 
-		if (AppStorage.layout().partyBConfigs[receiver].isActive) revert PartyACloseFacetErrors.ReceiverIsPartyB(receiver, trade.partyB);
+		if (receiver.isPartyB()) revert PartyACloseFacetErrors.ReceiverIsPartyB(receiver, trade.partyB);
 
 		CommonErrors.requireStatus("TradeStatus", uint8(trade.status), uint8(TradeStatus.OPENED));
 

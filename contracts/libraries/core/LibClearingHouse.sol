@@ -110,7 +110,7 @@ library LibClearingHouse {
 		LiquidationDetail storage detail = _detail(address(0), partyB, collateral);
 		_requireStatus(detail, LiquidationStatus.FLAGGED);
 
-		uint256 isolatedBalance = AccountStorage.layout().balances[partyB][collateral].isolatedBalance;
+		uint256 isolatedBalance = partyB.balanceOf(collateral).isolatedBalance;
 
 		int256 effectiveUpnl = upnl > 0 ? upnl : (upnl * int256(AppStorage.layout().partyBConfigs[partyB].lossCoverage)) / 1e18;
 		if (int256(isolatedBalance) + (effectiveUpnl * 1e18) / int256(collateralPrice) >= 0) {
@@ -139,8 +139,7 @@ library LibClearingHouse {
 		LiquidationDetail storage detail = _detail(partyA, partyB, collateral);
 		_requireStatus(detail, LiquidationStatus.FLAGGED);
 
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		ScheduledReleaseBalance storage balB = accountLayout.balances[partyB][collateral];
+		ScheduledReleaseBalance storage balB = partyB.balanceOf(collateral);
 		CrossEntry storage crossBalance = balB.crossBalance[partyA];
 
 		int256 effectiveUpnl = upnl > 0 ? upnl : (upnl * int256(AppStorage.layout().partyBConfigs[partyB].lossCoverage)) / 1e18;
@@ -149,7 +148,7 @@ library LibClearingHouse {
 		}
 
 		if (crossBalance.balance > 0) {
-			accountLayout.balances[partyA][collateral].subForCounterParty(
+			partyA.balanceOf(collateral).subForCounterParty(
 				partyB,
 				uint256(crossBalance.balance),
 				MarginType.CROSS,
@@ -181,8 +180,7 @@ library LibClearingHouse {
 		LiquidationDetail storage detail = LiquidationStorage.layout().liquidationDetails[liquidationId];
 		_requireStatus(detail, LiquidationStatus.FLAGGED);
 
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		ScheduledReleaseBalance storage balA = accountLayout.balances[detail.partyA][detail.collateral];
+		ScheduledReleaseBalance storage balA = detail.partyA.balanceOf(detail.collateral);
 		CrossEntry storage crossBalance = balA.crossBalance[detail.partyB];
 
 		if ((crossBalance.balance - int256(crossBalance.totalMM)) + (upnl * 1e18) / int256(collateralPrice) >= 0) {
@@ -190,7 +188,7 @@ library LibClearingHouse {
 		}
 
 		if (crossBalance.balance > 0) {
-			ScheduledReleaseBalance storage balB = accountLayout.balances[detail.partyB][detail.collateral];
+			ScheduledReleaseBalance storage balB = detail.partyB.balanceOf(detail.collateral);
 			balA.subForCounterParty(detail.partyB, uint256(crossBalance.balance), MarginType.CROSS, DecreaseBalanceReason.LIQUIDATION);
 			balB.scheduledAdd(detail.partyB, uint256(crossBalance.balance), MarginType.CROSS, IncreaseBalanceReason.LIQUIDATION);
 		}
@@ -226,7 +224,7 @@ library LibClearingHouse {
 	}
 
 	function allocateFromReserveToCross(address party, address counterParty, address collateral, uint256 amount) internal {
-		ScheduledReleaseBalance storage balance = AccountStorage.layout().balances[party][collateral];
+		ScheduledReleaseBalance storage balance = party.balanceOf(collateral);
 		if (balance.reserveBalance < amount) revert();
 		balance.reserveBalance -= amount;
 		balance.crossBalance[counterParty].balance += int256(amount);
@@ -235,7 +233,7 @@ library LibClearingHouse {
 	function confiscatePartyA(uint256 liquidationId, uint256 amount) internal {
 		LiquidationDetail storage detail = LiquidationStorage.layout().liquidationDetails[liquidationId];
 
-		ScheduledReleaseBalance storage balance = AccountStorage.layout().balances[detail.partyA][detail.collateral];
+		ScheduledReleaseBalance storage balance = detail.partyA.balanceOf(detail.collateral);
 
 		int256 counterPartyBalance = balance.counterPartyBalance(detail.partyB, MarginType.CROSS);
 		if (counterPartyBalance < int256(amount))
@@ -248,11 +246,10 @@ library LibClearingHouse {
 	}
 
 	function confiscatePartyBWithdrawal(uint256 withdrawId) internal {
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		Withdraw storage withdrawal = accountLayout.withdrawals[withdrawId];
+		Withdraw storage withdrawal = AccountStorage.layout().withdrawals[withdrawId];
 		CommonErrors.requireStatus("WithdrawStatus", uint8(withdrawal.status), uint8(WithdrawStatus.INITIATED));
 		withdrawal.status = WithdrawStatus.CANCELED;
-		accountLayout.balances[withdrawal.user][withdrawal.collateral].instantIsolatedAdd(withdrawal.amount, IncreaseBalanceReason.DEPOSIT);
+		withdrawal.user.balanceOf(withdrawal.collateral).instantIsolatedAdd(withdrawal.amount, IncreaseBalanceReason.DEPOSIT);
 	}
 
 	function distributeCollateral(
@@ -264,8 +261,7 @@ library LibClearingHouse {
 	) internal {
 		if (partyAs.length != amounts.length) revert ClearingHouseFacetErrors.MismatchedArrays(partyAs.length, amounts.length);
 
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-		ScheduledReleaseBalance storage balanceB = accountLayout.balances[partyB][collateral];
+		ScheduledReleaseBalance storage balanceB = partyB.balanceOf(collateral);
 
 		uint256 totalAmount = 0;
 		for (uint256 i = 0; i < partyAs.length; i++) {
@@ -277,7 +273,7 @@ library LibClearingHouse {
 			balanceB.subForCounterParty(partyA, amount, marginType, DecreaseBalanceReason.LIQUIDATION);
 
 			// Add to partyA's balance
-			accountLayout.balances[partyA][collateral].scheduledAdd(partyB, amount, marginType, IncreaseBalanceReason.LIQUIDATION);
+			partyA.balanceOf(collateral).scheduledAdd(partyB, amount, marginType, IncreaseBalanceReason.LIQUIDATION);
 		}
 
 		if (balanceB.counterPartyBalance(partyB, marginType) < int256(totalAmount)) {

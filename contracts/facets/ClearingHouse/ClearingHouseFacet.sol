@@ -5,8 +5,7 @@
 pragma solidity >=0.8.19;
 
 import { LibAccessibility } from "../../libraries/core/LibAccessibility.sol";
-
-import { AccountStorage } from "../../storages/AccountStorage.sol";
+import { LibParty } from "../../libraries/models/LibParty.sol";
 
 import { Pausable } from "../../utils/Pausable.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
@@ -17,6 +16,8 @@ import { LibClearingHouse } from "../../libraries/core/LibClearingHouse.sol";
 import { MarginType } from "../../types/BaseTypes.sol";
 
 contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
+	using LibParty for address;
+
 	/**
 	 * @notice Flags Party B to be liquidated.
 	 * @param partyB The address of Party B to be liquidated.
@@ -57,14 +58,7 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 		uint256 collateralPrice
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
 		LibClearingHouse.liquidateIsolatedPartyB(partyB, collateral, upnl, collateralPrice);
-		emit LiquidateIsolatedPartyB(
-			msg.sender,
-			partyB,
-			collateral,
-			AccountStorage.layout().balances[partyB][collateral].isolatedBalance,
-			upnl,
-			collateralPrice
-		);
+		emit LiquidateIsolatedPartyB(msg.sender, partyB, collateral, partyB.balanceOf(collateral).isolatedBalance, upnl, collateralPrice);
 	}
 
 	function confiscatePartyA(
@@ -87,7 +81,7 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 		address[] memory partyAs,
 		uint256[] memory amounts
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-		LibClearingHouse.distributeCollateral(partyB, collateral,marginType, partyAs, amounts);
+		LibClearingHouse.distributeCollateral(partyB, collateral, marginType, partyAs, amounts);
 		emit DistributeCollateral(msg.sender, partyB, collateral, partyAs, amounts);
 		// if (isLiquidationFinished) {
 		// 	emit FullyLiquidated(partyB, liquidationId);
@@ -171,17 +165,13 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 		LibClearingHouse.allocateFromReserveToCross(party, counterParty, collateral, amount);
 	}
 
-    function cancelOpenIntents(
-        uint256[] calldata intentIds
-    ) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-        LibClearingHouse.cancelOpenIntents(intentIds);
+	function cancelOpenIntents(uint256[] calldata intentIds) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
+		LibClearingHouse.cancelOpenIntents(intentIds);
 		emit CancelOpenIntentsForLiquidation(msg.sender, intentIds);
-    }
+	}
 
-    function cancelCloseIntents(
-        uint256[] calldata intentIds
-    ) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-        LibClearingHouse.cancelCloseIntents(intentIds);
+	function cancelCloseIntents(uint256[] calldata intentIds) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
+		LibClearingHouse.cancelCloseIntents(intentIds);
 		emit CancelCloseIntentsForLiquidation(msg.sender, intentIds);
-    }
+	}
 }

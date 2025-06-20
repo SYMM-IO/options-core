@@ -5,8 +5,8 @@
 pragma solidity >=0.8.19;
 
 import { LibAccessibility } from "../libraries/core/LibAccessibility.sol";
+import { LibParty } from "../libraries/models/LibParty.sol";
 
-import { AppStorage } from "../storages/AppStorage.sol";
 import { TradeStorage } from "../storages/TradeStorage.sol";
 import { AccountStorage } from "../storages/AccountStorage.sol";
 import { StateControlStorage } from "../storages/StateControlStorage.sol";
@@ -16,9 +16,10 @@ import { Trade } from "../types/TradeTypes.sol";
 import { Withdraw } from "../types/WithdrawTypes.sol";
 
 abstract contract Accessibility {
+	using LibParty for address;
+
 	// Custom errors
 	error NotPartyB(address sender);
-	error IsPartyB(address sender);
 	error UserIsPartyB(address user);
 	error MissingRole(address sender, bytes32 role);
 	error NotPartyAOfTrade(address sender, uint256 tradeId, address partyA);
@@ -27,19 +28,20 @@ abstract contract Accessibility {
 	error ReceiverSuspended(address receiver);
 	error SuspendedWithdrawal(uint256 withdrawId);
 	error InstantActionModeActive(address sender);
+	error InstantActionModeNotActive(address sender);
 
 	modifier onlyPartyB() {
-		if (!AppStorage.layout().partyBConfigs[msg.sender].isActive) revert NotPartyB(msg.sender);
+		if (!msg.sender.isPartyB()) revert NotPartyB(msg.sender);
 		_;
 	}
 
 	modifier notPartyB() {
-		if (AppStorage.layout().partyBConfigs[msg.sender].isActive) revert IsPartyB(msg.sender);
+		if (msg.sender.isPartyB()) revert UserIsPartyB(msg.sender);
 		_;
 	}
 
 	modifier userNotPartyB(address user) {
-		if (AppStorage.layout().partyBConfigs[user].isActive) revert UserIsPartyB(user);
+		if (user.isPartyB()) revert UserIsPartyB(user);
 		_;
 	}
 
@@ -66,16 +68,25 @@ abstract contract Accessibility {
 	}
 
 	modifier notSuspendedWithdrawal(uint256 withdrawId) {
+		checkNotSuspendedWithdrawal(withdrawId); // To reduce code size
+		_;
+	}
+
+	function checkNotSuspendedWithdrawal(uint256 withdrawId) internal view {
 		Withdraw storage withdrawObject = AccountStorage.layout().withdrawals[withdrawId];
 		StateControlStorage.Layout storage stateControlLayout = StateControlStorage.layout();
 		if (stateControlLayout.suspendedAddresses[withdrawObject.user]) revert UserSuspended(withdrawObject.user);
 		if (stateControlLayout.suspendedAddresses[withdrawObject.to]) revert ReceiverSuspended(withdrawObject.to);
 		if (stateControlLayout.suspendedWithdrawal[withdrawId]) revert SuspendedWithdrawal(withdrawId);
-		_;
 	}
 
 	modifier inactiveInstantMode(address sender) {
 		if (CounterPartyRelationsStorage.layout().instantActionsMode[sender]) revert InstantActionModeActive(sender);
+		_;
+	}
+
+	modifier activeInstantMode(address sender) {
+		if (!CounterPartyRelationsStorage.layout().instantActionsMode[sender]) revert InstantActionModeNotActive(sender);
 		_;
 	}
 }

@@ -4,6 +4,8 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
+import { LibParty } from "../models/LibParty.sol";
+
 import { CommonErrors } from "../utils/CommonErrors.sol";
 
 import { AppStorage } from "../../storages/AppStorage.sol";
@@ -12,27 +14,15 @@ import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelatio
 import { AccountFacetErrors } from "../../facets/Account/AccountFacetErrors.sol";
 
 library LibPartyBManagement {
+	using LibParty for address;
+
 	function activateInstantActionMode() internal {
-		CounterPartyRelationsStorage.Layout storage layout = CounterPartyRelationsStorage.layout();
-
-		if (layout.instantActionsMode[msg.sender]) {
-			revert AccountFacetErrors.InstantActionModeAlreadyActivated(msg.sender);
-		}
-
-		if (CounterPartyRelationsStorage.layout().boundPartyB[msg.sender] == address(0)) {
-			revert AccountFacetErrors.NotBoundToAnyPartyB(msg.sender);
-		}
-
-		layout.instantActionsMode[msg.sender] = true;
+		if (CounterPartyRelationsStorage.layout().boundPartyB[msg.sender] == address(0)) revert AccountFacetErrors.NotBoundToAnyPartyB(msg.sender);
+		CounterPartyRelationsStorage.layout().instantActionsMode[msg.sender] = true;
 	}
 
 	function proposeToDeactivateInstantActionMode() internal {
 		CounterPartyRelationsStorage.Layout storage layout = CounterPartyRelationsStorage.layout();
-
-		if (!layout.instantActionsMode[msg.sender]) {
-			revert AccountFacetErrors.InstantActionModeNotActivated(msg.sender);
-		}
-
 		layout.instantActionsModeDeactivateTime[msg.sender] = block.timestamp + layout.deactiveInstantActionModeCooldown;
 	}
 
@@ -56,10 +46,9 @@ library LibPartyBManagement {
 	}
 
 	function bindToPartyB(address partyB) internal {
-		AppStorage.Layout storage appLayout = AppStorage.layout();
 		CounterPartyRelationsStorage.Layout storage counterPartyRelationsLayout = CounterPartyRelationsStorage.layout();
 
-		if (!appLayout.partyBConfigs[partyB].isActive) {
+		if (!partyB.isPartyB()) {
 			revert AccountFacetErrors.PartyBNotActive(partyB);
 		}
 
