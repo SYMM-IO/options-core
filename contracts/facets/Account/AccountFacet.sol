@@ -5,13 +5,11 @@
 pragma solidity >=0.8.19;
 
 import { LibAccessibility } from "../../libraries/core/LibAccessibility.sol";
-import { LibPartyBManagement } from "../../libraries/core/LibPartyBManagement.sol";
 import { LibBalanceOperations } from "../../libraries/core/LibBalanceOperations.sol";
 import { LibAllocationOperations } from "../../libraries/core/LibAllocationOperations.sol";
 import { LibParty } from "../../libraries/models/LibParty.sol";
 
 import { AccountStorage, Withdraw } from "../../storages/AccountStorage.sol";
-import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
 
 import { UpnlSig } from "../../types/WithdrawTypes.sol";
 
@@ -22,7 +20,7 @@ import { IAccountFacet } from "./IAccountFacet.sol";
 
 /**
  * @title AccountFacet
- * @notice Manages account operations including deposits, withdrawals, and PartyA/PartyB relationships
+ * @notice Manages account operations including deposits, withdrawals
  * @dev Implements the IAccountFacet interface with access control and pausability
  */
 contract AccountFacet is Accessibility, Pausable, IAccountFacet {
@@ -157,71 +155,6 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	}
 
 	/**
-	 * @notice Enables the instant action mode for a PartyA
-	 * @dev Only callable by PartyA accounts, not PartyB
-	 */
-	function activateInstantActionMode() external onlyNotPartyB(msg.sender) whenInstantModeIsNotActive(msg.sender) whenPartyNotPaused(msg.sender) {
-		LibPartyBManagement.activateInstantActionMode();
-		emit ActivateInstantActionMode(msg.sender, block.timestamp);
-	}
-
-	/**
-	 * @notice Initiates the process to deactivate instant action mode
-	 * @dev Only callable by PartyA accounts, starts a time-delayed process
-	 */
-	function proposeToDeactivateInstantActionMode() external onlyNotPartyB(msg.sender) whenInstantModeIsActive(msg.sender) whenPartyNotPaused(msg.sender) {
-		LibPartyBManagement.proposeToDeactivateInstantActionMode();
-		emit ProposeToDeactivateInstantActionMode(msg.sender, block.timestamp);
-	}
-
-	/**
-	 * @notice Completes the deactivation of instant action mode after proposal
-	 * @dev Only callable by PartyA accounts after the waiting period has passed
-	 */
-	function deactivateInstantActionMode() external onlyNotPartyB(msg.sender) whenPartyNotPaused(msg.sender) {
-		LibPartyBManagement.deactivateInstantActionMode();
-		emit DeactivateInstantActionMode(msg.sender, block.timestamp);
-	}
-
-	/**
-	 * @notice Creates a binding relationship between a PartyA and a PartyB
-	 * @dev Only callable by PartyA accounts when PartyA actions are not paused
-	 * @param partyB The address of the PartyB to establish a relationship with
-	 */
-	function bindToPartyB(address partyB) external onlyNotPartyB(msg.sender) whenPartyNotPaused(msg.sender) {
-		LibPartyBManagement.bindToPartyB(partyB);
-		emit BindToPartyB(msg.sender, partyB);
-	}
-
-	/**
-	 * @notice Begins the process of terminating a relationship with a PartyB
-	 * @dev Starts a cooldown period before the unbinding can be completed
-	 */
-	function initiateUnbindingFromPartyB() external onlyNotPartyB(msg.sender) whenPartyNotPaused(msg.sender) {
-		LibPartyBManagement.initiateUnbindingFromPartyB();
-		emit InitiateUnbindingFromPartyB(msg.sender, CounterPartyRelationsStorage.layout().boundPartyB[msg.sender], block.timestamp);
-	}
-
-	/**
-	 * @notice Finalizes the unbinding process from a PartyB after the cooldown period
-	 * @dev Only callable after the required waiting period from initiation has passed
-	 */
-	function completeUnbindingFromPartyB() external onlyNotPartyB(msg.sender) whenPartyNotPaused(msg.sender) {
-		address previousPartyB = CounterPartyRelationsStorage.layout().boundPartyB[msg.sender];
-		LibPartyBManagement.completeUnbindingFromPartyB();
-		emit CompleteUnbindingFromPartyB(msg.sender, previousPartyB);
-	}
-
-	/**
-	 * @notice Revokes a pending request to unbind from a PartyB
-	 * @dev Can only be called during the cooldown period after initiation
-	 */
-	function cancelUnbindingFromPartyB() external onlyNotPartyB(msg.sender) whenPartyNotPaused(msg.sender) {
-		LibPartyBManagement.cancelUnbindingFromPartyB();
-		emit CancelUnbindingFromPartyB(msg.sender, CounterPartyRelationsStorage.layout().boundPartyB[msg.sender]);
-	}
-
-	/**
 	 * @notice Synchronizes balances between a PartyA and multiple PartyBs
 	 * @dev Updates internal accounting to reflect the latest state across parties
 	 * @param collateral The address of the collateral token to synchronize
@@ -268,7 +201,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		uint256 amount,
 		bool isPartyB,
 		UpnlSig memory upnlSig
-	) external whenNotSuspended(msg.sender) whenPartyNotPaused(msg.sender) {
+	) external whenNotSuspended(msg.sender) whenInstantModeIsNotActive(msg.sender) whenPartyNotPaused(msg.sender) {
 		LibAllocationOperations.deallocate(collateral, counterParty, amount, isPartyB, upnlSig);
 		emit Deallocate(
 			msg.sender,
@@ -285,7 +218,10 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @param collateral The address of the collateral token to deallocate
 	 * @param amount The amount of collateral to be allocated
 	 */
-	function allocateToReserveBalance(address collateral, uint256 amount) external whenPartyNotPaused(msg.sender) {
+	function allocateToReserveBalance(
+		address collateral,
+		uint256 amount
+	) external whenInstantModeIsNotActive(msg.sender) whenPartyNotPaused(msg.sender) {
 		LibAllocationOperations.allocateToReserveBalance(collateral, amount);
 		emit AllocateToReserveBalance(msg.sender, collateral, amount, msg.sender.balanceOf(collateral).isolatedBalance);
 	}
@@ -295,7 +231,10 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @param collateral The address of the collateral token to deallocate
 	 * @param amount The amount of collateral to be deallocated
 	 */
-	function deallocateFromReserveBalance(address collateral, uint256 amount) external whenPartyNotPaused(msg.sender) {
+	function deallocateFromReserveBalance(
+		address collateral,
+		uint256 amount
+	) external whenInstantModeIsNotActive(msg.sender) whenPartyNotPaused(msg.sender) {
 		LibAllocationOperations.deallocateFromReserveBalance(collateral, amount);
 		emit DeallocateFromReserveBalance(msg.sender, collateral, amount, msg.sender.balanceOf(collateral).isolatedBalance);
 	}

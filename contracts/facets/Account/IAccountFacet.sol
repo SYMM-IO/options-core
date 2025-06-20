@@ -23,20 +23,6 @@ interface IAccountFacet is IAccountEvents {
 
 	function cancelWithdraw(uint256 id) external;
 
-	function activateInstantActionMode() external;
-
-	function proposeToDeactivateInstantActionMode() external;
-
-	function deactivateInstantActionMode() external;
-
-	function bindToPartyB(address partyB) external;
-
-	function initiateUnbindingFromPartyB() external;
-
-	function completeUnbindingFromPartyB() external;
-
-	function cancelUnbindingFromPartyB() external;
-
 	function syncBalances(address collateral, address partyA, address[] calldata partyBs) external;
 
 	function allocate(address collateral, address counterParty, uint256 amount) external;

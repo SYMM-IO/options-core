@@ -8,16 +8,15 @@ import { LibParty } from "../models/LibParty.sol";
 
 import { CommonErrors } from "../utils/CommonErrors.sol";
 
-import { AppStorage } from "../../storages/AppStorage.sol";
 import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
 
-import { AccountFacetErrors } from "../../facets/Account/AccountFacetErrors.sol";
+import { CounterPartyRelationsFacetErrors } from "../../facets/CounterPartyRelations/CounterPartyRelationsFacetErrors.sol";
 
-library LibPartyBManagement {
+library LibCounterPartyRelations {
 	using LibParty for address;
 
 	function activateInstantActionMode() internal {
-		if (CounterPartyRelationsStorage.layout().boundPartyB[msg.sender] == address(0)) revert AccountFacetErrors.NotBoundToAnyPartyB(msg.sender);
+		if (CounterPartyRelationsStorage.layout().boundPartyB[msg.sender] == address(0)) revert CounterPartyRelationsFacetErrors.NotBoundToAnyPartyB(msg.sender);
 		CounterPartyRelationsStorage.layout().instantActionsMode[msg.sender] = true;
 	}
 
@@ -30,7 +29,7 @@ library LibPartyBManagement {
 		CounterPartyRelationsStorage.Layout storage layout = CounterPartyRelationsStorage.layout();
 
 		if (layout.instantActionsModeDeactivateTime[msg.sender] == 0) {
-			revert AccountFacetErrors.InstantActionModeDeactivationNotProposed(msg.sender);
+			revert CounterPartyRelationsFacetErrors.InstantActionModeDeactivationNotProposed(msg.sender);
 		}
 
 		if (layout.instantActionsModeDeactivateTime[msg.sender] > block.timestamp) {
@@ -49,11 +48,11 @@ library LibPartyBManagement {
 		CounterPartyRelationsStorage.Layout storage counterPartyRelationsLayout = CounterPartyRelationsStorage.layout();
 
 		if (!partyB.isPartyB()) {
-			revert AccountFacetErrors.PartyBNotActive(partyB);
+			revert CounterPartyRelationsFacetErrors.PartyBNotActive(partyB);
 		}
 
 		if (counterPartyRelationsLayout.boundPartyB[msg.sender] != address(0)) {
-			revert AccountFacetErrors.AlreadyBoundToPartyB(msg.sender, counterPartyRelationsLayout.boundPartyB[msg.sender]);
+			revert CounterPartyRelationsFacetErrors.AlreadyBoundToPartyB(msg.sender, counterPartyRelationsLayout.boundPartyB[msg.sender]);
 		}
 
 		counterPartyRelationsLayout.boundPartyB[msg.sender] = partyB;
@@ -64,15 +63,15 @@ library LibPartyBManagement {
 		address currentPartyB = counterPartyRelationsLayout.boundPartyB[msg.sender];
 
 		if (currentPartyB == address(0)) {
-			revert AccountFacetErrors.NotBoundToAnyPartyB(msg.sender);
+			revert CounterPartyRelationsFacetErrors.NotBoundToAnyPartyB(msg.sender);
 		}
 
 		if (counterPartyRelationsLayout.instantActionsMode[msg.sender]) {
-			revert AccountFacetErrors.InstantActionModeActive(msg.sender);
+			revert CounterPartyRelationsFacetErrors.InstantActionModeActive(msg.sender);
 		}
 
 		if (counterPartyRelationsLayout.unbindingRequestTime[msg.sender] != 0) {
-			revert AccountFacetErrors.UnbindingAlreadyInitiated(msg.sender, counterPartyRelationsLayout.unbindingRequestTime[msg.sender]);
+			revert CounterPartyRelationsFacetErrors.UnbindingAlreadyInitiated(msg.sender, counterPartyRelationsLayout.unbindingRequestTime[msg.sender]);
 		}
 
 		counterPartyRelationsLayout.unbindingRequestTime[msg.sender] = block.timestamp;
@@ -83,11 +82,11 @@ library LibPartyBManagement {
 		address currentPartyB = counterPartyRelationsLayout.boundPartyB[msg.sender];
 
 		if (currentPartyB == address(0)) {
-			revert AccountFacetErrors.NotBoundToAnyPartyB(msg.sender);
+			revert CounterPartyRelationsFacetErrors.NotBoundToAnyPartyB(msg.sender);
 		}
 
 		if (counterPartyRelationsLayout.unbindingRequestTime[msg.sender] == 0) {
-			revert AccountFacetErrors.UnbindingNotInitiated(msg.sender);
+			revert CounterPartyRelationsFacetErrors.UnbindingNotInitiated(msg.sender);
 		}
 
 		uint256 requiredTime = counterPartyRelationsLayout.unbindingRequestTime[msg.sender] + counterPartyRelationsLayout.unbindingCooldown;
@@ -103,7 +102,7 @@ library LibPartyBManagement {
 		CounterPartyRelationsStorage.Layout storage counterPartyRelationsLayout = CounterPartyRelationsStorage.layout();
 
 		if (counterPartyRelationsLayout.unbindingRequestTime[msg.sender] == 0) {
-			revert AccountFacetErrors.UnbindingNotInitiated(msg.sender);
+			revert CounterPartyRelationsFacetErrors.UnbindingNotInitiated(msg.sender);
 		}
 
 		delete counterPartyRelationsLayout.unbindingRequestTime[msg.sender];

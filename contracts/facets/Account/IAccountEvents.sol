@@ -17,13 +17,6 @@ interface IAccountEvents {
 	event InitiateWithdraw(uint256 id, address user, address to, address collateral, uint256 amount, uint256 newBalance);
 	event CompleteWithdraw(uint256 id);
 	event CancelWithdraw(uint256 id, address user, address collateral, uint256 amount, uint256 newBalance);
-	event ActivateInstantActionMode(address user, uint256 timestamp);
-	event ProposeToDeactivateInstantActionMode(address user, uint256 timestamp);
-	event DeactivateInstantActionMode(address user, uint256 timestamp);
-	event BindToPartyB(address indexed partyA, address indexed partyB);
-	event InitiateUnbindingFromPartyB(address indexed partyA, address indexed partyB, uint256 initiationTime);
-	event CompleteUnbindingFromPartyB(address indexed partyA, address indexed partyB);
-	event CancelUnbindingFromPartyB(address indexed partyA, address indexed partyB);
 	event Allocate(
 		address indexed user,
 		address indexed collateral,

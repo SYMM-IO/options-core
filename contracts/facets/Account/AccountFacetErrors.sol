@@ -6,20 +6,9 @@ pragma solidity >=0.8.19;
 
 library AccountFacetErrors {
 	error BalanceLimitPerUserReached(int256 balance, uint256 amount, uint256 limit);
-	// Instant action mode errors
-	error InstantActionModeActive(address user);
-	error InstantActionModeDeactivationNotProposed(address user);
 
 	// Withdraw errors
 	error InvalidWithdrawId(uint256 id, uint256 lastWithdrawId);
-
-	// PartyB binding errors
-	error PartyBNotActive(address partyB);
-	error AlreadyBoundToPartyB(address user, address partyB);
-	error NotBoundToAnyPartyB(address user);
-	error UnbindingAlreadyInitiated(address user, uint256 requestTime);
-	error UnbindingNotInitiated(address user);
-	error UnbindingCooldownNotReached(address user, uint256 currentTime, uint256 requiredTime);
 
 	// deallocate errors
 	error InvalidCounterPartyToAllocate(address party, address counterParty);
