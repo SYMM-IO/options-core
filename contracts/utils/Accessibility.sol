@@ -15,50 +15,40 @@ import { CounterPartyRelationsStorage } from "../storages/CounterPartyRelationsS
 import { Trade } from "../types/TradeTypes.sol";
 import { Withdraw } from "../types/WithdrawTypes.sol";
 
+import { AccessibilityErrors } from "../errors/AccessibilityErrors.sol";
+
 abstract contract Accessibility {
 	using LibParty for address;
 
-	// Custom errors
-	error NotPartyB(address sender);
-	error UserIsPartyB(address user);
-	error MissingRole(address sender, bytes32 role);
-	error NotPartyAOfTrade(address sender, uint256 tradeId, address partyA);
-	error NotPartyBOfTrade(address sender, uint256 tradeId, address partyB);
-	error UserSuspended(address user);
-	error ReceiverSuspended(address receiver);
-	error SuspendedWithdrawal(uint256 withdrawId);
-	error InstantActionModeActive(address sender);
-	error InstantActionModeNotActive(address sender);
-
 	modifier onlyPartyB(address user) {
-		if (!user.isPartyB()) revert NotPartyB(user);
+		if (!user.isPartyB()) revert AccessibilityErrors.NotPartyB(user);
 		_;
 	}
 
 	modifier onlyNotPartyB(address user) {
-		if (user.isPartyB()) revert UserIsPartyB(user);
+		if (user.isPartyB()) revert AccessibilityErrors.UserIsPartyB(user);
 		_;
 	}
 
 	modifier onlyRole(bytes32 role) {
-		if (!LibAccessibility.hasRole(msg.sender, role)) revert MissingRole(msg.sender, role);
+		if (!LibAccessibility.hasRole(msg.sender, role)) revert AccessibilityErrors.MissingRole(msg.sender, role);
 		_;
 	}
 
 	modifier onlyPartyAOfTrade(uint256 tradeId) {
 		Trade storage trade = TradeStorage.layout().trades[tradeId];
-		if (trade.partyA != msg.sender) revert NotPartyAOfTrade(msg.sender, tradeId, trade.partyA);
+		if (trade.partyA != msg.sender) revert AccessibilityErrors.NotPartyAOfTrade(msg.sender, tradeId, trade.partyA);
 		_;
 	}
 
 	modifier onlyPartyBOfTrade(uint256 tradeId) {
 		Trade storage trade = TradeStorage.layout().trades[tradeId];
-		if (trade.partyB != msg.sender) revert NotPartyBOfTrade(msg.sender, tradeId, trade.partyB);
+		if (trade.partyB != msg.sender) revert AccessibilityErrors.NotPartyBOfTrade(msg.sender, tradeId, trade.partyB);
 		_;
 	}
 
 	modifier whenNotSuspended(address user) {
-		if (StateControlStorage.layout().suspendedAddresses[user]) revert UserSuspended(user);
+		if (StateControlStorage.layout().suspendedAddresses[user]) revert AccessibilityErrors.UserSuspended(user);
 		_;
 	}
 
@@ -70,18 +60,18 @@ abstract contract Accessibility {
 	function checkNotSuspendedWithdrawal(uint256 withdrawId) internal view {
 		Withdraw storage withdrawObject = AccountStorage.layout().withdrawals[withdrawId];
 		StateControlStorage.Layout storage stateControlLayout = StateControlStorage.layout();
-		if (stateControlLayout.suspendedAddresses[withdrawObject.user]) revert UserSuspended(withdrawObject.user);
-		if (stateControlLayout.suspendedAddresses[withdrawObject.to]) revert ReceiverSuspended(withdrawObject.to);
-		if (stateControlLayout.suspendedWithdrawal[withdrawId]) revert SuspendedWithdrawal(withdrawId);
+		if (stateControlLayout.suspendedAddresses[withdrawObject.user]) revert AccessibilityErrors.UserSuspended(withdrawObject.user);
+		if (stateControlLayout.suspendedAddresses[withdrawObject.to]) revert AccessibilityErrors.ReceiverSuspended(withdrawObject.to);
+		if (stateControlLayout.suspendedWithdrawal[withdrawId]) revert AccessibilityErrors.SuspendedWithdrawal(withdrawId);
 	}
 
 	modifier whenInstantModeIsNotActive(address sender) {
-		if (CounterPartyRelationsStorage.layout().instantActionsMode[sender]) revert InstantActionModeActive(sender);
+		if (CounterPartyRelationsStorage.layout().instantActionsMode[sender]) revert AccessibilityErrors.InstantModeActive(sender);
 		_;
 	}
 
 	modifier whenInstantModeIsActive(address sender) {
-		if (!CounterPartyRelationsStorage.layout().instantActionsMode[sender]) revert InstantActionModeNotActive(sender);
+		if (!CounterPartyRelationsStorage.layout().instantActionsMode[sender]) revert AccessibilityErrors.InstantActionModeNotActive(sender);
 		_;
 	}
 }

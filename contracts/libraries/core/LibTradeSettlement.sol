@@ -7,7 +7,6 @@ pragma solidity >=0.8.19;
 import { LibMuon } from "../../libraries/services/LibMuon.sol";
 import { LibParty } from "../../libraries/models/LibParty.sol";
 import { LibTradeOps } from "../../libraries/models/LibTrade.sol";
-import { CommonErrors } from "../../libraries/utils/CommonErrors.sol";
 import { ScheduledReleaseBalanceOps } from "../../libraries/models/LibScheduledReleaseBalance.sol";
 
 import { AppStorage } from "../../storages/AppStorage.sol";
@@ -22,7 +21,8 @@ import { Symbol, OptionType } from "../../types/SymbolTypes.sol";
 import { SettlementPriceSig } from "../../types/SettlementTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 
-import { TradeSettlementFacetErrors } from "../../facets/TradeSettlement/TradeSettlementFacetErrors.sol";
+import { CommonErrors } from "../../errors/CommonErrors.sol";
+import { TradeSettlementErrors } from "../../errors/TradeSettlementErrors.sol";
 
 library LibTradeSettlement {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
@@ -44,12 +44,12 @@ library LibTradeSettlement {
 		}
 
 		if (sig.symbolId != trade.tradeAgreements.symbolId)
-			revert TradeSettlementFacetErrors.InvalidSymbolId(sig.symbolId, trade.tradeAgreements.symbolId);
+			revert TradeSettlementErrors.MismatchedSymbolId(sig.symbolId, trade.tradeAgreements.symbolId);
 
 		CommonErrors.requireStatus("TradeStatus", uint8(trade.status), uint8(TradeStatus.OPENED));
 
 		if (block.timestamp <= trade.tradeAgreements.expirationTimestamp)
-			revert TradeSettlementFacetErrors.TradeNotExpired(tradeId, block.timestamp, trade.tradeAgreements.expirationTimestamp);
+			revert TradeSettlementErrors.TradeNotYetExpired(tradeId, block.timestamp, trade.tradeAgreements.expirationTimestamp);
 
 		if (symbol.optionType == OptionType.PUT) {
 			if (sig.settlementPrice < trade.tradeAgreements.strikePrice) {
@@ -72,7 +72,7 @@ library LibTradeSettlement {
 		if (!isExpired) {
 			if (msg.sender != trade.partyB) {
 				if (trade.tradeAgreements.expirationTimestamp + appLayout.ownerExclusiveWindow > block.timestamp)
-					revert TradeSettlementFacetErrors.OwnerExclusiveWindowActive(
+					revert TradeSettlementErrors.OwnerExclusiveWindowActive(
 						block.timestamp,
 						trade.tradeAgreements.expirationTimestamp + appLayout.ownerExclusiveWindow
 					);

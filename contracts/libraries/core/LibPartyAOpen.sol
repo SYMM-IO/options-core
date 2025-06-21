@@ -6,7 +6,6 @@ pragma solidity >=0.8.19;
 
 import { LibUserData } from "../utils/LibUserData.sol";
 import { LibParty } from "../models/LibParty.sol";
-import { CommonErrors } from "../utils/CommonErrors.sol";
 import { LibOpenIntentOps } from "../models/LibOpenIntent.sol";
 import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance.sol";
 
@@ -21,8 +20,11 @@ import { OpenIntent, OpenIntentStatus } from "../../types/IntentTypes.sol";
 import { ScheduledReleaseBalance } from "../../types/BalanceTypes.sol";
 import { ExerciseFee, TradingFee, TradeSide, TradeAgreements, MarginType } from "../../types/BaseTypes.sol";
 
+import { CommonErrors } from "../../errors/CommonErrors.sol";
+import { PartyAOpenErrors } from "../../errors/PartyAOpenErrors.sol";
+import { CounterPartyRelationsErrors } from "../../errors/CounterPartyRelationsErrors.sol";
+
 import { IPriceOracle } from "../../interfaces/IPriceOracle.sol";
-import { PartyAOpenFacetErrors } from "../../facets/PartyAOpen/PartyAOpenFacetErrors.sol";
 
 library LibPartyAOpen {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
@@ -45,42 +47,38 @@ library LibPartyAOpen {
 		Symbol memory symbol = SymbolStorage.layout().symbols[tradeAgreements.symbolId];
 
 		// validate sender
-		if (sender.isPartyB()) revert PartyAOpenFacetErrors.SenderIsPartyB(sender);
-		if (StateControlStorage.layout().suspendedAddresses[sender]) revert CommonErrors.SuspendedAddress(sender);
+		if (sender.isPartyB()) revert PartyAOpenErrors.PartyBSender(sender);
+		if (StateControlStorage.layout().suspendedAddresses[sender]) revert CommonErrors.AddressSuspended(sender);
 		// validate partyB whitelist
 		for (uint8 i = 0; i < partyBsWhiteList.length; i++) {
-			if (partyBsWhiteList[i] == msg.sender) revert PartyAOpenFacetErrors.PartyAInPartyBWhitelist(msg.sender);
+			if (partyBsWhiteList[i] == msg.sender) revert PartyAOpenErrors.InvalidWhitelistEntry(msg.sender);
 		}
 		// validate trade agreements
 		if (!symbol.isValid) revert CommonErrors.InvalidSymbol(tradeAgreements.symbolId);
 		if (tradeAgreements.expirationTimestamp < block.timestamp)
-			revert PartyAOpenFacetErrors.LowExpirationTimestamp(tradeAgreements.expirationTimestamp, block.timestamp);
-		if (tradeAgreements.exerciseFee.cap > 1e18) revert PartyAOpenFacetErrors.HighExerciseFeeCap(tradeAgreements.exerciseFee.cap, 1e18);
+			revert CommonErrors.ExpirationTimestampPassed(tradeAgreements.expirationTimestamp, block.timestamp);
+		if (tradeAgreements.exerciseFee.cap > 1e18) revert PartyAOpenErrors.ExerciseFeeCapExceeded(tradeAgreements.exerciseFee.cap, 1e18);
 		if (tradeAgreements.tradeSide == TradeSide.SELL && tradeAgreements.marginType == MarginType.ISOLATED)
-			revert PartyAOpenFacetErrors.ShortTradeInIsolatedMode();
+			revert PartyAOpenErrors.IsolatedModeSellNotAllowed();
 		// validate deadline
 		if (deadline < block.timestamp) revert CommonErrors.LowDeadline(deadline, block.timestamp);
 		// validate affiliate
-		if (!(feeLayout.affiliateStatus[affiliate] || affiliate == address(0))) revert PartyAOpenFacetErrors.InvalidAffiliate(affiliate);
+		if (!(feeLayout.affiliateStatus[affiliate] || affiliate == address(0))) revert PartyAOpenErrors.InvalidAffiliate(affiliate);
 		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		if (CounterPartyRelationsStorage.layout().boundPartyB[sender] != address(0)) {
 			if (!(partyBsWhiteList.length == 1 && partyBsWhiteList[0] == CounterPartyRelationsStorage.layout().boundPartyB[sender]))
-				revert PartyAOpenFacetErrors.UserBoundToAnotherPartyB(
-					sender,
-					CounterPartyRelationsStorage.layout().boundPartyB[sender],
-					partyBsWhiteList
-				);
+				revert CounterPartyRelationsErrors.BoundedToAnotherPartyB(sender, CounterPartyRelationsStorage.layout().boundPartyB[sender]);
 		}
 
 		if (tradeAgreements.marginType == MarginType.CROSS) {
-			if (partyBsWhiteList.length != 1) revert PartyAOpenFacetErrors.OnlyOnePartyBIsAllowedInCrossMode();
+			if (partyBsWhiteList.length != 1) revert PartyAOpenErrors.MultiplePartyBNotAllowed();
 			sender.requireSolvent(partyBsWhiteList[0], symbol.collateral, tradeAgreements.marginType);
 			partyBsWhiteList[0].requireSolvent(sender, symbol.collateral, tradeAgreements.marginType);
 		} else if (tradeAgreements.marginType == MarginType.ISOLATED && partyBsWhiteList.length == 1) {
 			partyBsWhiteList[0].requireSolvent(address(0), symbol.collateral, tradeAgreements.marginType);
 		}
-		//TODO about the solvency of more then one partyB
-		if (tradeAgreements.quantity == 0) revert PartyAOpenFacetErrors.InvalidOpenQuantity();
+
+		if (tradeAgreements.quantity == 0) revert PartyAOpenErrors.InvalidOpenQuantity();
 
 		intentId = ++OpenIntentStorage.layout().lastOpenIntentId;
 		OpenIntent memory intent = OpenIntent({

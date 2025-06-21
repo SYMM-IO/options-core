@@ -4,14 +4,8 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-library PartyBCloseFacetErrors {
-	// Quantity errors
-	error InvalidFilledAmount(uint256 quantity, uint256 availableAmount);
-
-	// Timestamp errors
-	error IntentExpired(uint256 intentId, uint256 currentTime, uint256 deadline);
+library PartyBCloseErrors {
+	error InvalidFillAmount(uint256 quantity, uint256 availableAmount);
 	error TradeExpired(uint256 tradeId, uint256 currentTime, uint256 expirationTimestamp);
-
-	// Price errors
-	error InvalidClosedPrice(uint256 providedPrice, uint256 requiredMinPrice);
+	error InvalidClosePrice(uint256 providedPrice, uint256 requiredMinPrice);
 }

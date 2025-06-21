@@ -80,7 +80,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			console.log("Close Intent Quantity: ", closeIntent.quantity)
 			console.log("Close Intent Filled Amount: ", closeIntent.filledAmount)
 
-			await expect(partyB1.fillCloseIntent(1, e(101), 7)).to.revertedWithCustomError(context.partyBCloseFacet, "InvalidFilledAmount")
+			await expect(partyB1.fillCloseIntent(1, e(101), 7)).to.revertedWithCustomError(context.partyBCloseFacet, "InvalidFillAmount")
 			await expect(partyB1.fillCloseIntent(1, e(100), 7)).not.to.reverted
 		})
 
@@ -135,11 +135,11 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 		it("Should failed when price to fill not in range", async () => {
 			let trade: TradeStructOutput = await context.viewFacet.getTrade(1)
 			if (trade.tradeAgreements.tradeSide == e(TradeSide.BUY)) {
-				await expect(partyB1.fillCloseIntent(1, e(96), 5)).to.revertedWithCustomError(context.partyBCloseFacet, "InvalidClosedPrice")
-				expect(partyB1.fillCloseIntent(1, 96, 10)).not.to.revertedWithCustomError(context.partyBCloseFacet, "InvalidClosedPrice")
+				await expect(partyB1.fillCloseIntent(1, e(96), 5)).to.revertedWithCustomError(context.partyBCloseFacet, "InvalidClosePrice")
+				expect(partyB1.fillCloseIntent(1, 96, 10)).not.to.revertedWithCustomError(context.partyBCloseFacet, "InvalidClosePrice")
 			} else if (trade.tradeAgreements.tradeSide == BigInt(TradeSide.SELL)) {
-				await expect(partyB1.fillCloseIntent(1, 96, 10)).to.revertedWithCustomError(context.partyBCloseFacet, "InvalidClosedPrice")
-				expect(partyB1.fillCloseIntent(1, 96, 5)).not.to.revertedWithCustomError(context.partyBCloseFacet, "InvalidClosedPrice")
+				await expect(partyB1.fillCloseIntent(1, 96, 10)).to.revertedWithCustomError(context.partyBCloseFacet, "InvalidClosePrice")
+				expect(partyB1.fillCloseIntent(1, 96, 5)).not.to.revertedWithCustomError(context.partyBCloseFacet, "InvalidClosePrice")
 			}
 		})
 

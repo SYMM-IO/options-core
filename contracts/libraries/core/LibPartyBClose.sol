@@ -19,8 +19,8 @@ import { Trade, TradeStatus } from "../../types/TradeTypes.sol";
 import { CloseIntent, CloseIntentStatus } from "../../types/IntentTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 
-import { CommonErrors } from "../utils/CommonErrors.sol";
-import { PartyBCloseFacetErrors } from "../../facets/PartyBClose/PartyBCloseFacetErrors.sol";
+import { CommonErrors } from "../../errors/CommonErrors.sol";
+import { PartyBCloseErrors } from "../../errors/PartyBCloseErrors.sol";
 
 library LibPartyBClose {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
@@ -57,7 +57,7 @@ library LibPartyBClose {
 		trade.partyB.requireSolvent(trade.partyA, symbol.collateral, trade.tradeAgreements.marginType);
 
 		if (quantity == 0 || quantity > intent.quantity - intent.filledAmount)
-			revert PartyBCloseFacetErrors.InvalidFilledAmount(quantity, intent.quantity - intent.filledAmount);
+			revert PartyBCloseErrors.InvalidFillAmount(quantity, intent.quantity - intent.filledAmount);
 
 		if (!(intent.status == CloseIntentStatus.PENDING || intent.status == CloseIntentStatus.CANCEL_PENDING)) {
 			uint8[] memory requiredStatuses = new uint8[](2);
@@ -68,15 +68,15 @@ library LibPartyBClose {
 
 		CommonErrors.requireStatus("TradeStatus", uint8(trade.status), uint8(TradeStatus.OPENED));
 
-		if (block.timestamp > intent.deadline) revert PartyBCloseFacetErrors.IntentExpired(intentId, block.timestamp, intent.deadline);
+		if (block.timestamp > intent.deadline) revert CommonErrors.IntentExpired(intentId, block.timestamp, intent.deadline);
 
 		if (block.timestamp >= trade.tradeAgreements.expirationTimestamp)
-			revert PartyBCloseFacetErrors.TradeExpired(intent.tradeId, block.timestamp, trade.tradeAgreements.expirationTimestamp);
+			revert PartyBCloseErrors.TradeExpired(intent.tradeId, block.timestamp, trade.tradeAgreements.expirationTimestamp);
 
 		if (
 			(trade.tradeAgreements.tradeSide == TradeSide.BUY && price < intent.price) ||
 			(trade.tradeAgreements.tradeSide == TradeSide.SELL && price > intent.price)
-		) revert PartyBCloseFacetErrors.InvalidClosedPrice(price, intent.price);
+		) revert PartyBCloseErrors.InvalidClosePrice(price, intent.price);
 
 		ScheduledReleaseBalance storage partyABalance = trade.partyA.balanceOf(symbol.collateral);
 		ScheduledReleaseBalance storage partyBBalance = trade.partyB.balanceOf(symbol.collateral);

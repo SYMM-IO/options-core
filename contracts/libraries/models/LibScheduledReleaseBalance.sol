@@ -12,7 +12,8 @@ import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { MarginType } from "../../types/BaseTypes.sol";
 import { ScheduledReleaseBalance, ScheduledReleaseEntry, IncreaseBalanceReason, DecreaseBalanceReason, CrossEntry } from "../../types/BalanceTypes.sol";
 
-import { CommonErrors } from "../utils/CommonErrors.sol";
+import { CommonErrors } from "../../errors/CommonErrors.sol";
+import { BalanceErrors } from "../../errors/BalanceErrors.sol";
 
 /// @title ScheduledReleaseBalanceOps
 /// @notice Collection of helper functions to operate on {@link ScheduledReleaseBalance}.
@@ -46,21 +47,11 @@ library ScheduledReleaseBalanceOps {
 
 	event SyncBalance(address indexed user, address indexed counterParty, address indexed collateral);
 
-	// ─── custom errors ────────────────────────────────────────────────────────
-
-	error MaxCounterPartyConnectionsReached(uint256 current, uint256 maximum);
-	error InvalidSyncTimestamp(uint256 currentTime, uint256 lastTransitionTimestamp);
-	error NonZeroBalanceCounterParty(address counterParty, uint256 balance);
-	error InsufficientBalance(address token, uint256 requested, int256 balance);
-	error InsufficientLockedBalance(address token, uint256 requested, uint256 balance);
-	error InsufficientMMBalance(address token, uint256 requested, uint256 balance);
-	error BalanceSetupRequired();
-
 	// ─── modifiers ────────────────────────────────────────────────────────────
 
 	/// @dev Reverts unless the balance slot has been initialized via `setup`.
 	modifier checkSetup(ScheduledReleaseBalance storage self) {
-		if (self.collateral == address(0) || self.user == address(0)) revert BalanceSetupRequired();
+		if (self.collateral == address(0) || self.user == address(0)) revert BalanceErrors.BalanceSetupRequired();
 		_;
 	}
 
@@ -142,7 +133,7 @@ library ScheduledReleaseBalanceOps {
 	/// @notice Debit funds from `isolatedBalance` only.
 	function isolatedSub(ScheduledReleaseBalance storage self, uint256 value, DecreaseBalanceReason reason) internal {
 		if (value == 0) return;
-		if (self.isolatedBalance < value) revert InsufficientBalance(self.collateral, value, int256(self.isolatedBalance));
+		if (self.isolatedBalance < value) revert BalanceErrors.InsufficientBalance(self.collateral, value, int256(self.isolatedBalance));
 		self.isolatedBalance -= value;
 		emit DecreaseBalance(self.user, address(0), self.collateral, value, reason, MarginType.ISOLATED);
 	}
@@ -179,7 +170,7 @@ library ScheduledReleaseBalanceOps {
 
 		int256 baseBalance = int256(self.isolatedBalance);
 		int256 totalBalance = baseBalance + int256(entry.transitioning) + int256(entry.scheduled); // won't overflow in real world
-		if (totalBalance < int256(value)) revert InsufficientBalance(self.collateral, value, totalBalance);
+		if (totalBalance < int256(value)) revert BalanceErrors.InsufficientBalance(self.collateral, value, totalBalance);
 
 		uint256 remaining = value;
 
@@ -243,7 +234,7 @@ library ScheduledReleaseBalanceOps {
 		if (counterParty == address(0)) revert CommonErrors.ZeroAddress("counterParty");
 
 		if (self.isolatedBalance - self.isolatedLockedBalance < amount)
-			revert InsufficientBalance(self.collateral, amount, int256(self.isolatedBalance));
+			revert BalanceErrors.InsufficientBalance(self.collateral, amount, int256(self.isolatedBalance));
 
 		self.isolatedBalance -= amount;
 		self.crossBalance[counterParty].balance += int256(amount);
@@ -326,7 +317,8 @@ library ScheduledReleaseBalanceOps {
 		if (entry.releaseInterval == 0) return;
 
 		// Sanity check
-		if (block.timestamp < entry.lastTransitionTimestamp) revert InvalidSyncTimestamp(block.timestamp, entry.lastTransitionTimestamp);
+		if (block.timestamp < entry.lastTransitionTimestamp)
+			revert BalanceErrors.InvalidSyncTimestamp(block.timestamp, entry.lastTransitionTimestamp);
 
 		uint256 intervals = (block.timestamp - entry.lastTransitionTimestamp) / entry.releaseInterval;
 		if (intervals == 0) return;
@@ -372,7 +364,7 @@ library ScheduledReleaseBalanceOps {
 
 		if (self.counterPartyIndexes[counterParty] != 0) return; // already present
 		if (self.counterPartyAddresses.length >= accountLayout.maxConnectedCounterParties) {
-			revert MaxCounterPartyConnectionsReached(self.counterPartyAddresses.length, accountLayout.maxConnectedCounterParties);
+			revert BalanceErrors.MaxCounterPartyConnectionsReached(self.counterPartyAddresses.length, accountLayout.maxConnectedCounterParties);
 		}
 
 		ScheduledReleaseEntry storage entry = self.counterPartySchedules[counterParty];
@@ -394,7 +386,7 @@ library ScheduledReleaseBalanceOps {
 		if (counterParty == address(0)) revert CommonErrors.ZeroAddress("counterParty");
 
 		uint256 balance = inTransitionBalance(self, counterParty); // if any window open
-		if (balance != 0) revert NonZeroBalanceCounterParty(counterParty, balance);
+		if (balance != 0) revert BalanceErrors.NonZeroBalanceCounterParty(counterParty, balance);
 
 		uint256 idxPlusOne = self.counterPartyIndexes[counterParty];
 		if (idxPlusOne == 0) return; // already removed
@@ -413,12 +405,12 @@ library ScheduledReleaseBalanceOps {
 	}
 
 	function isolatedLock(ScheduledReleaseBalance storage self, uint256 amount) internal {
-		if (self.isolatedBalance < amount) revert InsufficientBalance(self.collateral, amount, int256(self.isolatedBalance));
+		if (self.isolatedBalance < amount) revert BalanceErrors.InsufficientBalance(self.collateral, amount, int256(self.isolatedBalance));
 		self.isolatedLockedBalance += amount;
 	}
 
 	function isolatedUnlock(ScheduledReleaseBalance storage self, uint256 amount) internal {
-		if (self.isolatedLockedBalance < amount) revert InsufficientLockedBalance(self.collateral, amount, self.isolatedLockedBalance);
+		if (self.isolatedLockedBalance < amount) revert BalanceErrors.InsufficientLockedBalance(self.collateral, amount, self.isolatedLockedBalance);
 		self.isolatedLockedBalance -= amount;
 	}
 
@@ -429,7 +421,7 @@ library ScheduledReleaseBalanceOps {
 
 	function crossUnlock(ScheduledReleaseBalance storage self, address counterParty, uint256 amount) internal {
 		CrossEntry storage entry = self.crossBalance[counterParty];
-		if (entry.locked < amount) revert InsufficientLockedBalance(self.collateral, amount, entry.locked);
+		if (entry.locked < amount) revert BalanceErrors.InsufficientLockedBalance(self.collateral, amount, entry.locked);
 		entry.locked -= amount;
 	}
 
@@ -440,7 +432,7 @@ library ScheduledReleaseBalanceOps {
 
 	function decreaseMM(ScheduledReleaseBalance storage self, address counterParty, uint256 amount) internal {
 		CrossEntry storage entry = self.crossBalance[counterParty];
-		if (entry.totalMM < amount) revert InsufficientMMBalance(self.collateral, amount, entry.totalMM);
+		if (entry.totalMM < amount) revert BalanceErrors.InsufficientMMBalance(self.collateral, amount, entry.totalMM);
 		entry.totalMM -= amount;
 	}
 }

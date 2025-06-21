@@ -6,7 +6,6 @@ pragma solidity >=0.8.19;
 
 import { LibParty } from "../models/LibParty.sol";
 import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance.sol";
-import { CommonErrors } from "../utils/CommonErrors.sol";
 
 import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
 import { Symbol, SymbolStorage } from "../../storages/SymbolStorage.sol";
@@ -15,12 +14,11 @@ import { TradeSide, MarginType } from "../../types/BaseTypes.sol";
 import { OpenIntent, OpenIntentStatus } from "../../types/IntentTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 
+import { CommonErrors } from "../../errors/CommonErrors.sol";
+
 library LibOpenIntentOps {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibParty for address;
-
-	// Custom errors
-	error IntentNotExpired(uint256 intentId, uint256 currentTime, uint256 deadline);
 
 	function getTradingFee(OpenIntent memory self) internal pure returns (uint256) {
 		return (self.tradeAgreements.quantity * self.price * self.tradingFee.platformFee) / (self.tradingFee.tokenPriceInCollateral * 1e18);
@@ -79,7 +77,7 @@ library LibOpenIntentOps {
 	}
 
 	function expire(OpenIntent storage self) internal {
-		if (block.timestamp <= self.deadline) revert IntentNotExpired(self.id, block.timestamp, self.deadline);
+		if (block.timestamp <= self.deadline) revert CommonErrors.IntentNotExpired(self.id, block.timestamp, self.deadline);
 
 		if (!(self.status == OpenIntentStatus.PENDING || self.status == OpenIntentStatus.CANCEL_PENDING || self.status == OpenIntentStatus.LOCKED)) {
 			uint8[] memory requiredStatuses = new uint8[](3);

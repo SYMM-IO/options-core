@@ -7,7 +7,6 @@ pragma solidity >=0.8.19;
 import { LibParty } from "../models/LibParty.sol";
 import { LibTradeOps } from "../models/LibTrade.sol";
 import { LibUserData } from "../utils/LibUserData.sol";
-import { CommonErrors } from "../utils/CommonErrors.sol";
 import { LibOpenIntentOps } from "../models/LibOpenIntent.sol";
 import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance.sol";
 
@@ -24,7 +23,8 @@ import { OpenIntent, OpenIntentStatus } from "../../types/IntentTypes.sol";
 import { TradeAgreements, TradeSide, MarginType } from "../../types/BaseTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 
-import { PartyBOpenFacetErrors } from "../../facets/PartyBOpen/PartyBOpenFacetErrors.sol";
+import { CommonErrors } from "../../errors/CommonErrors.sol";
+import { PartyBOpenErrors } from "../../errors/PartyBOpenErrors.sol";
 
 library LibPartyBOpen {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
@@ -39,27 +39,27 @@ library LibPartyBOpen {
 		OpenIntent storage intent = intentLayout.openIntents[intentId];
 		Symbol storage symbol = SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId];
 
-		if (StateControlStorage.layout().suspendedAddresses[intent.partyA]) revert CommonErrors.SuspendedAddress(intent.partyA);
-		if (StateControlStorage.layout().suspendedAddresses[sender]) revert CommonErrors.SuspendedAddress(sender);
-		if (StateControlStorage.layout().partyBEmergencyStatus[sender]) revert PartyBOpenFacetErrors.PartyBInEmergencyMode(sender);
+		if (StateControlStorage.layout().suspendedAddresses[intent.partyA]) revert CommonErrors.AddressSuspended(intent.partyA);
+		if (StateControlStorage.layout().suspendedAddresses[sender]) revert CommonErrors.AddressSuspended(sender);
+		if (StateControlStorage.layout().partyBEmergencyStatus[sender]) revert PartyBOpenErrors.PartyBInEmergencyMode(sender);
 
-		if (StateControlStorage.layout().emergencyMode) revert PartyBOpenFacetErrors.SystemInEmergencyMode();
+		if (StateControlStorage.layout().emergencyMode) revert PartyBOpenErrors.SystemInEmergencyMode();
 
-		if (intent.partyA == sender) revert PartyBOpenFacetErrors.UserOnBothSides(sender);
+		if (intent.partyA == sender) revert PartyBOpenErrors.SelfTradeNotAllowed(sender);
 
-		if (intentId > intentLayout.lastOpenIntentId) revert PartyBOpenFacetErrors.InvalidIntentId(intentId, intentLayout.lastOpenIntentId);
+		if (intentId > intentLayout.lastOpenIntentId) revert PartyBOpenErrors.IntentNotFound(intentId);
 
 		CommonErrors.requireStatus("OpenIntentStatus", uint8(intent.status), uint8(OpenIntentStatus.PENDING));
 
-		if (block.timestamp > intent.deadline) revert PartyBOpenFacetErrors.IntentExpired(intentId, block.timestamp, intent.deadline);
+		if (block.timestamp > intent.deadline) revert CommonErrors.IntentExpired(intentId, block.timestamp, intent.deadline);
 
 		if (!symbol.isValid) revert CommonErrors.InvalidSymbol(intent.tradeAgreements.symbolId);
 
 		if (block.timestamp > intent.tradeAgreements.expirationTimestamp)
-			revert PartyBOpenFacetErrors.ExpirationTimestampPassed(intentId, block.timestamp, intent.tradeAgreements.expirationTimestamp);
+			revert CommonErrors.ExpirationTimestampPassed(block.timestamp, intent.tradeAgreements.expirationTimestamp);
 
 		if (appLayout.partyBConfigs[sender].oracleId != symbol.oracleId)
-			revert PartyBOpenFacetErrors.OracleNotMatched(sender, appLayout.partyBConfigs[sender].oracleId, symbol.oracleId);
+			revert PartyBOpenErrors.OracleMismatch(sender, appLayout.partyBConfigs[sender].oracleId, symbol.oracleId);
 
 		bool isValidPartyB;
 		if (intent.partyBsWhiteList.length == 0) {
@@ -73,10 +73,10 @@ library LibPartyBOpen {
 			}
 		}
 
-		if (!isValidPartyB) revert PartyBOpenFacetErrors.NotWhitelistedPartyB(sender, intent.partyBsWhiteList);
+		if (!isValidPartyB) revert PartyBOpenErrors.NotWhitelistedPartyB(sender, intent.partyBsWhiteList);
 
 		if (appLayout.partyBConfigs[sender].symbolType != symbol.symbolType)
-			revert PartyBOpenFacetErrors.MismatchedSymbolType(sender, appLayout.partyBConfigs[sender].symbolType, symbol.symbolType);
+			revert PartyBOpenErrors.SymbolTypeMismatch(sender, appLayout.partyBConfigs[sender].symbolType, symbol.symbolType);
 
 		sender.requireSolvent(intent.partyA, symbol.collateral, MarginType.ISOLATED);
 
@@ -136,13 +136,13 @@ library LibPartyBOpen {
 
 		if (sender != intent.partyB) revert CommonErrors.UnauthorizedSender(sender, intent.partyB);
 
-		if (StateControlStorage.layout().suspendedAddresses[intent.partyA]) revert CommonErrors.SuspendedAddress(intent.partyA);
+		if (StateControlStorage.layout().suspendedAddresses[intent.partyA]) revert CommonErrors.AddressSuspended(intent.partyA);
 
-		if (StateControlStorage.layout().suspendedAddresses[intent.partyB]) revert CommonErrors.SuspendedAddress(intent.partyB);
+		if (StateControlStorage.layout().suspendedAddresses[intent.partyB]) revert CommonErrors.AddressSuspended(intent.partyB);
 
-		if (StateControlStorage.layout().partyBEmergencyStatus[intent.partyB]) revert PartyBOpenFacetErrors.PartyBInEmergencyMode(intent.partyB);
+		if (StateControlStorage.layout().partyBEmergencyStatus[intent.partyB]) revert PartyBOpenErrors.PartyBInEmergencyMode(intent.partyB);
 
-		if (StateControlStorage.layout().emergencyMode) revert PartyBOpenFacetErrors.SystemInEmergencyMode();
+		if (StateControlStorage.layout().emergencyMode) revert PartyBOpenErrors.SystemInEmergencyMode();
 
 		if (!symbol.isValid) revert CommonErrors.InvalidSymbol(intent.tradeAgreements.symbolId);
 
@@ -158,10 +158,10 @@ library LibPartyBOpen {
 		}
 		intent.partyB.requireSolvent(intent.partyA, symbol.collateral, intent.tradeAgreements.marginType);
 
-		if (block.timestamp > intent.deadline) revert PartyBOpenFacetErrors.IntentExpired(intentId, block.timestamp, intent.deadline);
+		if (block.timestamp > intent.deadline) revert CommonErrors.IntentExpired(intentId, block.timestamp, intent.deadline);
 
 		if (block.timestamp > intent.tradeAgreements.expirationTimestamp)
-			revert PartyBOpenFacetErrors.ExpirationTimestampPassed(intentId, block.timestamp, intent.tradeAgreements.expirationTimestamp);
+			revert CommonErrors.ExpirationTimestampPassed(block.timestamp, intent.tradeAgreements.expirationTimestamp);
 
 		if (intent.tradeAgreements.quantity < quantity || quantity == 0)
 			revert CommonErrors.InvalidAmount(
@@ -174,7 +174,7 @@ library LibPartyBOpen {
 		if (
 			(intent.tradeAgreements.tradeSide == TradeSide.BUY && price > intent.price) ||
 			(intent.tradeAgreements.tradeSide == TradeSide.SELL && price < intent.price)
-		) revert PartyBOpenFacetErrors.InvalidOpenPrice(price, intent.price);
+		) revert PartyBOpenErrors.InvalidOpenPrice(price, intent.price);
 
 		{
 			address affiliateFeeCollector = feeLayout.affiliateFeeCollector[intent.affiliate] == address(0)

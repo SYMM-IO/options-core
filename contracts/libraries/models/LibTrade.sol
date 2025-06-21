@@ -18,13 +18,12 @@ import { Symbol, OptionType } from "../../types/SymbolTypes.sol";
 import { ScheduledReleaseBalance } from "../../types/BalanceTypes.sol";
 import { CloseIntent, CloseIntentStatus } from "../../types/IntentTypes.sol";
 
+import { TradeErrors } from "../../errors/TradeErrors.sol";
+
 library LibTradeOps {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibCloseIntentOps for CloseIntent;
 	using LibParty for address;
-
-	// Custom errors
-	error TooManyActiveTradesForPartyA(address partyA, uint256 currentCount, uint256 maxCount);
 
 	function getOpenAmount(Trade memory self) internal pure returns (uint256) {
 		return self.tradeAgreements.quantity - self.closedAmountBeforeExpiration;
@@ -58,7 +57,11 @@ library LibTradeOps {
 		TradeStorage.Layout storage tradeLayout = TradeStorage.layout();
 
 		if (tradeLayout.activeTradesOf[self.partyA].length >= AppStorage.layout().maxTradePerPartyA)
-			revert TooManyActiveTradesForPartyA(self.partyA, tradeLayout.activeTradesOf[self.partyA].length, AppStorage.layout().maxTradePerPartyA);
+			revert TradeErrors.TooManyActiveTradesForPartyA(
+				self.partyA,
+				tradeLayout.activeTradesOf[self.partyA].length,
+				AppStorage.layout().maxTradePerPartyA
+			);
 
 		tradeLayout.trades[self.id] = self;
 

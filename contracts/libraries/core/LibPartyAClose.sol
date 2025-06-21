@@ -6,7 +6,6 @@ pragma solidity >=0.8.19;
 
 import { LibParty } from "../../libraries/models/LibParty.sol";
 import { LibTradeOps } from "../../libraries/models/LibTrade.sol";
-import { CommonErrors } from "../../libraries/utils/CommonErrors.sol";
 import { LibCloseIntentOps } from "../../libraries/models/LibCloseIntent.sol";
 import { ScheduledReleaseBalanceOps } from "../../libraries/models/LibScheduledReleaseBalance.sol";
 
@@ -20,8 +19,10 @@ import { ScheduledReleaseBalance } from "../../types/BalanceTypes.sol";
 import { CloseIntent, CloseIntentStatus } from "../../types/IntentTypes.sol";
 import { MarginType } from "../../types/BaseTypes.sol";
 
+import { CommonErrors } from "../../errors/CommonErrors.sol";
+import { PartyACloseErrors } from "../../errors/PartyACloseErrors.sol";
+
 import { ITradeNFT } from "../../interfaces/ITradeNFT.sol";
-import { PartyACloseFacetErrors } from "../../facets/PartyAClose/PartyACloseFacetErrors.sol";
 
 library LibPartyAClose {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
@@ -39,10 +40,10 @@ library LibPartyAClose {
 
 		if (deadline < block.timestamp) revert CommonErrors.LowDeadline(deadline, block.timestamp);
 
-		if (trade.getAvailableAmountToClose() < quantity) revert PartyACloseFacetErrors.InvalidQuantity(quantity, trade.getAvailableAmountToClose());
+		if (trade.getAvailableAmountToClose() < quantity) revert PartyACloseErrors.InvalidQuantity(quantity, trade.getAvailableAmountToClose());
 
 		if (trade.activeCloseIntentIds.length >= AppStorage.layout().maxCloseOrdersLength)
-			revert PartyACloseFacetErrors.TooManyCloseOrders(trade.activeCloseIntentIds.length, AppStorage.layout().maxCloseOrdersLength);
+			revert PartyACloseErrors.TooManyCloseOrders(trade.activeCloseIntentIds.length, AppStorage.layout().maxCloseOrdersLength);
 
 		intentId = ++CloseIntentStorage.layout().lastCloseIntentId;
 		CloseIntent memory intent = CloseIntent({
@@ -85,18 +86,18 @@ library LibPartyAClose {
 		Trade storage trade = TradeStorage.layout().trades[tradeId];
 		Symbol memory symbol = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId];
 
-		if (trade.partyA != sender) revert PartyACloseFacetErrors.OnlyPartyACanTransfer(sender, trade.partyA);
+		if (trade.partyA != sender) revert PartyACloseErrors.UnauthorizedTransfer(sender, trade.partyA);
 
-		if (trade.partyB == receiver) revert PartyACloseFacetErrors.ReceiverIsPartyB(receiver, trade.partyB);
+		if (trade.partyB == receiver) revert PartyACloseErrors.ReceiverIsPartyB(receiver, trade.partyB);
 
 		if (receiver == address(0)) revert CommonErrors.ZeroAddress("receiver");
 
-		if (receiver.isPartyB()) revert PartyACloseFacetErrors.ReceiverIsPartyB(receiver, trade.partyB);
+		if (receiver.isPartyB()) revert PartyACloseErrors.ReceiverIsPartyB(receiver, trade.partyB);
 
 		CommonErrors.requireStatus("TradeStatus", uint8(trade.status), uint8(TradeStatus.OPENED));
 
 		if (trade.tradeAgreements.marginType == MarginType.CROSS) {
-			revert PartyACloseFacetErrors.TradeInCrossCannotBeTransferred(tradeId);
+			revert PartyACloseErrors.CrossTradeTransferNotAllowed(tradeId);
 		}
 		trade.partyB.requireSolvent(address(0), symbol.collateral, MarginType.ISOLATED);
 

@@ -49,7 +49,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 	describe("lockOpenIntent", async function () {
 		it("Should be failed when Sender address is Suspended", async () => {
 			await context.controlFacet.suspendAddress(partyB1.getSigner, true)
-			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "SuspendedAddress")
+			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "AddressSuspended")
 		})
 
 		it("Should be failed when in Emergency Mode", async () => {
@@ -89,7 +89,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 			await expect(context.partyBOpenFacet.connect(context.signers.partyA1).lockOpenIntent(1)).to.be.revertedWithCustomError(
 				context.partyBOpenFacet,
-				"UserOnBothSides",
+				"SelfTradeNotAllowed",
 			)
 		})
 
@@ -137,7 +137,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 				symbolType: 1, // another category of symbols
 			})
 
-			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "MismatchedSymbolType")
+			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "SymbolTypeMismatch")
 		})
 
 		it("Should failed when intent expiration has been passed", async () => {
@@ -148,7 +148,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 
 		it("Should failed when intent id not exist", async () => {
-			await expect(partyB1.lockOpenIntent(200)).to.be.revertedWithCustomError(context.partyBOpenFacet, "InvalidIntentId")
+			await expect(partyB1.lockOpenIntent(200)).to.be.revertedWithCustomError(context.partyBOpenFacet, "IntentNotFound")
 		})
 
 		it("Should failed when partyB oracle id not equal with intent symbol oracle id", async () => {
@@ -159,7 +159,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 				symbolType: 0,
 			})
 
-			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "OracleNotMatched")
+			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "OracleMismatch")
 		})
 
 		it("Should failed when partyB is not Active or Valid", async () => {
@@ -243,13 +243,13 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		it("Should failed when partyA suspended", async () => {
 			await context.controlFacet.suspendAddress(partyA1.getSigner, true)
 
-			await expect(partyB1.fillOpenIntent(1, 100, 7)).to.revertedWithCustomError(context.partyBOpenFacet, "SuspendedAddress")
+			await expect(partyB1.fillOpenIntent(1, 100, 7)).to.revertedWithCustomError(context.partyBOpenFacet, "AddressSuspended")
 		})
 
 		it("Should failed when partyB suspended", async () => {
 			await context.controlFacet.suspendAddress(partyB1.getSigner, true)
 
-			await expect(partyB1.fillOpenIntent(1, 100, 7)).to.revertedWithCustomError(context.partyBOpenFacet, "SuspendedAddress")
+			await expect(partyB1.fillOpenIntent(1, 100, 7)).to.revertedWithCustomError(context.partyBOpenFacet, "AddressSuspended")
 		})
 
 		it("Should failed when symbol is not valid", async () => {

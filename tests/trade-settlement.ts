@@ -116,7 +116,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			await expect(context.tradeSettlementFacet.executeTrade(ID, priceSig)).to.be.revertedWithCustomError(
 				context.tradeSettlementFacet,
-				"InvalidSymbolId",
+				"MismatchedSymbolId",
 			)
 		})
 

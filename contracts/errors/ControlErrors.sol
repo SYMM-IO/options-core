@@ -4,8 +4,6 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-library ControlFacetErrors {
-	// Oracle errors
-	error InvalidOracle(uint256 oracleId, uint256 lastOracleId);
-	error InvalidSymbol(uint256 symbolId);
+library ControlErrors {
+	error OracleNotFound(uint256 oracleId);
 }

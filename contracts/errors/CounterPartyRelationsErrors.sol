@@ -4,16 +4,13 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-library CounterPartyRelationsFacetErrors {
-	// Instant action mode errors
-	error InstantActionModeActive(address user);
-	error InstantActionModeDeactivationNotProposed(address user);
-
-	// PartyB binding errors
+library CounterPartyRelationsErrors {
+	error InstantModeActive(address user);
+	error DeactivationNotProposed(address user);
 	error PartyBNotActive(address partyB);
-	error AlreadyBoundToPartyB(address user, address partyB);
-	error NotBoundToAnyPartyB(address user);
-	error UnbindingAlreadyInitiated(address user, uint256 requestTime);
+	error BoundedToAnotherPartyB(address user, address partyB);
+	error BoundedPartyBNotFound(address user);
+	error UnbindingAlreadyInProgress(address user, uint256 requestTime);
 	error UnbindingNotInitiated(address user);
 	error UnbindingCooldownNotReached(address user, uint256 currentTime, uint256 requiredTime);
 }

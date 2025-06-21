@@ -4,15 +4,10 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-library PartyACloseFacetErrors {
-	// Quantity errors
+library PartyACloseErrors {
 	error InvalidQuantity(uint256 requested, uint256 available);
-
-	// Close orders errors
 	error TooManyCloseOrders(uint256 current, uint256 maximum);
-
-	// Transfer errors
 	error ReceiverIsPartyB(address receiver, address partyB);
-	error OnlyPartyACanTransfer(address sender, address partyA);
-	error TradeInCrossCannotBeTransferred(uint256 tradeId);
+	error UnauthorizedTransfer(address sender, address partyA);
+	error CrossTradeTransferNotAllowed(uint256 tradeId);
 }

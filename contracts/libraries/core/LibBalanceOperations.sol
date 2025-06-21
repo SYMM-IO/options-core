@@ -5,9 +5,11 @@
 pragma solidity >=0.8.19;
 
 import { LibParty } from "../models/LibParty.sol";
-import { CommonErrors } from "../utils/CommonErrors.sol";
 import { LibDecimals } from "../utils/LibDecimals.sol";
 import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance.sol";
+
+import { CommonErrors } from "../../errors/CommonErrors.sol";
+import { AccountErrors } from "../../errors/AccountErrors.sol";
 
 import { AppStorage } from "../../storages/AppStorage.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
@@ -19,7 +21,6 @@ import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason }
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import { AccountFacetErrors } from "../../facets/Account/AccountFacetErrors.sol";
 
 library LibBalanceOperations {
 	using SafeERC20 for IERC20;
@@ -46,7 +47,7 @@ library LibBalanceOperations {
 
 		uint256 amountWith18Decimals = LibDecimals.normalizeAmount(collateral, amount);
 		if (!user.isPartyB() && (balance.isolatedBalance + amountWith18Decimals > appLayout.balanceLimitPerUser[collateral]))
-			revert AccountFacetErrors.BalanceLimitPerUserReached(
+			revert AccountErrors.BalanceLimitExceeded(
 				int256(balance.isolatedBalance),
 				amountWith18Decimals,
 				appLayout.balanceLimitPerUser[collateral]
@@ -73,11 +74,7 @@ library LibBalanceOperations {
 		if (available < amount) revert CommonErrors.InsufficientBalance(sender, collateral, amount, available);
 
 		if (!receiver.isPartyB() && (targetBalance.isolatedBalance + amount > appLayout.balanceLimitPerUser[collateral]))
-			revert AccountFacetErrors.BalanceLimitPerUserReached(
-				int256(targetBalance.isolatedBalance),
-				amount,
-				appLayout.balanceLimitPerUser[collateral]
-			);
+			revert AccountErrors.BalanceLimitExceeded(int256(targetBalance.isolatedBalance), amount, appLayout.balanceLimitPerUser[collateral]);
 
 		sourceBalance.isolatedSub(amount, DecreaseBalanceReason.INTERNAL_TRANSFER);
 		targetBalance.setup(receiver, collateral);
@@ -118,7 +115,7 @@ library LibBalanceOperations {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
-		if (id > accountLayout.lastWithdrawId) revert AccountFacetErrors.InvalidWithdrawId(id, accountLayout.lastWithdrawId);
+		if (id > accountLayout.lastWithdrawId) revert AccountErrors.InvalidWithdrawalId(id);
 
 		Withdraw storage withdrawal = accountLayout.withdrawals[id];
 
@@ -145,9 +142,7 @@ library LibBalanceOperations {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 
-		if (id > accountLayout.lastWithdrawId) {
-			revert AccountFacetErrors.InvalidWithdrawId(id, accountLayout.lastWithdrawId);
-		}
+		if (id > accountLayout.lastWithdrawId) revert AccountErrors.InvalidWithdrawalId(id);
 
 		Withdraw storage withdrawal = accountLayout.withdrawals[id];
 		ScheduledReleaseBalance storage balance = withdrawal.user.balanceOf(withdrawal.collateral);
@@ -155,7 +150,7 @@ library LibBalanceOperations {
 		CommonErrors.requireStatus("WithdrawStatus", uint8(withdrawal.status), uint8(WithdrawStatus.INITIATED));
 
 		if (!withdrawal.user.isPartyB() && (balance.isolatedBalance + withdrawal.amount > appLayout.balanceLimitPerUser[withdrawal.collateral]))
-			revert AccountFacetErrors.BalanceLimitPerUserReached(
+			revert AccountErrors.BalanceLimitExceeded(
 				int256(balance.isolatedBalance),
 				withdrawal.amount,
 				appLayout.balanceLimitPerUser[withdrawal.collateral]

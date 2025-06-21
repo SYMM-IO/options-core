@@ -92,10 +92,7 @@ export function shouldBehaveLikePartyACloseFacet(): void {
 		it("Should fail when instant action mode is active", async function () {
 			await context.controlFacet.setInstantActionsMode(partyA1.getSigner, true)
 			const latestBlock = await getLatestBlockTime()
-			await expect(partyA1.sendCloseIntent(1, 7, 100, latestBlock + 140)).to.be.revertedWithCustomError(
-				context.partyACloseFacet,
-				"InstantActionModeActive",
-			)
+			await expect(partyA1.sendCloseIntent(1, 7, 100, latestBlock + 140)).to.be.revertedWithCustomError(context.partyACloseFacet, "InstantModeActive")
 		})
 
 		it("Should fail when msgSender not be PartyA", async function () {

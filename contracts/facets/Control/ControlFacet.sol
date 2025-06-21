@@ -4,7 +4,6 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { CommonErrors } from "../../libraries/utils/CommonErrors.sol";
 import { LibAccessibility } from "../../libraries/core/LibAccessibility.sol";
 import { LibParty } from "../../libraries/models/LibParty.sol";
 import { ScheduledReleaseBalanceOps } from "../../libraries/models/LibScheduledReleaseBalance.sol";
@@ -21,11 +20,13 @@ import { BridgeStorage } from "../../storages/BridgeStorage.sol";
 import { Symbol, Oracle, OptionType } from "../../types/SymbolTypes.sol";
 import { ScheduledReleaseBalance } from "../../types/BalanceTypes.sol";
 
+import { CommonErrors } from "../../errors/CommonErrors.sol";
+import { ControlErrors } from "../../errors/ControlErrors.sol";
+
 import { Ownable } from "../../utils/Ownable.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
 
 import { IControlFacet } from "./IControlFacet.sol";
-import { ControlFacetErrors } from "./ControlFacetErrors.sol";
 
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
@@ -301,8 +302,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	) public onlyRole(LibAccessibility.SETTER_ROLE) {
 		if (_collateral == address(0)) revert CommonErrors.ZeroAddress("collateral");
 		SymbolStorage.Layout storage s = SymbolStorage.layout();
-		if (s.oracles[_oracleId].contractAddress == address(0) || s.lastOracleId < _oracleId)
-			revert ControlFacetErrors.InvalidOracle(_oracleId, s.lastOracleId);
+		if (s.oracles[_oracleId].contractAddress == address(0) || s.lastOracleId < _oracleId) revert ControlErrors.OracleNotFound(_oracleId);
 
 		s.lastSymbolId++;
 		s.symbols[s.lastSymbolId] = Symbol({
@@ -328,7 +328,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 
 	function setSymbolTradingFee(uint256 _symbolId, uint256 _fee) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		SymbolStorage.Layout storage s = SymbolStorage.layout();
-		if (s.lastSymbolId < _symbolId) revert ControlFacetErrors.InvalidSymbol(_symbolId);
+		if (s.lastSymbolId < _symbolId) revert CommonErrors.InvalidSymbol(_symbolId);
 
 		emit SymbolTradingFeeUpdated(_symbolId, s.symbols[_symbolId].tradingFee, _fee);
 		s.symbols[_symbolId].tradingFee = _fee;
@@ -336,7 +336,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 
 	function setSymbolState(uint256 _symbolId, bool _status) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		SymbolStorage.Layout storage s = SymbolStorage.layout();
-		if (s.lastSymbolId < _symbolId) revert ControlFacetErrors.InvalidSymbol(_symbolId);
+		if (s.lastSymbolId < _symbolId) revert CommonErrors.InvalidSymbol(_symbolId);
 
 		s.symbols[_symbolId].isValid = _status;
 		emit SymbolStateUpdated(_symbolId, _status);

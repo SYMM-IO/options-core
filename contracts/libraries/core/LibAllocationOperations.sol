@@ -6,7 +6,6 @@ pragma solidity >=0.8.19;
 
 import { LibParty } from "../models/LibParty.sol";
 import { LibMuon } from "../services/LibMuon.sol";
-import { CommonErrors } from "../utils/CommonErrors.sol";
 import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance.sol";
 
 import { AppStorage, PartyBConfig } from "../../storages/AppStorage.sol";
@@ -15,7 +14,8 @@ import { MarginType } from "../../types/BaseTypes.sol";
 import { UpnlSig } from "../../types/WithdrawTypes.sol";
 import { ScheduledReleaseBalance, CrossEntry } from "../../types/BalanceTypes.sol";
 
-import { AccountFacetErrors } from "../../facets/Account/AccountFacetErrors.sol";
+import { CommonErrors } from "../../errors/CommonErrors.sol";
+import { AccountErrors } from "../../errors/AccountErrors.sol";
 
 library LibAllocationOperations {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
@@ -25,13 +25,13 @@ library LibAllocationOperations {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 
 		if ((!counterParty.isPartyB() && !sender.isPartyB()) || (counterParty.isPartyB() && sender.isPartyB()))
-			revert AccountFacetErrors.InvalidCounterPartyToAllocate(sender, counterParty);
+			revert AccountErrors.InvalidCounterParty(sender, counterParty);
 
 		if (
 			!sender.isPartyB() &&
 			(sender.balanceOf(collateral).crossBalance[counterParty].balance + int256(amount) > int256(appLayout.balanceLimitPerUser[collateral]))
 		)
-			revert AccountFacetErrors.BalanceLimitPerUserReached(
+			revert AccountErrors.BalanceLimitExceeded(
 				sender.balanceOf(collateral).crossBalance[counterParty].balance,
 				amount,
 				appLayout.balanceLimitPerUser[collateral]
@@ -52,15 +52,11 @@ library LibAllocationOperations {
 		ScheduledReleaseBalance storage balance = msg.sender.balanceOf(collateral);
 
 		if (isPartyB) {
-			deallocateForPartyBValidation(collateral, counterParty, int256(amount), upnlSig);
+			deallocateForPartyBValidation(collateral, counterParty, amount, upnlSig);
 		} else {
-			deallocateForPartyAValidation(collateral, counterParty, int256(amount), upnlSig);
+			deallocateForPartyAValidation(collateral, counterParty, amount, upnlSig);
 			if (balance.isolatedBalance + amount > appLayout.balanceLimitPerUser[collateral])
-				revert AccountFacetErrors.BalanceLimitPerUserReached(
-					int256(balance.isolatedBalance),
-					amount,
-					appLayout.balanceLimitPerUser[collateral]
-				);
+				revert AccountErrors.BalanceLimitExceeded(int256(balance.isolatedBalance), amount, appLayout.balanceLimitPerUser[collateral]);
 		}
 
 		msg.sender.requireSolvent(counterParty, collateral, MarginType.ISOLATED);
@@ -78,7 +74,7 @@ library LibAllocationOperations {
 		if (balance.isolatedBalance - balance.isolatedLockedBalance < amount)
 			revert CommonErrors.InsufficientBalance(msg.sender, collateral, amount, balance.isolatedBalance - balance.isolatedLockedBalance);
 		if (!msg.sender.isPartyB() && (balance.reserveBalance + amount > appLayout.balanceLimitPerUser[collateral]))
-			revert AccountFacetErrors.BalanceLimitPerUserReached(int256(balance.reserveBalance), amount, appLayout.balanceLimitPerUser[collateral]);
+			revert AccountErrors.BalanceLimitExceeded(int256(balance.reserveBalance), amount, appLayout.balanceLimitPerUser[collateral]);
 		balance.isolatedBalance -= amount;
 		balance.reserveBalance += amount;
 	}
@@ -91,13 +87,12 @@ library LibAllocationOperations {
 		if (msg.sender.isPartyB()) msg.sender.requireSolvent(address(0), collateral, MarginType.ISOLATED);
 		if (balance.reserveBalance < amount) revert CommonErrors.InsufficientBalance(msg.sender, collateral, amount, balance.reserveBalance);
 		if (!msg.sender.isPartyB() && (balance.isolatedBalance + amount > appLayout.balanceLimitPerUser[collateral]))
-			revert AccountFacetErrors.BalanceLimitPerUserReached(int256(balance.isolatedBalance), amount, appLayout.balanceLimitPerUser[collateral]);
+			revert AccountErrors.BalanceLimitExceeded(int256(balance.isolatedBalance), amount, appLayout.balanceLimitPerUser[collateral]);
 		balance.isolatedBalance += amount;
 		balance.reserveBalance -= amount;
 	}
 
-	// Validation functions
-	function deallocateForPartyAValidation(address collateral, address counterParty, int256 amount, UpnlSig memory upnlSig) internal view {
+	function deallocateForPartyAValidation(address collateral, address counterParty, uint256 amount, UpnlSig memory upnlSig) internal view {
 		PartyBConfig storage partyBConfig = AppStorage.layout().partyBConfigs[counterParty];
 
 		CrossEntry memory partyACrossEntry = msg.sender.balanceOf(collateral).crossBalance[counterParty];
@@ -105,10 +100,12 @@ library LibAllocationOperations {
 			((upnlSig.partyUpnl * 1e18) / int256(upnlSig.collateralPrice)) -
 			int256(partyACrossEntry.totalMM) -
 			int256(partyACrossEntry.locked);
+
 		// min balance and available balance
 		int256 partyAReadyToDeallocate = partyACrossEntry.balance < partyAAvailableBalance ? partyACrossEntry.balance : partyAAvailableBalance;
 
-		if (amount > partyAReadyToDeallocate) revert AccountFacetErrors.NotEnoughBalance(msg.sender, counterParty, partyAReadyToDeallocate, amount);
+		if (int256(amount) > partyAReadyToDeallocate)
+			revert CommonErrors.InsufficientIntBalance(msg.sender, collateral, amount, partyAReadyToDeallocate);
 
 		CrossEntry memory partyBCrossEntry = counterParty.balanceOf(collateral).crossBalance[msg.sender];
 		int256 partyBAvailableBalance = partyBCrossEntry.balance + ((upnlSig.counterPartyUpnl * 1e18) / int256(upnlSig.collateralPrice));
@@ -121,12 +118,12 @@ library LibAllocationOperations {
 				int256 collateralMustHave = (-upnlSig.counterPartyUpnl * int256(partyBConfig.lossCoverage)) / int256(upnlSig.collateralPrice);
 				debt = collateralMustHave - partyBCrossEntry.balance;
 			}
-			if (partyAReadyToDeallocate - amount < (-debt))
-				revert AccountFacetErrors.RemainingAmountMoreThanCounterPartyDebt(msg.sender, counterParty, partyAReadyToDeallocate, amount, debt);
+			if (partyAReadyToDeallocate - int256(amount) < (-debt))
+				revert AccountErrors.InsufficientDebtCoverage(msg.sender, counterParty, partyAReadyToDeallocate, amount, debt);
 		}
 	}
 
-	function deallocateForPartyBValidation(address collateral, address counterParty, int256 amount, UpnlSig memory upnlSig) internal view {
+	function deallocateForPartyBValidation(address collateral, address counterParty, uint256 amount, UpnlSig memory upnlSig) internal view {
 		PartyBConfig storage partyBConfig = AppStorage.layout().partyBConfigs[msg.sender];
 
 		CrossEntry memory partyACrossEntry = counterParty.balanceOf(collateral).crossBalance[msg.sender];
@@ -138,17 +135,17 @@ library LibAllocationOperations {
 		int256 partyBAvailableBalance = partyBCrossEntry.balance + ((upnlSig.partyUpnl * 1e18) / int256(upnlSig.collateralPrice));
 
 		// partyA solvent
-		if (partyAAvailableBalance < 0) revert AccountFacetErrors.PartyShouldBeLiquidated(counterParty);
+		if (partyAAvailableBalance < 0) revert AccountErrors.InsolventParty(counterParty);
 
 		if (upnlSig.partyUpnl >= 0) {
 			// partyB solvent if upnl is pos and balance be positive
 			int256 partyBReadyToDeallocate = partyBCrossEntry.balance < partyBAvailableBalance ? partyBCrossEntry.balance : partyBAvailableBalance;
-			if (amount > partyBReadyToDeallocate)
-				revert AccountFacetErrors.NotEnoughBalance(msg.sender, counterParty, partyBReadyToDeallocate, amount);
+			if (int256(amount) > partyBReadyToDeallocate)
+				revert CommonErrors.InsufficientIntBalance(msg.sender, counterParty, amount, partyBReadyToDeallocate);
 		} else {
 			// partyB solvent with loss coverage
 			int256 collateralMustHave = (-upnlSig.partyUpnl * int256(partyBConfig.lossCoverage)) / int256(upnlSig.collateralPrice);
-			if (partyBCrossEntry.balance - amount < collateralMustHave) revert AccountFacetErrors.PartyShouldBeLiquidated(msg.sender);
+			if (partyBCrossEntry.balance - int256(amount) < collateralMustHave) revert AccountErrors.InsolventParty(msg.sender);
 		}
 	}
 }

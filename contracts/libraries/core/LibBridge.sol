@@ -4,7 +4,6 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { CommonErrors } from "../utils/CommonErrors.sol";
 import { LibDecimals } from "../utils/LibDecimals.sol";
 import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance.sol";
 import { LibParty } from "../models/LibParty.sol";
@@ -18,7 +17,8 @@ import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason }
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import { BridgeFacetErrors } from "../../facets/Bridge/BridgeFacetErrors.sol";
+import { CommonErrors } from "../../errors/CommonErrors.sol";
+import { BridgeErrors } from "../../errors/BridgeErrors.sol";
 
 library LibBridge {
 	using SafeERC20 for IERC20;
@@ -34,8 +34,8 @@ library LibBridge {
 	) internal returns (uint256 currentId) {
 		BridgeStorage.Layout storage bridgeLayout = BridgeStorage.layout();
 
-		if (!bridgeLayout.bridges[bridge]) revert BridgeFacetErrors.InvalidBridge(bridge);
-		if (bridge == sender) revert BridgeFacetErrors.SameBridgeAndSender(bridge);
+		if (!bridgeLayout.bridges[bridge]) revert BridgeErrors.BridgeNotWhitelisted(bridge);
+		if (bridge == sender) revert BridgeErrors.SelfBridgeNotAllowed(bridge);
 		if (receiver == address(0)) revert CommonErrors.ZeroAddress("receiver");
 
 		ScheduledReleaseBalance storage balance = sender.balanceOf(collateral);
@@ -71,12 +71,11 @@ library LibBridge {
 		address collateral = bridgeLayout.bridgeTransactions[transactionIds[0]].collateral;
 		for (uint256 i = transactionIds.length; i != 0; i--) {
 			uint256 txId = transactionIds[i - 1];
-			if (txId > bridgeLayout.lastBridgeTransactionId) revert BridgeFacetErrors.InvalidBridgeTransactionId(txId);
+			if (txId > bridgeLayout.lastBridgeTransactionId) revert BridgeErrors.TransactionIdNotFound(txId);
 
 			BridgeTransaction storage bridgeTransaction = bridgeLayout.bridgeTransactions[txId];
 
-			if (collateral != bridgeTransaction.collateral)
-				revert BridgeFacetErrors.BridgeCollateralMismatch(collateral, bridgeTransaction.collateral);
+			if (collateral != bridgeTransaction.collateral) revert BridgeErrors.MismatchedCollateral(collateral, bridgeTransaction.collateral);
 
 			CommonErrors.requireStatus("BridgeTransactionStatus", uint8(bridgeTransaction.status), uint8(BridgeTransactionStatus.RECEIVED));
 
@@ -100,7 +99,7 @@ library LibBridge {
 		BridgeStorage.Layout storage bridgeLayout = BridgeStorage.layout();
 		BridgeTransaction storage bridgeTransaction = bridgeLayout.bridgeTransactions[transactionId];
 
-		if (transactionId > bridgeLayout.lastBridgeTransactionId) revert BridgeFacetErrors.InvalidBridgeTransactionId(transactionId);
+		if (transactionId > bridgeLayout.lastBridgeTransactionId) revert BridgeErrors.TransactionIdNotFound(transactionId);
 
 		CommonErrors.requireStatus("BridgeTransactionStatus", uint8(bridgeTransaction.status), uint8(BridgeTransactionStatus.RECEIVED));
 
@@ -115,7 +114,7 @@ library LibBridge {
 
 		if (bridgeLayout.invalidBridgedAmountsPool == address(0)) revert CommonErrors.ZeroAddress("invalidBridgedAmountsPool");
 
-		if (validAmount > bridgeTransaction.amount) revert BridgeFacetErrors.HighValidAmount(validAmount, bridgeTransaction.amount);
+		if (validAmount > bridgeTransaction.amount) revert BridgeErrors.ValidAmountExceedsOriginal(validAmount, bridgeTransaction.amount);
 
 		ScheduledReleaseBalance storage balance = bridgeLayout.invalidBridgedAmountsPool.balanceOf(bridgeTransaction.collateral);
 

@@ -12,10 +12,9 @@ import { LibAllocationOperations } from "../../libraries/core/LibAllocationOpera
 
 import { SignedInternalTransfer, SignedWithdraw, SignedBridgeTransfer, SignedAllocate } from "../../types/SignedAccountTypes.sol";
 
-library LibInstantActionsAccount {
-	error MismatchedSignatures();
-	error DeadlineExpired();
+import { InstantActionsErrors } from "../../errors/InstantActionsErrors.sol";
 
+library LibInstantActionsAccount {
 	function instantInternalTransfer(
 		SignedInternalTransfer calldata signedInternalTransferRequest,
 		bytes calldata partyASignature,
@@ -28,7 +27,7 @@ library LibInstantActionsAccount {
 		bytes32 internalTransferAcceptanceHash = LibHash.hashInternalTransfer(signedInternalTransferAcceptance);
 		LibSignature.verifySignature(internalTransferAcceptanceHash, partyBSignature, signedInternalTransferAcceptance.signer);
 
-		if (signedInternalTransferRequest.deadline < block.timestamp) revert DeadlineExpired();
+		if (signedInternalTransferRequest.deadline < block.timestamp) revert InstantActionsErrors.DeadlineExpired();
 
 		if (
 			signedInternalTransferRequest.sender != signedInternalTransferAcceptance.sender ||
@@ -38,7 +37,7 @@ library LibInstantActionsAccount {
 			signedInternalTransferRequest.amount != signedInternalTransferAcceptance.amount ||
 			signedInternalTransferRequest.deadline != signedInternalTransferAcceptance.deadline ||
 			signedInternalTransferRequest.salt != signedInternalTransferAcceptance.salt
-		) revert MismatchedSignatures();
+		) revert InstantActionsErrors.MismatchedSignatures();
 
 		LibBalanceOperations.internalTransfer(
 			signedInternalTransferRequest.collateral,
@@ -60,7 +59,7 @@ library LibInstantActionsAccount {
 		bytes32 withdrawHashAcceptanceHash = LibHash.hashWithdraw(signedWithdrawAcceptance);
 		LibSignature.verifySignature(withdrawHashAcceptanceHash, partyBSignature, signedWithdrawAcceptance.signer);
 
-		if (signedWithdrawRequest.deadline < block.timestamp) revert DeadlineExpired();
+		if (signedWithdrawRequest.deadline < block.timestamp) revert InstantActionsErrors.DeadlineExpired();
 
 		if (
 			signedWithdrawRequest.signer != signedWithdrawAcceptance.signer ||
@@ -70,7 +69,7 @@ library LibInstantActionsAccount {
 			signedWithdrawRequest.amount != signedWithdrawAcceptance.amount ||
 			signedWithdrawRequest.deadline != signedWithdrawAcceptance.deadline ||
 			signedWithdrawRequest.salt != signedWithdrawAcceptance.salt
-		) revert MismatchedSignatures();
+		) revert InstantActionsErrors.MismatchedSignatures();
 
 		return
 			LibBalanceOperations.initiateWithdraw(
@@ -93,7 +92,7 @@ library LibInstantActionsAccount {
 		bytes32 bridgeTransferAcceptanceHash = LibHash.hashBridgeTransfer(signedBridgeTransferAcceptance);
 		LibSignature.verifySignature(bridgeTransferAcceptanceHash, partyBSignature, signedBridgeTransferAcceptance.signer);
 
-		if (signedBridgeTransferRequest.deadline < block.timestamp) revert DeadlineExpired();
+		if (signedBridgeTransferRequest.deadline < block.timestamp) revert InstantActionsErrors.DeadlineExpired();
 
 		if (
 			signedBridgeTransferRequest.sender != signedBridgeTransferAcceptance.sender ||
@@ -104,7 +103,7 @@ library LibInstantActionsAccount {
 			signedBridgeTransferRequest.amount != signedBridgeTransferAcceptance.amount ||
 			signedBridgeTransferRequest.deadline != signedBridgeTransferAcceptance.deadline ||
 			signedBridgeTransferRequest.salt != signedBridgeTransferAcceptance.salt
-		) revert MismatchedSignatures();
+		) revert InstantActionsErrors.MismatchedSignatures();
 
 		return
 			LibBridge.transferToBridge(
@@ -128,7 +127,7 @@ library LibInstantActionsAccount {
 		bytes32 bridgeTransferAcceptanceHash = LibHash.hashSignedAllocate(signedAllocateAcceptance);
 		LibSignature.verifySignature(bridgeTransferAcceptanceHash, partyBSignature, signedAllocateAcceptance.signer);
 
-		if (signedAllocateRequest.deadline < block.timestamp) revert DeadlineExpired();
+		if (signedAllocateRequest.deadline < block.timestamp) revert InstantActionsErrors.DeadlineExpired();
 
 		if (
 			signedAllocateRequest.sender != signedAllocateAcceptance.sender ||
@@ -138,7 +137,7 @@ library LibInstantActionsAccount {
 			signedAllocateRequest.amount != signedAllocateAcceptance.amount ||
 			signedAllocateRequest.deadline != signedAllocateAcceptance.deadline ||
 			signedAllocateRequest.salt != signedAllocateAcceptance.salt
-		) revert MismatchedSignatures();
+		) revert InstantActionsErrors.MismatchedSignatures();
 
 		LibAllocationOperations.allocate(
 			signedAllocateRequest.signer,

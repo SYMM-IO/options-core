@@ -7,28 +7,9 @@ pragma solidity >=0.8.19;
 /******************************************************************************/
 
 import { IDiamondCut } from "../../facets/DiamondCut/IDiamondCut.sol";
+import { DiamondErrors } from "../../errors/DiamondErrors.sol";
 
 library LibDiamond {
-	// Custom errors
-	error NotOwnerOrContract(address sender, address owner, address contractAddress);
-	error NotContractOwner(address sender, address owner);
-	error NotPendingOwner(address sender, address pendingOwner);
-	error IncorrectFacetCutAction(uint8 action);
-	error NoSelectorsInFacet();
-	error CannotAddExistingFunction(bytes4 selector);
-	error NoRemoveTarget(bytes4 selector);
-	error CannotRemoveImmutableFunction(bytes4 selector);
-	error IdenticalReplace(bytes4 selector, address facetAddress);
-	error NoReplaceTarget(bytes4 selector);
-	error ImmutableReplace(bytes4 selector);
-	error ZeroAddressWithNonemptyCalldata();
-	error NonZeroAddressWithEmptyCalldata();
-	error InitFunctionReverted();
-	error ContractHasNoCode(address contractAddress, string errorMessage);
-	error InvalidRemoveFacetAddress(address providedAddress);
-	error InvalidAddFacetAddress();
-	error InvalidReplaceFacetAddress();
-
 	bytes32 public constant DIAMOND_STORAGE_POSITION = keccak256("diamond.standard.diamond.storage");
 
 	struct FacetAddressAndSelectorPosition {
@@ -72,7 +53,7 @@ library LibDiamond {
 
 	function acceptOwnership() internal {
 		DiamondStorage storage ds = diamondStorage();
-		if (msg.sender != ds.pendingOwner) revert NotPendingOwner(msg.sender, ds.pendingOwner);
+		if (msg.sender != ds.pendingOwner) revert DiamondErrors.NotPendingOwner(msg.sender, ds.pendingOwner);
 		address previousOwner = ds.contractOwner;
 		ds.contractOwner = ds.pendingOwner;
 		ds.pendingOwner = address(0);
@@ -85,11 +66,11 @@ library LibDiamond {
 
 	function enforceIsOwnerOrContract() internal view {
 		if (msg.sender != diamondStorage().contractOwner && msg.sender != address(this))
-			revert NotOwnerOrContract(msg.sender, diamondStorage().contractOwner, address(this));
+			revert DiamondErrors.NotOwnerOrContract(msg.sender, diamondStorage().contractOwner, address(this));
 	}
 
 	function enforceIsContractOwner() internal view {
-		if (msg.sender != diamondStorage().contractOwner) revert NotContractOwner(msg.sender, diamondStorage().contractOwner);
+		if (msg.sender != diamondStorage().contractOwner) revert DiamondErrors.NotContractOwner(msg.sender, diamondStorage().contractOwner);
 	}
 
 	event DiamondCut(IDiamondCut.FacetCut[] _diamondCut, address _init, bytes _calldata);
@@ -105,7 +86,7 @@ library LibDiamond {
 			} else if (action == IDiamondCut.FacetCutAction.Remove) {
 				removeFunctions(_diamondCut[facetIndex].facetAddress, _diamondCut[facetIndex].functionSelectors);
 			} else {
-				revert IncorrectFacetCutAction(uint8(action));
+				revert DiamondErrors.IncorrectFacetCutAction(uint8(action));
 			}
 		}
 		emit DiamondCut(_diamondCut, _init, _calldata);
@@ -113,19 +94,19 @@ library LibDiamond {
 	}
 
 	function addFunctions(address _facetAddress, bytes4[] memory _functionSelectors) internal {
-		if (_functionSelectors.length == 0) revert NoSelectorsInFacet();
+		if (_functionSelectors.length == 0) revert DiamondErrors.NoSelectorsInFacet();
 
 		DiamondStorage storage ds = diamondStorage();
 		uint16 selectorCount = uint16(ds.selectors.length);
 
-		if (_facetAddress == address(0)) revert InvalidAddFacetAddress();
+		if (_facetAddress == address(0)) revert DiamondErrors.InvalidAddFacetAddress();
 
 		enforceHasContractCode(_facetAddress, "LibDiamondCut: Add facet has no code");
 
 		for (uint256 selectorIndex; selectorIndex < _functionSelectors.length; selectorIndex++) {
 			bytes4 selector = _functionSelectors[selectorIndex];
 			address oldFacetAddress = ds.facetAddressAndSelectorPosition[selector].facetAddress;
-			if (oldFacetAddress != address(0)) revert CannotAddExistingFunction(selector);
+			if (oldFacetAddress != address(0)) revert DiamondErrors.CannotAddExistingFunction(selector);
 
 			ds.facetAddressAndSelectorPosition[selector] = FacetAddressAndSelectorPosition(_facetAddress, selectorCount);
 			ds.selectors.push(selector);
@@ -134,11 +115,11 @@ library LibDiamond {
 	}
 
 	function replaceFunctions(address _facetAddress, bytes4[] memory _functionSelectors) internal {
-		if (_functionSelectors.length == 0) revert NoSelectorsInFacet();
+		if (_functionSelectors.length == 0) revert DiamondErrors.NoSelectorsInFacet();
 
 		DiamondStorage storage ds = diamondStorage();
 
-		if (_facetAddress == address(0)) revert InvalidReplaceFacetAddress();
+		if (_facetAddress == address(0)) revert DiamondErrors.InvalidReplaceFacetAddress();
 
 		enforceHasContractCode(_facetAddress, "LibDiamondCut: Replace facet has no code");
 
@@ -147,11 +128,11 @@ library LibDiamond {
 			address oldFacetAddress = ds.facetAddressAndSelectorPosition[selector].facetAddress;
 
 			// can't replace immutable functions -- functions defined directly in the diamond
-			if (oldFacetAddress == address(this)) revert ImmutableReplace(selector);
+			if (oldFacetAddress == address(this)) revert DiamondErrors.ImmutableReplace(selector);
 
-			if (oldFacetAddress == _facetAddress) revert IdenticalReplace(selector, _facetAddress);
+			if (oldFacetAddress == _facetAddress) revert DiamondErrors.IdenticalReplace(selector, _facetAddress);
 
-			if (oldFacetAddress == address(0)) revert NoReplaceTarget(selector);
+			if (oldFacetAddress == address(0)) revert DiamondErrors.NoReplaceTarget(selector);
 
 			// replace old facet address
 			ds.facetAddressAndSelectorPosition[selector].facetAddress = _facetAddress;
@@ -159,21 +140,21 @@ library LibDiamond {
 	}
 
 	function removeFunctions(address _facetAddress, bytes4[] memory _functionSelectors) internal {
-		if (_functionSelectors.length == 0) revert NoSelectorsInFacet();
+		if (_functionSelectors.length == 0) revert DiamondErrors.NoSelectorsInFacet();
 
 		DiamondStorage storage ds = diamondStorage();
 		uint256 selectorCount = ds.selectors.length;
 
-		if (_facetAddress != address(0)) revert InvalidRemoveFacetAddress(_facetAddress);
+		if (_facetAddress != address(0)) revert DiamondErrors.InvalidRemoveFacetAddress(_facetAddress);
 
 		for (uint256 selectorIndex; selectorIndex < _functionSelectors.length; selectorIndex++) {
 			bytes4 selector = _functionSelectors[selectorIndex];
 			FacetAddressAndSelectorPosition memory oldFacetAddressAndSelectorPosition = ds.facetAddressAndSelectorPosition[selector];
 
-			if (oldFacetAddressAndSelectorPosition.facetAddress == address(0)) revert NoRemoveTarget(selector);
+			if (oldFacetAddressAndSelectorPosition.facetAddress == address(0)) revert DiamondErrors.NoRemoveTarget(selector);
 
 			// can't remove immutable functions -- functions defined directly in the diamond
-			if (oldFacetAddressAndSelectorPosition.facetAddress == address(this)) revert CannotRemoveImmutableFunction(selector);
+			if (oldFacetAddressAndSelectorPosition.facetAddress == address(this)) revert DiamondErrors.CannotRemoveImmutableFunction(selector);
 
 			// replace selector with last selector
 			selectorCount--;
@@ -190,9 +171,9 @@ library LibDiamond {
 
 	function initializeDiamondCut(address _init, bytes memory _calldata) internal {
 		if (_init == address(0)) {
-			if (_calldata.length != 0) revert ZeroAddressWithNonemptyCalldata();
+			if (_calldata.length != 0) revert DiamondErrors.ZeroAddressWithNonemptyCalldata();
 		} else {
-			if (_calldata.length == 0) revert NonZeroAddressWithEmptyCalldata();
+			if (_calldata.length == 0) revert DiamondErrors.NonZeroAddressWithEmptyCalldata();
 
 			if (_init != address(this)) {
 				enforceHasContractCode(_init, "LibDiamondCut: _init address has no code");
@@ -203,7 +184,7 @@ library LibDiamond {
 					// bubble up the error
 					revert(string(error));
 				} else {
-					revert InitFunctionReverted();
+					revert DiamondErrors.InitFunctionReverted();
 				}
 			}
 		}
@@ -214,6 +195,6 @@ library LibDiamond {
 		assembly {
 			contractSize := extcodesize(_contract)
 		}
-		if (contractSize == 0) revert ContractHasNoCode(_contract, _errorMessage);
+		if (contractSize == 0) revert DiamondErrors.ContractHasNoCode(_contract, _errorMessage);
 	}
 }

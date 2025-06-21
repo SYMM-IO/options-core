@@ -10,13 +10,9 @@ import { CloseIntentStorage } from "../../storages/CloseIntentStorage.sol";
 import { Trade } from "../../types/TradeTypes.sol";
 import { CloseIntent, CloseIntentStatus } from "../../types/IntentTypes.sol";
 
-import { CommonErrors } from "../utils/CommonErrors.sol";
+import { CommonErrors } from "../../errors/CommonErrors.sol";
 
 library LibCloseIntentOps {
-	// Custom errors
-	error ItemNotFound(uint256 item);
-	error IntentNotExpired(uint256 intentId, uint256 currentTime, uint256 deadline);
-
 	/**
 	 * @notice Gets the index of an item in an array.
 	 * @param array_ The array in which to search for the item.
@@ -36,8 +32,7 @@ library LibCloseIntentOps {
 	 * @param item The item to remove from the array.
 	 */
 	function removeFromArray(uint256[] storage array_, uint256 item) internal {
-		uint256 index = getIndexOfItem(array_, item);
-		if (index == type(uint256).max) revert ItemNotFound(item);
+		uint256 index = getIndexOfItem(array_, item); // Should always be found
 		array_[index] = array_[array_.length - 1];
 		array_.pop();
 	}
@@ -58,7 +53,7 @@ library LibCloseIntentOps {
 	}
 
 	function expire(CloseIntent storage self) internal {
-		if (block.timestamp <= self.deadline) revert IntentNotExpired(self.id, block.timestamp, self.deadline);
+		if (block.timestamp <= self.deadline) revert CommonErrors.IntentNotExpired(self.id, block.timestamp, self.deadline);
 
 		if (self.status != CloseIntentStatus.PENDING && self.status != CloseIntentStatus.CANCEL_PENDING) {
 			uint8[] memory requiredStatuses = new uint8[](2);

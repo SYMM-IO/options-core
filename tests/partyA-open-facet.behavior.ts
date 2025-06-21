@@ -83,7 +83,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.feeToken(context.collateral)
 				.symbolId(1)
 				.build()
-			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "LowExpirationTimestamp")
+			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "ExpirationTimestampPassed")
 		})
 
 		it("Should fail when expiration timestamp be low", async function () {
@@ -95,7 +95,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.symbolId(1)
 				.deadline(latestBlock + 120)
 				.build()
-			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "LowExpirationTimestamp")
+			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "ExpirationTimestampPassed")
 		})
 
 		it("Should fail when cap for exercise fee be high", async function () {
@@ -109,7 +109,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.expirationTimestamp(latestBlock + 120)
 				.exerciseFee({ cap: e(2), rate: "0" })
 				.build()
-			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "HighExerciseFeeCap")
+			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "ExerciseFeeCapExceeded")
 		})
 
 		it("Should fail when instance mode is active", async function () {
@@ -125,7 +125,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.build()
 
 			await context.controlFacet.setInstantActionsMode(partyA1.getSigner, true)
-			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "InstantActionModeActive")
+			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "InstantModeActive")
 		})
 
 		it("Should fail when affiliate be zero address or invalid", async function () {
@@ -179,7 +179,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.exerciseFee({ cap: e(1), rate: "0" })
 				.build()
 
-			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "PartyAInPartyBWhitelist")
+			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "InvalidWhitelistEntry")
 		})
 
 		it("Should fail when partyA sends Short intent with isolated margin", async function () {
@@ -196,7 +196,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.tradeSide(TradeSide.SELL)
 				.build()
 
-			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "ShortTradeInIsolatedMode")
+			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "IsolatedModeSellNotAllowed")
 		})
 
 		it("Should fail when partyA have more than 1 PartyB in cross margin ", async function () {
@@ -213,7 +213,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.tradeSide(TradeSide.SELL)
 				.build()
 
-			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "OnlyOnePartyBIsAllowedInCrossMode")
+			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "MultiplePartyBNotAllowed")
 		})
 
 		it("Should fail when partyA is not solvent in cross margin", async function () {
@@ -285,7 +285,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.price(7)
 				.build()
 
-			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "InvalidOpenQuantity")
+			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "ZeroQuantity")
 			//TODO ::: intent with quantity zero?
 		})
 
@@ -368,7 +368,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 		it("Should be failed when Sender address is Suspended", async () => {
 			await context.controlFacet.suspendAddress(partyA1.getSigner, true)
-			// await expect(partyA1.sendCancelOpenIntent(["1"])).to.be.revertedWithCustomError(context.partyAOpenFacet, "SuspendedAddress")
+			// await expect(partyA1.sendCancelOpenIntent(["1"])).to.be.revertedWithCustomError(context.partyAOpenFacet, "AddressSuspended")
 			//TODO ::: Suspended address is for any party in any state?
 		})
 

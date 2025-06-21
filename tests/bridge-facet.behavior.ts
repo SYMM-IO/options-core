@@ -74,7 +74,7 @@ export function shouldBehaveLikeBridgeFacet(): void {
 				context.bridgeFacet
 					.connect(partyA1.getSigner)
 					.transferToBridge(context.collateral, e(1000), context.signers.bridge2.address, partyA1.address),
-			).to.be.revertedWithCustomError(context.bridgeFacet, "InvalidBridge")
+			).to.be.revertedWithCustomError(context.bridgeFacet, "BridgeNotWhitelisted")
 		})
 
 		it("Should fail when bridge and msgSender be same", async function () {
@@ -82,7 +82,7 @@ export function shouldBehaveLikeBridgeFacet(): void {
 				context.bridgeFacet
 					.connect(context.signers.bridge1)
 					.transferToBridge(context.collateral, e(1000), context.signers.bridge1.address, partyA1.address),
-			).to.be.revertedWithCustomError(context.bridgeFacet, "SameBridgeAndSender")
+			).to.be.revertedWithCustomError(context.bridgeFacet, "SelfBridgeNotAllowed")
 		})
 
 		it("Should fail when receiver address be Zero", async function () {
@@ -106,7 +106,7 @@ export function shouldBehaveLikeBridgeFacet(): void {
 				context.bridgeFacet
 					.connect(partyA1.getSigner)
 					.transferToBridge(context.collateral, e(1000), context.signers.bridge1.address, partyA1.address),
-			).to.be.revertedWithCustomError(context.bridgeFacet, "InstantActionModeActive")
+			).to.be.revertedWithCustomError(context.bridgeFacet, "InstantModeActive")
 		})
 
 		it("Should transfer to bridge successfully", async function () {
@@ -173,7 +173,7 @@ export function shouldBehaveLikeBridgeFacet(): void {
 		it("Should fail if transactionId invalid", async function () {
 			await expect(
 				context.bridgeFacet.connect(context.signers.bridge1).withdrawReceivedBridgeValues([LastBridgeTransactionId + BigInt(10)]),
-			).to.be.revertedWithCustomError(context.bridgeFacet, "InvalidBridgeTransactionId")
+			).to.be.revertedWithCustomError(context.bridgeFacet, "TransactionIdNotFound")
 		})
 
 		it("Should transaction status be RECEIVED", async function () {
@@ -207,7 +207,7 @@ export function shouldBehaveLikeBridgeFacet(): void {
 				context.bridgeFacet
 					.connect(context.signers.bridge1)
 					.withdrawReceivedBridgeValues([LastBridgeTransactionId, LastBridgeTransactionId + BigInt(1)]),
-			).to.be.revertedWithCustomError(context.bridgeFacet, "BridgeCollateralMismatch")
+			).to.be.revertedWithCustomError(context.bridgeFacet, "MismatchedCollateral")
 		})
 
 		it("Should transfer to bridge successfully single transactionId", async function () {
@@ -282,7 +282,7 @@ export function shouldBehaveLikeBridgeFacet(): void {
 		it("Should fail if transactionId invalid", async function () {
 			await expect(context.bridgeFacet.suspendBridgeTransaction(LastBridgeTransactionId + BigInt(10))).to.be.revertedWithCustomError(
 				context.bridgeFacet,
-				"InvalidBridgeTransactionId",
+				"TransactionIdNotFound",
 			)
 		})
 
@@ -349,7 +349,7 @@ export function shouldBehaveLikeBridgeFacet(): void {
 			await context.controlFacet.setInvalidBridgedAmountsPool(context.signers.others[0])
 			await expect(context.bridgeFacet.restoreBridgeTransaction(LastBridgeTransactionId, e(2000))).to.be.revertedWithCustomError(
 				context.bridgeFacet,
-				"HighValidAmount",
+				"ValidAmountExceedsOriginal",
 			)
 		})
 
