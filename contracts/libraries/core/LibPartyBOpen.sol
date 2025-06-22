@@ -23,8 +23,9 @@ import { OpenIntent, OpenIntentStatus } from "../../types/IntentTypes.sol";
 import { TradeAgreements, TradeSide, MarginType } from "../../types/BaseTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 
-import { CommonErrors } from "../../errors/CommonErrors.sol";
-import { PartyBOpenErrors } from "../../errors/PartyBOpenErrors.sol";
+import { ValidationErrors } from "../../errors/ValidationErrors.sol";
+import { IntentErrors } from "../../errors/IntentErrors.sol";
+import { SystemErrors } from "../../errors/SystemErrors.sol";
 
 library LibPartyBOpen {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
@@ -35,31 +36,30 @@ library LibPartyBOpen {
 	function lockOpenIntent(address sender, uint256 intentId) internal {
 		OpenIntentStorage.Layout storage intentLayout = OpenIntentStorage.layout();
 		AppStorage.Layout storage appLayout = AppStorage.layout();
+		StateControlStorage.Layout storage stateControlLayout = StateControlStorage.layout();
 
 		OpenIntent storage intent = intentLayout.openIntents[intentId];
 		Symbol storage symbol = SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId];
 
-		if (StateControlStorage.layout().suspendedAddresses[intent.partyA]) revert CommonErrors.AddressSuspended(intent.partyA);
-		if (StateControlStorage.layout().suspendedAddresses[sender]) revert CommonErrors.AddressSuspended(sender);
-		if (StateControlStorage.layout().partyBEmergencyStatus[sender]) revert PartyBOpenErrors.PartyBInEmergencyMode(sender);
+		if (stateControlLayout.suspendedAddresses[intent.partyA]) revert SystemErrors.UserSuspended(intent.partyA);
+		if (stateControlLayout.suspendedAddresses[sender]) revert SystemErrors.UserSuspended(sender);
+		if (stateControlLayout.partyBEmergencyStatus[sender]) revert SystemErrors.PartyBInEmergencyMode(sender);
 
-		if (StateControlStorage.layout().emergencyMode) revert PartyBOpenErrors.SystemInEmergencyMode();
+		if (stateControlLayout.emergencyMode) revert SystemErrors.SystemInEmergencyMode();
 
-		if (intent.partyA == sender) revert PartyBOpenErrors.SelfTradeNotAllowed(sender);
+		if (intentId > intentLayout.lastOpenIntentId) revert IntentErrors.IntentNotFound(intentId);
 
-		if (intentId > intentLayout.lastOpenIntentId) revert PartyBOpenErrors.IntentNotFound(intentId);
+		ValidationErrors.requireStatus("OpenIntentStatus", uint8(intent.status), uint8(OpenIntentStatus.PENDING));
 
-		CommonErrors.requireStatus("OpenIntentStatus", uint8(intent.status), uint8(OpenIntentStatus.PENDING));
+		if (block.timestamp > intent.deadline) revert IntentErrors.IntentExpired(intentId, block.timestamp, intent.deadline);
 
-		if (block.timestamp > intent.deadline) revert CommonErrors.IntentExpired(intentId, block.timestamp, intent.deadline);
-
-		if (!symbol.isValid) revert CommonErrors.InvalidSymbol(intent.tradeAgreements.symbolId);
+		if (!symbol.isValid) revert ValidationErrors.InvalidSymbol(intent.tradeAgreements.symbolId);
 
 		if (block.timestamp > intent.tradeAgreements.expirationTimestamp)
-			revert CommonErrors.ExpirationTimestampPassed(block.timestamp, intent.tradeAgreements.expirationTimestamp);
+			revert IntentErrors.ExpirationTimestampPassed(block.timestamp, intent.tradeAgreements.expirationTimestamp);
 
 		if (appLayout.partyBConfigs[sender].oracleId != symbol.oracleId)
-			revert PartyBOpenErrors.OracleMismatch(sender, appLayout.partyBConfigs[sender].oracleId, symbol.oracleId);
+			revert IntentErrors.OracleMismatch(sender, appLayout.partyBConfigs[sender].oracleId, symbol.oracleId);
 
 		bool isValidPartyB;
 		if (intent.partyBsWhiteList.length == 0) {
@@ -73,10 +73,10 @@ library LibPartyBOpen {
 			}
 		}
 
-		if (!isValidPartyB) revert PartyBOpenErrors.NotWhitelistedPartyB(sender, intent.partyBsWhiteList);
+		if (!isValidPartyB) revert IntentErrors.NotWhitelistedPartyB(sender, intent.partyBsWhiteList);
 
 		if (appLayout.partyBConfigs[sender].symbolType != symbol.symbolType)
-			revert PartyBOpenErrors.SymbolTypeMismatch(sender, appLayout.partyBConfigs[sender].symbolType, symbol.symbolType);
+			revert IntentErrors.SymbolTypeMismatch(sender, appLayout.partyBConfigs[sender].symbolType, symbol.symbolType);
 
 		sender.requireSolvent(intent.partyA, symbol.collateral, MarginType.ISOLATED);
 
@@ -90,9 +90,9 @@ library LibPartyBOpen {
 		OpenIntentStorage.Layout storage intentLayout = OpenIntentStorage.layout();
 		OpenIntent storage intent = intentLayout.openIntents[intentId];
 
-		if (intent.partyB != sender) revert CommonErrors.UnauthorizedSender(sender, intent.partyB);
+		if (intent.partyB != sender) revert ValidationErrors.UnauthorizedSender(sender, intent.partyB);
 
-		CommonErrors.requireStatus("OpenIntentStatus", uint8(intent.status), uint8(OpenIntentStatus.LOCKED));
+		ValidationErrors.requireStatus("OpenIntentStatus", uint8(intent.status), uint8(OpenIntentStatus.LOCKED));
 
 		sender.requireSolvent(intent.partyA, SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId].collateral, MarginType.ISOLATED);
 
@@ -111,9 +111,9 @@ library LibPartyBOpen {
 	function acceptCancelOpenIntent(address sender, uint256 intentId) internal {
 		OpenIntent storage intent = OpenIntentStorage.layout().openIntents[intentId];
 
-		CommonErrors.requireStatus("OpenIntentStatus", uint8(intent.status), uint8(OpenIntentStatus.CANCEL_PENDING));
+		ValidationErrors.requireStatus("OpenIntentStatus", uint8(intent.status), uint8(OpenIntentStatus.CANCEL_PENDING));
 
-		if (intent.partyB != sender) revert CommonErrors.UnauthorizedSender(sender, intent.partyB);
+		if (intent.partyB != sender) revert ValidationErrors.UnauthorizedSender(sender, intent.partyB);
 
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = OpenIntentStatus.CANCELED;
@@ -130,27 +130,25 @@ library LibPartyBOpen {
 		FeeManagementStorage.Layout storage feeLayout = FeeManagementStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		OpenIntentStorage.Layout storage intentLayout = OpenIntentStorage.layout();
+		StateControlStorage.Layout storage stateControlLayout = StateControlStorage.layout();
 
 		OpenIntent storage intent = intentLayout.openIntents[intentId];
 		Symbol memory symbol = SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId];
 
-		if (sender != intent.partyB) revert CommonErrors.UnauthorizedSender(sender, intent.partyB);
+		if (sender != intent.partyB) revert ValidationErrors.UnauthorizedSender(sender, intent.partyB);
 
-		if (StateControlStorage.layout().suspendedAddresses[intent.partyA]) revert CommonErrors.AddressSuspended(intent.partyA);
+		if (stateControlLayout.suspendedAddresses[intent.partyA]) revert SystemErrors.UserSuspended(intent.partyA);
+		if (stateControlLayout.suspendedAddresses[intent.partyB]) revert SystemErrors.UserSuspended(intent.partyB);
+		if (stateControlLayout.partyBEmergencyStatus[intent.partyB]) revert SystemErrors.PartyBInEmergencyMode(intent.partyB);
+		if (stateControlLayout.emergencyMode) revert SystemErrors.SystemInEmergencyMode();
 
-		if (StateControlStorage.layout().suspendedAddresses[intent.partyB]) revert CommonErrors.AddressSuspended(intent.partyB);
-
-		if (StateControlStorage.layout().partyBEmergencyStatus[intent.partyB]) revert PartyBOpenErrors.PartyBInEmergencyMode(intent.partyB);
-
-		if (StateControlStorage.layout().emergencyMode) revert PartyBOpenErrors.SystemInEmergencyMode();
-
-		if (!symbol.isValid) revert CommonErrors.InvalidSymbol(intent.tradeAgreements.symbolId);
+		if (!symbol.isValid) revert ValidationErrors.InvalidSymbol(intent.tradeAgreements.symbolId);
 
 		if (intent.status != OpenIntentStatus.LOCKED && intent.status != OpenIntentStatus.CANCEL_PENDING) {
 			uint8[] memory requiredStatuses = new uint8[](2);
 			requiredStatuses[0] = uint8(OpenIntentStatus.LOCKED);
 			requiredStatuses[1] = uint8(OpenIntentStatus.CANCEL_PENDING);
-			revert CommonErrors.InvalidState("OpenIntentStatus", uint8(intent.status), requiredStatuses);
+			revert ValidationErrors.InvalidState("OpenIntentStatus", uint8(intent.status), requiredStatuses);
 		}
 
 		if (intent.tradeAgreements.marginType == MarginType.CROSS) {
@@ -158,23 +156,18 @@ library LibPartyBOpen {
 		}
 		intent.partyB.requireSolvent(intent.partyA, symbol.collateral, intent.tradeAgreements.marginType);
 
-		if (block.timestamp > intent.deadline) revert CommonErrors.IntentExpired(intentId, block.timestamp, intent.deadline);
+		if (block.timestamp > intent.deadline) revert IntentErrors.IntentExpired(intentId, block.timestamp, intent.deadline);
 
 		if (block.timestamp > intent.tradeAgreements.expirationTimestamp)
-			revert CommonErrors.ExpirationTimestampPassed(block.timestamp, intent.tradeAgreements.expirationTimestamp);
+			revert IntentErrors.ExpirationTimestampPassed(block.timestamp, intent.tradeAgreements.expirationTimestamp);
 
-		if (intent.tradeAgreements.quantity < quantity || quantity == 0)
-			revert CommonErrors.InvalidAmount(
-				"quantity",
-				quantity,
-				quantity == 0 ? 2 : 1, // 2 for equality check (not equal to 0), 1 for less than check
-				intent.tradeAgreements.quantity
-			);
+		if (quantity == 0) revert ValidationErrors.ZeroAmount();
+		if (intent.tradeAgreements.quantity < quantity) revert IntentErrors.InvalidFillAmount(quantity, intent.tradeAgreements.quantity);
 
 		if (
 			(intent.tradeAgreements.tradeSide == TradeSide.BUY && price > intent.price) ||
 			(intent.tradeAgreements.tradeSide == TradeSide.SELL && price < intent.price)
-		) revert PartyBOpenErrors.InvalidOpenPrice(price, intent.price);
+		) revert IntentErrors.InvalidOpenPrice(price, intent.price);
 
 		{
 			address affiliateFeeCollector = feeLayout.affiliateFeeCollector[intent.affiliate] == address(0)

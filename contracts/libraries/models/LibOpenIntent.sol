@@ -14,7 +14,8 @@ import { TradeSide, MarginType } from "../../types/BaseTypes.sol";
 import { OpenIntent, OpenIntentStatus } from "../../types/IntentTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 
-import { CommonErrors } from "../../errors/CommonErrors.sol";
+import { ValidationErrors } from "../../errors/ValidationErrors.sol";
+import { IntentErrors } from "../../errors/IntentErrors.sol";
 
 library LibOpenIntentOps {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
@@ -77,7 +78,7 @@ library LibOpenIntentOps {
 	}
 
 	function expire(OpenIntent storage self) internal {
-		if (block.timestamp <= self.deadline) revert CommonErrors.IntentNotExpired(self.id, block.timestamp, self.deadline);
+		if (block.timestamp <= self.deadline) revert IntentErrors.IntentNotExpired(self.id, block.timestamp, self.deadline);
 
 		if (!(self.status == OpenIntentStatus.PENDING || self.status == OpenIntentStatus.CANCEL_PENDING || self.status == OpenIntentStatus.LOCKED)) {
 			uint8[] memory requiredStatuses = new uint8[](3);
@@ -85,7 +86,7 @@ library LibOpenIntentOps {
 			requiredStatuses[1] = uint8(OpenIntentStatus.CANCEL_PENDING);
 			requiredStatuses[2] = uint8(OpenIntentStatus.LOCKED);
 
-			revert CommonErrors.InvalidState("OpenIntentStatus", uint8(self.status), requiredStatuses);
+			revert ValidationErrors.InvalidState("OpenIntentStatus", uint8(self.status), requiredStatuses);
 		}
 
 		self.status = OpenIntentStatus.EXPIRED;

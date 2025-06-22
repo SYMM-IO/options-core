@@ -325,7 +325,7 @@
 				"type": "uint256"
 			}
 		],
-		"name": "HighExerciseFeeCap",
+		"name": "ExerciseFeeCapExceeded",
 		"type": "error"
 	},
 	{
@@ -341,7 +341,7 @@
 	},
 	{
 		"inputs": [],
-		"name": "InvalidOpenQuantity",
+		"name": "ZeroQuantity",
 		"type": "error"
 	},
 	{
@@ -357,12 +357,12 @@
 				"type": "uint256"
 			}
 		],
-		"name": "LowExpirationTimestamp",
+		"name": "ExpirationTimestampPassed",
 		"type": "error"
 	},
 	{
 		"inputs": [],
-		"name": "OnlyOnePartyBIsAllowedInCrossMode",
+		"name": "MultiplePartyBNotAllowed",
 		"type": "error"
 	},
 	{
@@ -373,7 +373,7 @@
 				"type": "address"
 			}
 		],
-		"name": "PartyAInPartyBWhitelist",
+		"name": "InvalidWhitelistEntry",
 		"type": "error"
 	},
 	{
@@ -384,12 +384,12 @@
 				"type": "address"
 			}
 		],
-		"name": "SenderIsPartyB",
+		"name": "PartyBSender",
 		"type": "error"
 	},
 	{
 		"inputs": [],
-		"name": "ShortTradeInIsolatedMode",
+		"name": "IsolatedModeShortNotAllowed",
 		"type": "error"
 	},
 	{
@@ -573,7 +573,7 @@
 				"type": "address"
 			}
 		],
-		"name": "InstantActionModeActive",
+		"name": "InstantModeActive",
 		"type": "error"
 	},
 	{
@@ -880,7 +880,7 @@
 				"type": "address"
 			}
 		],
-		"name": "SuspendedAddress",
+		"name": "AddressSuspended",
 		"type": "error"
 	},
 	{
@@ -891,7 +891,7 @@
 				"type": "uint256"
 			}
 		],
-		"name": "SuspendedWithdrawal",
+		"name": "WithdrawalSuspended",
 		"type": "error"
 	},
 	{
@@ -923,7 +923,7 @@
 				"type": "address"
 			}
 		],
-		"name": "UserIsPartyB",
+		"name": "PartyBUser",
 		"type": "error"
 	},
 	{
@@ -1335,7 +1335,7 @@
 				"type": "uint256"
 			}
 		],
-		"name": "InvalidClosedPrice",
+		"name": "InvalidClosePrice",
 		"type": "error"
 	},
 	{
@@ -1351,7 +1351,7 @@
 				"type": "uint256"
 			}
 		],
-		"name": "InvalidFilledAmount",
+		"name": "InvalidFillAmount",
 		"type": "error"
 	},
 	{
@@ -1458,7 +1458,7 @@
 				"type": "address"
 			}
 		],
-		"name": "BridgeCollateralMismatch",
+		"name": "MismatchedCollateral",
 		"type": "error"
 	},
 	{
@@ -1511,7 +1511,7 @@
 				"type": "uint256"
 			}
 		],
-		"name": "HighValidAmount",
+		"name": "ValidAmountExceedsOriginal",
 		"type": "error"
 	},
 	{
@@ -1548,7 +1548,7 @@
 				"type": "address"
 			}
 		],
-		"name": "InvalidBridge",
+		"name": "BridgeNotWhitelisted",
 		"type": "error"
 	},
 	{
@@ -1559,7 +1559,7 @@
 				"type": "uint256"
 			}
 		],
-		"name": "InvalidBridgeTransactionId",
+		"name": "TransactionIdNotFound",
 		"type": "error"
 	},
 	{
@@ -1570,7 +1570,7 @@
 				"type": "address"
 			}
 		],
-		"name": "SameBridgeAndSender",
+		"name": "SelfBridgeNotAllowed",
 		"type": "error"
 	},
 	{
@@ -1924,7 +1924,7 @@
 				"type": "uint256"
 			}
 		],
-		"name": "InvalidIntentId",
+		"name": "IntentNotFound",
 		"type": "error"
 	},
 	{
@@ -1961,7 +1961,7 @@
 				"type": "uint256"
 			}
 		],
-		"name": "MismatchedSymbolType",
+		"name": "SymbolTypeMismatch",
 		"type": "error"
 	},
 	{
@@ -1998,7 +1998,7 @@
 				"type": "uint256"
 			}
 		],
-		"name": "OracleNotMatched",
+		"name": "OracleMismatch",
 		"type": "error"
 	},
 	{
@@ -2025,7 +2025,7 @@
 				"type": "address"
 			}
 		],
-		"name": "UserOnBothSides",
+		"name": "SelfTradeNotAllowed",
 		"type": "error"
 	},
 	{
@@ -2859,7 +2859,7 @@
 				"type": "uint256"
 			}
 		],
-		"name": "InvalidOracle",
+		"name": "OracleNotFound",
 		"type": "error"
 	},
 	{
@@ -4688,7 +4688,7 @@
 				"type": "address"
 			}
 		],
-		"name": "InvalidWithdrawalUser",
+		"name": "UnauthorizedWithdrawalUser",
 		"type": "error"
 	},
 	{
@@ -4704,7 +4704,7 @@
 				"type": "uint256"
 			}
 		],
-		"name": "MismatchedArrays",
+		"name": "MismatchedArrayLengths",
 		"type": "error"
 	},
 	{
@@ -4725,7 +4725,7 @@
 				"type": "address"
 			}
 		],
-		"name": "PartyAIsSolvent",
+		"name": "PartyASolvent",
 		"type": "error"
 	},
 	{
@@ -4767,7 +4767,7 @@
 				"type": "address"
 			}
 		],
-		"name": "PartyBIsSolvent",
+		"name": "PartyBSolvent",
 		"type": "error"
 	},
 	{
@@ -4783,7 +4783,7 @@
 				"type": "uint256"
 			}
 		],
-		"name": "TradeIsNotInLiquidation",
+		"name": "TradeNotInLiquidation",
 		"type": "error"
 	},
 	{
@@ -4836,7 +4836,7 @@
 				"type": "address"
 			}
 		],
-		"name": "AlreadyBoundToPartyB",
+		"name": "BoundedToAnotherPartyB",
 		"type": "error"
 	},
 	{
@@ -4857,7 +4857,7 @@
 				"type": "uint256"
 			}
 		],
-		"name": "BalanceLimitPerUserReached",
+		"name": "BalanceLimitExceeded",
 		"type": "error"
 	},
 	{
@@ -4879,7 +4879,7 @@
 				"type": "address"
 			}
 		],
-		"name": "InstantActionModeDeactivationNotProposed",
+		"name": "DeactivationNotProposed",
 		"type": "error"
 	},
 	{
@@ -4906,7 +4906,7 @@
 				"type": "address"
 			}
 		],
-		"name": "InvalidCounterPartyToAllocate",
+		"name": "InvalidCounterParty",
 		"type": "error"
 	},
 	{
@@ -4922,7 +4922,7 @@
 				"type": "uint256"
 			}
 		],
-		"name": "InvalidWithdrawId",
+		"name": "InvalidWithdrawalId",
 		"type": "error"
 	},
 	{
@@ -4933,7 +4933,7 @@
 				"type": "address"
 			}
 		],
-		"name": "NotBoundToAnyPartyB",
+		"name": "BoundedPartyBNotFound",
 		"type": "error"
 	},
 	{
@@ -4959,7 +4959,7 @@
 				"type": "int256"
 			}
 		],
-		"name": "NotEnoughBalance",
+		"name": "InsufficientBalance",
 		"type": "error"
 	},
 	{
@@ -4970,7 +4970,7 @@
 				"type": "address"
 			}
 		],
-		"name": "PartyBNotActive",
+		"name": "InactivePartyB",
 		"type": "error"
 	},
 	{
@@ -4981,7 +4981,7 @@
 				"type": "address"
 			}
 		],
-		"name": "PartyShouldBeLiquidated",
+		"name": "InsolventParty",
 		"type": "error"
 	},
 	{
@@ -5012,7 +5012,7 @@
 				"type": "int256"
 			}
 		],
-		"name": "RemainingAmountMoreThanCounterPartyDebt",
+		"name": "InsufficientDebtCoverage",
 		"type": "error"
 	},
 	{
@@ -5028,7 +5028,7 @@
 				"type": "uint256"
 			}
 		],
-		"name": "UnbindingAlreadyInitiated",
+		"name": "UnbindingAlreadyInProgress",
 		"type": "error"
 	},
 	{
@@ -5049,7 +5049,7 @@
 				"type": "uint256"
 			}
 		],
-		"name": "UnbindingCooldownNotReached",
+		"name": "UnbindingCooldownNotOver",
 		"type": "error"
 	},
 	{
@@ -5995,7 +5995,7 @@
 				"type": "uint256"
 			}
 		],
-		"name": "InvalidSymbolId",
+		"name": "MismatchedSymbolId",
 		"type": "error"
 	},
 	{
@@ -6032,7 +6032,7 @@
 				"type": "uint256"
 			}
 		],
-		"name": "TradeNotExpired",
+		"name": "TradeNotYetExpired",
 		"type": "error"
 	},
 	{
@@ -6239,7 +6239,7 @@
 				"type": "address"
 			}
 		],
-		"name": "OnlyPartyACanTransfer",
+		"name": "UnauthorizedTransfer",
 		"type": "error"
 	},
 	{
@@ -6266,7 +6266,7 @@
 				"type": "uint256"
 			}
 		],
-		"name": "TradeInCrossCannotBeTransferred",
+		"name": "CrossTradeTransferNotAllowed",
 		"type": "error"
 	},
 	{
@@ -9259,7 +9259,7 @@
 	},
 	{
 		"inputs": [],
-		"name": "ownerExclusiveWindow",
+		"name": "partyBExclusiveWindow",
 		"outputs": [
 			{
 				"internalType": "uint256",

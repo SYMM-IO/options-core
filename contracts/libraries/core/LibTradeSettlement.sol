@@ -21,8 +21,8 @@ import { Symbol, OptionType } from "../../types/SymbolTypes.sol";
 import { SettlementPriceSig } from "../../types/SettlementTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 
-import { CommonErrors } from "../../errors/CommonErrors.sol";
-import { TradeSettlementErrors } from "../../errors/TradeSettlementErrors.sol";
+import { ValidationErrors } from "../../errors/ValidationErrors.sol";
+import { TradeErrors } from "../../errors/TradeErrors.sol";
 
 library LibTradeSettlement {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
@@ -43,13 +43,12 @@ library LibTradeSettlement {
 			trade.partyB.requireSolvent(address(0), symbol.collateral, trade.tradeAgreements.marginType);
 		}
 
-		if (sig.symbolId != trade.tradeAgreements.symbolId)
-			revert TradeSettlementErrors.MismatchedSymbolId(sig.symbolId, trade.tradeAgreements.symbolId);
+		if (sig.symbolId != trade.tradeAgreements.symbolId) revert TradeErrors.MismatchedSymbolId(sig.symbolId, trade.tradeAgreements.symbolId);
 
-		CommonErrors.requireStatus("TradeStatus", uint8(trade.status), uint8(TradeStatus.OPENED));
+		ValidationErrors.requireStatus("TradeStatus", uint8(trade.status), uint8(TradeStatus.OPENED));
 
 		if (block.timestamp <= trade.tradeAgreements.expirationTimestamp)
-			revert TradeSettlementErrors.TradeNotYetExpired(tradeId, block.timestamp, trade.tradeAgreements.expirationTimestamp);
+			revert TradeErrors.TradeNotYetExpired(tradeId, block.timestamp, trade.tradeAgreements.expirationTimestamp);
 
 		if (symbol.optionType == OptionType.PUT) {
 			if (sig.settlementPrice < trade.tradeAgreements.strikePrice) {
@@ -71,10 +70,10 @@ library LibTradeSettlement {
 
 		if (!isExpired) {
 			if (msg.sender != trade.partyB) {
-				if (trade.tradeAgreements.expirationTimestamp + appLayout.ownerExclusiveWindow > block.timestamp)
-					revert TradeSettlementErrors.OwnerExclusiveWindowActive(
+				if (trade.tradeAgreements.expirationTimestamp + appLayout.partyBExclusiveWindow > block.timestamp)
+					revert TradeErrors.PartyBExclusiveWindowNotOver(
 						block.timestamp,
-						trade.tradeAgreements.expirationTimestamp + appLayout.ownerExclusiveWindow
+						trade.tradeAgreements.expirationTimestamp + appLayout.partyBExclusiveWindow
 					);
 			}
 

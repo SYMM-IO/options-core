@@ -4,8 +4,8 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-library DiamondErrors {
-	error NotOwnerOrContract(address sender, address owner, address contractAddress);
+library SystemErrors {
+	// Diamond operations
 	error NotContractOwner(address sender, address owner);
 	error NotPendingOwner(address sender, address pendingOwner);
 	error IncorrectFacetCutAction(uint8 action);
@@ -24,4 +24,24 @@ library DiamondErrors {
 	error InvalidAddFacetAddress();
 	error InvalidReplaceFacetAddress();
 	error FunctionDoesNotExist(bytes4 functionSelector);
+
+	// Pausable states
+	error GlobalPaused();
+	error BridgePaused();
+	error BridgeWithdrawPaused();
+	error DepositingPaused();
+	error InternalTransferPaused();
+	error WithdrawingPaused();
+	error PartyAActionsPaused();
+	error PartyBActionsPaused();
+	error ThirdPartyActionsPaused();
+	error LiquidatingPaused();
+
+	// Emergency states
+	error PartyBInEmergencyMode(address partyB);
+	error SystemInEmergencyMode();
+
+	// Suspension/Status validation
+	error UserSuspended(address user);
+	error WithdrawalSuspended(uint256 withdrawId);
 }

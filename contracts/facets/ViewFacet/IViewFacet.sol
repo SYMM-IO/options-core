@@ -184,7 +184,7 @@ interface IViewFacet {
 
 	function forceCancelCloseIntentTimeout() external view returns (uint256);
 
-	function ownerExclusiveWindow() external view returns (uint256);
+	function partyBExclusiveWindow() external view returns (uint256);
 
 	function defaultFeeCollector() external view returns (address);
 

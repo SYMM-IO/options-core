@@ -814,8 +814,8 @@ contract ViewFacet is IViewFacet {
 		return AppStorage.layout().forceCancelCloseIntentTimeout;
 	}
 
-	function ownerExclusiveWindow() external view returns (uint256) {
-		return AppStorage.layout().ownerExclusiveWindow;
+	function partyBExclusiveWindow() external view returns (uint256) {
+		return AppStorage.layout().partyBExclusiveWindow;
 	}
 
 	function defaultFeeCollector() external view returns (address) {

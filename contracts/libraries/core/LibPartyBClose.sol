@@ -19,8 +19,9 @@ import { Trade, TradeStatus } from "../../types/TradeTypes.sol";
 import { CloseIntent, CloseIntentStatus } from "../../types/IntentTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 
-import { CommonErrors } from "../../errors/CommonErrors.sol";
-import { PartyBCloseErrors } from "../../errors/PartyBCloseErrors.sol";
+import { ValidationErrors } from "../../errors/ValidationErrors.sol";
+import { TradeErrors } from "../../errors/TradeErrors.sol";
+import { IntentErrors } from "../../errors/IntentErrors.sol";
 
 library LibPartyBClose {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
@@ -33,9 +34,9 @@ library LibPartyBClose {
 		CloseIntent storage intent = closeIntentLayout.closeIntents[intentId];
 		Trade storage trade = TradeStorage.layout().trades[intent.tradeId];
 
-		if (trade.partyB != sender) revert CommonErrors.UnauthorizedSender(sender, trade.partyB);
+		if (trade.partyB != sender) revert ValidationErrors.UnauthorizedSender(sender, trade.partyB);
 
-		CommonErrors.requireStatus("CloseIntentStatus", uint8(intent.status), uint8(CloseIntentStatus.CANCEL_PENDING));
+		ValidationErrors.requireStatus("CloseIntentStatus", uint8(intent.status), uint8(CloseIntentStatus.CANCEL_PENDING));
 
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = CloseIntentStatus.CANCELED;
@@ -49,7 +50,7 @@ library LibPartyBClose {
 		Trade storage trade = TradeStorage.layout().trades[intent.tradeId];
 		Symbol memory symbol = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId];
 
-		if (sender != trade.partyB) revert CommonErrors.UnauthorizedSender(sender, trade.partyB);
+		if (sender != trade.partyB) revert ValidationErrors.UnauthorizedSender(sender, trade.partyB);
 
 		if (trade.tradeAgreements.marginType == MarginType.CROSS) {
 			trade.partyA.requireSolvent(trade.partyB, symbol.collateral, trade.tradeAgreements.marginType);
@@ -57,26 +58,26 @@ library LibPartyBClose {
 		trade.partyB.requireSolvent(trade.partyA, symbol.collateral, trade.tradeAgreements.marginType);
 
 		if (quantity == 0 || quantity > intent.quantity - intent.filledAmount)
-			revert PartyBCloseErrors.InvalidFillAmount(quantity, intent.quantity - intent.filledAmount);
+			revert IntentErrors.InvalidFillAmount(quantity, intent.quantity - intent.filledAmount);
 
 		if (!(intent.status == CloseIntentStatus.PENDING || intent.status == CloseIntentStatus.CANCEL_PENDING)) {
 			uint8[] memory requiredStatuses = new uint8[](2);
 			requiredStatuses[0] = uint8(CloseIntentStatus.PENDING);
 			requiredStatuses[1] = uint8(CloseIntentStatus.CANCEL_PENDING);
-			revert CommonErrors.InvalidState("CloseIntentStatus", uint8(intent.status), requiredStatuses);
+			revert ValidationErrors.InvalidState("CloseIntentStatus", uint8(intent.status), requiredStatuses);
 		}
 
-		CommonErrors.requireStatus("TradeStatus", uint8(trade.status), uint8(TradeStatus.OPENED));
+		ValidationErrors.requireStatus("TradeStatus", uint8(trade.status), uint8(TradeStatus.OPENED));
 
-		if (block.timestamp > intent.deadline) revert CommonErrors.IntentExpired(intentId, block.timestamp, intent.deadline);
+		if (block.timestamp > intent.deadline) revert IntentErrors.IntentExpired(intentId, block.timestamp, intent.deadline);
 
 		if (block.timestamp >= trade.tradeAgreements.expirationTimestamp)
-			revert PartyBCloseErrors.TradeExpired(intent.tradeId, block.timestamp, trade.tradeAgreements.expirationTimestamp);
+			revert TradeErrors.TradeExpired(intent.tradeId, block.timestamp, trade.tradeAgreements.expirationTimestamp);
 
 		if (
 			(trade.tradeAgreements.tradeSide == TradeSide.BUY && price < intent.price) ||
 			(trade.tradeAgreements.tradeSide == TradeSide.SELL && price > intent.price)
-		) revert PartyBCloseErrors.InvalidClosePrice(price, intent.price);
+		) revert IntentErrors.InvalidClosePrice(price, intent.price);
 
 		ScheduledReleaseBalance storage partyABalance = trade.partyA.balanceOf(symbol.collateral);
 		ScheduledReleaseBalance storage partyBBalance = trade.partyB.balanceOf(symbol.collateral);

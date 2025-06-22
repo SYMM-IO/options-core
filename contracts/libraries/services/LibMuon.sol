@@ -14,7 +14,7 @@ import { SettlementPriceSig } from "../../types/SettlementTypes.sol";
 
 import { IMuonOracle } from "../../interfaces/IMuonOracle.sol";
 
-import { SignatureErrors } from "../../errors/SignatureErrors.sol";
+import { ValidationErrors } from "../../errors/ValidationErrors.sol";
 
 library LibMuon {
 	function getChainId() internal view returns (uint256 id) {
@@ -29,7 +29,7 @@ library LibMuon {
 
 		// == SignatureCheck( ==
 		if (block.timestamp > sig.timestamp + appLayout.settlementPriceSigValidTime)
-			revert SignatureErrors.ExpiredSignature(
+			revert ValidationErrors.ExpiredSignature(
 				block.timestamp,
 				sig.timestamp,
 				appLayout.settlementPriceSigValidTime,

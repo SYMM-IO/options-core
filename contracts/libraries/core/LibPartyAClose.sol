@@ -19,9 +19,9 @@ import { ScheduledReleaseBalance } from "../../types/BalanceTypes.sol";
 import { CloseIntent, CloseIntentStatus } from "../../types/IntentTypes.sol";
 import { MarginType } from "../../types/BaseTypes.sol";
 
-import { CommonErrors } from "../../errors/CommonErrors.sol";
-import { PartyACloseErrors } from "../../errors/PartyACloseErrors.sol";
-
+import { ValidationErrors } from "../../errors/ValidationErrors.sol";
+import { TradeErrors } from "../../errors/TradeErrors.sol";
+import { IntentErrors } from "../../errors/IntentErrors.sol";
 import { ITradeNFT } from "../../interfaces/ITradeNFT.sol";
 
 library LibPartyAClose {
@@ -34,16 +34,16 @@ library LibPartyAClose {
 		TradeStorage.Layout storage tradeLayout = TradeStorage.layout();
 		Trade storage trade = tradeLayout.trades[tradeId];
 
-		if (sender != trade.partyA) revert CommonErrors.UnauthorizedSender(sender, trade.partyA);
+		if (sender != trade.partyA) revert ValidationErrors.UnauthorizedSender(sender, trade.partyA);
 
-		CommonErrors.requireStatus("TradeStatus", uint8(trade.status), uint8(TradeStatus.OPENED));
+		ValidationErrors.requireStatus("TradeStatus", uint8(trade.status), uint8(TradeStatus.OPENED));
 
-		if (deadline < block.timestamp) revert CommonErrors.LowDeadline(deadline, block.timestamp);
+		if (deadline < block.timestamp) revert ValidationErrors.LowDeadline(deadline, block.timestamp);
 
-		if (trade.getAvailableAmountToClose() < quantity) revert PartyACloseErrors.InvalidQuantity(quantity, trade.getAvailableAmountToClose());
+		if (trade.getAvailableAmountToClose() < quantity) revert IntentErrors.InvalidQuantity(quantity, trade.getAvailableAmountToClose());
 
 		if (trade.activeCloseIntentIds.length >= AppStorage.layout().maxCloseOrdersLength)
-			revert PartyACloseErrors.TooManyCloseOrders(trade.activeCloseIntentIds.length, AppStorage.layout().maxCloseOrdersLength);
+			revert IntentErrors.TooManyCloseOrders(trade.activeCloseIntentIds.length, AppStorage.layout().maxCloseOrdersLength);
 
 		intentId = ++CloseIntentStorage.layout().lastCloseIntentId;
 		CloseIntent memory intent = CloseIntent({
@@ -65,9 +65,9 @@ library LibPartyAClose {
 		CloseIntent storage intent = CloseIntentStorage.layout().closeIntents[intentId];
 		Trade storage trade = TradeStorage.layout().trades[intent.tradeId];
 
-		if (trade.partyA != sender) revert CommonErrors.UnauthorizedSender(sender, trade.partyA);
+		if (trade.partyA != sender) revert ValidationErrors.UnauthorizedSender(sender, trade.partyA);
 
-		CommonErrors.requireStatus("CloseIntentStatus", uint8(intent.status), uint8(CloseIntentStatus.PENDING));
+		ValidationErrors.requireStatus("CloseIntentStatus", uint8(intent.status), uint8(CloseIntentStatus.PENDING));
 
 		if (block.timestamp > intent.deadline) {
 			intent.expire();
@@ -86,19 +86,12 @@ library LibPartyAClose {
 		Trade storage trade = TradeStorage.layout().trades[tradeId];
 		Symbol memory symbol = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId];
 
-		if (trade.partyA != sender) revert PartyACloseErrors.UnauthorizedTransfer(sender, trade.partyA);
-
-		if (trade.partyB == receiver) revert PartyACloseErrors.ReceiverIsPartyB(receiver, trade.partyB);
-
-		if (receiver == address(0)) revert CommonErrors.ZeroAddress("receiver");
-
-		if (receiver.isPartyB()) revert PartyACloseErrors.ReceiverIsPartyB(receiver, trade.partyB);
-
-		CommonErrors.requireStatus("TradeStatus", uint8(trade.status), uint8(TradeStatus.OPENED));
-
-		if (trade.tradeAgreements.marginType == MarginType.CROSS) {
-			revert PartyACloseErrors.CrossTradeTransferNotAllowed(tradeId);
-		}
+		if (trade.partyA != sender) revert ValidationErrors.UnauthorizedSender(sender, trade.partyA);
+		if (trade.partyB == receiver) revert TradeErrors.ReceiverIsPartyB(receiver, trade.partyB);
+		if (receiver == address(0)) revert ValidationErrors.ZeroAddress("receiver");
+		if (receiver.isPartyB()) revert TradeErrors.ReceiverIsPartyB(receiver, trade.partyB);
+		ValidationErrors.requireStatus("TradeStatus", uint8(trade.status), uint8(TradeStatus.OPENED));
+		if (trade.tradeAgreements.marginType == MarginType.CROSS) revert TradeErrors.CrossTradeTransferNotAllowed(tradeId);
 		trade.partyB.requireSolvent(address(0), symbol.collateral, MarginType.ISOLATED);
 
 		trade.remove();
@@ -115,7 +108,7 @@ library LibPartyAClose {
 
 	function transferTradeFromNFT(address sender, address receiver, uint256 tradeId) internal {
 		if (msg.sender != AppStorage.layout().tradeNftAddress)
-			revert CommonErrors.UnauthorizedSender(msg.sender, AppStorage.layout().tradeNftAddress);
+			revert ValidationErrors.UnauthorizedSender(msg.sender, AppStorage.layout().tradeNftAddress);
 
 		validateAndTransferTrade(sender, receiver, tradeId);
 	}

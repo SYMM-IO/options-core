@@ -8,8 +8,8 @@ import { LibParty } from "../models/LibParty.sol";
 import { LibDecimals } from "../utils/LibDecimals.sol";
 import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance.sol";
 
-import { CommonErrors } from "../../errors/CommonErrors.sol";
-import { AccountErrors } from "../../errors/AccountErrors.sol";
+import { ValidationErrors } from "../../errors/ValidationErrors.sol";
+import { BalanceErrors } from "../../errors/BalanceErrors.sol";
 
 import { AppStorage } from "../../storages/AppStorage.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
@@ -20,7 +20,6 @@ import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason }
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
 
 library LibBalanceOperations {
 	using SafeERC20 for IERC20;
@@ -38,16 +37,16 @@ library LibBalanceOperations {
 	function _deposit(address collateral, address user, uint256 amount, bool doTransfer) internal {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 
-		if (!appLayout.whiteListedCollateral[collateral]) revert CommonErrors.CollateralNotWhitelisted(collateral);
-		if (amount == 0) revert CommonErrors.InvalidAmount("amount", amount, 0, 0);
-		if (user == address(0)) revert CommonErrors.ZeroAddress("user");
+		if (!appLayout.whiteListedCollateral[collateral]) revert ValidationErrors.CollateralNotWhitelisted(collateral);
+		if (amount == 0) revert ValidationErrors.ZeroAmount();
+		if (user == address(0)) revert ValidationErrors.ZeroAddress("user");
 		user.requireSolvent(address(0), collateral, MarginType.ISOLATED);
 
 		ScheduledReleaseBalance storage balance = user.balanceOf(collateral);
 
 		uint256 amountWith18Decimals = LibDecimals.normalizeAmount(collateral, amount);
 		if (!user.isPartyB() && (balance.isolatedBalance + amountWith18Decimals > appLayout.balanceLimitPerUser[collateral]))
-			revert AccountErrors.BalanceLimitExceeded(
+			revert BalanceErrors.BalanceLimitExceeded(
 				int256(balance.isolatedBalance),
 				amountWith18Decimals,
 				appLayout.balanceLimitPerUser[collateral]
@@ -62,8 +61,8 @@ library LibBalanceOperations {
 	function internalTransfer(address collateral, address sender, address receiver, uint256 amount) internal {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 
-		if (amount == 0) revert CommonErrors.InvalidAmount("amount", amount, 0, 0);
-		if (receiver == address(0)) revert CommonErrors.ZeroAddress("user");
+		if (amount == 0) revert ValidationErrors.ZeroAmount();
+		if (receiver == address(0)) revert ValidationErrors.ZeroAddress("user");
 
 		ScheduledReleaseBalance storage sourceBalance = sender.balanceOf(collateral);
 		ScheduledReleaseBalance storage targetBalance = receiver.balanceOf(collateral);
@@ -71,10 +70,10 @@ library LibBalanceOperations {
 		sourceBalance.syncAll();
 
 		uint256 available = sourceBalance.isolatedBalance - sourceBalance.isolatedLockedBalance;
-		if (available < amount) revert CommonErrors.InsufficientBalance(sender, collateral, amount, available);
+		if (available < amount) revert BalanceErrors.InsufficientBalance(sender, collateral, amount, available);
 
 		if (!receiver.isPartyB() && (targetBalance.isolatedBalance + amount > appLayout.balanceLimitPerUser[collateral]))
-			revert AccountErrors.BalanceLimitExceeded(int256(targetBalance.isolatedBalance), amount, appLayout.balanceLimitPerUser[collateral]);
+			revert BalanceErrors.BalanceLimitExceeded(int256(targetBalance.isolatedBalance), amount, appLayout.balanceLimitPerUser[collateral]);
 
 		sourceBalance.isolatedSub(amount, DecreaseBalanceReason.INTERNAL_TRANSFER);
 		targetBalance.setup(receiver, collateral);
@@ -84,15 +83,15 @@ library LibBalanceOperations {
 	function initiateWithdraw(address sender, address collateral, uint256 amount, address to) internal returns (uint256 currentId) {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
-		if (to == address(0)) revert CommonErrors.ZeroAddress("to");
-		if (amount == 0) revert CommonErrors.InvalidAmount("amount", amount, 0, 0);
+		if (to == address(0)) revert ValidationErrors.ZeroAddress("to");
+		if (amount == 0) revert ValidationErrors.ZeroAmount();
 
 		ScheduledReleaseBalance storage balance = sender.balanceOf(collateral);
 
 		if (!accountLayout.manualSync[sender]) balance.syncAll();
 
 		uint256 available = balance.isolatedBalance - balance.isolatedLockedBalance;
-		if (available < amount) revert CommonErrors.InsufficientBalance(sender, collateral, amount, available);
+		if (available < amount) revert BalanceErrors.InsufficientBalance(sender, collateral, amount, available);
 		sender.requireSolvent(address(0), collateral, MarginType.ISOLATED);
 
 		balance.isolatedSub(amount, DecreaseBalanceReason.WITHDRAW);
@@ -115,11 +114,11 @@ library LibBalanceOperations {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
-		if (id > accountLayout.lastWithdrawId) revert AccountErrors.InvalidWithdrawalId(id);
+		if (id > accountLayout.lastWithdrawId) revert BalanceErrors.InvalidWithdrawalId(id);
 
 		Withdraw storage withdrawal = accountLayout.withdrawals[id];
 
-		CommonErrors.requireStatus("WithdrawStatus", uint8(withdrawal.status), uint8(WithdrawStatus.INITIATED));
+		ValidationErrors.requireStatus("WithdrawStatus", uint8(withdrawal.status), uint8(WithdrawStatus.INITIATED));
 
 		uint256 cooldownPeriod;
 		if (withdrawal.user.isPartyB()) {
@@ -129,7 +128,7 @@ library LibBalanceOperations {
 		}
 
 		if (block.timestamp < cooldownPeriod + withdrawal.timestamp) {
-			revert CommonErrors.CooldownNotOver("withdraw", block.timestamp, cooldownPeriod + withdrawal.timestamp);
+			revert ValidationErrors.CooldownNotOver("withdraw", block.timestamp, cooldownPeriod + withdrawal.timestamp);
 		}
 
 		withdrawal.status = WithdrawStatus.COMPLETED;
@@ -142,15 +141,15 @@ library LibBalanceOperations {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 
-		if (id > accountLayout.lastWithdrawId) revert AccountErrors.InvalidWithdrawalId(id);
+		if (id > accountLayout.lastWithdrawId) revert BalanceErrors.InvalidWithdrawalId(id);
 
 		Withdraw storage withdrawal = accountLayout.withdrawals[id];
 		ScheduledReleaseBalance storage balance = withdrawal.user.balanceOf(withdrawal.collateral);
 
-		CommonErrors.requireStatus("WithdrawStatus", uint8(withdrawal.status), uint8(WithdrawStatus.INITIATED));
+		ValidationErrors.requireStatus("WithdrawStatus", uint8(withdrawal.status), uint8(WithdrawStatus.INITIATED));
 
 		if (!withdrawal.user.isPartyB() && (balance.isolatedBalance + withdrawal.amount > appLayout.balanceLimitPerUser[withdrawal.collateral]))
-			revert AccountErrors.BalanceLimitExceeded(
+			revert BalanceErrors.BalanceLimitExceeded(
 				int256(balance.isolatedBalance),
 				withdrawal.amount,
 				appLayout.balanceLimitPerUser[withdrawal.collateral]

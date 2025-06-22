@@ -4,9 +4,8 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-library ClearingHouseErrors {
+library LiquidationErrors {
 	error ZeroLossCoverage(address partyB);
-	error InvalidUpnl(int256 upnl);
 	error MismatchedArrayLengths(uint256 tradeIdsLength, uint256 pricesLength);
 	error PartyASolvent(address partyA, address partyB, address token);
 	error PartyBSolvent(address partyA, address partyB, address token);

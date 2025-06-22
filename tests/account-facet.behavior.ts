@@ -247,7 +247,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 			await context.controlFacet.suspendWithdrawal(1, true)
 			await expect(context.accountFacet.connect(partyA1.getSigner).completeWithdraw(1)).to.be.revertedWithCustomError(
 				context.accountFacet,
-				"SuspendedWithdrawal",
+				"WithdrawalSuspended",
 			)
 		})
 
@@ -320,7 +320,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 			await context.controlFacet.suspendWithdrawal(1, true)
 			await expect(context.accountFacet.connect(partyA1.getSigner).cancelWithdraw(1)).to.be.revertedWithCustomError(
 				context.accountFacet,
-				"SuspendedWithdrawal",
+				"WithdrawalSuspended",
 			)
 		})
 

@@ -14,7 +14,7 @@ import { CloseIntentStorage } from "../../storages/CloseIntentStorage.sol";
 import { OpenIntentStatus, CloseIntentStatus } from "../../types/IntentTypes.sol";
 import { OpenIntent, CloseIntent } from "../../types/IntentTypes.sol";
 
-import { CommonErrors } from "../../errors/CommonErrors.sol";
+import { ValidationErrors } from "../../errors/ValidationErrors.sol";
 
 library LibForceActions {
 	using LibOpenIntentOps for OpenIntent;
@@ -23,10 +23,10 @@ library LibForceActions {
 	function forceCancelOpenIntent(uint256 intentId) internal {
 		OpenIntent storage intent = OpenIntentStorage.layout().openIntents[intentId];
 
-		CommonErrors.requireStatus("OpenIntentStatus", uint8(intent.status), uint8(OpenIntentStatus.CANCEL_PENDING));
+		ValidationErrors.requireStatus("OpenIntentStatus", uint8(intent.status), uint8(OpenIntentStatus.CANCEL_PENDING));
 
 		if (block.timestamp <= intent.statusModifyTimestamp + AppStorage.layout().forceCancelOpenIntentTimeout)
-			revert CommonErrors.CooldownNotOver(
+			revert ValidationErrors.CooldownNotOver(
 				"forceCancelOpenIntentTimeout",
 				block.timestamp,
 				intent.statusModifyTimestamp + AppStorage.layout().forceCancelOpenIntentTimeout
@@ -41,10 +41,10 @@ library LibForceActions {
 	function forceCancelCloseIntent(uint256 intentId) internal {
 		CloseIntent storage intent = CloseIntentStorage.layout().closeIntents[intentId];
 
-		CommonErrors.requireStatus("CloseIntentStatus", uint8(intent.status), uint8(CloseIntentStatus.CANCEL_PENDING));
+		ValidationErrors.requireStatus("CloseIntentStatus", uint8(intent.status), uint8(CloseIntentStatus.CANCEL_PENDING));
 
 		if (block.timestamp <= intent.statusModifyTimestamp + AppStorage.layout().forceCancelCloseIntentTimeout)
-			revert CommonErrors.CooldownNotOver(
+			revert ValidationErrors.CooldownNotOver(
 				"forceCancelCloseIntentTimeout",
 				block.timestamp,
 				intent.statusModifyTimestamp + AppStorage.layout().forceCancelCloseIntentTimeout

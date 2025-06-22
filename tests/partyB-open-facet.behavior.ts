@@ -49,7 +49,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 	describe("lockOpenIntent", async function () {
 		it("Should be failed when Sender address is Suspended", async () => {
 			await context.controlFacet.suspendAddress(partyB1.getSigner, true)
-			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "AddressSuspended")
+			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "UserSuspended")
 		})
 
 		it("Should be failed when in Emergency Mode", async () => {
@@ -243,13 +243,13 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		it("Should failed when partyA suspended", async () => {
 			await context.controlFacet.suspendAddress(partyA1.getSigner, true)
 
-			await expect(partyB1.fillOpenIntent(1, 100, 7)).to.revertedWithCustomError(context.partyBOpenFacet, "AddressSuspended")
+			await expect(partyB1.fillOpenIntent(1, 100, 7)).to.revertedWithCustomError(context.partyBOpenFacet, "UserSuspended")
 		})
 
 		it("Should failed when partyB suspended", async () => {
 			await context.controlFacet.suspendAddress(partyB1.getSigner, true)
 
-			await expect(partyB1.fillOpenIntent(1, 100, 7)).to.revertedWithCustomError(context.partyBOpenFacet, "AddressSuspended")
+			await expect(partyB1.fillOpenIntent(1, 100, 7)).to.revertedWithCustomError(context.partyBOpenFacet, "UserSuspended")
 		})
 
 		it("Should failed when symbol is not valid", async () => {

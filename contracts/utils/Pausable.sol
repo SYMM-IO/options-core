@@ -8,53 +8,53 @@ import { LibParty } from "../libraries/models/LibParty.sol";
 
 import { StateControlStorage } from "../storages/StateControlStorage.sol";
 
-import { PausableErrors } from "../errors/PausableErrors.sol";
+import { SystemErrors } from "../errors/SystemErrors.sol";
 
 abstract contract Pausable {
 	using LibParty for address;
 
 	modifier whenNotGlobalPaused() {
-		if (StateControlStorage.layout().globalPaused) revert PausableErrors.GlobalPaused();
+		if (StateControlStorage.layout().globalPaused) revert SystemErrors.GlobalPaused();
 		_;
 	}
 
 	modifier whenNotBridgePaused() {
 		StateControlStorage.Layout storage layout = StateControlStorage.layout();
 
-		if (layout.globalPaused) revert PausableErrors.GlobalPaused();
-		if (layout.bridgePaused) revert PausableErrors.BridgePaused();
+		if (layout.globalPaused) revert SystemErrors.GlobalPaused();
+		if (layout.bridgePaused) revert SystemErrors.BridgePaused();
 		_;
 	}
 
 	modifier whenNotBridgeWithdrawPaused() {
 		StateControlStorage.Layout storage layout = StateControlStorage.layout();
 
-		if (layout.globalPaused) revert PausableErrors.GlobalPaused();
-		if (layout.bridgeWithdrawPaused) revert PausableErrors.BridgeWithdrawPaused();
+		if (layout.globalPaused) revert SystemErrors.GlobalPaused();
+		if (layout.bridgeWithdrawPaused) revert SystemErrors.BridgeWithdrawPaused();
 		_;
 	}
 
 	modifier whenDepositingNotPaused() {
 		StateControlStorage.Layout storage layout = StateControlStorage.layout();
 
-		if (layout.globalPaused) revert PausableErrors.GlobalPaused();
-		if (layout.depositingPaused) revert PausableErrors.DepositingPaused();
+		if (layout.globalPaused) revert SystemErrors.GlobalPaused();
+		if (layout.depositingPaused) revert SystemErrors.DepositingPaused();
 		_;
 	}
 
 	modifier whenNotInternalTransferPaused() {
 		StateControlStorage.Layout storage layout = StateControlStorage.layout();
 
-		if (layout.globalPaused) revert PausableErrors.GlobalPaused();
-		if (layout.internalTransferPaused) revert PausableErrors.InternalTransferPaused();
+		if (layout.globalPaused) revert SystemErrors.GlobalPaused();
+		if (layout.internalTransferPaused) revert SystemErrors.InternalTransferPaused();
 		_;
 	}
 
 	modifier whenNotWithdrawingPaused() {
 		StateControlStorage.Layout storage layout = StateControlStorage.layout();
 
-		if (layout.globalPaused) revert PausableErrors.GlobalPaused();
-		if (layout.withdrawingPaused) revert PausableErrors.WithdrawingPaused();
+		if (layout.globalPaused) revert SystemErrors.GlobalPaused();
+		if (layout.withdrawingPaused) revert SystemErrors.WithdrawingPaused();
 		_;
 	}
 
@@ -70,31 +70,31 @@ abstract contract Pausable {
 	function _whenNotPartyAActionsPaused() internal view {
 		StateControlStorage.Layout storage layout = StateControlStorage.layout();
 
-		if (layout.globalPaused) revert PausableErrors.GlobalPaused();
-		if (layout.partyAActionsPaused) revert PausableErrors.PartyAActionsPaused();
+		if (layout.globalPaused) revert SystemErrors.GlobalPaused();
+		if (layout.partyAActionsPaused) revert SystemErrors.PartyAActionsPaused();
 	}
 
 	function _whenNotPartyBActionsPaused() internal view {
 		StateControlStorage.Layout storage layout = StateControlStorage.layout();
 
-		if (layout.globalPaused) revert PausableErrors.GlobalPaused();
-		if (layout.partyBActionsPaused) revert PausableErrors.PartyBActionsPaused();
-		if (layout.emergencyMode) revert PausableErrors.EmergencyMode();
+		if (layout.globalPaused) revert SystemErrors.GlobalPaused();
+		if (layout.partyBActionsPaused) revert SystemErrors.PartyBActionsPaused();
+		if (layout.emergencyMode) revert SystemErrors.SystemInEmergencyMode();
 	}
 
 	modifier whenNotThirdPartyActionsPaused() {
 		StateControlStorage.Layout storage layout = StateControlStorage.layout();
 
-		if (layout.globalPaused) revert PausableErrors.GlobalPaused();
-		if (layout.thirdPartyActionsPaused) revert PausableErrors.ThirdPartyActionsPaused();
+		if (layout.globalPaused) revert SystemErrors.GlobalPaused();
+		if (layout.thirdPartyActionsPaused) revert SystemErrors.ThirdPartyActionsPaused();
 		_;
 	}
 
 	modifier whenNotLiquidationPaused() {
 		StateControlStorage.Layout storage layout = StateControlStorage.layout();
 
-		if (layout.globalPaused) revert PausableErrors.GlobalPaused();
-		if (layout.liquidatingPaused) revert PausableErrors.LiquidatingPaused();
+		if (layout.globalPaused) revert SystemErrors.GlobalPaused();
+		if (layout.liquidatingPaused) revert SystemErrors.LiquidatingPaused();
 		_;
 	}
 }

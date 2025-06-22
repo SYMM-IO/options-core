@@ -11,9 +11,4 @@ abstract contract Ownable {
 		LibDiamond.enforceIsContractOwner();
 		_;
 	}
-
-	modifier onlyOwnerOrContract() {
-		LibDiamond.enforceIsOwnerOrContract();
-		_;
-	}
 }

@@ -32,7 +32,7 @@ library AppStorage {
 		uint256 partyBDeallocateCooldown;
 		uint256 forceCancelOpenIntentTimeout;
 		uint256 forceCancelCloseIntentTimeout;
-		uint256 ownerExclusiveWindow;
+		uint256 partyBExclusiveWindow;
 		uint256 settlementPriceSigValidTime;
 		/////////////////////////////////////////////////////////
 		mapping(address => PartyBConfig) partyBConfigs;

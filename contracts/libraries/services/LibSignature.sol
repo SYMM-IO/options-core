@@ -7,16 +7,16 @@ pragma solidity >=0.8.19;
 import { AppStorage } from "../../storages/AppStorage.sol";
 
 import { ISignatureVerifier } from "../../interfaces/ISignatureVerifier.sol";
-import { SignatureErrors } from "../../errors/SignatureErrors.sol";
+import { ValidationErrors } from "../../errors/ValidationErrors.sol";
 
 library LibSignature {
 	function verifySignature(bytes32 hashValue, bytes calldata signature, address signer) internal {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 
 		if (!ISignatureVerifier(appLayout.signatureVerifier).verifySignature(signer, hashValue, signature))
-			revert SignatureErrors.InvalidSignature(signer, hashValue);
+			revert ValidationErrors.InvalidSignature(signer, hashValue);
 
-		if (appLayout.isSigUsed[hashValue]) revert SignatureErrors.SignatureAlreadyUsed(hashValue);
+		if (appLayout.isSigUsed[hashValue]) revert ValidationErrors.SignatureAlreadyUsed(hashValue);
 
 		appLayout.isSigUsed[hashValue] = true;
 	}

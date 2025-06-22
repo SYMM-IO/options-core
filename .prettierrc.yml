@@ -15,6 +15,3 @@ overrides:
       options:
           tabWidth: 2
           semi: false
-    - files: "*.sol"
-      options:
-          parser: solidity-parse

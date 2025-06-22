@@ -10,7 +10,8 @@ import { CloseIntentStorage } from "../../storages/CloseIntentStorage.sol";
 import { Trade } from "../../types/TradeTypes.sol";
 import { CloseIntent, CloseIntentStatus } from "../../types/IntentTypes.sol";
 
-import { CommonErrors } from "../../errors/CommonErrors.sol";
+import { ValidationErrors } from "../../errors/ValidationErrors.sol";
+import { IntentErrors } from "../../errors/IntentErrors.sol";
 
 library LibCloseIntentOps {
 	/**
@@ -53,13 +54,13 @@ library LibCloseIntentOps {
 	}
 
 	function expire(CloseIntent storage self) internal {
-		if (block.timestamp <= self.deadline) revert CommonErrors.IntentNotExpired(self.id, block.timestamp, self.deadline);
+		if (block.timestamp <= self.deadline) revert IntentErrors.IntentNotExpired(self.id, block.timestamp, self.deadline);
 
 		if (self.status != CloseIntentStatus.PENDING && self.status != CloseIntentStatus.CANCEL_PENDING) {
 			uint8[] memory requiredStatuses = new uint8[](2);
 			requiredStatuses[0] = uint8(CloseIntentStatus.PENDING);
 			requiredStatuses[1] = uint8(CloseIntentStatus.CANCEL_PENDING);
-			revert CommonErrors.InvalidState("CloseIntentStatus", uint8(self.status), requiredStatuses);
+			revert ValidationErrors.InvalidState("CloseIntentStatus", uint8(self.status), requiredStatuses);
 		}
 
 		self.statusModifyTimestamp = block.timestamp;

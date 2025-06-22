@@ -25,8 +25,9 @@ import { Withdraw, WithdrawStatus } from "../../types/WithdrawTypes.sol";
 import { LiquidationStatus, LiquidationDetail, LiquidationSide } from "../../types/LiquidationTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason, CrossEntry } from "../../types/BalanceTypes.sol";
 
-import { CommonErrors } from "../../errors/CommonErrors.sol";
-import { ClearingHouseErrors } from "../../errors/ClearingHouseErrors.sol";
+import { ValidationErrors } from "../../errors/ValidationErrors.sol";
+import { LiquidationErrors } from "../../errors/LiquidationErrors.sol";
+import { BalanceErrors } from "../../errors/BalanceErrors.sol";
 
 library LibClearingHouse {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
@@ -80,7 +81,7 @@ library LibClearingHouse {
 	 * @dev Reverts when the liquidation is not in the expected status.
 	 */
 	function _requireStatus(LiquidationDetail storage detail, LiquidationStatus expected) private view {
-		CommonErrors.requireStatus("LiquidationStatus", uint8(detail.status), uint8(expected));
+		ValidationErrors.requireStatus("LiquidationStatus", uint8(detail.status), uint8(expected));
 	}
 
 	/**
@@ -96,7 +97,7 @@ library LibClearingHouse {
 	// =============================================================
 
 	function flagIsolatedPartyBLiquidation(address partyB, address collateral) internal {
-		if (AppStorage.layout().partyBConfigs[partyB].lossCoverage == 0) revert ClearingHouseErrors.ZeroLossCoverage(partyB);
+		if (AppStorage.layout().partyBConfigs[partyB].lossCoverage == 0) revert LiquidationErrors.ZeroLossCoverage(partyB);
 		partyB.requireSolvent(address(0), collateral, MarginType.ISOLATED);
 
 		_flag(address(0), partyB, collateral, LiquidationSide.PARTY_B);
@@ -114,7 +115,7 @@ library LibClearingHouse {
 
 		int256 effectiveUpnl = upnl > 0 ? upnl : (upnl * int256(AppStorage.layout().partyBConfigs[partyB].lossCoverage)) / 1e18;
 		if (int256(isolatedBalance) + (effectiveUpnl * 1e18) / int256(collateralPrice) >= 0) {
-			revert ClearingHouseErrors.PartyBSolvent(detail.partyA, detail.partyB, detail.collateral);
+			revert LiquidationErrors.PartyBSolvent(detail.partyA, detail.partyB, detail.collateral);
 		}
 
 		_beginLiquidation(detail, collateralPrice);
@@ -125,7 +126,7 @@ library LibClearingHouse {
 	// =============================================================
 
 	function flagCrossPartyBLiquidation(address partyB, address partyA, address collateral) internal {
-		if (AppStorage.layout().partyBConfigs[partyB].lossCoverage == 0) revert ClearingHouseErrors.ZeroLossCoverage(partyB);
+		if (AppStorage.layout().partyBConfigs[partyB].lossCoverage == 0) revert LiquidationErrors.ZeroLossCoverage(partyB);
 		partyB.requireSolvent(partyA, collateral, MarginType.CROSS);
 
 		_flag(partyA, partyB, collateral, LiquidationSide.PARTY_B);
@@ -144,7 +145,7 @@ library LibClearingHouse {
 
 		int256 effectiveUpnl = upnl > 0 ? upnl : (upnl * int256(AppStorage.layout().partyBConfigs[partyB].lossCoverage)) / 1e18;
 		if (crossBalance.balance + (effectiveUpnl * 1e18) / int256(collateralPrice) >= 0) {
-			revert ClearingHouseErrors.PartyBSolvent(detail.partyA, detail.partyB, detail.collateral);
+			revert LiquidationErrors.PartyBSolvent(detail.partyA, detail.partyB, detail.collateral);
 		}
 
 		if (crossBalance.balance > 0) {
@@ -184,7 +185,7 @@ library LibClearingHouse {
 		CrossEntry storage crossBalance = balA.crossBalance[detail.partyB];
 
 		if ((crossBalance.balance - int256(crossBalance.totalMM)) + (upnl * 1e18) / int256(collateralPrice) >= 0) {
-			revert ClearingHouseErrors.PartyASolvent(detail.partyA, detail.partyB, detail.collateral);
+			revert LiquidationErrors.PartyASolvent(detail.partyA, detail.partyB, detail.collateral);
 		}
 
 		if (crossBalance.balance > 0) {
@@ -204,7 +205,7 @@ library LibClearingHouse {
 	// =============================================================
 
 	function closeTrades(uint256 liquidationId, uint256[] memory tradeIds, uint256[] memory prices) internal {
-		if (tradeIds.length != prices.length) revert ClearingHouseErrors.MismatchedArrayLengths(tradeIds.length, prices.length);
+		if (tradeIds.length != prices.length) revert LiquidationErrors.MismatchedArrayLengths(tradeIds.length, prices.length);
 
 		LiquidationDetail storage detail = LiquidationStorage.layout().liquidationDetails[liquidationId];
 		_requireStatus(detail, LiquidationStatus.IN_PROGRESS);
@@ -213,9 +214,9 @@ library LibClearingHouse {
 			Trade storage trade = TradeStorage.layout().trades[tradeIds[i]];
 			uint256 price = prices[i];
 
-			CommonErrors.requireStatus("TradeStatus", uint8(trade.status), uint8(TradeStatus.OPENED));
+			ValidationErrors.requireStatus("TradeStatus", uint8(trade.status), uint8(TradeStatus.OPENED));
 			if (trade.partyA != detail.partyA || trade.partyB != detail.partyB) {
-				revert ClearingHouseErrors.TradeNotInLiquidation(liquidationId, trade.id);
+				revert LiquidationErrors.TradeNotInLiquidation(liquidationId, trade.id);
 			}
 
 			trade.settledPrice = price;
@@ -237,7 +238,7 @@ library LibClearingHouse {
 
 		int256 counterPartyBalance = balance.counterPartyBalance(detail.partyB, MarginType.CROSS);
 		if (counterPartyBalance < int256(amount))
-			revert CommonErrors.InsufficientIntBalance(detail.partyA, detail.collateral, amount, counterPartyBalance);
+			revert BalanceErrors.InsufficientIntBalance(detail.partyA, detail.collateral, amount, counterPartyBalance);
 
 		_requireStatus(detail, LiquidationStatus.IN_PROGRESS);
 
@@ -247,7 +248,7 @@ library LibClearingHouse {
 
 	function confiscatePartyBWithdrawal(uint256 withdrawId) internal {
 		Withdraw storage withdrawal = AccountStorage.layout().withdrawals[withdrawId];
-		CommonErrors.requireStatus("WithdrawStatus", uint8(withdrawal.status), uint8(WithdrawStatus.INITIATED));
+		ValidationErrors.requireStatus("WithdrawStatus", uint8(withdrawal.status), uint8(WithdrawStatus.INITIATED));
 		withdrawal.status = WithdrawStatus.CANCELED;
 		withdrawal.user.balanceOf(withdrawal.collateral).instantIsolatedAdd(withdrawal.amount, IncreaseBalanceReason.DEPOSIT);
 	}
@@ -259,7 +260,7 @@ library LibClearingHouse {
 		address[] memory partyAs,
 		uint256[] memory amounts
 	) internal {
-		if (partyAs.length != amounts.length) revert ClearingHouseErrors.MismatchedArrayLengths(partyAs.length, amounts.length);
+		if (partyAs.length != amounts.length) revert LiquidationErrors.MismatchedArrayLengths(partyAs.length, amounts.length);
 
 		ScheduledReleaseBalance storage balanceB = partyB.balanceOf(collateral);
 
@@ -277,7 +278,7 @@ library LibClearingHouse {
 		}
 
 		if (balanceB.counterPartyBalance(partyB, marginType) < int256(totalAmount)) {
-			revert CommonErrors.InsufficientIntBalance(partyB, collateral, totalAmount, balanceB.counterPartyBalance(partyB, marginType));
+			revert BalanceErrors.InsufficientIntBalance(partyB, collateral, totalAmount, balanceB.counterPartyBalance(partyB, marginType));
 		}
 	}
 
@@ -292,14 +293,14 @@ library LibClearingHouse {
 				requiredStatuses[0] = uint8(OpenIntentStatus.PENDING);
 				requiredStatuses[1] = uint8(OpenIntentStatus.LOCKED);
 
-				revert CommonErrors.InvalidState("OpenIntentStatus", uint8(intent.status), requiredStatuses);
+				revert ValidationErrors.InvalidState("OpenIntentStatus", uint8(intent.status), requiredStatuses);
 			}
 			address collateral = SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId].collateral;
 			bool partyAIsSolvent = intent.partyA.isSolvent(intent.partyB, collateral, intent.tradeAgreements.marginType);
 			bool partyBIsSolvent = intent.partyB.isSolvent(intent.partyA, collateral, intent.tradeAgreements.marginType);
 
 			if (partyAIsSolvent && partyBIsSolvent) {
-				revert ClearingHouseErrors.PartiesNotInLiquidation(intent.partyA, intent.partyB, collateral);
+				revert LiquidationErrors.PartiesNotInLiquidation(intent.partyA, intent.partyB, collateral);
 			}
 
 			if (block.timestamp > intent.deadline) {
@@ -320,14 +321,14 @@ library LibClearingHouse {
 		for (uint256 i = 0; i < intentIds.length; i++) {
 			CloseIntent storage intent = closeIntentLayout.closeIntents[intentIds[i]];
 			Trade memory trade = tradeLayout.trades[intent.tradeId];
-			CommonErrors.requireStatus("CloseIntentStatus", uint8(intent.status), uint8(CloseIntentStatus.PENDING));
+			ValidationErrors.requireStatus("CloseIntentStatus", uint8(intent.status), uint8(CloseIntentStatus.PENDING));
 
 			address collateral = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId].collateral;
 			bool partyAIsSolvent = trade.partyA.isSolvent(trade.partyB, collateral, trade.tradeAgreements.marginType);
 			bool partyBIsSolvent = trade.partyB.isSolvent(trade.partyA, collateral, trade.tradeAgreements.marginType);
 
 			if (partyAIsSolvent && partyBIsSolvent) {
-				revert ClearingHouseErrors.PartiesNotInLiquidation(trade.partyA, trade.partyB, collateral);
+				revert LiquidationErrors.PartiesNotInLiquidation(trade.partyA, trade.partyB, collateral);
 			}
 
 			if (block.timestamp > intent.deadline) {

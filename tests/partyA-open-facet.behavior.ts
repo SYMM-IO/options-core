@@ -368,7 +368,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 		it("Should be failed when Sender address is Suspended", async () => {
 			await context.controlFacet.suspendAddress(partyA1.getSigner, true)
-			// await expect(partyA1.sendCancelOpenIntent(["1"])).to.be.revertedWithCustomError(context.partyAOpenFacet, "AddressSuspended")
+			// await expect(partyA1.sendCancelOpenIntent(["1"])).to.be.revertedWithCustomError(context.partyAOpenFacet, "UserSuspended")
 			//TODO ::: Suspended address is for any party in any state?
 		})
 

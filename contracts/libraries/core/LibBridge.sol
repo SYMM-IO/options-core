@@ -17,8 +17,8 @@ import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason }
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import { CommonErrors } from "../../errors/CommonErrors.sol";
-import { BridgeErrors } from "../../errors/BridgeErrors.sol";
+import { ValidationErrors } from "../../errors/ValidationErrors.sol";
+import { BalanceErrors } from "../../errors/BalanceErrors.sol";
 
 library LibBridge {
 	using SafeERC20 for IERC20;
@@ -34,15 +34,15 @@ library LibBridge {
 	) internal returns (uint256 currentId) {
 		BridgeStorage.Layout storage bridgeLayout = BridgeStorage.layout();
 
-		if (!bridgeLayout.bridges[bridge]) revert BridgeErrors.BridgeNotWhitelisted(bridge);
-		if (bridge == sender) revert BridgeErrors.SelfBridgeNotAllowed(bridge);
-		if (receiver == address(0)) revert CommonErrors.ZeroAddress("receiver");
+		if (!bridgeLayout.bridges[bridge]) revert BalanceErrors.BridgeNotWhitelisted(bridge);
+		if (bridge == sender) revert BalanceErrors.SelfBridgeNotAllowed(bridge);
+		if (receiver == address(0)) revert ValidationErrors.ZeroAddress("receiver");
 
 		ScheduledReleaseBalance storage balance = sender.balanceOf(collateral);
 		balance.syncAll();
 
 		if (balance.isolatedBalance - balance.isolatedLockedBalance < amount)
-			revert CommonErrors.InsufficientBalance(sender, collateral, amount, balance.isolatedBalance);
+			revert BalanceErrors.InsufficientBalance(sender, collateral, amount, balance.isolatedBalance);
 
 		currentId = ++bridgeLayout.lastBridgeTransactionId;
 		BridgeTransaction memory bridgeTransaction = BridgeTransaction({
@@ -66,27 +66,27 @@ library LibBridge {
 		BridgeStorage.Layout storage bridgeLayout = BridgeStorage.layout();
 
 		uint256 totalAmount = 0;
-		if (transactionIds.length == 0) revert CommonErrors.EmptyList();
+		if (transactionIds.length == 0) revert ValidationErrors.EmptyList();
 
 		address collateral = bridgeLayout.bridgeTransactions[transactionIds[0]].collateral;
 		for (uint256 i = transactionIds.length; i != 0; i--) {
 			uint256 txId = transactionIds[i - 1];
-			if (txId > bridgeLayout.lastBridgeTransactionId) revert BridgeErrors.TransactionIdNotFound(txId);
+			if (txId > bridgeLayout.lastBridgeTransactionId) revert BalanceErrors.TransactionIdNotFound(txId);
 
 			BridgeTransaction storage bridgeTransaction = bridgeLayout.bridgeTransactions[txId];
 
-			if (collateral != bridgeTransaction.collateral) revert BridgeErrors.MismatchedCollateral(collateral, bridgeTransaction.collateral);
+			if (collateral != bridgeTransaction.collateral) revert BalanceErrors.MismatchedCollateral(collateral, bridgeTransaction.collateral);
 
-			CommonErrors.requireStatus("BridgeTransactionStatus", uint8(bridgeTransaction.status), uint8(BridgeTransactionStatus.RECEIVED));
+			ValidationErrors.requireStatus("BridgeTransactionStatus", uint8(bridgeTransaction.status), uint8(BridgeTransactionStatus.RECEIVED));
 
 			if (block.timestamp < AppStorage.layout().partyADeallocateCooldown + bridgeTransaction.timestamp)
-				revert CommonErrors.CooldownNotOver(
+				revert ValidationErrors.CooldownNotOver(
 					"withdraw",
 					block.timestamp,
 					AppStorage.layout().partyADeallocateCooldown + bridgeTransaction.timestamp
 				);
 
-			if (bridgeTransaction.bridge != msg.sender) revert CommonErrors.UnauthorizedSender(msg.sender, bridgeTransaction.bridge);
+			if (bridgeTransaction.bridge != msg.sender) revert ValidationErrors.UnauthorizedSender(msg.sender, bridgeTransaction.bridge);
 
 			totalAmount += bridgeTransaction.amount;
 			bridgeTransaction.status = BridgeTransactionStatus.WITHDRAWN;
@@ -99,9 +99,9 @@ library LibBridge {
 		BridgeStorage.Layout storage bridgeLayout = BridgeStorage.layout();
 		BridgeTransaction storage bridgeTransaction = bridgeLayout.bridgeTransactions[transactionId];
 
-		if (transactionId > bridgeLayout.lastBridgeTransactionId) revert BridgeErrors.TransactionIdNotFound(transactionId);
+		if (transactionId > bridgeLayout.lastBridgeTransactionId) revert BalanceErrors.TransactionIdNotFound(transactionId);
 
-		CommonErrors.requireStatus("BridgeTransactionStatus", uint8(bridgeTransaction.status), uint8(BridgeTransactionStatus.RECEIVED));
+		ValidationErrors.requireStatus("BridgeTransactionStatus", uint8(bridgeTransaction.status), uint8(BridgeTransactionStatus.RECEIVED));
 
 		bridgeTransaction.status = BridgeTransactionStatus.SUSPENDED;
 	}
@@ -110,11 +110,11 @@ library LibBridge {
 		BridgeStorage.Layout storage bridgeLayout = BridgeStorage.layout();
 		BridgeTransaction storage bridgeTransaction = bridgeLayout.bridgeTransactions[transactionId];
 
-		CommonErrors.requireStatus("BridgeTransactionStatus", uint8(bridgeTransaction.status), uint8(BridgeTransactionStatus.SUSPENDED));
+		ValidationErrors.requireStatus("BridgeTransactionStatus", uint8(bridgeTransaction.status), uint8(BridgeTransactionStatus.SUSPENDED));
 
-		if (bridgeLayout.invalidBridgedAmountsPool == address(0)) revert CommonErrors.ZeroAddress("invalidBridgedAmountsPool");
+		if (bridgeLayout.invalidBridgedAmountsPool == address(0)) revert ValidationErrors.ZeroAddress("invalidBridgedAmountsPool");
 
-		if (validAmount > bridgeTransaction.amount) revert BridgeErrors.ValidAmountExceedsOriginal(validAmount, bridgeTransaction.amount);
+		if (validAmount > bridgeTransaction.amount) revert BalanceErrors.ValidAmountExceedsOriginal(validAmount, bridgeTransaction.amount);
 
 		ScheduledReleaseBalance storage balance = bridgeLayout.invalidBridgedAmountsPool.balanceOf(bridgeTransaction.collateral);
 

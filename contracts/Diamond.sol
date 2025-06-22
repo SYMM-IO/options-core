@@ -7,7 +7,7 @@ pragma solidity >=0.8.19;
 /******************************************************************************/
 import { LibDiamond } from "./libraries/core/LibDiamond.sol";
 
-import { DiamondErrors } from "./errors/DiamondErrors.sol";
+import { SystemErrors } from "./errors/SystemErrors.sol";
 
 import { IDiamondCut } from "./facets/DiamondCut/IDiamondCut.sol";
 
@@ -40,7 +40,7 @@ contract Diamond {
 		}
 		// get facet from function selector
 		address facet = ds.facetAddressAndSelectorPosition[msg.sig].facetAddress;
-		if (facet == address(0)) revert DiamondErrors.FunctionDoesNotExist(msg.sig);
+		if (facet == address(0)) revert SystemErrors.FunctionDoesNotExist(msg.sig);
 
 		// Execute external function from facet using delegatecall and return any value.
 		assembly {

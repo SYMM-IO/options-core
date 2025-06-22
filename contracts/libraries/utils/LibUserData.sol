@@ -4,7 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { UserDataErrors } from "../../errors/UserDataErrors.sol";
+import { ValidationErrors } from "../../errors/ValidationErrors.sol";
 
 library LibUserData {
 	function addCounter(bytes memory _data, uint256 _counter) internal pure returns (bytes memory) {
@@ -14,7 +14,7 @@ library LibUserData {
 	}
 
 	function getCounter(bytes memory dataWithCounter) internal pure returns (uint256) {
-		if (dataWithCounter.length < 32) revert UserDataErrors.InsufficientBytes(dataWithCounter.length, 32);
+		if (dataWithCounter.length < 32) revert ValidationErrors.InsufficientBytes(dataWithCounter.length, 32);
 
 		bytes32 counterBytes;
 		assembly {
@@ -24,7 +24,7 @@ library LibUserData {
 	}
 
 	function getDataWithoutCounter(bytes memory dataWithCounter) internal pure returns (bytes memory) {
-		if (dataWithCounter.length <= 32) revert UserDataErrors.InsufficientBytes(dataWithCounter.length, 33);
+		if (dataWithCounter.length <= 32) revert ValidationErrors.InsufficientBytes(dataWithCounter.length, 33);
 
 		uint256 dataLength = dataWithCounter.length - 32;
 		bytes memory data = new bytes(dataLength);
@@ -35,7 +35,7 @@ library LibUserData {
 	}
 
 	function incrementCounter(bytes memory dataWithCounter) internal pure returns (bytes memory) {
-		if (dataWithCounter.length <= 32) revert UserDataErrors.InsufficientBytes(dataWithCounter.length, 33);
+		if (dataWithCounter.length <= 32) revert ValidationErrors.InsufficientBytes(dataWithCounter.length, 33);
 
 		uint256 currentCounter = getCounter(dataWithCounter);
 		uint256 newCounter = currentCounter + 1;

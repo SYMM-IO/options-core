@@ -11,11 +11,11 @@ import { LiquidationStorage } from "../../storages/LiquidationStorage.sol";
 import { MarginType } from "../../types/BaseTypes.sol";
 import { ScheduledReleaseBalance } from "../../types/BalanceTypes.sol";
 
-import { CommonErrors } from "../../errors/CommonErrors.sol";
+import { BalanceErrors } from "../../errors/BalanceErrors.sol";
 
 library LibParty {
 	function requireSolvent(address self, address counterParty, address collateral, MarginType marginType) internal view {
-		if (!isSolvent(self, counterParty, collateral, marginType)) revert CommonErrors.NotSolvent(self, counterParty, collateral, marginType);
+		if (!isSolvent(self, counterParty, collateral, marginType)) revert BalanceErrors.NotSolvent(self, counterParty, collateral, marginType);
 	}
 
 	function isSolvent(address self, address counterParty, address collateral, MarginType marginType) internal view returns (bool) {
