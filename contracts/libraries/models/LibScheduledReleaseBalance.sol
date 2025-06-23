@@ -32,7 +32,6 @@ library ScheduledReleaseBalanceOps {
 		address indexed collateral,
 		uint256 amount,
 		IncreaseBalanceReason reason,
-		bool isInstant,
 		MarginType marginType
 	);
 
