@@ -136,53 +136,29 @@ library LibPartyBOpen {
 		Symbol memory symbol = SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId];
 
 		if (sender != intent.partyB) revert ValidationErrors.UnauthorizedSender(sender, intent.partyB);
-
 		if (stateControlLayout.suspendedAddresses[intent.partyA]) revert SystemErrors.UserSuspended(intent.partyA);
 		if (stateControlLayout.suspendedAddresses[intent.partyB]) revert SystemErrors.UserSuspended(intent.partyB);
 		if (stateControlLayout.partyBEmergencyStatus[intent.partyB]) revert SystemErrors.PartyBInEmergencyMode(intent.partyB);
 		if (stateControlLayout.emergencyMode) revert SystemErrors.SystemInEmergencyMode();
-
 		if (!symbol.isValid) revert ValidationErrors.InvalidSymbol(intent.tradeAgreements.symbolId);
-
 		if (intent.status != OpenIntentStatus.LOCKED && intent.status != OpenIntentStatus.CANCEL_PENDING) {
 			uint8[] memory requiredStatuses = new uint8[](2);
 			requiredStatuses[0] = uint8(OpenIntentStatus.LOCKED);
 			requiredStatuses[1] = uint8(OpenIntentStatus.CANCEL_PENDING);
 			revert ValidationErrors.InvalidState("OpenIntentStatus", uint8(intent.status), requiredStatuses);
 		}
-
-		if (intent.tradeAgreements.marginType == MarginType.CROSS) {
+		if (intent.tradeAgreements.marginType == MarginType.CROSS)
 			intent.partyA.requireSolvent(intent.partyB, symbol.collateral, intent.tradeAgreements.marginType);
-		}
 		intent.partyB.requireSolvent(intent.partyA, symbol.collateral, intent.tradeAgreements.marginType);
-
 		if (block.timestamp > intent.deadline) revert IntentErrors.IntentExpired(intentId, block.timestamp, intent.deadline);
-
 		if (block.timestamp > intent.tradeAgreements.expirationTimestamp)
 			revert IntentErrors.ExpirationTimestampPassed(block.timestamp, intent.tradeAgreements.expirationTimestamp);
-
 		if (quantity == 0) revert ValidationErrors.ZeroAmount();
 		if (intent.tradeAgreements.quantity < quantity) revert IntentErrors.InvalidFillAmount(quantity, intent.tradeAgreements.quantity);
-
 		if (
 			(intent.tradeAgreements.tradeSide == TradeSide.BUY && price > intent.price) ||
 			(intent.tradeAgreements.tradeSide == TradeSide.SELL && price < intent.price)
 		) revert IntentErrors.InvalidOpenPrice(price, intent.price);
-
-		{
-			address affiliateFeeCollector = feeLayout.affiliateFeeCollector[intent.affiliate] == address(0)
-				? feeLayout.defaultFeeCollector
-				: feeLayout.affiliateFeeCollector[intent.affiliate];
-			address feeToken = intent.tradingFee.feeToken;
-
-			ScheduledReleaseBalance storage defaultFeeCollectorBalance = feeLayout.defaultFeeCollector.balanceOf(feeToken);
-			defaultFeeCollectorBalance.setup(feeLayout.defaultFeeCollector, feeToken);
-			defaultFeeCollectorBalance.instantIsolatedAdd(intent.getTradingFee(), IncreaseBalanceReason.FEE);
-
-			ScheduledReleaseBalance storage affiliateFeeCollectorBalance = affiliateFeeCollector.balanceOf(feeToken);
-			affiliateFeeCollectorBalance.setup(affiliateFeeCollector, feeToken);
-			affiliateFeeCollectorBalance.instantIsolatedAdd(intent.getAffiliateFee(), IncreaseBalanceReason.FEE);
-		}
 
 		tradeId = ++TradeStorage.layout().lastTradeId;
 		Trade memory trade = Trade({
@@ -257,6 +233,21 @@ library LibPartyBOpen {
 			intent.tradeAgreements.quantity = quantity;
 		}
 
+		{
+			address affiliateFeeCollector = feeLayout.affiliateFeeCollector[intent.affiliate] == address(0)
+				? feeLayout.defaultFeeCollector
+				: feeLayout.affiliateFeeCollector[intent.affiliate];
+			address feeToken = intent.tradingFee.feeToken;
+
+			ScheduledReleaseBalance storage defaultFeeCollectorBalance = feeLayout.defaultFeeCollector.balanceOf(feeToken);
+			defaultFeeCollectorBalance.setup(feeLayout.defaultFeeCollector, feeToken);
+			defaultFeeCollectorBalance.instantIsolatedAdd(intent.getTradingFee(), IncreaseBalanceReason.FEE);
+
+			ScheduledReleaseBalance storage affiliateFeeCollectorBalance = affiliateFeeCollector.balanceOf(feeToken);
+			affiliateFeeCollectorBalance.setup(affiliateFeeCollector, feeToken);
+			affiliateFeeCollectorBalance.instantIsolatedAdd(intent.getAffiliateFee(), IncreaseBalanceReason.FEE);
+		}
+
 		intent.tradeId = tradeId;
 		intent.status = OpenIntentStatus.FILLED;
 		intent.statusModifyTimestamp = block.timestamp;
@@ -278,13 +269,12 @@ library LibPartyBOpen {
 			}
 			partyABalance.subForCounterParty(trade.partyB, trade.getPremium(), intent.tradeAgreements.marginType, DecreaseBalanceReason.PREMIUM);
 		} else {
-			if (intent.tradeAgreements.marginType == MarginType.CROSS) {
-				partyABalance.crossUnlock(trade.partyB, trade.tradeAgreements.mm);
-				partyABalance.increaseMM(trade.partyB, trade.tradeAgreements.mm);
-			}
+			partyABalance.crossUnlock(trade.partyB, trade.tradeAgreements.mm);
+			partyABalance.increaseMM(trade.partyB, trade.tradeAgreements.mm);
 			partyBBalance.subForCounterParty(trade.partyA, trade.getPremium(), trade.tradeAgreements.marginType, DecreaseBalanceReason.PREMIUM);
 			partyABalance.scheduledAdd(trade.partyB, trade.getPremium(), MarginType.CROSS, IncreaseBalanceReason.PREMIUM);
 		}
+		
 		if (trade.tradeAgreements.marginType == MarginType.CROSS) {
 			accountLayout.nonces[trade.partyA][trade.partyB] += 1;
 			accountLayout.nonces[trade.partyB][trade.partyA] += 1;
