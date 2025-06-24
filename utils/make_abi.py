@@ -61,9 +61,18 @@ def main():
     # Remove duplicates
     unique_abi_data = remove_duplicates(abi_data)
 
+    # Sort ABI by type and name
+    unique_abi_data_sorted = sorted(
+        unique_abi_data,
+        key=lambda x: (
+            x.get('type', ''),
+            x.get('name', '')
+        )
+    )
+
     os.makedirs('abis', exist_ok=True)  # Ensure the output directory exists
     with open('abis/options.json', 'w') as f:
-        json.dump(unique_abi_data, f, indent=4)
+        json.dump(unique_abi_data_sorted, f, indent=4)
 
 if __name__ == '__main__':
     main()

@@ -372,11 +372,11 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		emit SetInvalidBridgedAmountsPool(_pool);
 	}
 
-	function setBridgeWithdrawPausedStatues(bool _pause) external onlyRole(LibAccessibility.SETTER_ROLE) {
+	function setBridgeWithdrawPausedStatus(bool _pause) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		StateControlStorage.Layout storage s = StateControlStorage.layout();
 		s.bridgeWithdrawPaused = _pause;
 
-		emit SetBridgeWithdrawPausedStatues(_pause);
+		emit SetBridgeWithdrawPausedStatus(_pause);
 	}
 
 	function setCallFromInstantLayer(bool _callFromInstantLayer) external onlyRole(LibAccessibility.INSTANT_LAYER_ROLE) {

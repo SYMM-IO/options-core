@@ -72,6 +72,6 @@ interface IControlEvents {
 	event SignatureVerifierUpdated(address indexed verifier);
 	event SetBridgeStatus(address indexed _bridgeAddress, bool _isActive);
 	event SetInvalidBridgedAmountsPool(address indexed _pool);
-	event SetBridgeWithdrawPausedStatues(bool _pause);
+	event SetBridgeWithdrawPausedStatus(bool _pause);
 	event UserWindowUpdated(address indexed user, address indexed collateral, address indexed counterParty);
 }

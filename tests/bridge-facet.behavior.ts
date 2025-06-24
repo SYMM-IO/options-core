@@ -150,7 +150,7 @@ export function shouldBehaveLikeBridgeFacet(): void {
 		})
 
 		it("Should fail when Bridge Withdraw Paused", async function () {
-			await context.controlFacet.setBridgeWithdrawPausedStatues(true)
+			await context.controlFacet.setBridgeWithdrawPausedStatus(true)
 			await expect(
 				context.bridgeFacet.connect(context.signers.bridge1).withdrawReceivedBridgeValues([LastBridgeTransactionId]),
 			).to.be.revertedWithCustomError(context.bridgeFacet, "BridgeWithdrawPaused")
