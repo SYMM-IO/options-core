@@ -68,6 +68,25 @@ library LibTradeSettlement {
 			}
 		}
 
+		ScheduledReleaseBalance storage partyABalance = trade.partyA.balanceOf(symbol.collateral);
+		ScheduledReleaseBalance storage partyBBalance = trade.partyB.balanceOf(symbol.collateral);
+
+		if (trade.tradeAgreements.tradeSide == TradeSide.BUY) {
+			if (trade.tradeAgreements.marginType == MarginType.ISOLATED) {
+				partyBBalance.instantIsolatedAdd(
+					(trade.getPremium() * trade.getOpenAmount()) / trade.tradeAgreements.quantity,
+					IncreaseBalanceReason.PREMIUM
+				);
+			} else {
+				partyBBalance.scheduledAdd(
+					trade.partyA,
+					(trade.getPremium() * trade.getOpenAmount()) / trade.tradeAgreements.quantity,
+					trade.tradeAgreements.marginType,
+					IncreaseBalanceReason.PREMIUM
+				);
+			}
+		}
+
 		if (!isExpired) {
 			if (msg.sender != trade.partyB) {
 				if (trade.tradeAgreements.expirationTimestamp + appLayout.partyBExclusiveWindow > block.timestamp)
@@ -86,23 +105,7 @@ library LibTradeSettlement {
 
 			trade.settledPrice = sig.settlementPrice;
 
-			ScheduledReleaseBalance storage partyABalance = trade.partyA.balanceOf(symbol.collateral);
-			ScheduledReleaseBalance storage partyBBalance = trade.partyB.balanceOf(symbol.collateral);
-
 			if (trade.tradeAgreements.tradeSide == TradeSide.BUY) {
-				if (trade.tradeAgreements.marginType == MarginType.ISOLATED) {
-					partyBBalance.instantIsolatedAdd(
-						(trade.getPremium() * trade.getOpenAmount()) / trade.tradeAgreements.quantity,
-						IncreaseBalanceReason.PREMIUM
-					);
-				} else {
-					partyBBalance.scheduledAdd(
-						trade.partyA,
-						(trade.getPremium() * trade.getOpenAmount()) / trade.tradeAgreements.quantity,
-						trade.tradeAgreements.marginType,
-						IncreaseBalanceReason.PREMIUM
-					);
-				}
 				partyBBalance.subForCounterParty(
 					trade.partyA,
 					amountToTransfer,
