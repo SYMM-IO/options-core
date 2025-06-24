@@ -33,14 +33,15 @@ contract PartyACloseFacet is Accessibility, Pausable, IPartyACloseFacet {
 	 *              (e.g., for a market price of $1000, PartyA might accept prices down to $990)
 	 * @param quantity The amount of the trade to be closed, allowing for partial closures
 	 * @param deadline Timestamp after which the close intent expires if not filled by PartyB
+	 * @return intentId The unique identifier for the newly created close intent
 	 */
 	function sendCloseIntent(
 		uint256 tradeId,
 		uint256 quantity,
 		uint256 price,
 		uint256 deadline
-	) external whenPartyNotPaused(msg.sender) onlyPartyAOfTrade(tradeId) whenInstantModeIsNotActive(msg.sender) {
-		uint256 intentId = LibPartyAClose.sendCloseIntent(msg.sender, tradeId, price, quantity, deadline);
+	) external whenPartyNotPaused(msg.sender) onlyPartyAOfTrade(tradeId) whenInstantModeIsNotActive(msg.sender) returns (uint256 intentId) {
+		intentId = LibPartyAClose.sendCloseIntent(msg.sender, tradeId, price, quantity, deadline);
 		emit SendCloseIntent(tradeId, intentId, price, quantity, deadline);
 	}
 

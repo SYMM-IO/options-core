@@ -17,8 +17,4 @@ library PartyRelationsErrors {
 	error UnbindingAlreadyInProgress(address user, uint256 requestTime);
 	error UnbindingNotInitiated(address user);
 	error UnbindingCooldownNotOver(address user, uint256 currentTime, uint256 requiredTime);
-
-	// Instant actions
-	error MismatchedSignatures();
-	error DeadlineExpired();
 }

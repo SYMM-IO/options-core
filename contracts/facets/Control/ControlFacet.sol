@@ -378,4 +378,8 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 
 		emit SetBridgeWithdrawPausedStatues(_pause);
 	}
+
+	function setCallFromInstantLayer(bool _callFromInstantLayer) external onlyRole(LibAccessibility.INSTANT_LAYER_ROLE) {
+		AppStorage.layout().callFromInstantLayer = _callFromInstantLayer;
+	}
 }

@@ -11,6 +11,7 @@ import { TradeStorage } from "../storages/TradeStorage.sol";
 import { AccountStorage } from "../storages/AccountStorage.sol";
 import { StateControlStorage } from "../storages/StateControlStorage.sol";
 import { CounterPartyRelationsStorage } from "../storages/CounterPartyRelationsStorage.sol";
+import { AppStorage } from "../storages/AppStorage.sol";
 
 import { Trade } from "../types/TradeTypes.sol";
 import { Withdraw } from "../types/WithdrawTypes.sol";
@@ -68,7 +69,7 @@ abstract contract Accessibility {
 	}
 
 	modifier whenInstantModeIsNotActive(address sender) {
-		if (CounterPartyRelationsStorage.layout().instantActionsMode[sender]) revert PartyRelationsErrors.InstantModeActive(sender);
+		if (CounterPartyRelationsStorage.layout().instantActionsMode[sender] && !AppStorage.layout().callFromInstantLayer) revert PartyRelationsErrors.InstantModeActive(sender);
 		_;
 	}
 

@@ -37,6 +37,8 @@ library AppStorage {
 		/////////////////////////////////////////////////////////
 		mapping(address => PartyBConfig) partyBConfigs;
 		address[] partyBList;
+		/////////////////////////////////////////////////////////
+		bool callFromInstantLayer;
 	}
 
 	function layout() internal pure returns (Layout storage l) {

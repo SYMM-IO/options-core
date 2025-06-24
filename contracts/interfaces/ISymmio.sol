@@ -16,8 +16,6 @@ import "../facets/PartyAClose/IPartyACloseFacet.sol";
 import "../facets/PartyBClose/IPartyBCloseFacet.sol";
 import "../facets/ForceActions/IForceActionsFacet.sol";
 import "../facets/ClearingHouse/IClearingHouseFacet.sol";
-import "../facets/InstantActionsOpen/IInstantActionsOpenFacet.sol";
-import "../facets/InstantActionsClose/IInstantActionsCloseFacet.sol";
 
 interface ISymmio is
 	IAccountFacet,
@@ -25,8 +23,6 @@ interface ISymmio is
 	IClearingHouseFacet,
 	IControlFacet,
 	IForceActionsFacet,
-	IInstantActionsOpenFacet,
-	IInstantActionsCloseFacet,
 	IPartyAOpenFacet,
 	IPartyACloseFacet,
 	IPartyBOpenFacet,

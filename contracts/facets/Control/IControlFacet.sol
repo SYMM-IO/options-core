@@ -101,4 +101,6 @@ interface IControlFacet is IControlEvents {
 	function setManualSync(address user, bool isManual) external;
 
 	function syncTradeWindow(address user, address collateral, address counterParty) external;
+
+	function setCallFromInstantLayer(bool _callFromInstantLayer) external;
 }
