@@ -4,6 +4,7 @@ pragma solidity >=0.8.19;
 import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
+import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 
 interface IMultiAccount {
 	function _call(address account, bytes[] memory _callDatas) external;
@@ -18,15 +19,18 @@ interface ISymmio {
 	function setCallFromInstantLayer(bool _callFromInstantLayer) external;
 }
 
-contract InstantLayer is AccessControlEnumerable, ReentrancyGuard {
+contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 	bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
+
+	// EIP-712 type hash
+	bytes32 public constant OPERATION_TYPEHASH =
+		keccak256("SignedOperation(address account,address accountSource,address signer,bytes callData,uint256 nonce,uint256 deadline)");
 
 	ISymmio public immutable symmio;
 
 	mapping(address => uint256) public nonces;
 	mapping(uint256 => Template) public templates;
-	mapping(bytes32 => bool) public usedSignatures;
 	mapping(address => bool) public registeredPartyBs;
 	mapping(address => bool) public registeredMultiAccounts;
 	uint256 public nextTemplateId;
@@ -73,12 +77,11 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard {
 	error OperationFailed(uint256 operationIndex);
 	error ArrayLengthMismatch();
 	error InvalidAccount(address account);
-	error SignatureAlreadyUsed(bytes32 hash);
 	error InvalidSigner(address expected, address provided);
 	error UnregisteredTarget();
 	error UnregisteredPartyB(address partyB);
 
-	constructor(address _symmio, address _admin) {
+	constructor(address _symmio, address _admin) EIP712("SymmioInstantLayer", "1") {
 		symmio = ISymmio(_symmio);
 
 		_grantRole(DEFAULT_ADMIN_ROLE, _admin);
@@ -274,11 +277,6 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard {
 	function _verifyOperation(Operation memory op, SignedOperation calldata signedOp) private {
 		if (signedOp.deadline < block.timestamp) revert DeadlineExpired(signedOp.deadline);
 
-		bytes32 hash = _getOperationHash(signedOp);
-
-		// Check if signature was already used
-		if (usedSignatures[hash]) revert SignatureAlreadyUsed(hash);
-
 		address expectedSigner;
 
 		// Determine if this is a PartyB operation based on accountSource
@@ -308,6 +306,8 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard {
 			revert InvalidSigner(op.signer, expectedSigner);
 		}
 
+		bytes32 hash = getOperationHash(signedOp);
+		
 		// Verify signature using OpenZeppelin's SignatureChecker
 		if (!SignatureChecker.isValidSignatureNow(expectedSigner, hash, signedOp.signature)) {
 			revert InvalidSignature(expectedSigner);
@@ -320,7 +320,6 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard {
 		}
 
 		nonces[expectedSigner]++;
-		usedSignatures[hash] = true;
 		emit NonceIncremented(expectedSigner, nonces[expectedSigner]);
 	}
 
@@ -423,8 +422,26 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard {
 		return newCallData;
 	}
 
-	function _getOperationHash(SignedOperation calldata op) private pure returns (bytes32) {
-		return keccak256(abi.encodePacked(op.account, op.accountSource, op.signer, op.callData, op.nonce, op.deadline));
+
+	/**
+	 * @notice Get the EIP-712 typed data hash for an operation
+	 * @param op The signed operation
+	 * @return The EIP-712 hash that should be signed
+	 */
+	function getOperationHash(SignedOperation calldata op) public view returns (bytes32) {
+		bytes32 structHash = keccak256(
+			abi.encode(OPERATION_TYPEHASH, op.account, op.accountSource, op.signer, keccak256(op.callData), op.nonce, op.deadline)
+		);
+
+		return _hashTypedDataV4(structHash);
+	}
+
+	/**
+	 * @notice Get the EIP-712 domain separator
+	 * @return The domain separator for this contract
+	 */
+	function domainSeparator() external view returns (bytes32) {
+		return _domainSeparatorV4();
 	}
 
 	// View functions
