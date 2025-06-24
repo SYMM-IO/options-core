@@ -16,20 +16,19 @@ interface ISymmioPartyB {
 
 interface ISymmio {
 	function setCallFromInstantLayer(bool _callFromInstantLayer) external;
-}	
+}
 
 contract InstantLayer is AccessControlEnumerable, ReentrancyGuard {
 	bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 	bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
 
-	IMultiAccount public immutable multiAccount;
-	ISymmioPartyB public immutable symmioPartyB;
 	ISymmio public immutable symmio;
 
 	mapping(address => uint256) public nonces;
 	mapping(uint256 => Template) public templates;
 	mapping(bytes32 => bool) public usedSignatures;
 	mapping(address => bool) public registeredPartyBs;
+	mapping(address => bool) public registeredMultiAccounts;
 	uint256 public nextTemplateId;
 
 	struct Operation {
@@ -48,6 +47,7 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard {
 
 	struct SignedOperation {
 		address account; // The account to use (for PartyA operations)
+		address accountSource; // The MultiAccount contract (for PartyA operations)
 		address signer; // The signer
 		bytes callData; // The actual Symmio core call
 		uint256 nonce;
@@ -62,6 +62,8 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard {
 	event NonceIncremented(address indexed user, uint256 newNonce);
 	event PartyBRegistered(address indexed partyB);
 	event PartyBUnregistered(address indexed partyB);
+	event MultiAccountRegistered(address indexed multiAccount);
+	event MultiAccountUnregistered(address indexed multiAccount);
 
 	error InvalidSignature(address signer);
 	error DeadlineExpired(uint256 deadline);
@@ -73,10 +75,10 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard {
 	error InvalidAccount(address account);
 	error SignatureAlreadyUsed(bytes32 hash);
 	error InvalidSigner(address expected, address provided);
+	error UnregisteredTarget();
+	error UnregisteredPartyB(address partyB);
 
-	constructor(address _multiAccount, address _symmioPartyB, address _symmio, address _admin) {
-		multiAccount = IMultiAccount(_multiAccount);
-		symmioPartyB = ISymmioPartyB(_symmioPartyB);
+	constructor(address _symmio, address _admin) {
 		symmio = ISymmio(_symmio);
 
 		_grantRole(DEFAULT_ADMIN_ROLE, _admin);
@@ -85,7 +87,7 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard {
 	}
 
 	/**
-	 * @notice Register a PartyB signer
+	 * @notice Register a PartyB contract
 	 * @param partyB Address to register as PartyB
 	 */
 	function registerPartyB(address partyB) external onlyRole(ADMIN_ROLE) {
@@ -94,12 +96,52 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard {
 	}
 
 	/**
-	 * @notice Unregister a PartyB signer
+	 * @notice Unregister a PartyB contract
 	 * @param partyB Address to unregister
 	 */
 	function unregisterPartyB(address partyB) external onlyRole(ADMIN_ROLE) {
 		registeredPartyBs[partyB] = false;
 		emit PartyBUnregistered(partyB);
+	}
+
+	/**
+	 * @notice Register a MultiAccount contract
+	 * @param multiAccount Address to register as MultiAccount
+	 */
+	function registerMultiAccount(address multiAccount) external onlyRole(ADMIN_ROLE) {
+		registeredMultiAccounts[multiAccount] = true;
+		emit MultiAccountRegistered(multiAccount);
+	}
+
+	/**
+	 * @notice Unregister a MultiAccount contract
+	 * @param multiAccount Address to unregister
+	 */
+	function unregisterMultiAccount(address multiAccount) external onlyRole(ADMIN_ROLE) {
+		registeredMultiAccounts[multiAccount] = false;
+		emit MultiAccountUnregistered(multiAccount);
+	}
+
+	/**
+	 * @notice Register multiple PartyB contracts
+	 * @param partyBs Array of addresses to register
+	 */
+	function registerPartyBBatch(address[] calldata partyBs) external onlyRole(ADMIN_ROLE) {
+		for (uint256 i = 0; i < partyBs.length; i++) {
+			registeredPartyBs[partyBs[i]] = true;
+			emit PartyBRegistered(partyBs[i]);
+		}
+	}
+
+	/**
+	 * @notice Register multiple MultiAccount contracts
+	 * @param multiAccounts Array of addresses to register
+	 */
+	function registerMultiAccountBatch(address[] calldata multiAccounts) external onlyRole(ADMIN_ROLE) {
+		for (uint256 i = 0; i < multiAccounts.length; i++) {
+			registeredMultiAccounts[multiAccounts[i]] = true;
+			emit MultiAccountRegistered(multiAccounts[i]);
+		}
 	}
 
 	/**
@@ -109,6 +151,15 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard {
 	 */
 	function isPartyB(address addr) public view returns (bool) {
 		return registeredPartyBs[addr];
+	}
+
+	/**
+	 * @notice Check if an address is a registered MultiAccount
+	 * @param addr Address to check
+	 * @return Whether the address is a registered MultiAccount
+	 */
+	function isMultiAccount(address addr) public view returns (bool) {
+		return registeredMultiAccounts[addr];
 	}
 
 	/**
@@ -172,7 +223,7 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard {
 			op.account = signedOp.account;
 
 			// Execute operation
-			(success, results[i]) = _executeOperationSafe(op, signedOp, finalCallData);
+			(success, results[i]) = _executeOperationSafe(signedOp, finalCallData);
 			if (!success) {
 				symmio.setCallFromInstantLayer(false);
 				revert OperationFailed(i);
@@ -204,7 +255,7 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard {
 			// Verify signature and nonce
 			_verifyOperation(op, signedOps[i]);
 
-			(success, ) = _executeOperationSafe(op, signedOps[i], signedOps[i].callData);
+			(success, ) = _executeOperationSafe(signedOps[i], signedOps[i].callData);
 			if (!success) {
 				symmio.setCallFromInstantLayer(false);
 				revert OperationFailed(i);
@@ -230,18 +281,29 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard {
 
 		address expectedSigner;
 
-		// Determine if this is a PartyB operation based on signer
+		// Determine if this is a PartyB operation based on accountSource
 		if (isPartyB(signedOp.signer)) {
-			// PartyB operation
+			// PartyB operation - the signer is the PartyB contract itself
 			expectedSigner = signedOp.signer;
-		} else {
+
+			// Verify the signer matches accountSource for PartyB
+			if (signedOp.signer != signedOp.accountSource) {
+				revert InvalidSigner(signedOp.accountSource, signedOp.signer);
+			}
+		} else if (isMultiAccount(signedOp.accountSource)) {
 			// PartyA operation - verify the account owner's signature
 			if (signedOp.account == address(0)) revert InvalidAccount(signedOp.account);
+
+			IMultiAccount multiAccount = IMultiAccount(signedOp.accountSource);
 			address owner = multiAccount.owners(signedOp.account);
 			if (owner == address(0)) revert InvalidAccount(signedOp.account);
 			expectedSigner = owner;
+		} else {
+			// Neither registered PartyB nor MultiAccount
+			revert UnregisteredTarget();
 		}
 
+		// Check template signer requirement if specified
 		if (op.signer != address(0) && op.signer != expectedSigner) {
 			revert InvalidSigner(op.signer, expectedSigner);
 		}
@@ -264,27 +326,24 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard {
 
 	/**
 	 * @notice Execute operation safely
-	 * @param op Operation details
 	 * @param signedOp Signed operation details
 	 * @param callData The calldata to execute
 	 * @return success Whether the operation succeeded
 	 * @return result The return data
 	 */
-	function _executeOperationSafe(
-		Operation memory op,
-		SignedOperation calldata signedOp,
-		bytes memory callData
-	) private returns (bool success, bytes memory result) {
-		// Determine target based on signer type
+	function _executeOperationSafe(SignedOperation calldata signedOp, bytes memory callData) private returns (bool success, bytes memory result) {
+		// Determine target based on accountSource type
 		bool isPartyBOperation = isPartyB(signedOp.signer);
-		address target = isPartyBOperation ? address(symmioPartyB) : address(multiAccount);
 
 		bytes[] memory callDatas = new bytes[](1);
 		callDatas[0] = callData;
+
 		if (!isPartyBOperation) {
-			(success, result) = target.call(abi.encodeWithSelector(IMultiAccount._call.selector, op.account, callDatas));
+			// PartyA operation through MultiAccount
+			(success, result) = signedOp.accountSource.call(abi.encodeWithSelector(IMultiAccount._call.selector, signedOp.account, callDatas));
 		} else {
-			(success, result) = target.call(abi.encodeWithSelector(ISymmioPartyB._call.selector, callDatas));
+			// PartyB operation
+			(success, result) = signedOp.signer.call(abi.encodeWithSelector(ISymmioPartyB._call.selector, callDatas));
 		}
 	}
 
@@ -365,7 +424,7 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard {
 	}
 
 	function _getOperationHash(SignedOperation calldata op) private pure returns (bytes32) {
-		return keccak256(abi.encodePacked(op.account, op.signer, op.callData, op.nonce, op.deadline));
+		return keccak256(abi.encodePacked(op.account, op.accountSource, op.signer, op.callData, op.nonce, op.deadline));
 	}
 
 	// View functions
