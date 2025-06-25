@@ -1,14 +1,16 @@
-import { run } from "hardhat"
-import { Diamond, FakeStablecoin, SignatureVerifier } from "../types"
+import { ethers, run } from "hardhat"
+import { Diamond, FakeOracle, FakeStablecoin, InstantLayer, SignatureVerifier } from "../types"
 import { createRunContext, RunContext } from "./run-context"
-import { ethers, toUtf8Bytes } from "ethers"
+import {  toUtf8Bytes } from "ethers"
 import { e } from "../utils/e"
 import { OptionType } from "./option-enums"
+import { MultiAccount } from "../types/contracts/helpers"
 
 export async function initializeTestFixture(): Promise<RunContext> {
-	const diamond: Diamond = await run("deploy:diamond")
 	const mocks: Map<string, string> = await run("deploy:mocks")
 	const verifier: SignatureVerifier = await run("deploy:SignatureVerifier")
+	const oracle: FakeOracle = await run("deploy:oracle")
+	
 	const stableCoin: FakeStablecoin = await run("deploy:stablecoin", {
 		name: "MyFakeStablecoin",
 		symbol: "FUSD",
@@ -16,9 +18,10 @@ export async function initializeTestFixture(): Promise<RunContext> {
 	const stableCoinNL: FakeStablecoin = await run("deploy:stablecoin", {
 		name: "StablecoinNotListed",
 		symbol: "NLUSD",
-	})
-	const oracle: FakeStablecoin = await run("deploy:oracle")
-
+	})	
+	
+	const diamond: Diamond = await run("deploy:diamond",true)
+	
 	let context = await createRunContext(
 		await diamond.getAddress(),
 		[await stableCoin.getAddress(), await stableCoinNL.getAddress()],
@@ -26,6 +29,18 @@ export async function initializeTestFixture(): Promise<RunContext> {
 		await verifier.getAddress(),
 		mocks,
 	)
+	
+	const instantLayer: InstantLayer = await run("deploy:InstantLayer", {
+		symmioaddress: context.signers.symmioAddress,
+		admin:context.signers.admin
+	})
+	const multiAccount: MultiAccount = await run("deploy:multiAccount",{
+		symmioaddress: context.signers.symmioAddress,
+		admin:context.signers.admin
+	})
+	context.multiAccount = await ethers.getContractAt("MultiAccount",multiAccount)
+	context.instantLayer = await ethers.getContractAt("InstantLayer",instantLayer)
+	
 
 	await context.controlFacet.connect(context.signers.admin).setAdmin(context.signers.admin.getAddress())
 	await context.controlFacet

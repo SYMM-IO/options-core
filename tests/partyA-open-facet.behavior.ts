@@ -163,7 +163,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.exerciseFee({ cap: e(1), rate: "0" })
 				.build()
 
-			await context.accountFacet.connect(partyA1.getSigner).bindToPartyB(partyB1.getSigner)
+			await context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(partyB1.getSigner)
 			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "UserBoundToAnotherPartyB")
 		})
 
@@ -411,13 +411,13 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 		it("Should release premium", async () => {
 			// take snapshot
 			let isolatedLocketBalance = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateral.getAddress())
-			let isolatedBalance = await context.viewFacet.balanceOf(partyA1.getSigner, context.collateral.getAddress())
+			let isolatedBalance = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral.getAddress())
 			let premium: BigInt = await context.viewFacet.getPremium(1)
 
 			expect(await partyA1.sendCancelOpenIntent(["1"])).to.be.not.reverted
 
 			let isolatedLocketBalanceLatter = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateral.getAddress())
-			let isolatedBalanceLatter = await context.viewFacet.balanceOf(partyA1.getSigner, context.collateral.getAddress())
+			let isolatedBalanceLatter = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral.getAddress())
 
 			expect(isolatedLocketBalance - isolatedLocketBalanceLatter).be.equal(premium)
 		})
@@ -441,7 +441,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			expect(await partyA1.sendOpenIntent(request)).not.to.be.reverted
 
 			expect(await partyA1.sendCancelOpenIntent(["1"])).not.to.be.reverted
-			let activeIntentIds: BigInt[] = await context.viewFacet.getActiveOpenIntentIdsOf(partyA1.getSigner, 0, 100)
+			let activeIntentIds: BigInt[] = await context.viewFacet.getActiveOpenIntentIds(partyA1.getSigner)
 			for (let a of activeIntentIds) {
 				expect(a).not.to.be.equal(1)
 			}

@@ -7,12 +7,14 @@ import {
 	ClearingHouseFacet,
 	CloseIntentOpsMock,
 	ControlFacet,
+	CounterPartyRelationsFacet,
 	DiamondCutFacet,
 	DiamondLoupeFacet,
 	FakeOracle,
 	FakeStablecoin,
 	ForceActionsFacet,
 	InstantLayer,
+	MultiAccount,
 	PartyACloseFacet,
 	PartyAOpenFacet,
 	PartyBCloseFacet,
@@ -21,6 +23,7 @@ import {
 	TradeSettlementFacet,
 	ViewFacet,
 } from "../types"
+import { counterPartyRelations } from "../types/contracts/facets"
 
 export class RunContext {
 	accountFacet!: AccountFacet
@@ -34,12 +37,15 @@ export class RunContext {
 	tradeSettlementFacet!: TradeSettlementFacet
 	controlFacet!: ControlFacet
 	forceActionsFacet!: ForceActionsFacet
-	instantLayer!: InstantLayer
 	clearingHouse!: ClearingHouseFacet
 	bridgeFacet!: BridgeFacet
+	counterPartyRelation!: CounterPartyRelationsFacet
+	instantLayer!: InstantLayer
+	multiAccount!: MultiAccount
 
 	signers!: {
 		admin: SignerWithAddress
+		symmioAddress: SignerWithAddress
 		partyA1: SignerWithAddress
 		partyA2: SignerWithAddress
 		feeCollector: SignerWithAddress
@@ -76,6 +82,7 @@ export async function createRunContext(
 	const signers: SignerWithAddress[] = await ethers.getSigners()
 	context.signers = {
 		admin: signers[0],
+		symmioAddress: signers[12],
 		partyA1: signers[1],
 		partyA2: signers[2],
 		feeCollector: signers[3],
@@ -92,14 +99,13 @@ export async function createRunContext(
 	context.collateralNL = await ethers.getContractAt("FakeStablecoin", collateral[1])
 
 	context.oracle = await ethers.getContractAt("FakeOracle", oracle)
+	context.signatureVerifier = await ethers.getContractAt("SignatureVerifier", signatureVerifier)
 	context.accountFacet = await ethers.getContractAt("AccountFacet", diamond)
 	context.diamondCutFacet = await ethers.getContractAt("DiamondCutFacet", diamond)
 	context.diamondLoupeFacet = await ethers.getContractAt("DiamondLoupeFacet", diamond)
 	context.viewFacet = await ethers.getContractAt("ViewFacet", diamond)
 	context.controlFacet = await ethers.getContractAt("ControlFacet", diamond)
 	context.forceActionsFacet = await ethers.getContractAt("ForceActionsFacet", diamond)
-	context.instantLayer = await ethers.getContractAt("InstantLayer", diamond)
-	context.signatureVerifier = await ethers.getContractAt("SignatureVerifier", signatureVerifier)
 	context.clearingHouse = await ethers.getContractAt("ClearingHouseFacet", diamond)
 
 	context.partyAOpenFacet = await ethers.getContractAt("PartyAOpenFacet", diamond)
@@ -108,6 +114,7 @@ export async function createRunContext(
 	context.partyBCloseFacet = await ethers.getContractAt("PartyBCloseFacet", diamond)
 	context.partyBOpenFacet = await ethers.getContractAt("PartyBOpenFacet", diamond)
 	context.bridgeFacet = await ethers.getContractAt("BridgeFacet", diamond)
+	context.counterPartyRelation = await ethers.getContractAt("CounterPartyRelationsFacet",diamond)
 
 	context.tradeSettlementFacet = await ethers.getContractAt("TradeSettlementFacet", diamond)
 

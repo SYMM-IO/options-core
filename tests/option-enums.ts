@@ -38,3 +38,9 @@ export enum TradeStatus {
 	EXPIRED,
 	LIQUIDATED,
 }
+
+export enum WithdrawStatus {
+	INITIATED,
+	CANCELED,
+	COMPLETED
+}
