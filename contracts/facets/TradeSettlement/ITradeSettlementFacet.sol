@@ -9,5 +9,5 @@ import { SettlementPriceSig } from "../../types/SettlementTypes.sol";
 import { ITradeSettlementEvents } from "./ITradeSettlementEvents.sol";
 
 interface ITradeSettlementFacet is ITradeSettlementEvents {
-	function executeTrade(uint256 tradeId, SettlementPriceSig memory settlementPriceSig) external;
+	function executeTrades(uint256[] memory tradeIds, SettlementPriceSig memory settlementPriceSig) external;
 }
