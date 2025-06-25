@@ -20,17 +20,14 @@ import { LibTradeSettlement } from "../../libraries/core/LibTradeSettlement.sol"
  */
 contract TradeSettlementFacet is Accessibility, Pausable, ITradeSettlementFacet {
 	/**
-	 * @notice Executes a trade that has reached its expiration timestamp
+	 * @notice Executes trades of an specific symbol that have reached their expiration timestamp
 	 * @dev Can be called by either PartyB or authorized third parties
-	 * @param tradeId The unique identifier of the trade being expired
+	 * @param tradeIds Array of unique identifiers of the trades to be executed
 	 * @param settlementPriceSig Cryptographically signed data from Muon oracle containing
 	 *                          the verified settlement price of the symbol at expiration time
 	 */
-	function executeTrade(
-		uint256 tradeId,
-		SettlementPriceSig memory settlementPriceSig
-	) external whenNotThirdPartyActionsPaused {
-		bool isExpired = LibTradeSettlement.executeTrade(tradeId, settlementPriceSig);
-		emit ExecuteTrade(msg.sender, tradeId, settlementPriceSig.settlementPrice, settlementPriceSig.collateralPrice, isExpired);
+	function executeTrades(uint256[] memory tradeIds, SettlementPriceSig memory settlementPriceSig) external whenNotThirdPartyActionsPaused {
+		LibTradeSettlement.executeTrades(tradeIds, settlementPriceSig);
+		emit ExecuteTrades(msg.sender, tradeIds, settlementPriceSig.settlementPrice, settlementPriceSig.collateralPrice);
 	}
 }
