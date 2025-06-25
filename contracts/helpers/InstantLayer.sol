@@ -307,7 +307,7 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 		}
 
 		bytes32 hash = getOperationHash(signedOp);
-		
+
 		// Verify signature using OpenZeppelin's SignatureChecker
 		if (!SignatureChecker.isValidSignatureNow(expectedSigner, hash, signedOp.signature)) {
 			revert InvalidSignature(expectedSigner);
@@ -354,74 +354,24 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	) private pure returns (bytes memory) {
 		if (insertionPoints.length == 0) return callData;
 
-		// Calculate new size
-		uint256 additionalSize = 0;
+		// Copy callData to modify it
+		bytes memory modifiedCallData = callData;
+
+		// Replace each result at its insertion point
 		for (uint256 i = 0; i < insertionPoints.length; i++) {
-			if (sourceIndices[i] < results.length && results[sourceIndices[i]].length > 0) {
-				// Decode the return value to get the actual data
-				bytes memory decodedResult = abi.decode(results[sourceIndices[i]], (bytes));
-				additionalSize += decodedResult.length;
-			}
-		}
+			if (sourceIndices[i] < results.length) {
+				// Decode as bytes32 (works for address, uint256, etc.)
+				bytes32 value = abi.decode(results[sourceIndices[i]], (bytes32));
 
-		bytes memory newCallData = new bytes(callData.length + additionalSize);
-		uint256 currentPos = 0;
-		uint256 newPos = 0;
-
-		// Sort insertion points (bubble sort for simplicity)
-		uint256[] memory sortedInsertionPoints = new uint256[](insertionPoints.length);
-		uint256[] memory sortedSourceIndices = new uint256[](sourceIndices.length);
-
-		// Copy arrays
-		for (uint256 i = 0; i < insertionPoints.length; i++) {
-			sortedInsertionPoints[i] = insertionPoints[i];
-			sortedSourceIndices[i] = sourceIndices[i];
-		}
-
-		// Sort
-		for (uint256 i = 0; i < sortedInsertionPoints.length; i++) {
-			for (uint256 j = i + 1; j < sortedInsertionPoints.length; j++) {
-				if (sortedInsertionPoints[i] > sortedInsertionPoints[j]) {
-					// Swap
-					(sortedInsertionPoints[i], sortedInsertionPoints[j]) = (sortedInsertionPoints[j], sortedInsertionPoints[i]);
-					(sortedSourceIndices[i], sortedSourceIndices[j]) = (sortedSourceIndices[j], sortedSourceIndices[i]);
+				uint256 offset = insertionPoints[i];
+				assembly {
+					mstore(add(modifiedCallData, add(32, offset)), value)
 				}
 			}
 		}
 
-		// Insert results at specified points
-		for (uint256 i = 0; i < sortedInsertionPoints.length; i++) {
-			uint256 insertPoint = sortedInsertionPoints[i];
-
-			// Copy data up to insertion point
-			for (uint256 j = currentPos; j < insertPoint && j < callData.length; j++) {
-				newCallData[newPos++] = callData[j];
-			}
-
-			// Insert result if available
-			if (sortedSourceIndices[i] < results.length && results[sortedSourceIndices[i]].length > 0) {
-				bytes memory decodedResult = abi.decode(results[sortedSourceIndices[i]], (bytes));
-				for (uint256 j = 0; j < decodedResult.length; j++) {
-					newCallData[newPos++] = decodedResult[j];
-				}
-			}
-
-			currentPos = insertPoint;
-		}
-
-		// Copy remaining data
-		for (uint256 i = currentPos; i < callData.length; i++) {
-			newCallData[newPos++] = callData[i];
-		}
-
-		// Resize array to actual size
-		assembly {
-			mstore(newCallData, newPos)
-		}
-
-		return newCallData;
+		return modifiedCallData;
 	}
-
 
 	/**
 	 * @notice Get the EIP-712 typed data hash for an operation
