@@ -12,9 +12,7 @@ import {
 	FakeOracle,
 	FakeStablecoin,
 	ForceActionsFacet,
-	InstantActionsCloseFacet,
-	InstantActionsOpenFacet,
-	InstantActionsPartyBOpenFacet,
+	InstantLayer,
 	PartyACloseFacet,
 	PartyAOpenFacet,
 	PartyBCloseFacet,
@@ -36,9 +34,7 @@ export class RunContext {
 	tradeSettlementFacet!: TradeSettlementFacet
 	controlFacet!: ControlFacet
 	forceActionsFacet!: ForceActionsFacet
-	instantActionOpenFacet!: InstantActionsOpenFacet
-	instantActionCloseFacet!: InstantActionsCloseFacet
-	InstantActionsPartyBOpenFacet!: InstantActionsPartyBOpenFacet
+	instantLayer!: InstantLayer
 	clearingHouse!: ClearingHouseFacet
 	bridgeFacet!: BridgeFacet
 
@@ -102,9 +98,7 @@ export async function createRunContext(
 	context.viewFacet = await ethers.getContractAt("ViewFacet", diamond)
 	context.controlFacet = await ethers.getContractAt("ControlFacet", diamond)
 	context.forceActionsFacet = await ethers.getContractAt("ForceActionsFacet", diamond)
-	context.instantActionCloseFacet = await ethers.getContractAt("InstantActionsCloseFacet", diamond)
-	context.instantActionOpenFacet = await ethers.getContractAt("InstantActionsOpenFacet", diamond)
-	context.InstantActionsPartyBOpenFacet = await ethers.getContractAt("InstantActionsPartyBOpenFacet", diamond)
+	context.instantLayer = await ethers.getContractAt("InstantLayer", diamond)
 	context.signatureVerifier = await ethers.getContractAt("SignatureVerifier", signatureVerifier)
 	context.clearingHouse = await ethers.getContractAt("ClearingHouseFacet", diamond)
 

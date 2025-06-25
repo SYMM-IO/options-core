@@ -1,7 +1,7 @@
 import { Builder } from "builder-pattern"
 import { AddressLike, BigNumberish, BytesLike, encodeBytes32String, ZeroAddress } from "ethers"
-import { ExerciseFeeStruct } from "../../../types/contracts/facets/InstantActionsOpen/IInstantActionsOpenFacet"
 import { e } from "../../../utils/e"
+import { ExerciseFeeStruct } from "../../../types/contracts/interfaces/ISymmio"
 
 export interface OpenIntent {
 	partyBsWhiteList: AddressLike[]
