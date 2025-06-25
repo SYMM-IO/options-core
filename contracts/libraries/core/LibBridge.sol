@@ -59,7 +59,6 @@ library LibBridge {
 		balance.isolatedSub(LibDecimals.normalizeAmount(collateral, amount), DecreaseBalanceReason.BRIDGE);
 
 		bridgeLayout.bridgeTransactions[currentId] = bridgeTransaction;
-		bridgeLayout.bridgeTransactionIds[bridge].push(currentId);
 	}
 
 	function withdrawReceivedBridgeValues(uint256[] memory transactionIds) internal {

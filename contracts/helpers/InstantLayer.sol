@@ -52,7 +52,7 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	struct SignedOperation {
 		address account; // The account to use (for PartyA operations)
 		address accountSource; // The MultiAccount contract (for PartyA operations)
-		address signer; // The signer
+		address signer; // The signer (for PartyB operations only)
 		bytes callData; // The actual Symmio core call
 		uint256 nonce;
 		uint256 deadline;

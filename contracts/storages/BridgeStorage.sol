@@ -12,7 +12,6 @@ library BridgeStorage {
 	struct Layout {
 		mapping(address => bool) bridges; // bridge -> isActive
 		mapping(uint256 => BridgeTransaction) bridgeTransactions;
-		mapping(address => uint256[]) bridgeTransactionIds; // bridge -> transactionIds
 		uint256 lastBridgeTransactionId;
 		address invalidBridgedAmountsPool;
 	}

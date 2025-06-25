@@ -11,8 +11,7 @@ library TradeStorage {
 
 	struct Layout {
 		mapping(uint256 => Trade) trades;
-		mapping(address => uint256[]) tradesOf;
-		mapping(address => uint256[]) activeTradesOf;
+		mapping(address => uint256[]) activeTradesOfPartyA;
 		mapping(address => mapping(address => uint256[])) activeTradesOfPartyB; // partyBAddress => collateral => trades
 		mapping(uint256 => uint256) partyATradesIndex;
 		mapping(uint256 => uint256) partyBTradesIndex;

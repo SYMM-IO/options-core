@@ -36,7 +36,6 @@ library AppStorage {
 		uint256 settlementPriceSigValidTime;
 		/////////////////////////////////////////////////////////
 		mapping(address => PartyBConfig) partyBConfigs;
-		address[] partyBList;
 		/////////////////////////////////////////////////////////
 		bool callFromInstantLayer;
 	}

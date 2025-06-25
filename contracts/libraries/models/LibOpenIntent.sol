@@ -37,7 +37,6 @@ library LibOpenIntentOps {
 		OpenIntentStorage.Layout storage openIntentLayout = OpenIntentStorage.layout();
 
 		openIntentLayout.openIntents[self.id] = self;
-		openIntentLayout.openIntentsOf[msg.sender].push(self.id);
 
 		if (self.status == OpenIntentStatus.PENDING) {
 			openIntentLayout.activeOpenIntentsOf[self.partyA].push(self.id);
@@ -49,7 +48,6 @@ library LibOpenIntentOps {
 	function saveForPartyB(OpenIntent memory self) internal {
 		OpenIntentStorage.Layout storage openIntentLayout = OpenIntentStorage.layout();
 
-		openIntentLayout.openIntentsOf[self.partyB].push(self.id);
 		openIntentLayout.activeOpenIntentsOf[self.partyB].push(self.id);
 		openIntentLayout.partyBOpenIntentsIndex[self.id] = openIntentLayout.activeOpenIntentsOf[self.partyB].length - 1;
 	}

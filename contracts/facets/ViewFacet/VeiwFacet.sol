@@ -5,8 +5,6 @@
 pragma solidity >=0.8.19;
 
 import { LibParty } from "../../libraries/models/LibParty.sol";
-import { LibOpenIntentOps } from "../../libraries/models/LibOpenIntent.sol";
-import { LibTradeOps } from "../../libraries/models/LibTrade.sol";
 
 import { TradeStorage } from "../../storages/TradeStorage.sol";
 import { BridgeStorage } from "../../storages/BridgeStorage.sol";
@@ -20,7 +18,6 @@ import { AccessControlStorage } from "../../storages/AccessControlStorage.sol";
 import { FeeManagementStorage } from "../../storages/FeeManagementStorage.sol";
 import { SymbolStorage, Symbol, Oracle } from "../../storages/SymbolStorage.sol";
 import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
-import { BridgeStorage } from "../../storages/BridgeStorage.sol";
 
 import { Trade } from "../../types/TradeTypes.sol";
 import { Withdraw } from "../../types/WithdrawTypes.sol";
@@ -33,864 +30,961 @@ import { IViewFacet } from "./IViewFacet.sol";
 
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
+/**
+ * @title ViewFacet
+ * @notice Provides read-only access to all protocol state
+ * @dev Organized by storage contract for clarity and completeness
+ */
 contract ViewFacet is IViewFacet {
 	using EnumerableSet for EnumerableSet.AddressSet;
 	using LibParty for address;
-	using LibOpenIntentOps for OpenIntent;
-	using LibTradeOps for Trade;
+
+	// ════════════════════════════════════════════════════════════════════════════
+	//                           ACCOUNT STORAGE VIEWS
+	// ════════════════════════════════════════════════════════════════════════════
 
 	/**
-	 * @notice Returns the balance for a specified user and collateral type.
-	 * @param user The address of the user.
-	 * @param collateral The address of the collateral type.
-	 * @return balance The balance of the user and specific collateral type.
+	 * @notice Gets the isolated balance for a user and collateral
+	 * @param user The user address
+	 * @param collateral The collateral token address
+	 * @return The isolated balance amount
 	 */
-	function balanceOf(address user, address collateral) external view returns (uint256) {
+	function getIsolatedBalance(address user, address collateral) external view returns (uint256) {
 		return user.balanceOf(collateral).isolatedBalance;
 	}
 
-	function getScheduledReleaseEntry(address user, address collateral, address counterParty) external view returns (ScheduledReleaseEntry memory) {
-		return user.balanceOf(collateral).counterPartySchedules[counterParty];
-	}
-
-	function crossBalance(address user, address collateral, address counterParty) external view returns (CrossEntry memory) {
-		return user.balanceOf(collateral).crossBalance[counterParty];
-	}
-
+	/**
+	 * @notice Gets the isolated locked balance for a user and collateral
+	 * @param user The user address
+	 * @param collateral The collateral token address
+	 * @return The isolated locked balance amount
+	 */
 	function getIsolatedLockedBalance(address user, address collateral) external view returns (uint256) {
 		return user.balanceOf(collateral).isolatedLockedBalance;
 	}
 
-	function getTradingFee(uint256 openIntentId) external view returns (uint256) {
-		OpenIntent memory self = OpenIntentStorage.layout().openIntents[openIntentId];
-		return self.getTradingFee();
-	}
-
-	function getAffiliateFee(uint256 openIntentId) external view returns (uint256) {
-		OpenIntent memory self = OpenIntentStorage.layout().openIntents[openIntentId];
-		return self.getAffiliateFee();
-	}
-
-	function getPremium(uint256 openIntentId) external view returns (uint256) {
-		OpenIntent memory self = OpenIntentStorage.layout().openIntents[openIntentId];
-		return self.getPremium();
-	}
-
-	//////////////////////////////////////////////////
-	//// TRADE //////
-	//////////////////////////////////////////////////
-
-	function getPnL(uint256 tradeID, uint256 settlementPrice, uint256 filledAmount) external view returns (uint256 pnl) {
-		Trade memory self = TradeStorage.layout().trades[tradeID];
-		pnl = self.getPnl(settlementPrice, filledAmount);
-	}
-
-	function getExerciseFee(uint256 tradeID, uint256 settlementPrice, uint256 pnl) external view returns (uint256 exerciseFee) {
-		Trade memory self = TradeStorage.layout().trades[tradeID];
-		exerciseFee = self.getExerciseFee(settlementPrice, pnl);
-	}
-
-	function getTradePremium(uint256 tradeID) external view returns (uint256 premium) {
-		Trade memory self = TradeStorage.layout().trades[tradeID];
-		premium = self.getPremium();
-	}
-
-	function getOpenAmount(uint256 tradeID) external view returns (uint256 openAmount) {
-		Trade memory self = TradeStorage.layout().trades[tradeID];
-		openAmount = self.getOpenAmount();
+	/**
+	 * @notice Gets the reserve balance for a user and collateral
+	 * @param user The user address
+	 * @param collateral The collateral token address
+	 * @return The reserve balance amount
+	 */
+	function getReserveBalance(address user, address collateral) external view returns (uint256) {
+		return user.balanceOf(collateral).reserveBalance;
 	}
 
 	/**
-	 * @notice Returns max connected partyBs.
-	 * @return max connected partyBs.
+	 * @notice Gets the cross balance entry for a user, collateral and counterparty
+	 * @param user The user address
+	 * @param collateral The collateral token address
+	 * @param counterParty The counterparty address
+	 * @return The cross balance entry
 	 */
-	function getMaxConnectedCounterParties() external view returns (uint256) {
-		return AccountStorage.layout().maxConnectedCounterParties;
+	function getCrossBalance(address user, address collateral, address counterParty) external view returns (CrossEntry memory) {
+		return user.balanceOf(collateral).crossBalance[counterParty];
 	}
 
+	/**
+	 * @notice Gets the scheduled release entry for a user, collateral and counterparty
+	 * @param user The user address
+	 * @param collateral The collateral token address
+	 * @param counterParty The counterparty address
+	 * @return The scheduled release entry
+	 */
+	function getScheduledReleaseEntry(address user, address collateral, address counterParty) external view returns (ScheduledReleaseEntry memory) {
+		return user.balanceOf(collateral).counterPartySchedules[counterParty];
+	}
+
+	/**
+	 * @notice Gets the list of counterparty addresses for a user's balance
+	 * @param user The user address
+	 * @param collateral The collateral token address
+	 * @return Array of counterparty addresses
+	 */
+	function getCounterPartyAddresses(address user, address collateral) external view returns (address[] memory) {
+		return user.balanceOf(collateral).counterPartyAddresses;
+	}
+
+	/**
+	 * @notice Gets withdrawal details by ID
+	 * @param withdrawId The withdrawal ID
+	 * @return The withdrawal details
+	 */
+	function getWithdrawal(uint256 withdrawId) external view returns (Withdraw memory) {
+		return AccountStorage.layout().withdrawals[withdrawId];
+	}
+
+	/**
+	 * @notice Gets the last withdrawal ID
+	 * @return The last withdrawal ID used
+	 */
+	function getLastWithdrawalId() external view returns (uint256) {
+		return AccountStorage.layout().lastWithdrawId;
+	}
+
+	/**
+	 * @notice Gets the release interval for a user
+	 * @param user The user address
+	 * @return The release interval in seconds
+	 */
 	function getReleaseInterval(address user) external view returns (uint256) {
 		return user.getReleaseInterval();
 	}
 
 	/**
-	 * @notice Returns various values related to Party A.
-	 * @param partyA The address of Party A.
-	 // TODO 1, return liquidationStatus The liquidation status of Party A.
-	 * @return suspendedAddresses returns a true/false representing whether the given address is suspended or not.
-	 * @return balance The balance of Party A.
-	 * @return openIntentsOf The list of openIntents of Party A.
-	 * @return tradesOf The list of trades of Party A.
+	 * @notice Gets the default release interval
+	 * @return The default release interval in seconds
 	 */
-	function partyAStats(address partyA, address collateral) external view returns (bool, uint256, uint256[] memory, uint256[] memory) {
-		// MAStorage.Layout storage maLayout = MAStorage.layout();  #TODO 1: consider adding this after liquidation dev.
-		return (
-			// maLayout.liquidationStatus[partyA], #TODO 1
-			StateControlStorage.layout().suspendedAddresses[partyA],
-			partyA.balanceOf(collateral).isolatedBalance,
-			//TODO 2: consider adding AppStorage:partyAReimbursement after it's used
-			OpenIntentStorage.layout().openIntentsOf[partyA],
-			TradeStorage.layout().tradesOf[partyA]
-			// intentLayout.closeIntentIdsOf TODO 3: consider adding this if it's necessary
-		);
+	function getDefaultReleaseInterval() external view returns (uint256) {
+		return AccountStorage.layout().defaultReleaseInterval;
 	}
 
 	/**
-	 * @notice Returns the Withdraw object. You can read Withdraw object attributes at AccountFact:Withdraw
-	 * @param id The id of the Withdraw object.
-	 * @return Withdraw The Withdraw object associated with the given `id`.
+	 * @notice Checks if a user has a configured release interval
+	 * @param user The user address
+	 * @return hasConfigured Whether the user has a configured interval
+	 * @return interval The configured interval (if any)
 	 */
-	function getWithdraw(uint256 id) external view returns (Withdraw memory) {
-		return AccountStorage.layout().withdrawals[id];
+	function getUserReleaseInterval(address user) external view returns (bool hasConfigured, uint256 interval) {
+		AccountStorage.Layout storage layout = AccountStorage.layout();
+		return (layout.hasConfiguredInterval[user], layout.releaseIntervals[user]);
 	}
 
 	/**
-	 @notice Checks whether the user is suspned or not.
-	 @param user The address of the user.
-	 @return isSuspended A boolean value(true/false) to show that the `user` is suspended or not.
+	 * @notice Gets the maximum allowed connected counterparties
+	 * @return The maximum number of connected counterparties
 	 */
-	function isSuspended(address user) external view returns (bool) {
-		return StateControlStorage.layout().suspendedAddresses[user];
+	function getMaxConnectedCounterParties() external view returns (uint256) {
+		return AccountStorage.layout().maxConnectedCounterParties;
 	}
 
 	/**
-	 @notice Checks whether the withdraw is suspended or not.
-	 @param withdrawId The id of withdraw.
-	 @return isSuspendedWithdrawal A boolean value(true/false) to show that the `withdraw` is suspended or not.
+	 * @notice Checks if manual sync is enabled for a user
+	 * @param user The user address
+	 * @return Whether manual sync is enabled
 	 */
-	function isSuspendedWithdrawal(uint256 withdrawId) external view returns (bool) {
-		return StateControlStorage.layout().suspendedWithdrawal[withdrawId];
+	function isManualSync(address user) external view returns (bool) {
+		return AccountStorage.layout().manualSync[user];
 	}
 
-	function getBridges(address bridge) external view returns (bool) {
+	/**
+	 * @notice Gets the nonce between two parties
+	 * @param party The first party
+	 * @param counterParty The counterparty
+	 * @return The current nonce
+	 */
+	function getNonce(address party, address counterParty) external view returns (uint256) {
+		return AccountStorage.layout().nonces[party][counterParty];
+	}
+
+	// ════════════════════════════════════════════════════════════════════════════
+	//                           APP STORAGE VIEWS
+	// ════════════════════════════════════════════════════════════════════════════
+
+	/**
+	 * @notice Gets the current protocol version
+	 * @return The protocol version number
+	 */
+	function getVersion() external view returns (uint16) {
+		return AppStorage.layout().version;
+	}
+
+	/**
+	 * @notice Gets the balance limit per user for a collateral
+	 * @param collateral The collateral token address
+	 * @return The balance limit
+	 */
+	function getBalanceLimitPerUser(address collateral) external view returns (uint256) {
+		return AppStorage.layout().balanceLimitPerUser[collateral];
+	}
+
+	/**
+	 * @notice Gets the maximum close orders length
+	 * @return The maximum number of close orders
+	 */
+	function getMaxCloseOrdersLength() external view returns (uint256) {
+		return AppStorage.layout().maxCloseOrdersLength;
+	}
+
+	/**
+	 * @notice Gets the maximum trades per PartyA
+	 * @return The maximum number of trades
+	 */
+	function getMaxTradePerPartyA() external view returns (uint256) {
+		return AppStorage.layout().maxTradePerPartyA;
+	}
+
+	/**
+	 * @notice Gets the price oracle address
+	 * @return The price oracle contract address
+	 */
+	function getPriceOracleAddress() external view returns (address) {
+		return AppStorage.layout().priceOracleAddress;
+	}
+
+	/**
+	 * @notice Checks if a collateral is whitelisted
+	 * @param collateral The collateral token address
+	 * @return Whether the collateral is whitelisted
+	 */
+	function isWhitelistedCollateral(address collateral) external view returns (bool) {
+		return AppStorage.layout().whiteListedCollateral[collateral];
+	}
+
+	/**
+	 * @notice Gets the trade NFT contract address
+	 * @return The NFT contract address
+	 */
+	function getTradeNftAddress() external view returns (address) {
+		return AppStorage.layout().tradeNftAddress;
+	}
+
+	/**
+	 * @notice Checks if a signature has been used
+	 * @param sigHash The signature hash
+	 * @return Whether the signature has been used
+	 */
+	function isSignatureUsed(bytes32 sigHash) external view returns (bool) {
+		return AppStorage.layout().isSigUsed[sigHash];
+	}
+
+	/**
+	 * @notice Gets the signature verifier address
+	 * @return The signature verifier contract address
+	 */
+	function getSignatureVerifier() external view returns (address) {
+		return AppStorage.layout().signatureVerifier;
+	}
+
+	/**
+	 * @notice Gets the PartyA deallocate cooldown
+	 * @return The cooldown period in seconds
+	 */
+	function getPartyADeallocateCooldown() external view returns (uint256) {
+		return AppStorage.layout().partyADeallocateCooldown;
+	}
+
+	/**
+	 * @notice Gets the PartyB deallocate cooldown
+	 * @return The cooldown period in seconds
+	 */
+	function getPartyBDeallocateCooldown() external view returns (uint256) {
+		return AppStorage.layout().partyBDeallocateCooldown;
+	}
+
+	/**
+	 * @notice Gets the force cancel open intent timeout
+	 * @return The timeout period in seconds
+	 */
+	function getForceCancelOpenIntentTimeout() external view returns (uint256) {
+		return AppStorage.layout().forceCancelOpenIntentTimeout;
+	}
+
+	/**
+	 * @notice Gets the force cancel close intent timeout
+	 * @return The timeout period in seconds
+	 */
+	function getForceCancelCloseIntentTimeout() external view returns (uint256) {
+		return AppStorage.layout().forceCancelCloseIntentTimeout;
+	}
+
+	/**
+	 * @notice Gets the PartyB exclusive window period
+	 * @return The exclusive window period in seconds
+	 */
+	function getPartyBExclusiveWindow() external view returns (uint256) {
+		return AppStorage.layout().partyBExclusiveWindow;
+	}
+
+	/**
+	 * @notice Gets the settlement price signature valid time
+	 * @return The valid time period in seconds
+	 */
+	function getSettlementPriceSigValidTime() external view returns (uint256) {
+		return AppStorage.layout().settlementPriceSigValidTime;
+	}
+
+	/**
+	 * @notice Gets PartyB configuration
+	 * @param partyB The PartyB address
+	 * @return The PartyB configuration
+	 */
+	function getPartyBConfig(address partyB) external view returns (PartyBConfig memory) {
+		return AppStorage.layout().partyBConfigs[partyB];
+	}
+
+	/**
+	 * @notice Checks if being called from instant layer
+	 * @return Whether the call is from instant layer
+	 */
+	function isCallFromInstantLayer() external view returns (bool) {
+		return AppStorage.layout().callFromInstantLayer;
+	}
+
+	// ════════════════════════════════════════════════════════════════════════════
+	//                           BRIDGE STORAGE VIEWS
+	// ════════════════════════════════════════════════════════════════════════════
+
+	/**
+	 * @notice Checks if a bridge is whitelisted
+	 * @param bridge The bridge address
+	 * @return Whether the bridge is whitelisted
+	 */
+	function isBridgeWhitelisted(address bridge) external view returns (bool) {
 		return BridgeStorage.layout().bridges[bridge];
 	}
 
-	function getBridgeTransaction(uint256 bridgeId) external view returns (BridgeTransaction memory) {
-		return BridgeStorage.layout().bridgeTransactions[bridgeId];
+	/**
+	 * @notice Gets bridge transaction details
+	 * @param transactionId The transaction ID
+	 * @return The bridge transaction details
+	 */
+	function getBridgeTransaction(uint256 transactionId) external view returns (BridgeTransaction memory) {
+		return BridgeStorage.layout().bridgeTransactions[transactionId];
 	}
 
-	function getBridgeTransactionIds(address bridge) external view returns (uint256[] memory) {
-		return BridgeStorage.layout().bridgeTransactionIds[bridge];
-	}
-
+	/**
+	 * @notice Gets the last bridge transaction ID
+	 * @return The last transaction ID
+	 */
 	function getLastBridgeTransactionId() external view returns (uint256) {
 		return BridgeStorage.layout().lastBridgeTransactionId;
 	}
 
+	/**
+	 * @notice Gets the invalid bridged amounts pool address
+	 * @return The pool address
+	 */
 	function getInvalidBridgedAmountsPool() external view returns (address) {
 		return BridgeStorage.layout().invalidBridgedAmountsPool;
 	}
 
+	// ════════════════════════════════════════════════════════════════════════════
+	//                        CLOSE INTENT STORAGE VIEWS
+	// ════════════════════════════════════════════════════════════════════════════
+
 	/**
-	 * @notice Returns the details of a symbol by its ID.
-	 * @param symbolId The ID of the symbol.
-	 * @return symbol The details of the symbol.
+	 * @notice Gets close intent details
+	 * @param intentId The intent ID
+	 * @return The close intent details
 	 */
-	function getSymbol(uint256 symbolId) external view returns (Symbol memory) {
-		return SymbolStorage.layout().symbols[symbolId];
+	function getCloseIntent(uint256 intentId) external view returns (CloseIntent memory) {
+		return CloseIntentStorage.layout().closeIntents[intentId];
 	}
 
 	/**
-	 * @notice Returns an array of symbols starting from a specific index.
-	 * @param start The starting index.
-	 * @param size The size of the array.
-	 * @return symbols An array of symbols.
+	 * @notice Gets close intent IDs for a trade
+	 * @param tradeId The trade ID
+	 * @return Array of close intent IDs
 	 */
-	function getSymbols(uint256 start, uint256 size) external view returns (Symbol[] memory) {
-		SymbolStorage.Layout storage symbolLayout = SymbolStorage.layout();
-		if (symbolLayout.lastSymbolId < start + size) {
-			size = symbolLayout.lastSymbolId - start;
+	function getCloseIntentIds(uint256 tradeId) external view returns (uint256[] memory) {
+		return CloseIntentStorage.layout().closeIntentIdsOf[tradeId];
+	}
+
+	/**
+	 * @notice Gets paginated close intents for a trade
+	 * @param tradeId The trade ID
+	 * @param start The starting index
+	 * @param size The number of items to return
+	 * @return Array of close intents
+	 */
+	function getCloseIntents(uint256 tradeId, uint256 start, uint256 size) external view returns (CloseIntent[] memory) {
+		CloseIntentStorage.Layout storage layout = CloseIntentStorage.layout();
+		uint256[] memory intentIds = layout.closeIntentIdsOf[tradeId];
+
+		if (start >= intentIds.length) {
+			return new CloseIntent[](0);
 		}
-		Symbol[] memory symbols = new Symbol[](size);
-		for (uint256 i = start; i < start + size; i++) {
-			symbols[i - start] = symbolLayout.symbols[i + 1];
+
+		uint256 end = start + size;
+		if (end > intentIds.length) {
+			end = intentIds.length;
 		}
-		return symbols;
-	}
 
-	/**
-	 * @notice Returns last symbol id.
-	 * @return last symbol id.
-	 */
-	function getLastSymbolId() external view returns (uint256) {
-		return SymbolStorage.layout().lastSymbolId;
-	}
-
-	/**
-	 * @notice Returns an array of symbols associated with an array of openIntent IDs.
-	 * @param openIntentIds An array of openIntent IDs.
-	 * @return symbols An array of symbols.
-	 */
-	function symbolsByOpenIntentId(uint256[] memory openIntentIds) external view returns (Symbol[] memory) {
-		Symbol[] memory symbols = new Symbol[](openIntentIds.length);
-		for (uint256 i = 0; i < openIntentIds.length; i++) {
-			symbols[i] = SymbolStorage.layout().symbols[OpenIntentStorage.layout().openIntents[openIntentIds[i]].tradeAgreements.symbolId];
+		CloseIntent[] memory intents = new CloseIntent[](end - start);
+		for (uint256 i = start; i < end; i++) {
+			intents[i - start] = layout.closeIntents[intentIds[i]];
 		}
-		return symbols;
+
+		return intents;
 	}
 
 	/**
-	 * @notice Returns an array of symbol names associated with an array of trade IDs.
-	 * @param tradeIds An array of trade IDs.
-	 * @return symbols An array of symbol names.
+	 * @notice Gets the last close intent ID
+	 * @return The last intent ID
 	 */
-	function symbolNameByTradeId(uint256[] memory tradeIds) external view returns (string[] memory) {
-		string[] memory symbols = new string[](tradeIds.length);
-		for (uint256 i = 0; i < tradeIds.length; i++) {
-			symbols[i] = SymbolStorage.layout().symbols[TradeStorage.layout().trades[tradeIds[i]].tradeAgreements.symbolId].name;
-		}
-		return symbols;
+	function getLastCloseIntentId() external view returns (uint256) {
+		return CloseIntentStorage.layout().lastCloseIntentId;
 	}
 
+	// ════════════════════════════════════════════════════════════════════════════
+	//                    COUNTER PARTY RELATIONS STORAGE VIEWS
+	// ════════════════════════════════════════════════════════════════════════════
+
 	/**
-	 * @notice Returns an array of symbol names associated with an array of symbol IDs.
-	 * @param symbolIds An array of symbol IDs.
-	 * @return symbolNames An array of symbol names.
+	 * @notice Gets the bound PartyB for a PartyA
+	 * @param partyA The PartyA address
+	 * @return The bound PartyB address (or zero address if none)
 	 */
-	function symbolNameById(uint256[] memory symbolIds) external view returns (string[] memory) {
-		string[] memory symbolNames = new string[](symbolIds.length);
-		for (uint256 i = 0; i < symbolIds.length; i++) {
-			symbolNames[i] = SymbolStorage.layout().symbols[symbolIds[i]].name;
-		}
-		return symbolNames;
+	function getBoundPartyB(address partyA) external view returns (address) {
+		return CounterPartyRelationsStorage.layout().boundPartyB[partyA];
 	}
 
 	/**
-	 * @notice Returns the details of a oracle by its ID.
-	 * @param oracleId The ID of the oracle.
-	 * @return oracle The details of the oracle.
+	 * @notice Gets the unbinding request time for a PartyA
+	 * @param partyA The PartyA address
+	 * @return The timestamp when unbinding was requested (0 if no request)
+	 */
+	function getUnbindingRequestTime(address partyA) external view returns (uint256) {
+		return CounterPartyRelationsStorage.layout().unbindingRequestTime[partyA];
+	}
+
+	/**
+	 * @notice Gets the unbinding cooldown period
+	 * @return The cooldown period in seconds
+	 */
+	function getUnbindingCooldown() external view returns (uint256) {
+		return CounterPartyRelationsStorage.layout().unbindingCooldown;
+	}
+
+	/**
+	 * @notice Checks if instant actions mode is active for a user
+	 * @param user The user address
+	 * @return Whether instant actions mode is active
+	 */
+	function isInstantActionsModeActive(address user) external view returns (bool) {
+		return CounterPartyRelationsStorage.layout().instantActionsMode[user];
+	}
+
+	/**
+	 * @notice Gets the deactivation time for instant actions mode
+	 * @param user The user address
+	 * @return The timestamp when deactivation can occur
+	 */
+	function getInstantActionsModeDeactivateTime(address user) external view returns (uint256) {
+		return CounterPartyRelationsStorage.layout().instantActionsModeDeactivateTime[user];
+	}
+
+	/**
+	 * @notice Gets the deactivation cooldown for instant actions mode
+	 * @return The cooldown period in seconds
+	 */
+	function getDeactiveInstantActionModeCooldown() external view returns (uint256) {
+		return CounterPartyRelationsStorage.layout().deactiveInstantActionModeCooldown;
+	}
+
+	// ════════════════════════════════════════════════════════════════════════════
+	//                      FEE MANAGEMENT STORAGE VIEWS
+	// ════════════════════════════════════════════════════════════════════════════
+
+	/**
+	 * @notice Gets the default fee collector address
+	 * @return The default fee collector address
+	 */
+	function getDefaultFeeCollector() external view returns (address) {
+		return FeeManagementStorage.layout().defaultFeeCollector;
+	}
+
+	/**
+	 * @notice Checks affiliate status
+	 * @param affiliate The affiliate address
+	 * @return Whether the affiliate is active
+	 */
+	function isAffiliateActive(address affiliate) external view returns (bool) {
+		return FeeManagementStorage.layout().affiliateStatus[affiliate];
+	}
+
+	/**
+	 * @notice Gets the fee collector for an affiliate
+	 * @param affiliate The affiliate address
+	 * @return The fee collector address
+	 */
+	function getAffiliateFeeCollector(address affiliate) external view returns (address) {
+		return FeeManagementStorage.layout().affiliateFeeCollector[affiliate];
+	}
+
+	/**
+	 * @notice Gets affiliate fee for a symbol
+	 * @param affiliate The affiliate address
+	 * @param symbolId The symbol ID
+	 * @return The affiliate fee amount
+	 */
+	function getAffiliateFee(address affiliate, uint256 symbolId) external view returns (uint256) {
+		return FeeManagementStorage.layout().affiliateFees[affiliate][symbolId];
+	}
+
+	// ════════════════════════════════════════════════════════════════════════════
+	//                       LIQUIDATION STORAGE VIEWS
+	// ════════════════════════════════════════════════════════════════════════════
+
+	/**
+	 * @notice Gets the liquidation ID for parties and collateral
+	 * @param partyA The PartyA address
+	 * @param partyB The PartyB address
+	 * @param collateral The collateral address
+	 * @return The liquidation ID (0 if none)
+	 */
+	function getInProgressLiquidationId(address partyA, address partyB, address collateral) external view returns (uint256) {
+		return LiquidationStorage.layout().inProgressLiquidationIds[partyA][partyB][collateral];
+	}
+
+	/**
+	 * @notice Gets liquidation details by ID
+	 * @param liquidationId The liquidation ID
+	 * @return The liquidation details
+	 */
+	function getLiquidationDetail(uint256 liquidationId) external view returns (LiquidationDetail memory) {
+		return LiquidationStorage.layout().liquidationDetails[liquidationId];
+	}
+
+	/**
+	 * @notice Gets the last liquidation ID
+	 * @return The last liquidation ID
+	 */
+	function getLastLiquidationId() external view returns (uint256) {
+		return LiquidationStorage.layout().lastLiquidationId;
+	}
+
+	// ════════════════════════════════════════════════════════════════════════════
+	//                        OPEN INTENT STORAGE VIEWS
+	// ════════════════════════════════════════════════════════════════════════════
+
+	/**
+	 * @notice Gets open intent details
+	 * @param intentId The intent ID
+	 * @return The open intent details
+	 */
+	function getOpenIntent(uint256 intentId) external view returns (OpenIntent memory) {
+		return OpenIntentStorage.layout().openIntents[intentId];
+	}
+
+	/**
+	 * @notice Gets active open intent IDs for a user
+	 * @param user The user address
+	 * @return Array of active open intent IDs
+	 */
+	function getActiveOpenIntentIds(address user) external view returns (uint256[] memory) {
+		return OpenIntentStorage.layout().activeOpenIntentsOf[user];
+	}
+
+	/**
+	 * @notice Gets the count of active open intents for a user
+	 * @param user The user address
+	 * @return The count of active open intents
+	 */
+	function getActiveOpenIntentsCount(address user) external view returns (uint256) {
+		return OpenIntentStorage.layout().activeOpenIntentsCount[user];
+	}
+
+	/**
+	 * @notice Gets paginated active open intents for a user
+	 * @param user The user address
+	 * @param start The starting index
+	 * @param size The number of items to return
+	 * @return Array of open intents
+	 */
+	function getActiveOpenIntents(address user, uint256 start, uint256 size) external view returns (OpenIntent[] memory) {
+		OpenIntentStorage.Layout storage layout = OpenIntentStorage.layout();
+		uint256[] memory intentIds = layout.activeOpenIntentsOf[user];
+
+		if (start >= intentIds.length) {
+			return new OpenIntent[](0);
+		}
+
+		uint256 end = start + size;
+		if (end > intentIds.length) {
+			end = intentIds.length;
+		}
+
+		OpenIntent[] memory intents = new OpenIntent[](end - start);
+		for (uint256 i = start; i < end; i++) {
+			intents[i - start] = layout.openIntents[intentIds[i]];
+		}
+
+		return intents;
+	}
+
+	/**
+	 * @notice Gets the PartyA index for an open intent
+	 * @param intentId The intent ID
+	 * @return The index in the PartyA's active intents array
+	 */
+	function getPartyAOpenIntentIndex(uint256 intentId) external view returns (uint256) {
+		return OpenIntentStorage.layout().partyAOpenIntentsIndex[intentId];
+	}
+
+	/**
+	 * @notice Gets the PartyB index for an open intent
+	 * @param intentId The intent ID
+	 * @return The index in the PartyB's active intents array
+	 */
+	function getPartyBOpenIntentIndex(uint256 intentId) external view returns (uint256) {
+		return OpenIntentStorage.layout().partyBOpenIntentsIndex[intentId];
+	}
+
+	/**
+	 * @notice Gets the last open intent ID
+	 * @return The last intent ID
+	 */
+	function getLastOpenIntentId() external view returns (uint256) {
+		return OpenIntentStorage.layout().lastOpenIntentId;
+	}
+
+	// ════════════════════════════════════════════════════════════════════════════
+	//                       STATE CONTROL STORAGE VIEWS
+	// ════════════════════════════════════════════════════════════════════════════
+
+	/**
+	 * @notice Checks if global operations are paused
+	 * @return Whether global pause is active
+	 */
+	function isGlobalPaused() external view returns (bool) {
+		return StateControlStorage.layout().globalPaused;
+	}
+
+	/**
+	 * @notice Checks if depositing is paused
+	 * @return Whether depositing is paused
+	 */
+	function isDepositingPaused() external view returns (bool) {
+		return StateControlStorage.layout().depositingPaused;
+	}
+
+	/**
+	 * @notice Checks if withdrawing is paused
+	 * @return Whether withdrawing is paused
+	 */
+	function isWithdrawingPaused() external view returns (bool) {
+		return StateControlStorage.layout().withdrawingPaused;
+	}
+
+	/**
+	 * @notice Checks if PartyB actions are paused
+	 * @return Whether PartyB actions are paused
+	 */
+	function isPartyBActionsPaused() external view returns (bool) {
+		return StateControlStorage.layout().partyBActionsPaused;
+	}
+
+	/**
+	 * @notice Checks if PartyA actions are paused
+	 * @return Whether PartyA actions are paused
+	 */
+	function isPartyAActionsPaused() external view returns (bool) {
+		return StateControlStorage.layout().partyAActionsPaused;
+	}
+
+	/**
+	 * @notice Checks if liquidating is paused
+	 * @return Whether liquidating is paused
+	 */
+	function isLiquidatingPaused() external view returns (bool) {
+		return StateControlStorage.layout().liquidatingPaused;
+	}
+
+	/**
+	 * @notice Checks if third party actions are paused
+	 * @return Whether third party actions are paused
+	 */
+	function isThirdPartyActionsPaused() external view returns (bool) {
+		return StateControlStorage.layout().thirdPartyActionsPaused;
+	}
+
+	/**
+	 * @notice Checks if internal transfers are paused
+	 * @return Whether internal transfers are paused
+	 */
+	function isInternalTransferPaused() external view returns (bool) {
+		return StateControlStorage.layout().internalTransferPaused;
+	}
+
+	/**
+	 * @notice Checks if bridge operations are paused
+	 * @return Whether bridge operations are paused
+	 */
+	function isBridgePaused() external view returns (bool) {
+		return StateControlStorage.layout().bridgePaused;
+	}
+
+	/**
+	 * @notice Checks if bridge withdrawals are paused
+	 * @return Whether bridge withdrawals are paused
+	 */
+	function isBridgeWithdrawPaused() external view returns (bool) {
+		return StateControlStorage.layout().bridgeWithdrawPaused;
+	}
+
+	/**
+	 * @notice Returns all system pause states
+	 * @return globalPaused Whether global operations are paused
+	 * @return depositingPaused Whether depositing is paused
+	 * @return withdrawingPaused Whether withdrawing is paused
+	 * @return partyBActionsPaused Whether PartyB actions are paused
+	 * @return partyAActionsPaused Whether PartyA actions are paused
+	 * @return liquidatingPaused Whether liquidating is paused
+	 * @return thirdPartyActionsPaused Whether third party actions are paused
+	 * @return internalTransferPaused Whether internal transfers are paused
+	 * @return bridgePaused Whether bridge operations are paused
+	 * @return bridgeWithdrawPaused Whether bridge withdrawals are paused
+	 * @return emergencyMode Whether emergency mode is active
+	 */
+	function getAllPauseStates()
+		external
+		view
+		returns (
+			bool globalPaused,
+			bool depositingPaused,
+			bool withdrawingPaused,
+			bool partyBActionsPaused,
+			bool partyAActionsPaused,
+			bool liquidatingPaused,
+			bool thirdPartyActionsPaused,
+			bool internalTransferPaused,
+			bool bridgePaused,
+			bool bridgeWithdrawPaused,
+			bool emergencyMode
+		)
+	{
+		StateControlStorage.Layout storage stateLayout = StateControlStorage.layout();
+		return (
+			stateLayout.globalPaused,
+			stateLayout.depositingPaused,
+			stateLayout.withdrawingPaused,
+			stateLayout.partyBActionsPaused,
+			stateLayout.partyAActionsPaused,
+			stateLayout.liquidatingPaused,
+			stateLayout.thirdPartyActionsPaused,
+			stateLayout.internalTransferPaused,
+			stateLayout.bridgePaused,
+			stateLayout.bridgeWithdrawPaused,
+			stateLayout.emergencyMode
+		);
+	}
+
+	/**
+	 * @notice Checks if emergency mode is active
+	 * @return Whether emergency mode is active
+	 */
+	function isEmergencyMode() external view returns (bool) {
+		return StateControlStorage.layout().emergencyMode;
+	}
+
+	/**
+	 * @notice Checks PartyB emergency status
+	 * @param partyB The PartyB address
+	 * @return Whether PartyB is in emergency mode
+	 */
+	function isPartyBInEmergencyMode(address partyB) external view returns (bool) {
+		return StateControlStorage.layout().partyBEmergencyStatus[partyB];
+	}
+
+	/**
+	 * @notice Checks if an address is suspended
+	 * @param user The user address
+	 * @return Whether the address is suspended
+	 */
+	function isAddressSuspended(address user) external view returns (bool) {
+		return StateControlStorage.layout().suspendedAddresses[user];
+	}
+
+	/**
+	 * @notice Checks if a withdrawal is suspended
+	 * @param withdrawId The withdrawal ID
+	 * @return Whether the withdrawal is suspended
+	 */
+	function isWithdrawalSuspended(uint256 withdrawId) external view returns (bool) {
+		return StateControlStorage.layout().suspendedWithdrawal[withdrawId];
+	}
+
+	// ════════════════════════════════════════════════════════════════════════════
+	//                       ACCESS CONTROL STORAGE VIEWS
+	// ════════════════════════════════════════════════════════════════════════════
+
+	/**
+	 * @notice Checks if a user has a specific role
+	 * @param user The user address
+	 * @param role The role identifier
+	 * @return Whether the user has the role
+	 */
+	function hasRole(address user, bytes32 role) external view returns (bool) {
+		return AccessControlStorage.layout().hasRole[user][role];
+	}
+
+	/**
+	 * @notice Gets role members
+	 * @param role The role identifier
+	 * @return Array of addresses that have the role
+	 */
+	function getRoleMembers(bytes32 role) external view returns (address[] memory) {
+		return AccessControlStorage.layout().roleMembers[role].values();
+	}
+
+	/**
+	 * @notice Gets the count of role members
+	 * @param role The role identifier
+	 * @return The number of members with this role
+	 */
+	function getRoleMemberCount(bytes32 role) external view returns (uint256) {
+		return AccessControlStorage.layout().roleMembers[role].length();
+	}
+
+	/**
+	 * @notice Gets a role member by index
+	 * @param role The role identifier
+	 * @param index The member index
+	 * @return The member address at the given index
+	 */
+	function getRoleMember(bytes32 role, uint256 index) external view returns (address) {
+		return AccessControlStorage.layout().roleMembers[role].at(index);
+	}
+
+	// ════════════════════════════════════════════════════════════════════════════
+	//                          SYMBOL STORAGE VIEWS
+	// ════════════════════════════════════════════════════════════════════════════
+
+	/**
+	 * @notice Gets oracle details
+	 * @param oracleId The oracle ID
+	 * @return The oracle details
 	 */
 	function getOracle(uint256 oracleId) external view returns (Oracle memory) {
 		return SymbolStorage.layout().oracles[oracleId];
 	}
 
 	/**
-	 * @notice Returns last oracle id.
-	 * @return last oracle id.
+	 * @notice Gets the last oracle ID
+	 * @return The last oracle ID
 	 */
 	function getLastOracleId() external view returns (uint256) {
 		return SymbolStorage.layout().lastOracleId;
 	}
 
 	/**
-	 * @notice Returns the details of a openIntent by its ID.
-	 * @param openIntentId The ID of the openIntent.
-	 * @return openIntent The details of the openIntent.
+	 * @notice Gets symbol details
+	 * @param symbolId The symbol ID
+	 * @return The symbol details
 	 */
-	function getOpenIntent(uint256 openIntentId) external view returns (OpenIntent memory) {
-		return OpenIntentStorage.layout().openIntents[openIntentId];
+	function getSymbol(uint256 symbolId) external view returns (Symbol memory) {
+		return SymbolStorage.layout().symbols[symbolId];
 	}
 
 	/**
-	 * @notice Returns an array of openIntents associated with a parent openIntent ID.
-	 * @param openIntentId The parent openIntent ID.
-	 * @param size The size of the array.
-	 * @return openIntents An array of openIntents.
+	 * @notice Gets paginated symbols
+	 * @param start The starting index
+	 * @param size The number of items to return
+	 * @return Array of symbols
 	 */
-	function getOpenIntentsByParent(uint256 openIntentId, uint256 size) external view returns (OpenIntent[] memory) {
-		OpenIntentStorage.Layout storage intentLayout = OpenIntentStorage.layout();
-		OpenIntent[] memory openIntents = new OpenIntent[](size);
-		OpenIntent memory openIntent = intentLayout.openIntents[openIntentId];
-		openIntents[0] = openIntent;
-		for (uint256 i = 1; i < size; i++) {
-			if (openIntent.parentId == 0) {
-				break;
-			}
-			openIntent = intentLayout.openIntents[openIntent.parentId];
-			openIntents[i] = openIntent;
+	function getSymbols(uint256 start, uint256 size) external view returns (Symbol[] memory) {
+		SymbolStorage.Layout storage layout = SymbolStorage.layout();
+
+		if (start > layout.lastSymbolId) {
+			return new Symbol[](0);
 		}
-		return openIntents;
+
+		uint256 end = start + size;
+		if (end > layout.lastSymbolId + 1) {
+			end = layout.lastSymbolId + 1;
+		}
+
+		Symbol[] memory symbols = new Symbol[](end - start);
+		for (uint256 i = start; i < end; i++) {
+			symbols[i - start] = layout.symbols[i];
+		}
+
+		return symbols;
 	}
 
 	/**
-	 * @notice Returns an array of openIntent IDs associated with a party A address.
-	 * @param partyA The address of party A.
-	 * @param start The starting index.
-	 * @param size The size of the array.
-	 * @return openIntentIds An array of openIntent IDs.
+	 * @notice Gets the last symbol ID
+	 * @return The last symbol ID
 	 */
-	function openIntentIdsOf(address partyA, uint256 start, uint256 size) external view returns (uint256[] memory) {
-		OpenIntentStorage.Layout storage intentLayout = OpenIntentStorage.layout();
-		if (intentLayout.openIntentsOf[partyA].length < start + size) {
-			size = intentLayout.openIntentsOf[partyA].length - start;
-		}
-		uint256 j = 0;
-		uint256[] memory openIntentIds = new uint256[](size);
-		for (uint256 i = start; i < size; i++) {
-			openIntentIds[j++] = intentLayout.openIntentsOf[partyA][i];
-		}
-		return openIntentIds;
+	function getLastSymbolId() external view returns (uint256) {
+		return SymbolStorage.layout().lastSymbolId;
 	}
+
+	// ════════════════════════════════════════════════════════════════════════════
+	//                          TRADE STORAGE VIEWS
+	// ════════════════════════════════════════════════════════════════════════════
 
 	/**
-	 * @notice Returns an array of openIntent associated with a party A address.
-	 * @param partyA The address of party A.
-	 * @param start The starting index.
-	 * @param size The size of the array.
-	 * @return openIntents An array of openIntents.
-	 */
-	function getOpenIntentsOf(address partyA, uint256 start, uint256 size) external view returns (OpenIntent[] memory) {
-		OpenIntentStorage.Layout storage intentLayout = OpenIntentStorage.layout();
-		if (intentLayout.openIntentsOf[partyA].length < start + size) {
-			size = intentLayout.openIntentsOf[partyA].length - start;
-		}
-		uint256 j = 0;
-		OpenIntent[] memory openIntents = new OpenIntent[](size);
-		for (uint256 i = start; i < size; i++) {
-			openIntents[j++] = intentLayout.openIntents[intentLayout.openIntentsOf[partyA][i]];
-		}
-		return openIntents;
-	}
-
-	/**
-	 * @notice Returns the length of the openIntents array associated with a user.
-	 * @param user The address of the user.
-	 * @return length The length of the openIntents array.
-	 */
-	function openIntentsLength(address user) external view returns (uint256) {
-		return OpenIntentStorage.layout().openIntentsOf[user].length;
-	}
-
-	/**
-	 * @notice Returns an array of active openIntent IDs associated with a party A address.
-	 * @param partyA The address of party A.
-	 * @param start The starting index.
-	 * @param size The size of the array.
-	 * @return activeOpenIntentIds An array of openIntent IDs that are active.
-	 */
-	function getActiveOpenIntentIdsOf(address partyA, uint256 start, uint256 size) external view returns (uint256[] memory) {
-		OpenIntentStorage.Layout storage intentLayout = OpenIntentStorage.layout();
-		if (intentLayout.activeOpenIntentsOf[partyA].length < start + size) {
-			size = intentLayout.activeOpenIntentsOf[partyA].length - start;
-		}
-
-		uint256 j = 0;
-		uint256[] memory activeOpenIntentIds = new uint256[](size);
-		for (uint256 i = start; i < size; i++) {
-			activeOpenIntentIds[j++] = intentLayout.activeOpenIntentsOf[partyA][i];
-		}
-		return activeOpenIntentIds;
-	}
-
-	/**
-	 * @notice Returns an array of active openIntent associated with a party A address.
-	 * @param partyA The address of party A.
-	 * @param start The starting index.
-	 * @param size The size of the array.
-	 * @return activeOpenIntents An array of active openIntents.
-	 */
-	function getActiveOpenIntentsOf(address partyA, uint256 start, uint256 size) external view returns (OpenIntent[] memory) {
-		OpenIntentStorage.Layout storage intentLayout = OpenIntentStorage.layout();
-		if (intentLayout.activeOpenIntentsOf[partyA].length < start + size) {
-			size = intentLayout.activeOpenIntentsOf[partyA].length - start;
-		}
-		uint256 j = 0;
-		OpenIntent[] memory activeOpenIntents = new OpenIntent[](size);
-		for (uint256 i = start; i < size; i++) {
-			activeOpenIntents[j++] = intentLayout.openIntents[intentLayout.activeOpenIntentsOf[partyA][i]];
-		}
-		return activeOpenIntents;
-	}
-
-	/**
-	 * @notice Returns active openIntent index associated with an ID.
-	 * @param id intent ID
-	 * @return index intent index
-	 */
-	function getActiveOpenIntentsIndex(uint256 id) external view returns (uint256 index) {
-		OpenIntentStorage.Layout storage intentLayout = OpenIntentStorage.layout();
-		index = intentLayout.partyAOpenIntentsIndex[id];
-	}
-
-	/**
-	 * @notice Returns the length of the active openIntents array associated with a user.
-	 * @param user The address of the user.
-	 * @return length The length of the active openIntents array.
-	 */
-	function activeOpenIntentsLength(address user) external view returns (uint256) {
-		return OpenIntentStorage.layout().activeOpenIntentsOf[user].length;
-	}
-
-	function activeOpenIntentsCount(address user) external view returns (uint256) {
-		return OpenIntentStorage.layout().activeOpenIntentsCount[user];
-	}
-
-	function getLastOpenIntentId() external view returns (uint256) {
-		return OpenIntentStorage.layout().lastOpenIntentId;
-	}
-
-	function partyATradesIndex(uint256 index) external view returns (uint256) {
-		return TradeStorage.layout().partyATradesIndex[index];
-	}
-
-	function partyBTradesIndex(uint256 index) external view returns (uint256) {
-		return TradeStorage.layout().partyBTradesIndex[index];
-	}
-
-	function getLastTradeId() external view returns (uint256) {
-		return TradeStorage.layout().lastTradeId;
-	}
-
-	function getLastCloseIntentId() external view returns (uint256) {
-		return CloseIntentStorage.layout().lastCloseIntentId;
-	}
-
-	function isSigUsed(bytes32 intentHash) external view returns (bool) {
-		return AppStorage.layout().isSigUsed[intentHash];
-	}
-
-	function signatureVerifier() external view returns (address) {
-		return AppStorage.layout().signatureVerifier;
-	}
-
-	/**
-	 * @notice Retrieves a filtered list of openIntents based on a bitmap. The method returns openIntents only if sufficient gas remains.
-	 * @param bitmap A structured data type representing a bitmap, used to indicate which openIntents to retrieve based on their positions. The bitmap consists of multiple elements, each with an offset and a 256-bit integer representing selectable openIntents.
-	 * @param gasNeededForReturn The minimum gas required to complete the function execution and return the data. This ensures the function doesn't start a retrieval that it can't complete.
-	 * @return openIntents An array of `OpenIntent` structures, each corresponding to a openIntent identified by the bitmap.
-	 */
-	function getOpenIntentsWithBitmap(Bitmap calldata bitmap, uint256 gasNeededForReturn) external view returns (OpenIntent[] memory openIntents) {
-		OpenIntentStorage.Layout storage intentLayout = OpenIntentStorage.layout();
-
-		openIntents = new OpenIntent[](bitmap.size);
-		uint256 openIntentIndex = 0;
-
-		for (uint256 i = 0; i < bitmap.elements.length; ++i) {
-			uint256 bits = bitmap.elements[i].bitmap;
-			uint256 offset = bitmap.elements[i].offset;
-			while (bits > 0 && gasleft() > gasNeededForReturn) {
-				if ((bits & 1) > 0) {
-					openIntents[openIntentIndex] = intentLayout.openIntents[offset];
-					++openIntentIndex;
-				}
-				++offset;
-				bits >>= 1;
-			}
-		}
-	}
-
-	/**
-	 * @notice Returns the details of a trade by its ID.
-	 * @param tradeId The ID of the trade.
-	 * @return trade The details of the trade.
+	 * @notice Gets trade details
+	 * @param tradeId The trade ID
+	 * @return The trade details
 	 */
 	function getTrade(uint256 tradeId) external view returns (Trade memory) {
 		return TradeStorage.layout().trades[tradeId];
 	}
 
 	/**
-	 * @notice Returns an array of trade IDs associated with a user address.
-	 * @param user The address of user.
-	 * @param start The starting index.
-	 * @param size The size of the array.
-	 * @return tradeIds An array of trade IDs.
+	 * @notice Gets all active trade IDs for a user
+	 * @param user The user address
+	 * @return Array of trade IDs
 	 */
-	function tradeIdsOf(address user, uint256 start, uint256 size) external view returns (uint256[] memory) {
-		TradeStorage.Layout storage tradeLayout = TradeStorage.layout();
-		if (tradeLayout.tradesOf[user].length < start + size) {
-			size = tradeLayout.tradesOf[user].length - start;
-		}
-		uint256[] memory tradeIds = new uint256[](size);
-		for (uint256 i = start; i < start + size; i++) {
-			tradeIds[i - start] = tradeLayout.tradesOf[user][i];
-		}
-		return tradeIds;
+	function getActiveTradeIdsOfPartyA(address user) external view returns (uint256[] memory) {
+		return TradeStorage.layout().activeTradesOfPartyA[user];
 	}
 
 	/**
-	 * @notice Returns an array of trade IDs associated with a user address.
-	 * @param user The address of party A.
-	 * @param start The starting index.
-	 * @param size The size of the array.
-	 * @return trades An array of trades.
+	 * @notice Gets paginated active trades for a user
+	 * @param user The user address
+	 * @param start The starting index
+	 * @param size The number of items to return
+	 * @return Array of trades
 	 */
-	function getTradesOf(address user, uint256 start, uint256 size) external view returns (Trade[] memory) {
-		TradeStorage.Layout storage tradeLayout = TradeStorage.layout();
-		if (tradeLayout.tradesOf[user].length < start + size) {
-			size = tradeLayout.tradesOf[user].length - start;
+	function getActiveTradesOfPartyA(address user, uint256 start, uint256 size) external view returns (Trade[] memory) {
+		TradeStorage.Layout storage layout = TradeStorage.layout();
+		uint256[] memory tradeIds = layout.activeTradesOfPartyA[user];
+
+		if (start >= tradeIds.length) {
+			return new Trade[](0);
 		}
-		Trade[] memory trades = new Trade[](size);
-		for (uint256 i = start; i < start + size; i++) {
-			trades[i - start] = tradeLayout.trades[tradeLayout.tradesOf[user][i]];
+
+		uint256 end = start + size;
+		if (end > tradeIds.length) {
+			end = tradeIds.length;
 		}
+
+		Trade[] memory trades = new Trade[](end - start);
+		for (uint256 i = start; i < end; i++) {
+			trades[i - start] = layout.trades[tradeIds[i]];
+		}
+
 		return trades;
 	}
 
 	/**
-	 * @notice Returns the length of the trade array associated with a user.
-	 * @param user The address of the user.
-	 * @return length The length of the trade array.
+	 * @notice Gets active trade IDs for PartyB and collateral
+	 * @param partyB The PartyB address
+	 * @param collateral The collateral address
+	 * @return Array of active trade IDs
 	 */
-	function tradesOfLength(address user) external view returns (uint256) {
-		return TradeStorage.layout().tradesOf[user].length;
+	function getActiveTradeIdsForPartyB(address partyB, address collateral) external view returns (uint256[] memory) {
+		return TradeStorage.layout().activeTradesOfPartyB[partyB][collateral];
 	}
 
 	/**
-	 * @notice Returns an array of active trade IDs associated with a party A address.
-	 * @param partyA The address of party A.
-	 * @param start The starting index.
-	 * @param size The size of the array.
-	 * @return activeTradeIds An array of trade IDs that are active.
+	 * @notice Gets the PartyA trade index
+	 * @param tradeId The trade ID
+	 * @return The index in PartyA's active trades array
 	 */
-	function activePartyATradeIdsOf(address partyA, uint256 start, uint256 size) external view returns (uint256[] memory) {
-		TradeStorage.Layout storage tradeLayout = TradeStorage.layout();
-		if (tradeLayout.activeTradesOf[partyA].length < start + size) {
-			size = tradeLayout.activeTradesOf[partyA].length - start;
-		}
-		uint256[] memory activeTradeIds = new uint256[](size);
-		for (uint256 i = start; i < start + size; i++) {
-			activeTradeIds[i - start] = tradeLayout.activeTradesOf[partyA][i];
-		}
-		return activeTradeIds;
+	function getPartyATradeIndex(uint256 tradeId) external view returns (uint256) {
+		return TradeStorage.layout().partyATradesIndex[tradeId];
 	}
 
 	/**
-	 * @notice Returns an array of active trade IDs associated with a party B address and specific collateral.
-	 * @param partyB The address of party B.
-	 * @param collateral The address of collateral.
-	 * @param start The starting index.
-	 * @param size The size of the array.
-	 * @return activeTradeIds An array of trade IDs that are active.
+	 * @notice Gets the PartyB trade index
+	 * @param tradeId The trade ID
+	 * @return The index in PartyB's active trades array
 	 */
-	function activePartyBTradeIdsOf(address partyB, address collateral, uint256 start, uint256 size) external view returns (uint256[] memory) {
-		TradeStorage.Layout storage tradeLayout = TradeStorage.layout();
-		if (tradeLayout.activeTradesOfPartyB[partyB][collateral].length < start + size) {
-			size = tradeLayout.activeTradesOfPartyB[partyB][collateral].length - start;
-		}
-		uint256[] memory activeTradeIds = new uint256[](size);
-		for (uint256 i = start; i < start + size; i++) {
-			activeTradeIds[i - start] = tradeLayout.activeTradesOfPartyB[partyB][collateral][i];
-		}
-		return activeTradeIds;
+	function getPartyBTradeIndex(uint256 tradeId) external view returns (uint256) {
+		return TradeStorage.layout().partyBTradesIndex[tradeId];
 	}
 
 	/**
-	 * @notice Returns an array of active trades associated with a party A address.
-	 * @param partyA The address of party A.
-	 * @param start The starting index.
-	 * @param size The size of the array.
-	 * @return activeTradeIds An array of trades that are active.
+	 * @notice Gets the last trade ID
+	 * @return The last trade ID
 	 */
-	function getActivePartyATradesOf(address partyA, uint256 start, uint256 size) external view returns (Trade[] memory) {
-		TradeStorage.Layout storage tradeLayout = TradeStorage.layout();
-		if (tradeLayout.activeTradesOf[partyA].length < start + size) {
-			size = tradeLayout.activeTradesOf[partyA].length - start;
-		}
-		Trade[] memory activeTrades = new Trade[](size);
-		for (uint256 i = start; i < start + size; i++) {
-			activeTrades[i - start] = tradeLayout.trades[tradeLayout.activeTradesOf[partyA][i]];
-		}
-		return activeTrades;
+	function getLastTradeId() external view returns (uint256) {
+		return TradeStorage.layout().lastTradeId;
 	}
-
-	/**
-	 * @notice Returns an array of active trades associated with a party B address and specific collateral.
-	 * @param partyB The address of party B.
-	 * @param collateral The address of collateral.
-	 * @param start The starting index.
-	 * @param size The size of the array.
-	 * @return activeTradeIds An array of trades that are active.
-	 */
-	function getActivePartyBTradesOf(address partyB, address collateral, uint256 start, uint256 size) external view returns (Trade[] memory) {
-		TradeStorage.Layout storage tradeLayout = TradeStorage.layout();
-		if (tradeLayout.activeTradesOfPartyB[partyB][collateral].length < start + size) {
-			size = tradeLayout.activeTradesOfPartyB[partyB][collateral].length - start;
-		}
-		Trade[] memory activeTrades = new Trade[](size);
-		for (uint256 i = start; i < start + size; i++) {
-			activeTrades[i - start] = tradeLayout.trades[tradeLayout.activeTradesOfPartyB[partyB][collateral][i]];
-		}
-		return activeTrades;
-	}
-
-	/**
-	 * @notice Returns the length of the active trades array associated with a party A.
-	 * @param partyA The address of the party A.
-	 * @return length The length of the active trades array.
-	 */
-	function activePartyATradesLength(address partyA) external view returns (uint256) {
-		return TradeStorage.layout().activeTradesOf[partyA].length;
-	}
-
-	/**
-	 * @notice Returns the length of the active trades array associated with a party B and specific collateral.
-	 * @param partyB The address of the party B.
-	 * @param collateral The address of collateral.
-	 * @return length The length of the active trades array.
-	 */
-	function activePartyBTradesLength(address partyB, address collateral) external view returns (uint256) {
-		return TradeStorage.layout().activeTradesOfPartyB[partyB][collateral].length;
-	}
-
-	/**
-	 * @notice Returns the details of a closeIntent by its ID.
-	 * @param closeIntentId The ID of the closeIntent.
-	 * @return closeIntent The details of the closeIntent.
-	 */
-	function getCloseIntent(uint256 closeIntentId) external view returns (CloseIntent memory) {
-		return CloseIntentStorage.layout().closeIntents[closeIntentId];
-	}
-
-	/**
-	 * @notice Returns an array of active closeIntent IDs associated with a party A address.
-	 * @param tradeId The address of party A.
-	 * @param start The starting index.
-	 * @param size The size of the array.
-	 * @return closeIntentIds An array of closeIntent IDs that are active.
-	 */
-	function closeIntentIdsOf(uint256 tradeId, uint256 start, uint256 size) external view returns (uint256[] memory) {
-		CloseIntentStorage.Layout storage intentLayout = CloseIntentStorage.layout();
-		if (intentLayout.closeIntentIdsOf[tradeId].length < start + size) {
-			size = intentLayout.closeIntentIdsOf[tradeId].length - start;
-		}
-		uint256 j = 0;
-		uint256[] memory closeIntentIds = new uint256[](size);
-		for (uint256 i = start; i < size; i++) {
-			closeIntentIds[j++] = intentLayout.closeIntentIdsOf[tradeId][i];
-		}
-		return closeIntentIds;
-	}
-
-	/**
-	 * @notice Returns an array of active closeIntents associated with a trade id.
-	 * @param tradeId The id of the trade.
-	 * @param start The starting index.
-	 * @param size The size of the array.
-	 * @return closeIntents An array of closeIntents.
-	 */
-	function getCloseIntentsOf(uint256 tradeId, uint256 start, uint256 size) external view returns (CloseIntent[] memory) {
-		CloseIntentStorage.Layout storage intentLayout = CloseIntentStorage.layout();
-		if (intentLayout.closeIntentIdsOf[tradeId].length < start + size) {
-			size = intentLayout.closeIntentIdsOf[tradeId].length - start;
-		}
-		uint256 j = 0;
-		CloseIntent[] memory closeIntents = new CloseIntent[](size);
-		for (uint256 i = start; i < size; i++) {
-			closeIntents[j++] = intentLayout.closeIntents[intentLayout.closeIntentIdsOf[tradeId][i]];
-		}
-		return closeIntents;
-	}
-
-	/**
-	 * @notice Checks if a user has a specific role.
-	 * @param user The address of the user.
-	 * @param role The role to check.
-	 * @return True if the user has the role, false otherwise.
-	 */
-	function hasRole(address user, bytes32 role) external view returns (bool) {
-		return AccessControlStorage.layout().hasRole[user][role];
-	}
-
-	function getRoleMember(bytes32 role, uint256 index) public view returns (address) {
-		return AccessControlStorage.layout().roleMembers[role].at(index);
-	}
-
-	function getRoleMemberCount(bytes32 role) public view returns (uint256) {
-		return AccessControlStorage.layout().roleMembers[role].length();
-	}
-
-	function getRoleMembers(bytes32 role) public view returns (address[] memory) {
-		return AccessControlStorage.layout().roleMembers[role].values();
-	}
-
-	/**
-	 * @notice Returns the hash of a role string.
-	 * @param str The role string.
-	 * @return The hash of the role string.
-	 */
-	function getRoleHash(string memory str) external pure returns (bytes32) {
-		return keccak256(abi.encodePacked(str));
-	}
-
-	function getLastWithdrawId() external view returns (uint256) {
-		return AccountStorage.layout().lastWithdrawId;
-	}
-
-	function getInstantActionsModeStatus(address user) external view returns (bool) {
-		return CounterPartyRelationsStorage.layout().instantActionsMode[user];
-	}
-
-	function getInstantActionsModeDeactivateTime(address user) external view returns (uint256) {
-		return CounterPartyRelationsStorage.layout().instantActionsModeDeactivateTime[user];
-	}
-
-	function getDeactiveInstantActionModeCooldown() external view returns (uint256) {
-		return CounterPartyRelationsStorage.layout().deactiveInstantActionModeCooldown;
-	}
-
-	function getBoundPartyB(address user) external view returns (address) {
-		return CounterPartyRelationsStorage.layout().boundPartyB[user];
-	}
-
-	function getUnbindingRequestTime(address user) external view returns (uint256) {
-		return CounterPartyRelationsStorage.layout().unbindingRequestTime[user];
-	}
-
-	function getUnbindingCooldown() external view returns (uint256) {
-		return CounterPartyRelationsStorage.layout().unbindingCooldown;
-	}
-
-	function whiteListedCollateral(address collateral) external view returns (bool) {
-		return AppStorage.layout().whiteListedCollateral[collateral];
-	}
-
-	function balanceLimitPerUser(address collateral) external view returns (uint256) {
-		return AppStorage.layout().balanceLimitPerUser[collateral];
-	}
-
-	function maxCloseOrdersLength() external view returns (uint256) {
-		return AppStorage.layout().maxCloseOrdersLength;
-	}
-
-	function maxTradePerPartyA() external view returns (uint256) {
-		return AppStorage.layout().maxTradePerPartyA;
-	}
-
-	function priceOracleAddress() external view returns (address) {
-		return AppStorage.layout().priceOracleAddress;
-	}
-
-	function globalPaused() external view returns (bool) {
-		return StateControlStorage.layout().globalPaused;
-	}
-
-	function depositingPaused() external view returns (bool) {
-		return StateControlStorage.layout().depositingPaused;
-	}
-
-	function withdrawingPaused() external view returns (bool) {
-		return StateControlStorage.layout().withdrawingPaused;
-	}
-
-	function partyBActionsPaused() external view returns (bool) {
-		return StateControlStorage.layout().partyBActionsPaused;
-	}
-
-	function partyAActionsPaused() external view returns (bool) {
-		return StateControlStorage.layout().partyAActionsPaused;
-	}
-
-	function liquidatingPaused() external view returns (bool) {
-		return StateControlStorage.layout().liquidatingPaused;
-	}
-
-	function thirdPartyActionsPaused() external view returns (bool) {
-		return StateControlStorage.layout().thirdPartyActionsPaused;
-	}
-
-	function internalTransferPaused() external view returns (bool) {
-		return StateControlStorage.layout().internalTransferPaused;
-	}
-
-	function bridgePaused() external view returns (bool) {
-		return StateControlStorage.layout().bridgePaused;
-	}
-
-	function bridgeWithdrawPaused() external view returns (bool) {
-		return StateControlStorage.layout().bridgeWithdrawPaused;
-	}
-
-	function emergencyMode() external view returns (bool) {
-		return StateControlStorage.layout().emergencyMode;
-	}
-
-	function partyBEmergencyStatus(address partyB) external view returns (bool) {
-		return StateControlStorage.layout().partyBEmergencyStatus[partyB];
-	}
-
-	function partyADeallocateCooldown() external view returns (uint256) {
-		return AppStorage.layout().partyADeallocateCooldown;
-	}
-
-	function partyBDeallocateCooldown() external view returns (uint256) {
-		return AppStorage.layout().partyBDeallocateCooldown;
-	}
-
-	function forceCancelOpenIntentTimeout() external view returns (uint256) {
-		return AppStorage.layout().forceCancelOpenIntentTimeout;
-	}
-
-	function forceCancelCloseIntentTimeout() external view returns (uint256) {
-		return AppStorage.layout().forceCancelCloseIntentTimeout;
-	}
-
-	function partyBExclusiveWindow() external view returns (uint256) {
-		return AppStorage.layout().partyBExclusiveWindow;
-	}
-
-	function defaultFeeCollector() external view returns (address) {
-		return FeeManagementStorage.layout().defaultFeeCollector;
-	}
-
-	function affiliateStatus(address affiliate) external view returns (bool) {
-		return FeeManagementStorage.layout().affiliateStatus[affiliate];
-	}
-
-	function affiliateFeeCollector(address affiliate) external view returns (address) {
-		return FeeManagementStorage.layout().affiliateFeeCollector[affiliate];
-	}
-
-	function partyBConfigs(address partyB) external view returns (PartyBConfig memory) {
-		return AppStorage.layout().partyBConfigs[partyB];
-	}
-
-	function partyBList() external view returns (address[] memory) {
-		return AppStorage.layout().partyBList;
-	}
-
-	function tradeNftAddress() external view returns (address) {
-		return AppStorage.layout().tradeNftAddress;
-	}
-
-	function settlementPriceSigValidTime() external view returns (uint256) {
-		return AppStorage.layout().settlementPriceSigValidTime;
-	}
-
-	function version() external view returns (uint16) {
-		return AppStorage.layout().version;
-	}
-
-	function getNonce(address party, address counterParty) external view returns (uint256) {
-		return AccountStorage.layout().nonces[party][counterParty];
-	}
-
-	function liquidationDetail(uint256 liquidationId) external view returns (LiquidationDetail memory) {
-		return LiquidationStorage.layout().liquidationDetails[liquidationId];
-	}
-
-	function liquidationDebtsToPartyAs(address partyB, address collateral, address partyA) external view returns (uint256) {
-		return LiquidationStorage.layout().liquidationDebtsToPartyAs[partyB][collateral][partyA];
-	}
-
-	function involvedPartyAsCountInLiquidation(address partyB, address collateral) external view returns (uint256) {
-		return LiquidationStorage.layout().involvedPartyAsCountInLiquidation[partyB][collateral];
-	}
-
-	function affiliateFees(address affiliate, uint256 symbolId) external view returns (uint256) {
-		return FeeManagementStorage.layout().affiliateFees[affiliate][symbolId];
-	}
-
-	function getDefaultReleaseInterval() external view returns (uint256) {
-		return AccountStorage.layout().defaultReleaseInterval;
-	}
-
-	function getConfiguredReleaseInterval(address user) external view returns (bool, uint256) {
-		return (AccountStorage.layout().hasConfiguredInterval[user], AccountStorage.layout().releaseIntervals[user]);
-	}
-
-	// function getBridgeStatus(address _bridgeAddress) external view returns (bool) {
-	// 	return BridgeStorage.layout().bridges[_bridgeAddress];
-	// }
-
-	// function getBridgeTransaction(uint256 _id) external view returns (BridgeTransaction memory) {
-	// 	return BridgeStorage.layout().bridgeTransactions[_id];
-	// }
-
-	// function getLastBridgeTransactionId() external view returns (uint256) {
-	// 	return BridgeStorage.layout().lastBridgeTransactionId;
-	// }
-
-	// function getInvalidBridgedAmountsPoolAddress() external view returns (address) {
-	// 	return BridgeStorage.layout().invalidBridgedAmountsPool;
-	// }
 }

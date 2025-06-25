@@ -56,22 +56,20 @@ library LibTradeOps {
 	function save(Trade memory self) internal {
 		TradeStorage.Layout storage tradeLayout = TradeStorage.layout();
 
-		if (tradeLayout.activeTradesOf[self.partyA].length >= AppStorage.layout().maxTradePerPartyA)
+		if (tradeLayout.activeTradesOfPartyA[self.partyA].length >= AppStorage.layout().maxTradePerPartyA)
 			revert TradeErrors.TooManyActiveTradesForPartyA(
 				self.partyA,
-				tradeLayout.activeTradesOf[self.partyA].length,
+				tradeLayout.activeTradesOfPartyA[self.partyA].length,
 				AppStorage.layout().maxTradePerPartyA
 			);
 
 		tradeLayout.trades[self.id] = self;
 
 		Symbol memory symbol = SymbolStorage.layout().symbols[self.tradeAgreements.symbolId];
-		tradeLayout.tradesOf[self.partyA].push(self.id);
-		tradeLayout.tradesOf[self.partyB].push(self.id);
-		tradeLayout.activeTradesOf[self.partyA].push(self.id);
+		tradeLayout.activeTradesOfPartyA[self.partyA].push(self.id);
 		tradeLayout.activeTradesOfPartyB[self.partyB][symbol.collateral].push(self.id);
 
-		tradeLayout.partyATradesIndex[self.id] = tradeLayout.activeTradesOf[self.partyA].length - 1;
+		tradeLayout.partyATradesIndex[self.id] = tradeLayout.activeTradesOfPartyA[self.partyA].length - 1;
 		tradeLayout.partyBTradesIndex[self.id] = tradeLayout.activeTradesOfPartyB[self.partyB][symbol.collateral].length - 1;
 
 		self.partyA.balanceOf(symbol.collateral).addCounterParty(self.partyB);
@@ -83,10 +81,10 @@ library LibTradeOps {
 
 		uint256 indexOfPartyATrade = tradeLayout.partyATradesIndex[self.id];
 		uint256 indexOfPartyBTrade = tradeLayout.partyBTradesIndex[self.id];
-		uint256 lastIndex = tradeLayout.activeTradesOf[self.partyA].length - 1;
-		tradeLayout.activeTradesOf[self.partyA][indexOfPartyATrade] = tradeLayout.activeTradesOf[self.partyA][lastIndex];
-		tradeLayout.partyATradesIndex[tradeLayout.activeTradesOf[self.partyA][lastIndex]] = indexOfPartyATrade;
-		tradeLayout.activeTradesOf[self.partyA].pop();
+		uint256 lastIndex = tradeLayout.activeTradesOfPartyA[self.partyA].length - 1;
+		tradeLayout.activeTradesOfPartyA[self.partyA][indexOfPartyATrade] = tradeLayout.activeTradesOfPartyA[self.partyA][lastIndex];
+		tradeLayout.partyATradesIndex[tradeLayout.activeTradesOfPartyA[self.partyA][lastIndex]] = indexOfPartyATrade;
+		tradeLayout.activeTradesOfPartyA[self.partyA].pop();
 
 		lastIndex = tradeLayout.activeTradesOfPartyB[self.partyB][symbol.collateral].length - 1;
 		tradeLayout.activeTradesOfPartyB[self.partyB][symbol.collateral][indexOfPartyBTrade] = tradeLayout.activeTradesOfPartyB[self.partyB][

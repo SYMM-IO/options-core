@@ -12,8 +12,6 @@ library LiquidationStorage {
 	struct Layout {
 		mapping(address => mapping(address => mapping(address => uint256))) inProgressLiquidationIds; // partyAAddress => partyBAddress => collateral => liquidationId
 		mapping(uint256 => LiquidationDetail) liquidationDetails; // liquidationId => detail
-		mapping(address => mapping(address => mapping(address => uint256))) liquidationDebtsToPartyAs; // partyB => collateral => partyA => amount
-		mapping(address => mapping(address => uint256)) involvedPartyAsCountInLiquidation; // partyB => collateral => number of connected partyAs
 		uint256 lastLiquidationId;
 	}
 
