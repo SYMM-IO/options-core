@@ -3986,92 +3986,6 @@
         "inputs": [
             {
                 "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "activeOpenIntentsCount",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "activeOpenIntentsLength",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "partyA",
-                "type": "address"
-            },
-            {
-                "internalType": "uint256",
-                "name": "start",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "size",
-                "type": "uint256"
-            }
-        ],
-        "name": "activePartyATradeIdsOf",
-        "outputs": [
-            {
-                "internalType": "uint256[]",
-                "name": "",
-                "type": "uint256[]"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "partyA",
-                "type": "address"
-            }
-        ],
-        "name": "activePartyATradesLength",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
                 "name": "_partyB",
                 "type": "address"
             }
@@ -4079,64 +3993,6 @@
         "name": "activePartyBEmergencyStatus",
         "outputs": [],
         "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "partyB",
-                "type": "address"
-            },
-            {
-                "internalType": "address",
-                "name": "collateral",
-                "type": "address"
-            },
-            {
-                "internalType": "uint256",
-                "name": "start",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "size",
-                "type": "uint256"
-            }
-        ],
-        "name": "activePartyBTradeIdsOf",
-        "outputs": [
-            {
-                "internalType": "uint256[]",
-                "name": "",
-                "type": "uint256[]"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "partyB",
-                "type": "address"
-            },
-            {
-                "internalType": "address",
-                "name": "collateral",
-                "type": "address"
-            }
-        ],
-        "name": "activePartyBTradesLength",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
         "type": "function"
     },
     {
@@ -4254,68 +4110,6 @@
         "inputs": [
             {
                 "internalType": "address",
-                "name": "affiliate",
-                "type": "address"
-            }
-        ],
-        "name": "affiliateFeeCollector",
-        "outputs": [
-            {
-                "internalType": "address",
-                "name": "",
-                "type": "address"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "affiliate",
-                "type": "address"
-            },
-            {
-                "internalType": "uint256",
-                "name": "symbolId",
-                "type": "uint256"
-            }
-        ],
-        "name": "affiliateFees",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "affiliate",
-                "type": "address"
-            }
-        ],
-        "name": "affiliateStatus",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
                 "name": "collateral",
                 "type": "address"
             },
@@ -4385,49 +4179,6 @@
         "inputs": [
             {
                 "internalType": "address",
-                "name": "collateral",
-                "type": "address"
-            }
-        ],
-        "name": "balanceLimitPerUser",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            },
-            {
-                "internalType": "address",
-                "name": "collateral",
-                "type": "address"
-            }
-        ],
-        "name": "balanceOf",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
                 "name": "partyB",
                 "type": "address"
             }
@@ -4435,32 +4186,6 @@
         "name": "bindToPartyB",
         "outputs": [],
         "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "bridgePaused",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "bridgeWithdrawPaused",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
         "type": "function"
     },
     {
@@ -4539,35 +4264,6 @@
         "inputs": [
             {
                 "internalType": "uint256",
-                "name": "tradeId",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "start",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "size",
-                "type": "uint256"
-            }
-        ],
-        "name": "closeIntentIdsOf",
-        "outputs": [
-            {
-                "internalType": "uint256[]",
-                "name": "",
-                "type": "uint256[]"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
                 "name": "liquidationId",
                 "type": "uint256"
             },
@@ -4636,52 +4332,6 @@
         "name": "confiscatePartyBWithdrawal",
         "outputs": [],
         "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            },
-            {
-                "internalType": "address",
-                "name": "collateral",
-                "type": "address"
-            },
-            {
-                "internalType": "address",
-                "name": "counterParty",
-                "type": "address"
-            }
-        ],
-        "name": "crossBalance",
-        "outputs": [
-            {
-                "components": [
-                    {
-                        "internalType": "int256",
-                        "name": "balance",
-                        "type": "int256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "locked",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "totalMM",
-                        "type": "uint256"
-                    }
-                ],
-                "internalType": "struct CrossEntry",
-                "name": "",
-                "type": "tuple"
-            }
-        ],
-        "stateMutability": "view",
         "type": "function"
     },
     {
@@ -4817,19 +4467,6 @@
         "type": "function"
     },
     {
-        "inputs": [],
-        "name": "defaultFeeCollector",
-        "outputs": [
-            {
-                "internalType": "address",
-                "name": "",
-                "type": "address"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
         "inputs": [
             {
                 "internalType": "address",
@@ -4868,19 +4505,6 @@
         "name": "depositFor",
         "outputs": [],
         "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "depositingPaused",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
         "type": "function"
     },
     {
@@ -4954,19 +4578,6 @@
         "name": "distributeCollateral",
         "outputs": [],
         "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "emergencyMode",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
         "type": "function"
     },
     {
@@ -5272,19 +4883,6 @@
         "type": "function"
     },
     {
-        "inputs": [],
-        "name": "forceCancelCloseIntentTimeout",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
         "inputs": [
             {
                 "internalType": "uint256",
@@ -5311,19 +4909,6 @@
         "type": "function"
     },
     {
-        "inputs": [],
-        "name": "forceCancelOpenIntentTimeout",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
         "inputs": [
             {
                 "internalType": "uint256",
@@ -5346,21 +4931,11 @@
         "inputs": [
             {
                 "internalType": "address",
-                "name": "partyA",
+                "name": "user",
                 "type": "address"
-            },
-            {
-                "internalType": "uint256",
-                "name": "start",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "size",
-                "type": "uint256"
             }
         ],
-        "name": "getActiveOpenIntentIdsOf",
+        "name": "getActiveOpenIntentIds",
         "outputs": [
             {
                 "internalType": "uint256[]",
@@ -5374,27 +4949,8 @@
     {
         "inputs": [
             {
-                "internalType": "uint256",
-                "name": "id",
-                "type": "uint256"
-            }
-        ],
-        "name": "getActiveOpenIntentsIndex",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "index",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
                 "internalType": "address",
-                "name": "partyA",
+                "name": "user",
                 "type": "address"
             },
             {
@@ -5408,7 +4964,7 @@
                 "type": "uint256"
             }
         ],
-        "name": "getActiveOpenIntentsOf",
+        "name": "getActiveOpenIntents",
         "outputs": [
             {
                 "components": [
@@ -5576,152 +5132,16 @@
         "inputs": [
             {
                 "internalType": "address",
-                "name": "partyA",
+                "name": "user",
                 "type": "address"
-            },
-            {
-                "internalType": "uint256",
-                "name": "start",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "size",
-                "type": "uint256"
             }
         ],
-        "name": "getActivePartyATradesOf",
+        "name": "getActiveOpenIntentsCount",
         "outputs": [
             {
-                "components": [
-                    {
-                        "internalType": "uint256",
-                        "name": "id",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "openIntentId",
-                        "type": "uint256"
-                    },
-                    {
-                        "components": [
-                            {
-                                "internalType": "uint256",
-                                "name": "symbolId",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "quantity",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "strikePrice",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "expirationTimestamp",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "mm",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "enum TradeSide",
-                                "name": "tradeSide",
-                                "type": "uint8"
-                            },
-                            {
-                                "internalType": "enum MarginType",
-                                "name": "marginType",
-                                "type": "uint8"
-                            },
-                            {
-                                "components": [
-                                    {
-                                        "internalType": "uint256",
-                                        "name": "rate",
-                                        "type": "uint256"
-                                    },
-                                    {
-                                        "internalType": "uint256",
-                                        "name": "cap",
-                                        "type": "uint256"
-                                    }
-                                ],
-                                "internalType": "struct ExerciseFee",
-                                "name": "exerciseFee",
-                                "type": "tuple"
-                            }
-                        ],
-                        "internalType": "struct TradeAgreements",
-                        "name": "tradeAgreements",
-                        "type": "tuple"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "partyA",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "partyB",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "uint256[]",
-                        "name": "activeCloseIntentIds",
-                        "type": "uint256[]"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "settledPrice",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "openedPrice",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "closedAmountBeforeExpiration",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "closePendingAmount",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "avgClosedPriceBeforeExpiration",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "enum TradeStatus",
-                        "name": "status",
-                        "type": "uint8"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "createTimestamp",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "statusModifyTimestamp",
-                        "type": "uint256"
-                    }
-                ],
-                "internalType": "struct Trade[]",
+                "internalType": "uint256",
                 "name": "",
-                "type": "tuple[]"
+                "type": "uint256"
             }
         ],
         "stateMutability": "view",
@@ -5738,6 +5158,44 @@
                 "internalType": "address",
                 "name": "collateral",
                 "type": "address"
+            }
+        ],
+        "name": "getActiveTradeIdsForPartyB",
+        "outputs": [
+            {
+                "internalType": "uint256[]",
+                "name": "",
+                "type": "uint256[]"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            }
+        ],
+        "name": "getActiveTradeIdsOfPartyA",
+        "outputs": [
+            {
+                "internalType": "uint256[]",
+                "name": "",
+                "type": "uint256[]"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
             },
             {
                 "internalType": "uint256",
@@ -5750,7 +5208,7 @@
                 "type": "uint256"
             }
         ],
-        "name": "getActivePartyBTradesOf",
+        "name": "getActiveTradesOfPartyA",
         "outputs": [
             {
                 "components": [
@@ -5890,8 +5348,13 @@
     {
         "inputs": [
             {
+                "internalType": "address",
+                "name": "affiliate",
+                "type": "address"
+            },
+            {
                 "internalType": "uint256",
-                "name": "openIntentId",
+                "name": "symbolId",
                 "type": "uint256"
             }
         ],
@@ -5910,7 +5373,108 @@
         "inputs": [
             {
                 "internalType": "address",
-                "name": "user",
+                "name": "affiliate",
+                "type": "address"
+            }
+        ],
+        "name": "getAffiliateFeeCollector",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getAllPauseStates",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "globalPaused",
+                "type": "bool"
+            },
+            {
+                "internalType": "bool",
+                "name": "depositingPaused",
+                "type": "bool"
+            },
+            {
+                "internalType": "bool",
+                "name": "withdrawingPaused",
+                "type": "bool"
+            },
+            {
+                "internalType": "bool",
+                "name": "partyBActionsPaused",
+                "type": "bool"
+            },
+            {
+                "internalType": "bool",
+                "name": "partyAActionsPaused",
+                "type": "bool"
+            },
+            {
+                "internalType": "bool",
+                "name": "liquidatingPaused",
+                "type": "bool"
+            },
+            {
+                "internalType": "bool",
+                "name": "thirdPartyActionsPaused",
+                "type": "bool"
+            },
+            {
+                "internalType": "bool",
+                "name": "internalTransferPaused",
+                "type": "bool"
+            },
+            {
+                "internalType": "bool",
+                "name": "bridgePaused",
+                "type": "bool"
+            },
+            {
+                "internalType": "bool",
+                "name": "bridgeWithdrawPaused",
+                "type": "bool"
+            },
+            {
+                "internalType": "bool",
+                "name": "emergencyMode",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "collateral",
+                "type": "address"
+            }
+        ],
+        "name": "getBalanceLimitPerUser",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "partyA",
                 "type": "address"
             }
         ],
@@ -5929,7 +5493,7 @@
         "inputs": [
             {
                 "internalType": "uint256",
-                "name": "bridgeId",
+                "name": "transactionId",
                 "type": "uint256"
             }
         ],
@@ -5989,46 +5553,8 @@
     {
         "inputs": [
             {
-                "internalType": "address",
-                "name": "bridge",
-                "type": "address"
-            }
-        ],
-        "name": "getBridgeTransactionIds",
-        "outputs": [
-            {
-                "internalType": "uint256[]",
-                "name": "",
-                "type": "uint256[]"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "bridge",
-                "type": "address"
-            }
-        ],
-        "name": "getBridges",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
                 "internalType": "uint256",
-                "name": "closeIntentId",
+                "name": "intentId",
                 "type": "uint256"
             }
         ],
@@ -6096,6 +5622,25 @@
                 "internalType": "uint256",
                 "name": "tradeId",
                 "type": "uint256"
+            }
+        ],
+        "name": "getCloseIntentIds",
+        "outputs": [
+            {
+                "internalType": "uint256[]",
+                "name": "",
+                "type": "uint256[]"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "tradeId",
+                "type": "uint256"
             },
             {
                 "internalType": "uint256",
@@ -6108,7 +5653,7 @@
                 "type": "uint256"
             }
         ],
-        "name": "getCloseIntentsOf",
+        "name": "getCloseIntents",
         "outputs": [
             {
                 "components": [
@@ -6172,19 +5717,65 @@
                 "internalType": "address",
                 "name": "user",
                 "type": "address"
-            }
-        ],
-        "name": "getConfiguredReleaseInterval",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
             },
             {
-                "internalType": "uint256",
+                "internalType": "address",
+                "name": "collateral",
+                "type": "address"
+            }
+        ],
+        "name": "getCounterPartyAddresses",
+        "outputs": [
+            {
+                "internalType": "address[]",
                 "name": "",
-                "type": "uint256"
+                "type": "address[]"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "collateral",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "counterParty",
+                "type": "address"
+            }
+        ],
+        "name": "getCrossBalance",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "int256",
+                        "name": "balance",
+                        "type": "int256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "locked",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "totalMM",
+                        "type": "uint256"
+                    }
+                ],
+                "internalType": "struct CrossEntry",
+                "name": "",
+                "type": "tuple"
             }
         ],
         "stateMutability": "view",
@@ -6205,7 +5796,46 @@
     },
     {
         "inputs": [],
+        "name": "getDefaultFeeCollector",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
         "name": "getDefaultReleaseInterval",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getForceCancelCloseIntentTimeout",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getForceCancelOpenIntentTimeout",
         "outputs": [
             {
                 "internalType": "uint256",
@@ -6219,26 +5849,26 @@
     {
         "inputs": [
             {
-                "internalType": "uint256",
-                "name": "tradeID",
-                "type": "uint256"
+                "internalType": "address",
+                "name": "partyA",
+                "type": "address"
             },
             {
-                "internalType": "uint256",
-                "name": "settlementPrice",
-                "type": "uint256"
+                "internalType": "address",
+                "name": "partyB",
+                "type": "address"
             },
             {
-                "internalType": "uint256",
-                "name": "pnl",
-                "type": "uint256"
+                "internalType": "address",
+                "name": "collateral",
+                "type": "address"
             }
         ],
-        "name": "getExerciseFee",
+        "name": "getInProgressLiquidationId",
         "outputs": [
             {
                 "internalType": "uint256",
-                "name": "exerciseFee",
+                "name": "",
                 "type": "uint256"
             }
         ],
@@ -6265,25 +5895,6 @@
         "type": "function"
     },
     {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "getInstantActionsModeStatus",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
         "inputs": [],
         "name": "getInvalidBridgedAmountsPool",
         "outputs": [
@@ -6291,6 +5902,30 @@
                 "internalType": "address",
                 "name": "",
                 "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "collateral",
+                "type": "address"
+            }
+        ],
+        "name": "getIsolatedBalance",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
             }
         ],
         "stateMutability": "view",
@@ -6336,6 +5971,19 @@
     {
         "inputs": [],
         "name": "getLastCloseIntentId",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getLastLiquidationId",
         "outputs": [
             {
                 "internalType": "uint256",
@@ -6400,7 +6048,91 @@
     },
     {
         "inputs": [],
-        "name": "getLastWithdrawId",
+        "name": "getLastWithdrawalId",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "liquidationId",
+                "type": "uint256"
+            }
+        ],
+        "name": "getLiquidationDetail",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "enum LiquidationStatus",
+                        "name": "status",
+                        "type": "uint8"
+                    },
+                    {
+                        "internalType": "int256",
+                        "name": "upnl",
+                        "type": "int256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "flagTimestamp",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "liquidationTimestamp",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "flagger",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "collateral",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "collateralPrice",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "partyA",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "partyB",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "enum LiquidationSide",
+                        "name": "side",
+                        "type": "uint8"
+                    }
+                ],
+                "internalType": "struct LiquidationDetail",
+                "name": "",
+                "type": "tuple"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getMaxCloseOrdersLength",
         "outputs": [
             {
                 "internalType": "uint256",
@@ -6414,6 +6146,19 @@
     {
         "inputs": [],
         "name": "getMaxConnectedCounterParties",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getMaxTradePerPartyA",
         "outputs": [
             {
                 "internalType": "uint256",
@@ -6452,26 +6197,7 @@
         "inputs": [
             {
                 "internalType": "uint256",
-                "name": "tradeID",
-                "type": "uint256"
-            }
-        ],
-        "name": "getOpenAmount",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "openAmount",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "openIntentId",
+                "name": "intentId",
                 "type": "uint256"
             }
         ],
@@ -6643,566 +6369,6 @@
         "inputs": [
             {
                 "internalType": "uint256",
-                "name": "openIntentId",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "size",
-                "type": "uint256"
-            }
-        ],
-        "name": "getOpenIntentsByParent",
-        "outputs": [
-            {
-                "components": [
-                    {
-                        "internalType": "uint256",
-                        "name": "id",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "tradeId",
-                        "type": "uint256"
-                    },
-                    {
-                        "components": [
-                            {
-                                "internalType": "uint256",
-                                "name": "symbolId",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "quantity",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "strikePrice",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "expirationTimestamp",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "mm",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "enum TradeSide",
-                                "name": "tradeSide",
-                                "type": "uint8"
-                            },
-                            {
-                                "internalType": "enum MarginType",
-                                "name": "marginType",
-                                "type": "uint8"
-                            },
-                            {
-                                "components": [
-                                    {
-                                        "internalType": "uint256",
-                                        "name": "rate",
-                                        "type": "uint256"
-                                    },
-                                    {
-                                        "internalType": "uint256",
-                                        "name": "cap",
-                                        "type": "uint256"
-                                    }
-                                ],
-                                "internalType": "struct ExerciseFee",
-                                "name": "exerciseFee",
-                                "type": "tuple"
-                            }
-                        ],
-                        "internalType": "struct TradeAgreements",
-                        "name": "tradeAgreements",
-                        "type": "tuple"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "price",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "partyA",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "partyB",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "address[]",
-                        "name": "partyBsWhiteList",
-                        "type": "address[]"
-                    },
-                    {
-                        "internalType": "enum OpenIntentStatus",
-                        "name": "status",
-                        "type": "uint8"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "parentId",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "createTimestamp",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "statusModifyTimestamp",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "deadline",
-                        "type": "uint256"
-                    },
-                    {
-                        "components": [
-                            {
-                                "internalType": "address",
-                                "name": "feeToken",
-                                "type": "address"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "tokenPriceInCollateral",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "platformFee",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "affiliateFee",
-                                "type": "uint256"
-                            }
-                        ],
-                        "internalType": "struct TradingFee",
-                        "name": "tradingFee",
-                        "type": "tuple"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "affiliate",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "bytes",
-                        "name": "userData",
-                        "type": "bytes"
-                    }
-                ],
-                "internalType": "struct OpenIntent[]",
-                "name": "",
-                "type": "tuple[]"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "partyA",
-                "type": "address"
-            },
-            {
-                "internalType": "uint256",
-                "name": "start",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "size",
-                "type": "uint256"
-            }
-        ],
-        "name": "getOpenIntentsOf",
-        "outputs": [
-            {
-                "components": [
-                    {
-                        "internalType": "uint256",
-                        "name": "id",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "tradeId",
-                        "type": "uint256"
-                    },
-                    {
-                        "components": [
-                            {
-                                "internalType": "uint256",
-                                "name": "symbolId",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "quantity",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "strikePrice",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "expirationTimestamp",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "mm",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "enum TradeSide",
-                                "name": "tradeSide",
-                                "type": "uint8"
-                            },
-                            {
-                                "internalType": "enum MarginType",
-                                "name": "marginType",
-                                "type": "uint8"
-                            },
-                            {
-                                "components": [
-                                    {
-                                        "internalType": "uint256",
-                                        "name": "rate",
-                                        "type": "uint256"
-                                    },
-                                    {
-                                        "internalType": "uint256",
-                                        "name": "cap",
-                                        "type": "uint256"
-                                    }
-                                ],
-                                "internalType": "struct ExerciseFee",
-                                "name": "exerciseFee",
-                                "type": "tuple"
-                            }
-                        ],
-                        "internalType": "struct TradeAgreements",
-                        "name": "tradeAgreements",
-                        "type": "tuple"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "price",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "partyA",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "partyB",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "address[]",
-                        "name": "partyBsWhiteList",
-                        "type": "address[]"
-                    },
-                    {
-                        "internalType": "enum OpenIntentStatus",
-                        "name": "status",
-                        "type": "uint8"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "parentId",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "createTimestamp",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "statusModifyTimestamp",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "deadline",
-                        "type": "uint256"
-                    },
-                    {
-                        "components": [
-                            {
-                                "internalType": "address",
-                                "name": "feeToken",
-                                "type": "address"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "tokenPriceInCollateral",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "platformFee",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "affiliateFee",
-                                "type": "uint256"
-                            }
-                        ],
-                        "internalType": "struct TradingFee",
-                        "name": "tradingFee",
-                        "type": "tuple"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "affiliate",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "bytes",
-                        "name": "userData",
-                        "type": "bytes"
-                    }
-                ],
-                "internalType": "struct OpenIntent[]",
-                "name": "",
-                "type": "tuple[]"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "components": [
-                    {
-                        "internalType": "uint256",
-                        "name": "size",
-                        "type": "uint256"
-                    },
-                    {
-                        "components": [
-                            {
-                                "internalType": "uint256",
-                                "name": "offset",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "bitmap",
-                                "type": "uint256"
-                            }
-                        ],
-                        "internalType": "struct IViewFacet.BitmapElement[]",
-                        "name": "elements",
-                        "type": "tuple[]"
-                    }
-                ],
-                "internalType": "struct IViewFacet.Bitmap",
-                "name": "bitmap",
-                "type": "tuple"
-            },
-            {
-                "internalType": "uint256",
-                "name": "gasNeededForReturn",
-                "type": "uint256"
-            }
-        ],
-        "name": "getOpenIntentsWithBitmap",
-        "outputs": [
-            {
-                "components": [
-                    {
-                        "internalType": "uint256",
-                        "name": "id",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "tradeId",
-                        "type": "uint256"
-                    },
-                    {
-                        "components": [
-                            {
-                                "internalType": "uint256",
-                                "name": "symbolId",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "quantity",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "strikePrice",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "expirationTimestamp",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "mm",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "enum TradeSide",
-                                "name": "tradeSide",
-                                "type": "uint8"
-                            },
-                            {
-                                "internalType": "enum MarginType",
-                                "name": "marginType",
-                                "type": "uint8"
-                            },
-                            {
-                                "components": [
-                                    {
-                                        "internalType": "uint256",
-                                        "name": "rate",
-                                        "type": "uint256"
-                                    },
-                                    {
-                                        "internalType": "uint256",
-                                        "name": "cap",
-                                        "type": "uint256"
-                                    }
-                                ],
-                                "internalType": "struct ExerciseFee",
-                                "name": "exerciseFee",
-                                "type": "tuple"
-                            }
-                        ],
-                        "internalType": "struct TradeAgreements",
-                        "name": "tradeAgreements",
-                        "type": "tuple"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "price",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "partyA",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "partyB",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "address[]",
-                        "name": "partyBsWhiteList",
-                        "type": "address[]"
-                    },
-                    {
-                        "internalType": "enum OpenIntentStatus",
-                        "name": "status",
-                        "type": "uint8"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "parentId",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "createTimestamp",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "statusModifyTimestamp",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "deadline",
-                        "type": "uint256"
-                    },
-                    {
-                        "components": [
-                            {
-                                "internalType": "address",
-                                "name": "feeToken",
-                                "type": "address"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "tokenPriceInCollateral",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "platformFee",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "affiliateFee",
-                                "type": "uint256"
-                            }
-                        ],
-                        "internalType": "struct TradingFee",
-                        "name": "tradingFee",
-                        "type": "tuple"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "affiliate",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "bytes",
-                        "name": "userData",
-                        "type": "bytes"
-                    }
-                ],
-                "internalType": "struct OpenIntent[]",
-                "name": "openIntents",
-                "type": "tuple[]"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
                 "name": "oracleId",
                 "type": "uint256"
             }
@@ -7236,28 +6402,12 @@
         "type": "function"
     },
     {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "tradeID",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "settlementPrice",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "filledAmount",
-                "type": "uint256"
-            }
-        ],
-        "name": "getPnL",
+        "inputs": [],
+        "name": "getPartyADeallocateCooldown",
         "outputs": [
             {
                 "internalType": "uint256",
-                "name": "pnl",
+                "name": "",
                 "type": "uint256"
             }
         ],
@@ -7268,16 +6418,153 @@
         "inputs": [
             {
                 "internalType": "uint256",
-                "name": "openIntentId",
+                "name": "intentId",
                 "type": "uint256"
             }
         ],
-        "name": "getPremium",
+        "name": "getPartyAOpenIntentIndex",
         "outputs": [
             {
                 "internalType": "uint256",
                 "name": "",
                 "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "tradeId",
+                "type": "uint256"
+            }
+        ],
+        "name": "getPartyATradeIndex",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "partyB",
+                "type": "address"
+            }
+        ],
+        "name": "getPartyBConfig",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "bool",
+                        "name": "isActive",
+                        "type": "bool"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "lossCoverage",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "oracleId",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "symbolType",
+                        "type": "uint256"
+                    }
+                ],
+                "internalType": "struct PartyBConfig",
+                "name": "",
+                "type": "tuple"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getPartyBDeallocateCooldown",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getPartyBExclusiveWindow",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "intentId",
+                "type": "uint256"
+            }
+        ],
+        "name": "getPartyBOpenIntentIndex",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "tradeId",
+                "type": "uint256"
+            }
+        ],
+        "name": "getPartyBTradeIndex",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getPriceOracleAddress",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
             }
         ],
         "stateMutability": "view",
@@ -7305,20 +6592,25 @@
     {
         "inputs": [
             {
-                "internalType": "string",
-                "name": "str",
-                "type": "string"
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "collateral",
+                "type": "address"
             }
         ],
-        "name": "getRoleHash",
+        "name": "getReserveBalance",
         "outputs": [
             {
-                "internalType": "bytes32",
+                "internalType": "uint256",
                 "name": "",
-                "type": "bytes32"
+                "type": "uint256"
             }
         ],
-        "stateMutability": "pure",
+        "stateMutability": "view",
         "type": "function"
     },
     {
@@ -7429,6 +6721,32 @@
                 "internalType": "struct ScheduledReleaseEntry",
                 "name": "",
                 "type": "tuple"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getSettlementPriceSigValidTime",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getSignatureVerifier",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
             }
         ],
         "stateMutability": "view",
@@ -7707,193 +7025,13 @@
         "type": "function"
     },
     {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "tradeID",
-                "type": "uint256"
-            }
-        ],
-        "name": "getTradePremium",
+        "inputs": [],
+        "name": "getTradeNftAddress",
         "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "premium",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
             {
                 "internalType": "address",
-                "name": "user",
+                "name": "",
                 "type": "address"
-            },
-            {
-                "internalType": "uint256",
-                "name": "start",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "size",
-                "type": "uint256"
-            }
-        ],
-        "name": "getTradesOf",
-        "outputs": [
-            {
-                "components": [
-                    {
-                        "internalType": "uint256",
-                        "name": "id",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "openIntentId",
-                        "type": "uint256"
-                    },
-                    {
-                        "components": [
-                            {
-                                "internalType": "uint256",
-                                "name": "symbolId",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "quantity",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "strikePrice",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "expirationTimestamp",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "mm",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "enum TradeSide",
-                                "name": "tradeSide",
-                                "type": "uint8"
-                            },
-                            {
-                                "internalType": "enum MarginType",
-                                "name": "marginType",
-                                "type": "uint8"
-                            },
-                            {
-                                "components": [
-                                    {
-                                        "internalType": "uint256",
-                                        "name": "rate",
-                                        "type": "uint256"
-                                    },
-                                    {
-                                        "internalType": "uint256",
-                                        "name": "cap",
-                                        "type": "uint256"
-                                    }
-                                ],
-                                "internalType": "struct ExerciseFee",
-                                "name": "exerciseFee",
-                                "type": "tuple"
-                            }
-                        ],
-                        "internalType": "struct TradeAgreements",
-                        "name": "tradeAgreements",
-                        "type": "tuple"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "partyA",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "partyB",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "uint256[]",
-                        "name": "activeCloseIntentIds",
-                        "type": "uint256[]"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "settledPrice",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "openedPrice",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "closedAmountBeforeExpiration",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "closePendingAmount",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "avgClosedPriceBeforeExpiration",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "enum TradeStatus",
-                        "name": "status",
-                        "type": "uint8"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "createTimestamp",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "statusModifyTimestamp",
-                        "type": "uint256"
-                    }
-                ],
-                "internalType": "struct Trade[]",
-                "name": "",
-                "type": "tuple[]"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "openIntentId",
-                "type": "uint256"
-            }
-        ],
-        "name": "getTradingFee",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
             }
         ],
         "stateMutability": "view",
@@ -7916,7 +7054,7 @@
         "inputs": [
             {
                 "internalType": "address",
-                "name": "user",
+                "name": "partyA",
                 "type": "address"
             }
         ],
@@ -7934,12 +7072,49 @@
     {
         "inputs": [
             {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            }
+        ],
+        "name": "getUserReleaseInterval",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "hasConfigured",
+                "type": "bool"
+            },
+            {
                 "internalType": "uint256",
-                "name": "id",
+                "name": "interval",
                 "type": "uint256"
             }
         ],
-        "name": "getWithdraw",
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getVersion",
+        "outputs": [
+            {
+                "internalType": "uint16",
+                "name": "",
+                "type": "uint16"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "withdrawId",
+                "type": "uint256"
+            }
+        ],
+        "name": "getWithdrawal",
         "outputs": [
             {
                 "components": [
@@ -7982,19 +7157,6 @@
                 "internalType": "struct Withdraw",
                 "name": "",
                 "type": "tuple"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "globalPaused",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
             }
         ],
         "stateMutability": "view",
@@ -8096,8 +7258,14 @@
         "type": "function"
     },
     {
-        "inputs": [],
-        "name": "internalTransferPaused",
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            }
+        ],
+        "name": "isAddressSuspended",
         "outputs": [
             {
                 "internalType": "bool",
@@ -8112,21 +7280,29 @@
         "inputs": [
             {
                 "internalType": "address",
-                "name": "partyB",
-                "type": "address"
-            },
-            {
-                "internalType": "address",
-                "name": "collateral",
+                "name": "affiliate",
                 "type": "address"
             }
         ],
-        "name": "involvedPartyAsCountInLiquidation",
+        "name": "isAffiliateActive",
         "outputs": [
             {
-                "internalType": "uint256",
+                "internalType": "bool",
                 "name": "",
-                "type": "uint256"
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "isBridgePaused",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
             }
         ],
         "stateMutability": "view",
@@ -8135,12 +7311,77 @@
     {
         "inputs": [
             {
-                "internalType": "bytes32",
-                "name": "intentHash",
-                "type": "bytes32"
+                "internalType": "address",
+                "name": "bridge",
+                "type": "address"
             }
         ],
-        "name": "isSigUsed",
+        "name": "isBridgeWhitelisted",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "isBridgeWithdrawPaused",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "isCallFromInstantLayer",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "isDepositingPaused",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "isEmergencyMode",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "isGlobalPaused",
         "outputs": [
             {
                 "internalType": "bool",
@@ -8159,7 +7400,148 @@
                 "type": "address"
             }
         ],
-        "name": "isSuspended",
+        "name": "isInstantActionsModeActive",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "isInternalTransferPaused",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "isLiquidatingPaused",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            }
+        ],
+        "name": "isManualSync",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "isPartyAActionsPaused",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "isPartyBActionsPaused",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "partyB",
+                "type": "address"
+            }
+        ],
+        "name": "isPartyBInEmergencyMode",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "sigHash",
+                "type": "bytes32"
+            }
+        ],
+        "name": "isSignatureUsed",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "isThirdPartyActionsPaused",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "collateral",
+                "type": "address"
+            }
+        ],
+        "name": "isWhitelistedCollateral",
         "outputs": [
             {
                 "internalType": "bool",
@@ -8178,7 +7560,20 @@
                 "type": "uint256"
             }
         ],
-        "name": "isSuspendedWithdrawal",
+        "name": "isWithdrawalSuspended",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "isWithdrawingPaused",
         "outputs": [
             {
                 "internalType": "bool",
@@ -8289,119 +7684,6 @@
         "type": "function"
     },
     {
-        "inputs": [],
-        "name": "liquidatingPaused",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "partyB",
-                "type": "address"
-            },
-            {
-                "internalType": "address",
-                "name": "collateral",
-                "type": "address"
-            },
-            {
-                "internalType": "address",
-                "name": "partyA",
-                "type": "address"
-            }
-        ],
-        "name": "liquidationDebtsToPartyAs",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "liquidationId",
-                "type": "uint256"
-            }
-        ],
-        "name": "liquidationDetail",
-        "outputs": [
-            {
-                "components": [
-                    {
-                        "internalType": "enum LiquidationStatus",
-                        "name": "status",
-                        "type": "uint8"
-                    },
-                    {
-                        "internalType": "int256",
-                        "name": "upnl",
-                        "type": "int256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "flagTimestamp",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "liquidationTimestamp",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "flagger",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "collateral",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "collateralPrice",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "partyA",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "partyB",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "enum LiquidationSide",
-                        "name": "side",
-                        "type": "uint8"
-                    }
-                ],
-                "internalType": "struct LiquidationDetail",
-                "name": "",
-                "type": "tuple"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
         "inputs": [
             {
                 "internalType": "uint256",
@@ -8412,295 +7694,6 @@
         "name": "lockOpenIntent",
         "outputs": [],
         "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "maxCloseOrdersLength",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "maxTradePerPartyA",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "partyA",
-                "type": "address"
-            },
-            {
-                "internalType": "uint256",
-                "name": "start",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "size",
-                "type": "uint256"
-            }
-        ],
-        "name": "openIntentIdsOf",
-        "outputs": [
-            {
-                "internalType": "uint256[]",
-                "name": "",
-                "type": "uint256[]"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "openIntentsLength",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "partyAActionsPaused",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "partyADeallocateCooldown",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "partyA",
-                "type": "address"
-            },
-            {
-                "internalType": "address",
-                "name": "collateral",
-                "type": "address"
-            }
-        ],
-        "name": "partyAStats",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            },
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256[]",
-                "name": "",
-                "type": "uint256[]"
-            },
-            {
-                "internalType": "uint256[]",
-                "name": "",
-                "type": "uint256[]"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "index",
-                "type": "uint256"
-            }
-        ],
-        "name": "partyATradesIndex",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "partyBActionsPaused",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "partyB",
-                "type": "address"
-            }
-        ],
-        "name": "partyBConfigs",
-        "outputs": [
-            {
-                "components": [
-                    {
-                        "internalType": "bool",
-                        "name": "isActive",
-                        "type": "bool"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "lossCoverage",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "oracleId",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "symbolType",
-                        "type": "uint256"
-                    }
-                ],
-                "internalType": "struct PartyBConfig",
-                "name": "",
-                "type": "tuple"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "partyBDeallocateCooldown",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "partyB",
-                "type": "address"
-            }
-        ],
-        "name": "partyBEmergencyStatus",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "partyBExclusiveWindow",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "partyBList",
-        "outputs": [
-            {
-                "internalType": "address[]",
-                "name": "",
-                "type": "address[]"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "index",
-                "type": "uint256"
-            }
-        ],
-        "name": "partyBTradesIndex",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
         "type": "function"
     },
     {
@@ -8750,19 +7743,6 @@
         "name": "pauseWithdraw",
         "outputs": [],
         "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "priceOracleAddress",
-        "outputs": [
-            {
-                "internalType": "address",
-                "name": "",
-                "type": "address"
-            }
-        ],
-        "stateMutability": "view",
         "type": "function"
     },
     {
@@ -8871,12 +7851,12 @@
             },
             {
                 "internalType": "uint256",
-                "name": "price",
+                "name": "quantity",
                 "type": "uint256"
             },
             {
                 "internalType": "uint256",
-                "name": "quantity",
+                "name": "price",
                 "type": "uint256"
             },
             {
@@ -9037,7 +8017,7 @@
             },
             {
                 "internalType": "address",
-                "name": "_collector",
+                "name": "_feeCollector",
                 "type": "address"
             }
         ],
@@ -9679,32 +8659,6 @@
         "type": "function"
     },
     {
-        "inputs": [],
-        "name": "settlementPriceSigValidTime",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "signatureVerifier",
-        "outputs": [
-            {
-                "internalType": "address",
-                "name": "",
-                "type": "address"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
         "inputs": [
             {
                 "internalType": "bytes4",
@@ -9770,105 +8724,6 @@
         "name": "suspendWithdrawal",
         "outputs": [],
         "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256[]",
-                "name": "symbolIds",
-                "type": "uint256[]"
-            }
-        ],
-        "name": "symbolNameById",
-        "outputs": [
-            {
-                "internalType": "string[]",
-                "name": "",
-                "type": "string[]"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256[]",
-                "name": "tradeIds",
-                "type": "uint256[]"
-            }
-        ],
-        "name": "symbolNameByTradeId",
-        "outputs": [
-            {
-                "internalType": "string[]",
-                "name": "",
-                "type": "string[]"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256[]",
-                "name": "openIntentIds",
-                "type": "uint256[]"
-            }
-        ],
-        "name": "symbolsByOpenIntentId",
-        "outputs": [
-            {
-                "components": [
-                    {
-                        "internalType": "uint256",
-                        "name": "symbolId",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "bool",
-                        "name": "isValid",
-                        "type": "bool"
-                    },
-                    {
-                        "internalType": "string",
-                        "name": "name",
-                        "type": "string"
-                    },
-                    {
-                        "internalType": "enum OptionType",
-                        "name": "optionType",
-                        "type": "uint8"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "oracleId",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "collateral",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "tradingFee",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "symbolType",
-                        "type": "uint256"
-                    }
-                ],
-                "internalType": "struct Symbol[]",
-                "name": "",
-                "type": "tuple[]"
-            }
-        ],
-        "stateMutability": "view",
         "type": "function"
     },
     {
@@ -9988,80 +8843,6 @@
         "name": "testSave",
         "outputs": [],
         "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "thirdPartyActionsPaused",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            },
-            {
-                "internalType": "uint256",
-                "name": "start",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "size",
-                "type": "uint256"
-            }
-        ],
-        "name": "tradeIdsOf",
-        "outputs": [
-            {
-                "internalType": "uint256[]",
-                "name": "",
-                "type": "uint256[]"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "tradeNftAddress",
-        "outputs": [
-            {
-                "internalType": "address",
-                "name": "",
-                "type": "address"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "tradesOfLength",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
         "type": "function"
     },
     {
@@ -10260,19 +9041,6 @@
         "type": "function"
     },
     {
-        "inputs": [],
-        "name": "version",
-        "outputs": [
-            {
-                "internalType": "uint16",
-                "name": "",
-                "type": "uint16"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
         "inputs": [
             {
                 "internalType": "address",
@@ -10288,25 +9056,6 @@
     {
         "inputs": [
             {
-                "internalType": "address",
-                "name": "collateral",
-                "type": "address"
-            }
-        ],
-        "name": "whiteListedCollateral",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
                 "internalType": "uint256[]",
                 "name": "transactionIds",
                 "type": "uint256[]"
@@ -10315,19 +9064,6 @@
         "name": "withdrawReceivedBridgeValues",
         "outputs": [],
         "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "withdrawingPaused",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
         "type": "function"
     }
 ]
