@@ -4,6 +4,8 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
+import { OpenIntentStatus } from "../types/IntentTypes.sol";
+
 interface IPartiesEvents {
 	event SendOpenIntent(
 		address partyA,
@@ -11,6 +13,7 @@ interface IPartiesEvents {
 		address[] partyBsWhiteList,
 		bytes requestedParams // encodePacked (symbolId, price, quantity, strikePrice, expirationTimestamp, mm, tradeSide, marginType, exerciseFee.rate, exerciseFee.cap, deadline)
 	);
+	event CancelOpenIntent(uint256 intentId, OpenIntentStatus finalStatus);
 	event ExpireOpenIntent(uint256 intentId);
 	event ExpireCloseIntent(uint256 intentId);
 }

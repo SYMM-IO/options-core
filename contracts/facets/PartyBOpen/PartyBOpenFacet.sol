@@ -26,7 +26,7 @@ contract PartyBOpenFacet is Accessibility, Pausable, IPartyBOpenFacet {
 	 * @dev Temporarily locks the intent to prevent other PartyBs from acting on it
 	 * @param intentId The unique identifier of the open intent to be locked
 	 */
-	function lockOpenIntent(uint256 intentId) external whenPartyNotPaused(msg.sender) onlyPartyB(msg.sender)  {
+	function lockOpenIntent(uint256 intentId) external whenPartyNotPaused(msg.sender) onlyPartyB(msg.sender) {
 		LibPartyBOpen.lockOpenIntent(msg.sender, intentId);
 		emit LockOpenIntent(intentId, msg.sender);
 	}
@@ -71,27 +71,26 @@ contract PartyBOpenFacet is Accessibility, Pausable, IPartyBOpenFacet {
 		emit FillOpenIntent(intentId, tradeId, quantity, price);
 		if (newIntentId != 0) {
 			OpenIntent storage newIntent = OpenIntentStorage.layout().openIntents[newIntentId];
-			if (newIntent.status == OpenIntentStatus.PENDING) {
-				emit SendOpenIntent(
-					newIntent.partyA,
-					newIntent.id,
-					newIntent.partyBsWhiteList,
-					abi.encodePacked(
-						newIntent.tradeAgreements.symbolId,
-						newIntent.price,
-						newIntent.tradeAgreements.quantity,
-						newIntent.tradeAgreements.strikePrice,
-						newIntent.tradeAgreements.expirationTimestamp,
-						newIntent.tradeAgreements.mm,
-						newIntent.tradeAgreements.tradeSide,
-						newIntent.tradeAgreements.marginType,
-						newIntent.tradeAgreements.exerciseFee.rate,
-						newIntent.tradeAgreements.exerciseFee.cap,
-						newIntent.deadline
-					)
-				);
-			} else if (newIntent.status == OpenIntentStatus.CANCELED) {
-				emit AcceptCancelOpenIntent(newIntent.id);
+			emit SendOpenIntent(
+				newIntent.partyA,
+				newIntent.id,
+				newIntent.partyBsWhiteList,
+				abi.encodePacked(
+					newIntent.tradeAgreements.symbolId,
+					newIntent.price,
+					newIntent.tradeAgreements.quantity,
+					newIntent.tradeAgreements.strikePrice,
+					newIntent.tradeAgreements.expirationTimestamp,
+					newIntent.tradeAgreements.mm,
+					newIntent.tradeAgreements.tradeSide,
+					newIntent.tradeAgreements.marginType,
+					newIntent.tradeAgreements.exerciseFee.rate,
+					newIntent.tradeAgreements.exerciseFee.cap,
+					newIntent.deadline
+				)
+			);
+			if (newIntent.status == OpenIntentStatus.CANCELED) {
+				emit CancelOpenIntent(newIntent.id, OpenIntentStatus.CANCELED);
 			}
 		}
 	}
