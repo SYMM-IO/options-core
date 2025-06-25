@@ -20,7 +20,7 @@ interface ISymmio {
 }
 
 contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
-	bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
+	bytes32 public constant SETTER_ROLE = keccak256("SETTER_ROLE");
 	bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
 
 	// EIP-712 type hash
@@ -85,7 +85,7 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 		symmio = ISymmio(_symmio);
 
 		_grantRole(DEFAULT_ADMIN_ROLE, _admin);
-		_grantRole(ADMIN_ROLE, _admin);
+		_grantRole(SETTER_ROLE, _admin);
 		_grantRole(OPERATOR_ROLE, _admin);
 	}
 
@@ -93,8 +93,9 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	 * @notice Register a PartyB contract
 	 * @param partyB Address to register as PartyB
 	 */
-	function registerPartyB(address partyB) external onlyRole(ADMIN_ROLE) {
+	function registerPartyB(address partyB) external onlyRole(SETTER_ROLE) {
 		registeredPartyBs[partyB] = true;
+		_grantRole(OPERATOR_ROLE, partyB);
 		emit PartyBRegistered(partyB);
 	}
 
@@ -102,8 +103,9 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	 * @notice Unregister a PartyB contract
 	 * @param partyB Address to unregister
 	 */
-	function unregisterPartyB(address partyB) external onlyRole(ADMIN_ROLE) {
+	function unregisterPartyB(address partyB) external onlyRole(SETTER_ROLE) {
 		registeredPartyBs[partyB] = false;
+		_revokeRole(OPERATOR_ROLE, partyB);
 		emit PartyBUnregistered(partyB);
 	}
 
@@ -111,7 +113,7 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	 * @notice Register a MultiAccount contract
 	 * @param multiAccount Address to register as MultiAccount
 	 */
-	function registerMultiAccount(address multiAccount) external onlyRole(ADMIN_ROLE) {
+	function registerMultiAccount(address multiAccount) external onlyRole(SETTER_ROLE) {
 		registeredMultiAccounts[multiAccount] = true;
 		emit MultiAccountRegistered(multiAccount);
 	}
@@ -120,7 +122,7 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	 * @notice Unregister a MultiAccount contract
 	 * @param multiAccount Address to unregister
 	 */
-	function unregisterMultiAccount(address multiAccount) external onlyRole(ADMIN_ROLE) {
+	function unregisterMultiAccount(address multiAccount) external onlyRole(SETTER_ROLE) {
 		registeredMultiAccounts[multiAccount] = false;
 		emit MultiAccountUnregistered(multiAccount);
 	}
@@ -129,7 +131,7 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	 * @notice Register multiple PartyB contracts
 	 * @param partyBs Array of addresses to register
 	 */
-	function registerPartyBBatch(address[] calldata partyBs) external onlyRole(ADMIN_ROLE) {
+	function registerPartyBBatch(address[] calldata partyBs) external onlyRole(SETTER_ROLE) {
 		for (uint256 i = 0; i < partyBs.length; i++) {
 			registeredPartyBs[partyBs[i]] = true;
 			emit PartyBRegistered(partyBs[i]);
@@ -140,7 +142,7 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	 * @notice Register multiple MultiAccount contracts
 	 * @param multiAccounts Array of addresses to register
 	 */
-	function registerMultiAccountBatch(address[] calldata multiAccounts) external onlyRole(ADMIN_ROLE) {
+	function registerMultiAccountBatch(address[] calldata multiAccounts) external onlyRole(SETTER_ROLE) {
 		for (uint256 i = 0; i < multiAccounts.length; i++) {
 			registeredMultiAccounts[multiAccounts[i]] = true;
 			emit MultiAccountRegistered(multiAccounts[i]);
@@ -148,29 +150,11 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	}
 
 	/**
-	 * @notice Check if an address is a registered PartyB
-	 * @param addr Address to check
-	 * @return Whether the address is a registered PartyB
-	 */
-	function isPartyB(address addr) public view returns (bool) {
-		return registeredPartyBs[addr];
-	}
-
-	/**
-	 * @notice Check if an address is a registered MultiAccount
-	 * @param addr Address to check
-	 * @return Whether the address is a registered MultiAccount
-	 */
-	function isMultiAccount(address addr) public view returns (bool) {
-		return registeredMultiAccounts[addr];
-	}
-
-	/**
 	 * @notice Add a new template
 	 * @param name Template name
 	 * @param operations Array of operations in the template
 	 */
-	function addTemplate(string calldata name, Operation[] calldata operations) external onlyRole(ADMIN_ROLE) {
+	function addTemplate(string calldata name, Operation[] calldata operations) external onlyRole(SETTER_ROLE) {
 		uint256 templateId = nextTemplateId++;
 		Template storage template = templates[templateId];
 		template.name = name;
@@ -188,7 +172,7 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	 * @param templateId Template to update
 	 * @param active New status
 	 */
-	function setTemplateActive(uint256 templateId, bool active) external onlyRole(ADMIN_ROLE) {
+	function setTemplateActive(uint256 templateId, bool active) external onlyRole(SETTER_ROLE) {
 		if (templateId >= nextTemplateId) revert InvalidTemplate(templateId);
 		templates[templateId].active = active;
 		emit TemplateUpdated(templateId, active);
@@ -199,7 +183,7 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	 * @param templateId Template to use
 	 * @param signedOps Array of signed operations matching the template
 	 */
-	function executeTemplate(uint256 templateId, SignedOperation[] calldata signedOps) external nonReentrant {
+	function executeTemplate(uint256 templateId, SignedOperation[] calldata signedOps) external nonReentrant onlyRole(OPERATOR_ROLE) {
 		if (templateId >= nextTemplateId) revert InvalidTemplate(templateId);
 
 		Template storage template = templates[templateId];
@@ -242,7 +226,7 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	 * @notice Execute a batch of operations without template
 	 * @param signedOps Array of signed operations
 	 */
-	function executeBatch(SignedOperation[] calldata signedOps) external nonReentrant {
+	function executeBatch(SignedOperation[] calldata signedOps) external nonReentrant onlyRole(OPERATOR_ROLE) {
 		symmio.setCallFromInstantLayer(true);
 
 		bytes[] memory results = new bytes[](signedOps.length);
@@ -373,6 +357,24 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 		}
 
 		return modifiedCallData;
+	}
+
+	/**
+	 * @notice Check if an address is a registered PartyB
+	 * @param addr Address to check
+	 * @return Whether the address is a registered PartyB
+	 */
+	function isPartyB(address addr) public view returns (bool) {
+		return registeredPartyBs[addr];
+	}
+
+	/**
+	 * @notice Check if an address is a registered MultiAccount
+	 * @param addr Address to check
+	 * @return Whether the address is a registered MultiAccount
+	 */
+	function isMultiAccount(address addr) public view returns (bool) {
+		return registeredMultiAccounts[addr];
 	}
 
 	/**
