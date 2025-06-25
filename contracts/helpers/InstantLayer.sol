@@ -74,7 +74,7 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	error InvalidNonce(address user, uint256 expected, uint256 provided);
 	error TemplateNotActive(uint256 templateId);
 	error InvalidTemplate(uint256 templateId);
-	error OperationFailed(uint256 operationIndex);
+	error OperationFailed(uint256 operationIndex, bytes revertData);
 	error ArrayLengthMismatch();
 	error InvalidAccount(address account);
 	error InvalidSigner(address expected, address provided);
@@ -229,7 +229,7 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 			(success, results[i]) = _executeOperationSafe(signedOp, finalCallData);
 			if (!success) {
 				symmio.setCallFromInstantLayer(false);
-				revert OperationFailed(i);
+				revert OperationFailed(i, results[i]);
 			}
 		}
 
@@ -245,6 +245,8 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	function executeBatch(SignedOperation[] calldata signedOps) external nonReentrant {
 		symmio.setCallFromInstantLayer(true);
 
+		bytes[] memory results = new bytes[](signedOps.length);
+
 		bool success = true;
 		for (uint256 i = 0; i < signedOps.length && success; i++) {
 			Operation memory op = Operation({
@@ -258,10 +260,10 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 			// Verify signature and nonce
 			_verifyOperation(op, signedOps[i]);
 
-			(success, ) = _executeOperationSafe(signedOps[i], signedOps[i].callData);
+			(success, results[i]) = _executeOperationSafe(signedOps[i], signedOps[i].callData);
 			if (!success) {
 				symmio.setCallFromInstantLayer(false);
-				revert OperationFailed(i);
+				revert OperationFailed(i, results[i]);
 			}
 		}
 

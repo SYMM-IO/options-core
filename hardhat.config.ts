@@ -12,8 +12,7 @@ import { resolve } from "path"
 const dotenvConfigPath: string = process.env.DOTENV_CONFIG_PATH || "./.env"
 dotenvConfig({ path: resolve(__dirname, dotenvConfigPath) })
 
-const privateKey: string | undefined = process.env.PRIVATE_KEY
-if (!privateKey) throw new Error("Please set your PRIVATE_KEY in .env file")
+const privateKey: string | undefined = process.env.PRIVATE_KEY || "0xec81e00837948239d5927bcb2b785675552bc92f1d2607ee91c540ddb56d6796"
 
 const config: HardhatUserConfig = {
 	defaultNetwork: "hardhat",
