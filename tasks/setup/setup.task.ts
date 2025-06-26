@@ -138,8 +138,8 @@ task("setup:deployment", "Setup Deployed Facets")
 			}
 		}
 
-		if (config.partyBEmergencyStatus?.length) {
-			for (const { address, active } of config.partyBEmergencyStatus) {
+		if (config.partyBEmergencyMode?.length) {
+			for (const { address, active } of config.partyBEmergencyMode) {
 				if (address !== undefined && active !== undefined) {
 					if (active) {
 						await runTx(controlFacet.connect(owner).activePartyBEmergencyStatus(address))

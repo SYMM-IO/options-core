@@ -23,7 +23,7 @@ export interface IConfig {
 	}
 
 	emergencyMode?: boolean
-	partyBEmergencyStatus?: Array<{
+	partyBEmergencyMode?: Array<{
 		address: string
 		active: boolean
 	}>

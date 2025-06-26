@@ -20,7 +20,7 @@ library StateControlStorage {
 		bool bridgeWithdrawPaused;
 		///////////////////////////////////
 		bool emergencyMode;
-		mapping(address => bool) partyBEmergencyStatus;
+		mapping(address => bool) partyBEmergencyMode;
 		///////////////////////////////////
 		mapping(address => bool) suspendedAddresses;
 		mapping(uint256 => bool) suspendedWithdrawal;
