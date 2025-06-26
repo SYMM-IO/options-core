@@ -21,7 +21,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 		await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
 			isActive: true,
 			lossCoverage: 0,
-			oracleId: 0,
+			oracleId: 1,
 			symbolType: 0,
 		})
 
