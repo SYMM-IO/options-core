@@ -190,41 +190,74 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	}
 
 	// Individual setters remain for flexibility
+
+	/**
+	 * @notice Sets the deallocate cooldown for PartyA
+	 * @param _cooldown The deallocate cooldown
+	 */
 	function setPartyADeallocateCooldown(uint256 _cooldown) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		AppStorage.layout().partyADeallocateCooldown = _cooldown;
 		emit PartyADeallocateCooldownUpdated(_cooldown);
 	}
 
+	/**
+	 * @notice Sets the deallocate cooldown for PartyB
+	 * @param _cooldown The deallocate cooldown
+	 */
 	function setPartyBDeallocateCooldown(uint256 _cooldown) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		AppStorage.layout().partyBDeallocateCooldown = _cooldown;
 		emit PartyBDeallocateCooldownUpdated(_cooldown);
 	}
 
+	/**
+	 * @notice Sets the force cancel open intent timeout
+	 * @param _timeout The force cancel open intent timeout
+	 */
 	function setForceCancelOpenIntentTimeout(uint256 _timeout) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		AppStorage.layout().forceCancelOpenIntentTimeout = _timeout;
 		emit ForceCancelOpenIntentTimeoutUpdated(_timeout);
 	}
 
+	/**
+	 * @notice Sets the force cancel close intent timeout
+	 * @param _timeout The force cancel close intent timeout
+	 */
 	function setForceCancelCloseIntentTimeout(uint256 _timeout) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		AppStorage.layout().forceCancelCloseIntentTimeout = _timeout;
 		emit ForceCancelCloseIntentTimeoutUpdated(_timeout);
 	}
 
+	/**
+	 * @notice Sets the settlement price signature valid time
+	 * @param _time The settlement price signature valid time
+	 */
 	function setSettlementPriceSigValidTime(uint256 _time) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		AppStorage.layout().settlementPriceSigValidTime = _time;
 		emit SettlementPriceSigValidTimeUpdated(_time);
 	}
 
+	/**
+	 * @notice Sets the party B exclusive window
+	 * @param _window The party B exclusive window
+	 */
 	function setPartyBExclusiveWindow(uint256 _window) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		AppStorage.layout().partyBExclusiveWindow = _window;
 		emit PartyBExclusiveWindowUpdated(_window);
 	}
 
+	/**
+	 * @notice Sets the unbinding cooldown
+	 * @param _cooldown The unbinding cooldown
+	 */
 	function setUnbindingCooldown(uint256 _cooldown) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		CounterPartyRelationsStorage.layout().unbindingCooldown = _cooldown;
 		emit UnbindingCooldownUpdated(_cooldown);
 	}
 
+	/**
+	 * @notice Sets the deactive instant action mode cooldown
+	 * @param _cooldown The deactive instant action mode cooldown
+	 */
 	function setDeactiveInstantActionModeCooldown(uint256 _cooldown) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		CounterPartyRelationsStorage.layout().deactiveInstantActionModeCooldown = _cooldown;
 		emit DeactiveInstantActionModeCooldownUpdated(_cooldown);
@@ -234,6 +267,11 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	//                          RELEASE INTERVAL MANAGEMENT
 	// ═══════════════════════════════════════════════════════════════════════════
 
+	/**
+	 * @notice Sets the release interval for PartyB
+	 * @param _partyB The PartyB address
+	 * @param _interval The release interval
+	 */
 	function setPartyBReleaseInterval(address _partyB, uint256 _interval) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		if (_partyB == address(0)) revert ValidationErrors.ZeroAddress("partyB");
 		AccountStorage.layout().hasConfiguredInterval[_partyB] = true;
@@ -241,11 +279,19 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		emit PartyBReleaseIntervalUpdated(_partyB, _interval);
 	}
 
+	/**
+	 * @notice Sets the default release interval
+	 * @param _interval The default release interval
+	 */
 	function setDefaultReleaseInterval(uint256 _interval) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		AccountStorage.layout().defaultReleaseInterval = _interval;
 		emit DefaultReleaseIntervalUpdated(_interval);
 	}
 
+	/**
+	 * @notice Sets the maximum number of connected counter parties
+	 * @param _max The maximum number of connected counter parties
+	 */
 	function setMaxConnectedCounterParties(uint256 _max) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		if (_max == 0) revert ValidationErrors.ZeroAmount();
 		AccountStorage.layout().maxConnectedCounterParties = _max;
@@ -256,23 +302,43 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	//                          FEE MANAGEMENT
 	// ═══════════════════════════════════════════════════════════════════════════
 
+	/**
+	 * @notice Sets the default fee collector
+	 * @param _collector The default fee collector
+	 */
 	function setDefaultFeeCollector(address _collector) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		if (_collector == address(0)) revert ValidationErrors.ZeroAddress("collector");
 		FeeManagementStorage.layout().defaultFeeCollector = _collector;
 		emit DefaultFeeCollectorUpdated(_collector);
 	}
 
+	/**
+	 * @notice Sets the affiliate status
+	 * @param _affiliate The affiliate address
+	 * @param _status The affiliate status
+	 */
 	function setAffiliateStatus(address _affiliate, bool _status) external onlyRole(LibAccessibility.AFFILIATE_MANAGER_ROLE) {
 		FeeManagementStorage.layout().affiliateStatus[_affiliate] = _status;
 		emit AffiliateStatusUpdated(_affiliate, _status);
 	}
 
+	/**
+	 * @notice Sets the affiliate fees collector
+	 * @param _affiliate The affiliate address
+	 * @param _collector The affiliate fees collector
+	 */
 	function setAffiliateFeesCollector(address _affiliate, address _collector) external onlyRole(LibAccessibility.AFFILIATE_MANAGER_ROLE) {
 		if (_collector == address(0)) revert ValidationErrors.ZeroAddress("collector");
 		FeeManagementStorage.layout().affiliateFeeCollector[_affiliate] = _collector;
 		emit AffiliateFeesCollectorUpdated(_affiliate, _collector);
 	}
 
+	/**
+	 * @notice Sets the affiliate fees
+	 * @param _affiliate The affiliate address
+	 * @param _symbolId The symbol ID
+	 * @param fee The affiliate fees
+	 */
 	function setAffiliateFees(address _affiliate, uint256 _symbolId, uint256 fee) external {
 		if (_affiliate == address(0)) revert ValidationErrors.ZeroAddress("affiliate");
 		if (_affiliate != msg.sender && !LibAccessibility.hasRole(msg.sender, LibAccessibility.AFFILIATE_FEE_MANAGER_ROLE))
@@ -309,6 +375,11 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	//                          PARTY B CONFIGURATION
 	// ═══════════════════════════════════════════════════════════════════════════
 
+	/**
+	 * @notice Sets the PartyB configuration
+	 * @param _partyB The PartyB address
+	 * @param _config The PartyB configuration
+	 */
 	function setPartyBConfig(address _partyB, PartyBConfig calldata _config) external onlyRole(LibAccessibility.PARTY_B_MANAGER_ROLE) {
 		if (_partyB == address(0)) revert ValidationErrors.ZeroAddress("partyB");
 		if (_config.isActive && _config.oracleId == 0) revert ValidationErrors.OracleNotFound(_config.oracleId);
@@ -323,102 +394,164 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	// ═══════════════════════════════════════════════════════════════════════════
 
 	// Pause functions
+
+	/**
+	 * @notice Pauses the global state
+	 */
 	function pauseGlobal() external onlyRole(LibAccessibility.PAUSER_ROLE) {
 		StateControlStorage.layout().globalPaused = true;
 		emit GlobalPaused();
 	}
 
+	/**
+	 * @notice Pauses the deposit operations
+	 */
 	function pauseDeposit() external onlyRole(LibAccessibility.PAUSER_ROLE) {
 		StateControlStorage.layout().depositingPaused = true;
 		emit DepositPaused();
 	}
 
+	/**
+	 * @notice Pauses the withdraw operations
+	 */
 	function pauseWithdraw() external onlyRole(LibAccessibility.PAUSER_ROLE) {
 		StateControlStorage.layout().withdrawingPaused = true;
 		emit WithdrawPaused();
 	}
 
+	/**
+	 * @notice Pauses the internal transfer operations
+	 */
 	function pauseInternalTransfer() external onlyRole(LibAccessibility.PAUSER_ROLE) {
 		StateControlStorage.layout().internalTransferPaused = true;
 		emit InternalTransferPaused();
 	}
 
+	/**
+	 * @notice Pauses the bridge operations
+	 */
 	function pauseBridge() external onlyRole(LibAccessibility.PAUSER_ROLE) {
 		StateControlStorage.layout().bridgePaused = true;
 		emit BridgePaused();
 	}
 
+	/**
+	 * @notice Pauses the bridge withdraw operations
+	 */
 	function pauseBridgeWithdraw() external onlyRole(LibAccessibility.PAUSER_ROLE) {
 		StateControlStorage.layout().bridgeWithdrawPaused = true;
 		emit BridgeWithdrawPaused();
 	}
 
+	/**
+	 * @notice Pauses the PartyB actions
+	 */
 	function pausePartyBActions() external onlyRole(LibAccessibility.PAUSER_ROLE) {
 		StateControlStorage.layout().partyBActionsPaused = true;
 		emit PartyBActionsPaused();
 	}
 
+	/**
+	 * @notice Pauses the PartyA actions
+	 */
 	function pausePartyAActions() external onlyRole(LibAccessibility.PAUSER_ROLE) {
 		StateControlStorage.layout().partyAActionsPaused = true;
 		emit PartyAActionsPaused();
 	}
 
+	/**
+	 * @notice Pauses the liquidating operations
+	 */
 	function pauseLiquidating() external onlyRole(LibAccessibility.PAUSER_ROLE) {
 		StateControlStorage.layout().liquidatingPaused = true;
 		emit LiquidatingPaused();
 	}
 
+	/**
+	 * @notice Pauses the third party actions
+	 */
 	function pauseThirdPartyActions() external onlyRole(LibAccessibility.PAUSER_ROLE) {
 		StateControlStorage.layout().thirdPartyActionsPaused = true;
 		emit ThirdPartyActionsPaused();
 	}
 
 	// Unpause functions
+
+	/**
+	 * @notice Unpauses the global state
+	 */
 	function unpauseGlobal() external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
 		StateControlStorage.layout().globalPaused = false;
 		emit GlobalUnpaused();
 	}
 
+	/**
+	 * @notice Unpauses the deposit operations
+	 */
 	function unpauseDeposit() external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
 		StateControlStorage.layout().depositingPaused = false;
 		emit DepositUnpaused();
 	}
 
+	/**
+	 * @notice Unpauses the withdraw operations
+	 */
 	function unpauseWithdraw() external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
 		StateControlStorage.layout().withdrawingPaused = false;
 		emit WithdrawUnpaused();
 	}
 
+	/**
+	 * @notice Unpauses the internal transfer operations
+	 */
 	function unpauseInternalTransfer() external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
 		StateControlStorage.layout().internalTransferPaused = false;
 		emit InternalTransferUnpaused();
 	}
 
+	/**
+	 * @notice Unpauses the bridge operations
+	 */
 	function unpauseBridge() external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
 		StateControlStorage.layout().bridgePaused = false;
 		emit BridgeUnpaused();
 	}
 
+	/**
+	 * @notice Unpauses the bridge withdraw operations
+	 */
 	function unpauseBridgeWithdraw() external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
 		StateControlStorage.layout().bridgeWithdrawPaused = false;
 		emit BridgeWithdrawUnpaused();
 	}
 
+	/**
+	 * @notice Unpauses the PartyB actions
+	 */
 	function unpausePartyBActions() external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
 		StateControlStorage.layout().partyBActionsPaused = false;
 		emit PartyBActionsUnpaused();
 	}
 
+	/**
+	 * @notice Unpauses the PartyA actions
+	 */
 	function unpausePartyAActions() external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
 		StateControlStorage.layout().partyAActionsPaused = false;
 		emit PartyAActionsUnpaused();
 	}
 
+	/**
+	 * @notice Unpauses the liquidating operations
+	 */
 	function unpauseLiquidating() external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
 		StateControlStorage.layout().liquidatingPaused = false;
 		emit LiquidatingUnpaused();
 	}
 
+	/**
+	 * @notice Unpauses the third party actions
+	 */
 	function unpauseThirdPartyActions() external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
 		StateControlStorage.layout().thirdPartyActionsPaused = false;
 		emit ThirdPartyActionsUnpaused();
@@ -428,22 +561,36 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	//                          EMERGENCY CONTROLS
 	// ═══════════════════════════════════════════════════════════════════════════
 
+	/**
+	 * @notice Activates the emergency mode
+	 */
 	function activeEmergencyMode() external onlyRole(LibAccessibility.PAUSER_ROLE) {
 		StateControlStorage.layout().emergencyMode = true;
 		emit EmergencyModeActivated();
 	}
 
+	/**
+	 * @notice Deactivates the emergency mode
+	 */
 	function deactiveEmergencyMode() external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
 		StateControlStorage.layout().emergencyMode = false;
 		emit EmergencyModeDeactivated();
 	}
 
+	/**
+	 * @notice Activates the PartyB emergency mode
+	 * @param _partyB The PartyB address
+	 */
 	function activePartyBEmergencyMode(address _partyB) external onlyRole(LibAccessibility.PAUSER_ROLE) {
 		if (_partyB == address(0)) revert ValidationErrors.ZeroAddress("partyB");
 		StateControlStorage.layout().partyBEmergencyMode[_partyB] = true;
 		emit PartyBEmergencyModeActivated(_partyB);
 	}
 
+	/**
+	 * @notice Deactivates the PartyB emergency mode
+	 * @param _partyB The PartyB address
+	 */
 	function deactivePartyBEmergencyMode(address _partyB) external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
 		if (_partyB == address(0)) revert ValidationErrors.ZeroAddress("partyB");
 		StateControlStorage.layout().partyBEmergencyMode[_partyB] = false;
@@ -454,12 +601,22 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	//                          SUSPENSION CONTROLS
 	// ═══════════════════════════════════════════════════════════════════════════
 
+	/**
+	 * @notice Suspends an address
+	 * @param _user The user address
+	 * @param _status The suspension status
+	 */
 	function suspendAddress(address _user, bool _status) external onlyRole(LibAccessibility.SUSPENDER_ROLE) {
 		if (_user == address(0)) revert ValidationErrors.ZeroAddress("user");
 		StateControlStorage.layout().suspendedAddresses[_user] = _status;
 		emit AddressSuspended(_user, _status);
 	}
 
+	/**
+	 * @notice Suspends a withdrawal
+	 * @param _withdrawId The withdrawal ID
+	 * @param _status The suspension status
+	 */
 	function suspendWithdrawal(uint256 _withdrawId, bool _status) external onlyRole(LibAccessibility.SUSPENDER_ROLE) {
 		if (_withdrawId == 0) revert ValidationErrors.ZeroAmount();
 		StateControlStorage.layout().suspendedWithdrawal[_withdrawId] = _status;
@@ -486,6 +643,11 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	//                                  ORACLE
 	// ═══════════════════════════════════════════════════════════════════════════
 
+	/**
+	 * @notice Adds an oracle
+	 * @param _name The oracle name
+	 * @param _contractAddress The oracle contract address
+	 */
 	function addOracle(string calldata _name, address _contractAddress) external onlyRole(LibAccessibility.ORACLE_MANAGER_ROLE) {
 		if (_contractAddress == address(0)) revert ValidationErrors.ZeroAddress("contractAddress");
 		if (bytes(_name).length == 0) revert ValidationErrors.EmptyField("name");
@@ -512,6 +674,10 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		emit OracleUpdated(_oracleId, oldAddress, _contractAddress);
 	}
 
+	/**
+	 * @notice Sets the price oracle address
+	 * @param _oracle The price oracle address
+	 */
 	function setPriceOracleAddress(address _oracle) external onlyRole(LibAccessibility.ORACLE_MANAGER_ROLE) {
 		if (_oracle == address(0)) revert ValidationErrors.ZeroAddress("oracle");
 		AppStorage.layout().priceOracleAddress = _oracle;
@@ -522,6 +688,15 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	//                          SYMBOL MANAGEMENT
 	// ═══════════════════════════════════════════════════════════════════════════
 
+	/**
+	 * @notice Adds a symbol
+	 * @param _name The symbol name
+	 * @param _optionType The option type
+	 * @param _oracleId The oracle ID
+	 * @param _collateral The collateral address
+	 * @param _tradingFee The trading fee
+	 * @param _symbolType The symbol type
+	 */
 	function addSymbol(
 		string memory _name,
 		OptionType _optionType,
@@ -550,6 +725,10 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		emit SymbolAdded(s.lastSymbolId, _name, _optionType, _oracleId, _collateral, _tradingFee, _symbolType);
 	}
 
+	/**
+	 * @notice Adds multiple symbols
+	 * @param symbols Array of symbols
+	 */
 	function addSymbols(Symbol[] memory symbols) external onlyRole(LibAccessibility.SYMBOL_MANAGER_ROLE) {
 		for (uint8 i = 0; i < symbols.length; i++) {
 			Symbol memory s = symbols[i];
@@ -557,6 +736,11 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		}
 	}
 
+	/**
+	 * @notice Sets the trading fee for a symbol
+	 * @param _symbolId The symbol ID
+	 * @param _fee The trading fee
+	 */
 	function setSymbolTradingFee(uint256 _symbolId, uint256 _fee) external onlyRole(LibAccessibility.SYMBOL_MANAGER_ROLE) {
 		SymbolStorage.Layout storage s = SymbolStorage.layout();
 		if (s.lastSymbolId < _symbolId) revert ValidationErrors.InvalidSymbol(_symbolId);
@@ -565,6 +749,11 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		emit SymbolTradingFeeUpdated(_symbolId, s.symbols[_symbolId].tradingFee, _fee);
 	}
 
+	/**
+	 * @notice Sets the validation state for a symbol
+	 * @param _symbolId The symbol ID
+	 * @param _state The validation state
+	 */
 	function setSymbolValidationState(uint256 _symbolId, bool _state) external onlyRole(LibAccessibility.SYMBOL_MANAGER_ROLE) {
 		SymbolStorage.Layout storage s = SymbolStorage.layout();
 		if (s.lastSymbolId < _symbolId) revert ValidationErrors.InvalidSymbol(_symbolId);
@@ -596,6 +785,10 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	//                          SIGNATURE MANAGEMENT
 	// ═══════════════════════════════════════════════════════════════════════════
 
+	/**
+	 * @notice Sets the signature verifier
+	 * @param _verifier The signature verifier address
+	 */
 	function setSignatureVerifier(address _verifier) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		if (_verifier == address(0)) revert ValidationErrors.ZeroAddress("verifier");
 		AppStorage.layout().signatureVerifier = _verifier;
@@ -606,6 +799,11 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	//                          BRIDGE MANAGEMENT
 	// ═══════════════════════════════════════════════════════════════════════════
 
+	/**
+	 * @notice Sets the bridge validation state
+	 * @param _bridgeAddress The bridge address
+	 * @param _state The validation state
+	 */
 	function setBridgeValidationState(address _bridgeAddress, bool _state) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		if (_bridgeAddress == address(0)) revert ValidationErrors.ZeroAddress("bridgeAddress");
 		BridgeStorage.Layout storage s = BridgeStorage.layout();
@@ -614,6 +812,10 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		emit SetBridgeValidationState(_bridgeAddress, _state);
 	}
 
+	/**
+	 * @notice Sets the invalid bridged amounts pool
+	 * @param _pool The invalid bridged amounts pool address
+	 */
 	function setInvalidBridgedAmountsPool(address _pool) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		if (_pool == address(0)) revert ValidationErrors.ZeroAddress("pool");
 		BridgeStorage.Layout storage s = BridgeStorage.layout();
@@ -626,6 +828,10 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	//                          INSTANT LAYER MANAGEMENT
 	// ═══════════════════════════════════════════════════════════════════════════
 
+	/**
+	 * @notice Sets the call from instant layer
+	 * @param _callFromInstantLayer The call from instant layer
+	 */
 	function setCallFromInstantLayer(bool _callFromInstantLayer) external onlyRole(LibAccessibility.INSTANT_LAYER_ROLE) {
 		AppStorage.layout().callFromInstantLayer = _callFromInstantLayer;
 	}

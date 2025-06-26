@@ -184,4 +184,22 @@ interface IViewFacet {
 	function getPartyATradeIndex(uint256 tradeId) external view returns (uint256);
 	function getPartyBTradeIndex(uint256 tradeId) external view returns (uint256);
 	function getLastTradeId() external view returns (uint256);
+
+	// ════════════════════════════════════════════════════════════════════════════
+	//                          OPEN INTENT VIEWS
+	// ════════════════════════════════════════════════════════════════════════════
+
+	function getOpenIntentTradingFee(uint256 intentId) external view returns (uint256);
+	function getOpenIntentAffiliateFee(uint256 intentId) external view returns (uint256);
+	function getOpenIntentPremium(uint256 intentId) external view returns (uint256);
+
+	// ════════════════════════════════════════════════════════════════════════════
+	//                          Trade VIEWS
+	// ════════════════════════════════════════════════════════════════════════════
+
+	function getTradeOpenAmount(uint256 tradeId) external view returns (uint256);
+	function getTradeAvailableAmountToClose(uint256 tradeId) external view returns (uint256);
+	function getTradePnl(uint256 tradeId, uint256 currentPrice, uint256 filledAmount) external view returns (uint256);
+	function getTradePremium(uint256 tradeId) external view returns (uint256);
+	function getTradeExerciseFee(uint256 tradeId, uint256 settlementPrice, uint256 pnl) external view returns (uint256);
 }
