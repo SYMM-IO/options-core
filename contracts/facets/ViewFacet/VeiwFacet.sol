@@ -5,6 +5,8 @@
 pragma solidity >=0.8.19;
 
 import { LibParty } from "../../libraries/models/LibParty.sol";
+import { LibOpenIntentOps } from "../../libraries/models/LibOpenIntent.sol";
+import { LibTradeOps } from "../../libraries/models/LibTrade.sol";
 
 import { TradeStorage } from "../../storages/TradeStorage.sol";
 import { BridgeStorage } from "../../storages/BridgeStorage.sol";
@@ -38,6 +40,8 @@ import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableS
 contract ViewFacet is IViewFacet {
 	using EnumerableSet for EnumerableSet.AddressSet;
 	using LibParty for address;
+	using LibOpenIntentOps for OpenIntent;
+	using LibTradeOps for Trade;
 
 	// ════════════════════════════════════════════════════════════════════════════
 	//                           ACCOUNT STORAGE VIEWS
@@ -986,5 +990,89 @@ contract ViewFacet is IViewFacet {
 	 */
 	function getLastTradeId() external view returns (uint256) {
 		return TradeStorage.layout().lastTradeId;
+	}
+
+	// ════════════════════════════════════════════════════════════════════════════
+	//                          OPEN INTENT VIEWS
+	// ════════════════════════════════════════════════════════════════════════════
+
+	/**
+	 * @notice Gets the trading fee for an open intent
+	 * @param intentId The intent ID
+	 * @return The trading fee
+	 */
+	function getOpenIntentTradingFee(uint256 intentId) external view returns (uint256) {
+		return OpenIntentStorage.layout().openIntents[intentId].getTradingFee();
+	}
+
+	/**
+	 * @notice Gets the affiliate fee for an open intent
+	 * @param intentId The intent ID
+	 * @return The affiliate fee
+	 */
+	function getOpenIntentAffiliateFee(uint256 intentId) external view returns (uint256) {
+		return OpenIntentStorage.layout().openIntents[intentId].getAffiliateFee();
+	}
+
+	/**
+	 * @notice Gets the premium for an open intent
+	 * @param intentId The intent ID
+	 * @return The premium
+	 */
+	function getOpenIntentPremium(uint256 intentId) external view returns (uint256) {
+		return OpenIntentStorage.layout().openIntents[intentId].getPremium();
+	}
+
+	// ════════════════════════════════════════════════════════════════════════════
+	//                          Trade VIEWS
+	// ════════════════════════════════════════════════════════════════════════════
+
+	/**
+	 * @notice Gets the open amount for a trade
+	 * @param tradeId The trade ID
+	 * @return The open amount
+	 */
+	function getTradeOpenAmount(uint256 tradeId) external view returns (uint256) {
+		return TradeStorage.layout().trades[tradeId].getOpenAmount();
+	}
+
+	/**
+	 * @notice Gets the available amount to close for a trade
+	 * @param tradeId The trade ID
+	 * @return The available amount to close
+	 */
+	function getTradeAvailableAmountToClose(uint256 tradeId) external view returns (uint256) {
+		return TradeStorage.layout().trades[tradeId].getAvailableAmountToClose();
+	}
+
+	/**
+	 * @notice Gets the PNL for a trade
+	 * @param tradeId The trade ID
+	 * @param currentPrice The current price
+	 * @param filledAmount The filled amount
+	 * @return The PNL
+	 */
+	function getTradePnl(uint256 tradeId, uint256 currentPrice, uint256 filledAmount) external view returns (uint256) {
+		return TradeStorage.layout().trades[tradeId].getPnl(currentPrice, filledAmount);
+	}
+
+	/**
+	 * @notice Gets the premium for a trade
+	 * @param tradeId The trade ID
+	 * @return The premium
+	 */
+	function getTradePremium(uint256 tradeId) external view returns (uint256) {
+		return TradeStorage.layout().trades[tradeId].getPremium();
+	}
+
+	/**
+	 * @notice Gets the exercise fee for a trade
+	 * @param tradeId The trade ID
+	 * @param settlementPrice The settlement price
+	 * @param pnl The PNL
+	 * @return The exercise fee
+	 */
+	function getTradeExerciseFee(uint256 tradeId, uint256 settlementPrice, uint256 pnl) external view returns (uint256) {
+		return TradeStorage.layout().trades[tradeId].getExerciseFee(settlementPrice, pnl);
 	}
 }

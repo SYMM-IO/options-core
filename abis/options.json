@@ -6501,6 +6501,63 @@
         "inputs": [
             {
                 "internalType": "uint256",
+                "name": "intentId",
+                "type": "uint256"
+            }
+        ],
+        "name": "getOpenIntentAffiliateFee",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "intentId",
+                "type": "uint256"
+            }
+        ],
+        "name": "getOpenIntentPremium",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "intentId",
+                "type": "uint256"
+            }
+        ],
+        "name": "getOpenIntentTradingFee",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
                 "name": "oracleId",
                 "type": "uint256"
             }
@@ -7157,6 +7214,54 @@
         "type": "function"
     },
     {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "tradeId",
+                "type": "uint256"
+            }
+        ],
+        "name": "getTradeAvailableAmountToClose",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "tradeId",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "settlementPrice",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "pnl",
+                "type": "uint256"
+            }
+        ],
+        "name": "getTradeExerciseFee",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
         "inputs": [],
         "name": "getTradeNftAddress",
         "outputs": [
@@ -7164,6 +7269,73 @@
                 "internalType": "address",
                 "name": "",
                 "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "tradeId",
+                "type": "uint256"
+            }
+        ],
+        "name": "getTradeOpenAmount",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "tradeId",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "currentPrice",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "filledAmount",
+                "type": "uint256"
+            }
+        ],
+        "name": "getTradePnl",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "tradeId",
+                "type": "uint256"
+            }
+        ],
+        "name": "getTradePremium",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
             }
         ],
         "stateMutability": "view",
