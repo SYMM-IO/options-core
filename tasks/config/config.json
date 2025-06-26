@@ -23,7 +23,7 @@
 	},
 
 	"emergencyMode": false,
-	"partyBEmergencyStatus": [{ "address": "", "active": true }],
+	"partyBEmergencyMode": [{ "address": "", "active": true }],
 
 	"priceOracleAddress": "",
 	"defaultFeeCollector": "",

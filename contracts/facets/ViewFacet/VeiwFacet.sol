@@ -775,7 +775,7 @@ contract ViewFacet is IViewFacet {
 	 * @return Whether PartyB is in emergency mode
 	 */
 	function isPartyBInEmergencyMode(address partyB) external view returns (bool) {
-		return StateControlStorage.layout().partyBEmergencyStatus[partyB];
+		return StateControlStorage.layout().partyBEmergencyMode[partyB];
 	}
 
 	/**

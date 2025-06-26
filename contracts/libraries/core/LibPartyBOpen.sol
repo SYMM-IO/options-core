@@ -43,7 +43,7 @@ library LibPartyBOpen {
 
 		if (stateControlLayout.suspendedAddresses[intent.partyA]) revert SystemErrors.UserSuspended(intent.partyA);
 		if (stateControlLayout.suspendedAddresses[sender]) revert SystemErrors.UserSuspended(sender);
-		if (stateControlLayout.partyBEmergencyStatus[sender]) revert SystemErrors.PartyBInEmergencyMode(sender);
+		if (stateControlLayout.partyBEmergencyMode[sender]) revert SystemErrors.PartyBInEmergencyMode(sender);
 
 		if (stateControlLayout.emergencyMode) revert SystemErrors.SystemInEmergencyMode();
 
@@ -138,7 +138,7 @@ library LibPartyBOpen {
 		if (sender != intent.partyB) revert ValidationErrors.UnauthorizedSender(sender, intent.partyB);
 		if (stateControlLayout.suspendedAddresses[intent.partyA]) revert SystemErrors.UserSuspended(intent.partyA);
 		if (stateControlLayout.suspendedAddresses[intent.partyB]) revert SystemErrors.UserSuspended(intent.partyB);
-		if (stateControlLayout.partyBEmergencyStatus[intent.partyB]) revert SystemErrors.PartyBInEmergencyMode(intent.partyB);
+		if (stateControlLayout.partyBEmergencyMode[intent.partyB]) revert SystemErrors.PartyBInEmergencyMode(intent.partyB);
 		if (stateControlLayout.emergencyMode) revert SystemErrors.SystemInEmergencyMode();
 		if (!symbol.isValid) revert ValidationErrors.InvalidSymbol(intent.tradeAgreements.symbolId);
 		if (intent.status != OpenIntentStatus.LOCKED && intent.status != OpenIntentStatus.CANCEL_PENDING) {

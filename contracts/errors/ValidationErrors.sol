@@ -9,6 +9,7 @@ library ValidationErrors {
 	error ZeroAddress(string property);
 	error ZeroAmount();
 	error EmptyList();
+	error EmptyField(string property);
 	error LowDeadline(uint256 deadline, uint256 current);
 	error CooldownNotOver(string cooldown, uint256 currentTime, uint256 requiredTime);
 	error InvalidState(string property, uint8 currentStatus, uint8[] requiredStatus);

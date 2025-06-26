@@ -31,11 +31,12 @@ interface IControlEvents {
 	event WithdrawUnpaused();
 	event PartyBActionsUnpaused();
 	event PartyAActionsUnpaused();
+	event ThirdPartyActionsUnpaused();
 	event LiquidatingUnpaused();
 	event EmergencyModeActivated();
 	event EmergencyModeDeactivated();
-	event PartyBEmergencyStatusActivated(address indexed partyB);
-	event PartyBEmergencyStatusDeactivated(address indexed partyB);
+	event PartyBEmergencyModeActivated(address indexed partyB);
+	event PartyBEmergencyModeDeactivated(address indexed partyB);
 	event AffiliateStatusUpdated(address indexed affiliate, bool status);
 	event AffiliateFeesCollectorUpdated(address indexed affiliate, address indexed feeCollector);
 	event AffiliateFeesUpdated(address indexed affiliate, uint256 indexed symbolId, uint256 fee);
@@ -53,8 +54,6 @@ interface IControlEvents {
 	event AddressSuspended(address indexed user, bool status);
 	event WithdrawalSuspended(uint256 indexed withdrawId, bool status);
 	event DeactiveInstantActionModeCooldownUpdated(uint256 cooldown);
-	event InstantActionsModeUpdated(address indexed user, bool status);
-	event InstantActionsModeDeactivateTimeUpdated(address indexed user, uint256 time);
 	event OracleAdded(uint256 indexed oracleId, string name, address contractAddress);
 	event SymbolAdded(
 		uint256 indexed symbolId,
@@ -70,8 +69,16 @@ interface IControlEvents {
 	event PriceOracleAddressUpdated(address indexed oracle);
 	event SetManualSync(address user, bool isManual);
 	event SignatureVerifierUpdated(address indexed verifier);
-	event SetBridgeStatus(address indexed _bridgeAddress, bool _isActive);
+	event SetBridgeValidationState(address indexed _bridgeAddress, bool _state);
 	event SetInvalidBridgedAmountsPool(address indexed _pool);
 	event SetBridgeWithdrawPausedStatus(bool _pause);
 	event UserWindowUpdated(address indexed user, address indexed collateral, address indexed counterParty);
+	event PartyBExclusiveWindowUpdated(uint256 window);
+	event InternalTransferPaused();
+	event InternalTransferUnpaused();
+	event BridgePaused();
+	event BridgeUnpaused();
+	event BridgeWithdrawPaused();
+	event BridgeWithdrawUnpaused();
+	event OracleUpdated(uint256 indexed oracleId, address oldAddress, address newAddress);
 }
