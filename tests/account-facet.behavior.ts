@@ -60,7 +60,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 		it("Should deposit successfully", async function () {
 			expect(await context.accountFacet.connect(partyA1.getSigner).deposit(await context.collateral.getAddress(), "100")).to.be.not.reverted
 
-			expect(await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateral.getAddress())).to.be.equal("200")
+			expect(await context.viewFacet.getIsolatedBalance(partyA1.getSigner, await context.collateral.getAddress())).to.be.equal("200")
 			expect(await context.collateral.balanceOf(partyA1.getSigner)).to.be.equal("300")
 		})
 	})
@@ -110,8 +110,8 @@ export function shouldBehaveLikeAccountFacet(): void {
 					.depositFor(await context.collateral.getAddress(), await context.signers.partyA2.getAddress(), "100"),
 			).to.be.not.reverted
 
-			expect(await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateral.getAddress())).to.be.equal("100")
-			expect(await context.viewFacet.getIsolatedLockedBalance(await context.signers.partyA2.getAddress(), await context.collateral.getAddress())).to.be.equal("100")
+			expect(await context.viewFacet.getIsolatedBalance(partyA1.getSigner, await context.collateral.getAddress())).to.be.equal("100")
+			expect(await context.viewFacet.getIsolatedBalance(await context.signers.partyA2.getAddress(), await context.collateral.getAddress())).to.be.equal("100")
 			expect(await context.collateral.balanceOf(partyA1.getSigner)).to.be.equal("300")
 		})
 	})
@@ -189,8 +189,8 @@ export function shouldBehaveLikeAccountFacet(): void {
 					.initiateWithdraw(await context.collateral.getAddress(), "100", await context.signers.partyA2.getAddress()),
 			).to.be.not.reverted
 
-			expect(await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateral.getAddress())).to.be.equal("0")
-			expect(await context.viewFacet.getIsolatedLockedBalance(await context.signers.partyA2.getAddress(), await context.collateral.getAddress())).to.be.equal("0")
+			expect(await context.viewFacet.getIsolatedBalance(partyA1.getSigner, await context.collateral.getAddress())).to.be.equal("0")
+			expect(await context.viewFacet.getIsolatedBalance(await context.signers.partyA2.getAddress(), await context.collateral.getAddress())).to.be.equal("0")
 			expect(await context.collateral.balanceOf(partyA1.getSigner)).to.be.equal("400")
 
 			const withdraw = await context.viewFacet.getWithdrawal(1)
@@ -241,7 +241,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 			await context.controlFacet.suspendAddress(await context.signers.partyA2.getAddress(), true)
 			await expect(context.accountFacet.connect(partyA1.getSigner).completeWithdraw(1)).to.be.revertedWithCustomError(
 				context.accountFacet,
-				"ReceiverSuspended",
+				"UserSuspended",
 			)
 		})
 
@@ -314,7 +314,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 			await context.controlFacet.suspendAddress(await context.signers.partyA2.getAddress(), true)
 			await expect(context.accountFacet.connect(partyA1.getSigner).cancelWithdraw(1)).to.be.revertedWithCustomError(
 				context.accountFacet,
-				"ReceiverSuspended",
+				"UserSuspended",
 			)
 		})
 
@@ -347,7 +347,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 			const withdraw = await context.viewFacet.getWithdrawal(1)
 
 			expect(withdraw.status).to.be.equal(WithdrawStatus.CANCELED)
-			expect(await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, context.collateral)).to.be.equal(100)
+			expect(await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral)).to.be.equal(100)
 		})
 	})
 
@@ -393,7 +393,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 		})
 
 		it("Should active instance mode successfully", async function () {
-			expect(await context.counterPartyRelation.connect(partyA1.getSigner).activateInstantActionMode()).to.be.not.reverted
+			await expect(context.counterPartyRelation.connect(partyA1.getSigner).activateInstantActionMode()).to.be.not.reverted
 			expect(await context.viewFacet.isInstantActionsModeActive(partyA1.getSigner)).to.be.equal(true)
 		})
 	})
