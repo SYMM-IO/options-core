@@ -6,7 +6,6 @@ export const FacetNames = [
 	"ControlFacet",
 	"BridgeFacet",
 	"ClearingHouseFacet",
-	"InstantLayer",
 	"PartyAOpenFacet",
 	"PartyACloseFacet",
 	"PartyBCloseFacet",
