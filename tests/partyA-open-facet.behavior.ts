@@ -109,7 +109,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.expirationTimestamp(latestBlock + 120)
 				.exerciseFee({ cap: e(2), rate: "0" })
 				.build()
-			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "ExerciseFeeCapExceeded")
+			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "InvalidExerciseFee")
 		})
 
 		it("Should fail when instance mode is active", async function () {
@@ -164,7 +164,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.build()
 
 			await context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(partyB1.getSigner)
-			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "UserBoundToAnotherPartyB")
+			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "BoundedToAnotherPartyB")
 		})
 
 		it("Should fail when sender in whitelisted partyB", async function () {
