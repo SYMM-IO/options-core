@@ -10,7 +10,13 @@ import { LibParty } from "./LibParty.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 
 import { MarginType } from "../../types/BaseTypes.sol";
-import { ScheduledReleaseBalance, ScheduledReleaseEntry, IncreaseBalanceReason, DecreaseBalanceReason, CrossEntry } from "../../types/BalanceTypes.sol";
+import {
+	ScheduledReleaseBalance,
+	ScheduledReleaseEntry,
+	IncreaseBalanceReason,
+	DecreaseBalanceReason,
+	CrossEntry
+} from "../../types/BalanceTypes.sol";
 
 import { ValidationErrors } from "../../errors/ValidationErrors.sol";
 import { BalanceErrors } from "../../errors/BalanceErrors.sol";
@@ -133,7 +139,8 @@ library ScheduledReleaseBalanceOps {
 	/// @notice Debit funds from `isolatedBalance` only.
 	function isolatedSub(ScheduledReleaseBalance storage self, uint256 value, DecreaseBalanceReason reason) internal {
 		if (value == 0) return;
-		if (self.isolatedBalance < value) revert BalanceErrors.InsufficientIntBalance(self.user, self.collateral, value, int256(self.isolatedBalance));
+		if (self.isolatedBalance < value)
+			revert BalanceErrors.InsufficientIntBalance(self.user, self.collateral, value, int256(self.isolatedBalance));
 		self.isolatedBalance -= value;
 		emit DecreaseBalance(self.user, address(0), self.collateral, value, reason, MarginType.ISOLATED);
 	}
@@ -168,9 +175,9 @@ library ScheduledReleaseBalanceOps {
 			return isolatedSub(self, value, reason);
 		}
 
-		int256 baseBalance = int256(self.isolatedBalance);
-		int256 totalBalance = baseBalance + int256(entry.transitioning) + int256(entry.scheduled); // won't overflow in real world
-		if (totalBalance < int256(value)) revert BalanceErrors.InsufficientIntBalance(self.user, self.collateral, value, totalBalance);
+		uint256 baseBalance = self.isolatedBalance;
+		uint256 totalBalance = baseBalance + entry.transitioning + entry.scheduled;
+		if (totalBalance < value) revert BalanceErrors.InsufficientBalance(self.user, self.collateral, value, totalBalance);
 
 		uint256 remaining = value;
 
@@ -405,7 +412,8 @@ library ScheduledReleaseBalanceOps {
 	}
 
 	function isolatedLock(ScheduledReleaseBalance storage self, uint256 amount) internal {
-		if (self.isolatedBalance < amount) revert BalanceErrors.InsufficientIntBalance(self.user, self.collateral, amount, int256(self.isolatedBalance));
+		if (self.isolatedBalance < amount)
+			revert BalanceErrors.InsufficientIntBalance(self.user, self.collateral, amount, int256(self.isolatedBalance));
 		self.isolatedLockedBalance += amount;
 	}
 
