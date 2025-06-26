@@ -445,7 +445,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			for (let a of activeIntentIds) {
 				expect(a).not.to.be.equal(1)
 			}
-			expect(await context.viewFacet.getActiveOpenIntentsIndex(1)).to.be.equal(0)
+			expect(await context.viewFacet.getPartyAOpenIntentIndex(1)).to.be.equal(0)
 		})
 
 		it("Should be change state to cancel_pending when locked", async function () {
@@ -473,7 +473,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 		it("should fail on premium not locked on partyA isolatedLocked balance when margin is isolated", async function () {
 			// take snapshot
 			let isolatedLocketBalance = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateral.getAddress())
-			let isolatedBalance = await context.viewFacet.balanceOf(partyA1.getSigner, context.collateral.getAddress())
+			let isolatedBalance = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral.getAddress())
 
 			const latestBlock = await getLatestBlockTime()
 			const request = openIntentRequestBuilder()
@@ -498,7 +498,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			// partyA pays the fees in so:
 			// we are in isolated margin
 			let isolatedLocketBalance2 = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateral.getAddress())
-			let isolatedBalance2 = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress())
+			let isolatedBalance2 = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, await context.collateral.getAddress())
 
 			console.log("PartyA isolatedBalance:", isolatedBalance)
 			console.log("PartyA Balance equals: isolatedBalance - isolatedLocketBalance2:", isolatedBalance - isolatedLocketBalance2)
@@ -526,8 +526,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 			// take snapshot
 			const symbol: SymbolStruct = await context.viewFacet.getSymbol(1)
-			const crossBalance: CrossEntryStruct = await context.viewFacet.crossBalance(partyA1.getSigner, symbol.collateral, partyB1.getSigner)
-			const isolatedBalance = await context.viewFacet.balanceOf(partyA1.getSigner, symbol.collateral)
+			const crossBalance: CrossEntryStruct = await context.viewFacet.getCrossBalance(partyA1.getSigner, symbol.collateral, partyB1.getSigner)
+			const isolatedBalance = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, symbol.collateral)
 
 			expect(await partyA1.sendOpenIntent(request)).to.be.not.reverted
 
@@ -536,8 +536,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			const premiumFromView = await context.viewFacet.getPremium(intent.id)
 
 			// take second snapshot
-			const isolatedBalance2 = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress())
-			const crossBalance2: CrossEntryStruct = await context.viewFacet.crossBalance(partyA1.getSigner, symbol.collateral, partyB1.getSigner)
+			const isolatedBalance2 = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, await context.collateral.getAddress())
+			const crossBalance2: CrossEntryStruct = await context.viewFacet.getCrossBalance(partyA1.getSigner, symbol.collateral, partyB1.getSigner)
 
 			console.log("Before sending Intent:")
 			console.log("PartyA cross locked balance:", crossBalance.locked)
@@ -552,7 +552,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 		it("should fail on Fee not paid accordingly when only one partyB whitelisted ", async function () {
 			// take snapshot from Fee token
-			let isolatedBalance = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateralNL.getAddress())
+			let isolatedBalance = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, await context.collateralNL.getAddress())
 
 			const latestBlock = await getLatestBlockTime()
 			const request = openIntentRequestBuilder()
@@ -573,13 +573,14 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 			expect(await partyA1.sendOpenIntent(request)).not.to.reverted
 			const intent = await context.viewFacet.getOpenIntent(1)
+			const symbol: SymbolStruct = await context.viewFacet.getSymbol(intent.tradeAgreements.symbolId)
 			const premiumFromView = await context.viewFacet.getPremium(1)
-			const affiliateFeeFromView = await context.viewFacet.getAffiliateFee(1)
+			const affiliateFeeFromView = await context.viewFacet.getAffiliateFee(intent.affiliate, symbol.symbolId)
 			const tradingFeeFromView = await context.viewFacet.getTradingFee(1)
 
 			// partyA pays the fees in so:
 			// we are in isolated margin
-			let isolatedBalance2 = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateralNL.getAddress())
+			let isolatedBalance2 = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, await context.collateralNL.getAddress())
 
 			console.log("PartyA isolated balance:", isolatedBalance)
 			console.log("PartyA isolated balance after sending Intent:", isolatedBalance2)
@@ -594,7 +595,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 		it("should fail on Fee not paid accordingly when more than one partyB whitelisted ", async function () {
 			// take snapshot
-			let isolatedBalance = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateralNL.getAddress())
+			let isolatedBalance = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, await context.collateralNL.getAddress())
 
 			const latestBlock = await getLatestBlockTime()
 			const request = openIntentRequestBuilder()
@@ -618,12 +619,12 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 			// partyA pays the fees in so:
 			// we are in isolated margin
-			let isolatedBalance2 = await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateralNL.getAddress())
+			let isolatedBalance2 = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, await context.collateralNL.getAddress())
 			const symbol: SymbolStruct = await context.viewFacet.getSymbol(intent.tradeAgreements.symbolId)
 			const feeTokenPriceInCollateral = await context.oracle.getPrice(context.collateral, symbol.collateral)
 			const tradingFeeFromView = await context.viewFacet.getTradingFee(1)
 			const premiumFromView = await context.viewFacet.getPremium(1)
-			const affiliateFeeFromView = await context.viewFacet.getAffiliateFee(1)
+			const affiliateFeeFromView = await context.viewFacet.getAffiliateFee(intent.affiliate, symbol.symbolId)
 
 			console.log("PartyA isolated balance:", isolatedBalance)
 			console.log("PartyA isolated balance After sending Intent:", isolatedBalance2)
@@ -639,7 +640,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 		it("should fail on Fee not paid accordingly when in Cross mode", async function () {
 			// take snapshot from Fee token
-			let crossBalance: CrossEntryStruct = await context.viewFacet.crossBalance(
+			let crossBalance: CrossEntryStruct = await context.viewFacet.getCrossBalance(
 				partyA1.getSigner,
 				await context.collateralNL.getAddress(),
 				partyB1.getSigner,
@@ -664,13 +665,14 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 			expect(await partyA1.sendOpenIntent(request)).not.to.reverted
 			const intent = await context.viewFacet.getOpenIntent(1)
+			const symbol: SymbolStruct = await context.viewFacet.getSymbol(intent.tradeAgreements.symbolId)
 			const premiumFromView = await context.viewFacet.getPremium(1)
-			const affiliateFeeFromView = await context.viewFacet.getAffiliateFee(1)
+			const affiliateFeeFromView = await context.viewFacet.getAffiliateFee(intent.affiliate, symbol.symbolId)
 			const tradingFeeFromView = await context.viewFacet.getTradingFee(1)
 
 			// partyA pays the fees in so:
 			// we are in isolated margin
-			let crossBalance2: CrossEntryStruct = await context.viewFacet.crossBalance(
+			let crossBalance2: CrossEntryStruct = await context.viewFacet.getCrossBalance(
 				partyA1.getSigner,
 				await context.collateralNL.getAddress(),
 				partyB1.getSigner,
