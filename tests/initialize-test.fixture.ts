@@ -31,15 +31,15 @@ export async function initializeTestFixture(): Promise<RunContext> {
 	)
 	
 	const instantLayer: InstantLayer = await run("deploy:InstantLayer", {
-		symmioaddress: context.signers.symmioAddress,
-		admin:context.signers.admin
+		symmioaddress: context.signers.symmioAddress.address,
+		admin:context.signers.admin.address
 	})
 	const multiAccount: MultiAccount = await run("deploy:multiAccount",{
-		symmioaddress: context.signers.symmioAddress,
-		admin:context.signers.admin
+		symmioaddress: context.signers.symmioAddress.address,
+		admin:context.signers.admin.address
 	})
-	context.multiAccount = await ethers.getContractAt("MultiAccount",multiAccount)
-	context.instantLayer = await ethers.getContractAt("InstantLayer",instantLayer)
+	context.multiAccount = await ethers.getContractAt("MultiAccount",await multiAccount.getAddress())	
+	context.instantLayer = await ethers.getContractAt("InstantLayer",await instantLayer.getAddress())
 	
 
 	await context.controlFacet.connect(context.signers.admin).setAdmin(context.signers.admin.getAddress())

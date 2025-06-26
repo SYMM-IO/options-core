@@ -16,4 +16,6 @@ task("deploy:InstantLayer", "Deploys the InstantLayer contract")
 
 		await instantLayer.deploymentTransaction()!.wait()
 		console.log("InstantLayer deployed:",await instantLayer.getAddress())
+
+		return instantLayer
 	})
