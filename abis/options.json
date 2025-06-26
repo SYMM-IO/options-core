@@ -171,6 +171,17 @@
         "type": "error"
     },
     {
+        "inputs": [
+            {
+                "internalType": "string",
+                "name": "property",
+                "type": "string"
+            }
+        ],
+        "name": "EmptyField",
+        "type": "error"
+    },
+    {
         "inputs": [],
         "name": "EmptyList",
         "type": "error"
@@ -1599,6 +1610,30 @@
     },
     {
         "anonymous": false,
+        "inputs": [],
+        "name": "BridgePaused",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [],
+        "name": "BridgeUnpaused",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [],
+        "name": "BridgeWithdrawPaused",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [],
+        "name": "BridgeWithdrawUnpaused",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
         "inputs": [
             {
                 "indexed": false,
@@ -2557,44 +2592,6 @@
         "anonymous": false,
         "inputs": [
             {
-                "indexed": true,
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            },
-            {
-                "indexed": false,
-                "internalType": "uint256",
-                "name": "time",
-                "type": "uint256"
-            }
-        ],
-        "name": "InstantActionsModeDeactivateTimeUpdated",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            {
-                "indexed": true,
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            },
-            {
-                "indexed": false,
-                "internalType": "bool",
-                "name": "status",
-                "type": "bool"
-            }
-        ],
-        "name": "InstantActionsModeUpdated",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            {
                 "indexed": false,
                 "internalType": "address",
                 "name": "sender",
@@ -2632,6 +2629,18 @@
             }
         ],
         "name": "InternalTransfer",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [],
+        "name": "InternalTransferPaused",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [],
+        "name": "InternalTransferUnpaused",
         "type": "event"
     },
     {
@@ -2888,6 +2897,31 @@
         "inputs": [
             {
                 "indexed": true,
+                "internalType": "uint256",
+                "name": "oracleId",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "oldAddress",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "newAddress",
+                "type": "address"
+            }
+        ],
+        "name": "OracleUpdated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
                 "internalType": "address",
                 "name": "currentOwner",
                 "type": "address"
@@ -3022,7 +3056,7 @@
                 "type": "address"
             }
         ],
-        "name": "PartyBEmergencyStatusActivated",
+        "name": "PartyBEmergencyModeActivated",
         "type": "event"
     },
     {
@@ -3035,7 +3069,20 @@
                 "type": "address"
             }
         ],
-        "name": "PartyBEmergencyStatusDeactivated",
+        "name": "PartyBEmergencyModeDeactivated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "window",
+                "type": "uint256"
+            }
+        ],
+        "name": "PartyBExclusiveWindowUpdated",
         "type": "event"
     },
     {
@@ -3251,11 +3298,11 @@
             {
                 "indexed": false,
                 "internalType": "bool",
-                "name": "_isActive",
+                "name": "_state",
                 "type": "bool"
             }
         ],
-        "name": "SetBridgeStatus",
+        "name": "SetBridgeValidationState",
         "type": "event"
     },
     {
@@ -3483,6 +3530,12 @@
         "anonymous": false,
         "inputs": [],
         "name": "ThirdPartyActionsPaused",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [],
+        "name": "ThirdPartyActionsUnpaused",
         "type": "event"
     },
     {
@@ -3756,6 +3809,19 @@
     },
     {
         "inputs": [],
+        "name": "AFFILIATE_FEE_MANAGER_ROLE",
+        "outputs": [
+            {
+                "internalType": "bytes32",
+                "name": "",
+                "type": "bytes32"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
         "name": "AFFILIATE_MANAGER_ROLE",
         "outputs": [
             {
@@ -3822,6 +3888,19 @@
     {
         "inputs": [],
         "name": "INSTANT_LAYER_ROLE",
+        "outputs": [
+            {
+                "internalType": "bytes32",
+                "name": "",
+                "type": "bytes32"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "ORACLE_MANAGER_ROLE",
         "outputs": [
             {
                 "internalType": "bytes32",
@@ -3984,7 +4063,7 @@
                 "type": "address"
             }
         ],
-        "name": "activePartyBEmergencyStatus",
+        "name": "activePartyBEmergencyMode",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -4173,6 +4252,65 @@
         "inputs": [
             {
                 "internalType": "address",
+                "name": "_affiliate",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256[]",
+                "name": "_symbolIds",
+                "type": "uint256[]"
+            },
+            {
+                "internalType": "uint256[]",
+                "name": "_fees",
+                "type": "uint256[]"
+            }
+        ],
+        "name": "batchSetAffiliateFees",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256[]",
+                "name": "symbolIds",
+                "type": "uint256[]"
+            },
+            {
+                "internalType": "bool[]",
+                "name": "statuses",
+                "type": "bool[]"
+            }
+        ],
+        "name": "batchSetSymbolValidationState",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address[]",
+                "name": "users",
+                "type": "address[]"
+            },
+            {
+                "internalType": "bool[]",
+                "name": "statuses",
+                "type": "bool[]"
+            }
+        ],
+        "name": "batchSuspendAddresses",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
                 "name": "partyB",
                 "type": "address"
             }
@@ -4350,7 +4488,7 @@
                 "type": "address"
             }
         ],
-        "name": "deactivePartyBEmergencyStatus",
+        "name": "deactivePartyBEmergencyMode",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -7692,6 +7830,20 @@
     },
     {
         "inputs": [],
+        "name": "pauseBridge",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "pauseBridgeWithdraw",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
         "name": "pauseDeposit",
         "outputs": [],
         "stateMutability": "nonpayable",
@@ -7700,6 +7852,13 @@
     {
         "inputs": [],
         "name": "pauseGlobal",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "pauseInternalTransfer",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -7772,7 +7931,7 @@
                 "type": "address"
             }
         ],
-        "name": "removeFromWhiteListCollateral",
+        "name": "removeCollateralFromWhitelist",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -8011,7 +8170,7 @@
             },
             {
                 "internalType": "address",
-                "name": "_feeCollector",
+                "name": "_collector",
                 "type": "address"
             }
         ],
@@ -8065,24 +8224,11 @@
             },
             {
                 "internalType": "bool",
-                "name": "_isActive",
+                "name": "_state",
                 "type": "bool"
             }
         ],
-        "name": "setBridgeStatus",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "bool",
-                "name": "_pause",
-                "type": "bool"
-            }
-        ],
-        "name": "setBridgeWithdrawPausedStatus",
+        "name": "setBridgeValidationState",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -8234,65 +8380,11 @@
         "inputs": [
             {
                 "internalType": "address",
-                "name": "_user",
-                "type": "address"
-            },
-            {
-                "internalType": "bool",
-                "name": "_status",
-                "type": "bool"
-            }
-        ],
-        "name": "setInstantActionsMode",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "_user",
-                "type": "address"
-            },
-            {
-                "internalType": "uint256",
-                "name": "_time",
-                "type": "uint256"
-            }
-        ],
-        "name": "setInstantActionsModeDeactivateTime",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
                 "name": "_pool",
                 "type": "address"
             }
         ],
         "name": "setInvalidBridgedAmountsPool",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            },
-            {
-                "internalType": "bool",
-                "name": "isManual",
-                "type": "bool"
-            }
-        ],
-        "name": "setManualSync",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -8405,6 +8497,19 @@
     {
         "inputs": [
             {
+                "internalType": "uint256",
+                "name": "_window",
+                "type": "uint256"
+            }
+        ],
+        "name": "setPartyBExclusiveWindow",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
                 "internalType": "address",
                 "name": "_partyB",
                 "type": "address"
@@ -8467,12 +8572,12 @@
                 "type": "uint256"
             },
             {
-                "internalType": "bool",
-                "name": "_status",
-                "type": "bool"
+                "internalType": "uint256",
+                "name": "_fee",
+                "type": "uint256"
             }
         ],
-        "name": "setSymbolState",
+        "name": "setSymbolTradingFee",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -8485,12 +8590,60 @@
                 "type": "uint256"
             },
             {
+                "internalType": "bool",
+                "name": "_state",
+                "type": "bool"
+            }
+        ],
+        "name": "setSymbolValidationState",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
                 "internalType": "uint256",
-                "name": "_fee",
+                "name": "_partyADeallocateCooldown",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "_partyBDeallocateCooldown",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "_forceCancelOpenTimeout",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "_forceCancelCloseTimeout",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "_settlementPriceSigValidTime",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "_partyBExclusiveWindow",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "_unbindingCooldown",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "_deactiveInstantActionModeCooldown",
                 "type": "uint256"
             }
         ],
-        "name": "setSymbolTradingFee",
+        "name": "setTimingParameters",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -8746,29 +8899,6 @@
     {
         "inputs": [
             {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            },
-            {
-                "internalType": "address",
-                "name": "collateral",
-                "type": "address"
-            },
-            {
-                "internalType": "address",
-                "name": "counterParty",
-                "type": "address"
-            }
-        ],
-        "name": "syncTradeWindow",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
                 "internalType": "uint256",
                 "name": "intentId",
                 "type": "uint256"
@@ -8987,6 +9117,20 @@
     },
     {
         "inputs": [],
+        "name": "unpauseBridge",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "unpauseBridgeWithdraw",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
         "name": "unpauseDeposit",
         "outputs": [],
         "stateMutability": "nonpayable",
@@ -8995,6 +9139,13 @@
     {
         "inputs": [],
         "name": "unpauseGlobal",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "unpauseInternalTransfer",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -9030,6 +9181,24 @@
     {
         "inputs": [],
         "name": "unpauseWithdraw",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "_oracleId",
+                "type": "uint256"
+            },
+            {
+                "internalType": "address",
+                "name": "_contractAddress",
+                "type": "address"
+            }
+        ],
+        "name": "updateOracle",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
