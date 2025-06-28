@@ -587,7 +587,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			const intent = await context.viewFacet.getOpenIntent(1)
 			const symbol: SymbolStruct = await context.viewFacet.getSymbol(intent.tradeAgreements.symbolId)
 			const premiumFromView = await context.viewFacet.getOpenIntentPremium(1)
-			const affiliateFeeFromView = await context.viewFacet.getAffiliateFee(intent.affiliate, symbol.symbolId)
+			const affiliateFeeFromView = await context.viewFacet.getOpenIntentAffiliateFee(intent.id)
 			const tradingFeeFromView = await context.viewFacet.getOpenIntentTradingFee(1)
 
 			// partyA pays the fees in so:
@@ -636,7 +636,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			const feeTokenPriceInCollateral = await context.oracle.getPrice(context.collateral, symbol.collateral)
 			const tradingFeeFromView = await context.viewFacet.getOpenIntentTradingFee(1)
 			const premiumFromView = await context.viewFacet.getOpenIntentPremium(1)
-			const affiliateFeeFromView = await context.viewFacet.getAffiliateFee(intent.affiliate, symbol.symbolId)
+			const affiliateFeeFromView = await context.viewFacet.getOpenIntentAffiliateFee(intent.id)
 
 			console.log("PartyA isolated balance:", isolatedBalance)
 			console.log("PartyA isolated balance After sending Intent:", isolatedBalance2)
@@ -679,7 +679,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			const intent = await context.viewFacet.getOpenIntent(1)
 			const symbol: SymbolStruct = await context.viewFacet.getSymbol(intent.tradeAgreements.symbolId)
 			const premiumFromView = await context.viewFacet.getOpenIntentPremium(1)
-			const affiliateFeeFromView = await context.viewFacet.getAffiliateFee(intent.affiliate, symbol.symbolId)
+			const affiliateFeeFromView = await context.viewFacet.getOpenIntentAffiliateFee(intent.id)
 			const tradingFeeFromView = await context.viewFacet.getOpenIntentTradingFee(1)
 
 			// partyA pays the fees in so:
