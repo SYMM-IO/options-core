@@ -43,6 +43,7 @@ interface IControlEvents {
 	event RoleUpdated(address indexed account, bytes32 indexed role, bool granted);
 	event PartyBConfigUpdated(address indexed partyB, PartyBConfig config);
 	event SettlementPriceSigValidTimeUpdated(uint256 time);
+	event UpnlSigValidTimeUpdated(uint256 time);
 	event LiquidationDetailUpdated(address indexed partyB, address indexed collateral);
 	event SymbolPriceUpdated(address indexed partyB, uint256 indexed symbolId);
 	event RoleGranted(bytes32 indexed role, address indexed user);

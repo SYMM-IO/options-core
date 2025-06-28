@@ -3741,6 +3741,19 @@
         "anonymous": false,
         "inputs": [
             {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "time",
+                "type": "uint256"
+            }
+        ],
+        "name": "UpnlSigValidTimeUpdated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
                 "indexed": true,
                 "internalType": "address",
                 "name": "user",
@@ -7386,6 +7399,19 @@
         "type": "function"
     },
     {
+        "inputs": [],
+        "name": "getUpnlSigValidTime",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
         "inputs": [
             {
                 "internalType": "address",
@@ -8813,6 +8839,11 @@
             },
             {
                 "internalType": "uint256",
+                "name": "_upnlSigValidTime",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
                 "name": "_partyBExclusiveWindow",
                 "type": "uint256"
             },
@@ -8985,6 +9016,19 @@
             }
         ],
         "name": "setUnbindingCooldown",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "_time",
+                "type": "uint256"
+            }
+        ],
+        "name": "setUpnlSigValidTime",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"

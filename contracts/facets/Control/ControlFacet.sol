@@ -152,6 +152,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	 * @param _forceCancelOpenTimeout Timeout for force canceling open intents
 	 * @param _forceCancelCloseTimeout Timeout for force canceling close intents
 	 * @param _settlementPriceSigValidTime Valid time for settlement price signatures
+	 * @param _upnlSigValidTime Valid time for upnl signatures
 	 * @param _partyBExclusiveWindow Exclusive window for PartyB actions
 	 * @param _unbindingCooldown Cooldown for unbinding
 	 * @param _deactiveInstantActionModeCooldown Cooldown for deactivating instant action mode
@@ -162,6 +163,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		uint256 _forceCancelOpenTimeout,
 		uint256 _forceCancelCloseTimeout,
 		uint256 _settlementPriceSigValidTime,
+		uint256 _upnlSigValidTime,
 		uint256 _partyBExclusiveWindow,
 		uint256 _unbindingCooldown,
 		uint256 _deactiveInstantActionModeCooldown
@@ -174,6 +176,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		appLayout.forceCancelOpenIntentTimeout = _forceCancelOpenTimeout;
 		appLayout.forceCancelCloseIntentTimeout = _forceCancelCloseTimeout;
 		appLayout.settlementPriceSigValidTime = _settlementPriceSigValidTime;
+		appLayout.upnlSigValidTime = _upnlSigValidTime;
 		appLayout.partyBExclusiveWindow = _partyBExclusiveWindow;
 
 		counterPartyRelationsLayout.unbindingCooldown = _unbindingCooldown;
@@ -184,6 +187,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		emit ForceCancelOpenIntentTimeoutUpdated(_forceCancelOpenTimeout);
 		emit ForceCancelCloseIntentTimeoutUpdated(_forceCancelCloseTimeout);
 		emit SettlementPriceSigValidTimeUpdated(_settlementPriceSigValidTime);
+		emit UpnlSigValidTimeUpdated(_upnlSigValidTime);
 		emit PartyBExclusiveWindowUpdated(_partyBExclusiveWindow);
 		emit UnbindingCooldownUpdated(_unbindingCooldown);
 		emit DeactiveInstantActionModeCooldownUpdated(_deactiveInstantActionModeCooldown);
@@ -234,6 +238,15 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	function setSettlementPriceSigValidTime(uint256 _time) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		AppStorage.layout().settlementPriceSigValidTime = _time;
 		emit SettlementPriceSigValidTimeUpdated(_time);
+	}
+
+	/**
+	 * @notice Sets the upnl signature valid time
+	 * @param _time The upnl signature valid time
+	 */
+	function setUpnlSigValidTime(uint256 _time) external onlyRole(LibAccessibility.SETTER_ROLE) {
+		AppStorage.layout().upnlSigValidTime = _time;
+		emit UpnlSigValidTimeUpdated(_time);
 	}
 
 	/**

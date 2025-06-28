@@ -309,6 +309,14 @@ contract ViewFacet is IViewFacet {
 	}
 
 	/**
+	 * @notice Gets the upnl signature valid time
+	 * @return The valid time period in seconds
+	 */
+	function getUpnlSigValidTime() external view returns (uint256) {
+		return AppStorage.layout().upnlSigValidTime;
+	}
+
+	/**
 	 * @notice Gets PartyB configuration
 	 * @param partyB The PartyB address
 	 * @return The PartyB configuration

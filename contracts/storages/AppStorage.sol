@@ -34,6 +34,7 @@ library AppStorage {
 		uint256 forceCancelCloseIntentTimeout;
 		uint256 partyBExclusiveWindow;
 		uint256 settlementPriceSigValidTime;
+		uint256 upnlSigValidTime;
 		/////////////////////////////////////////////////////////
 		mapping(address => PartyBConfig) partyBConfigs;
 		/////////////////////////////////////////////////////////
