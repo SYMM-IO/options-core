@@ -579,10 +579,11 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.tradeSide(TradeSide.BUY)
 				.build()
 
-			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, 1, e(23))
-			await context.controlFacet.setSymbolTradingFee(1, e(17))
+			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, 1, e(20))
+			await context.controlFacet.setSymbolTradingFee(1, e(10))
 
 			await expect( partyA1.sendOpenIntent(request)).not.to.reverted
+			
 			const intent = await context.viewFacet.getOpenIntent(1)
 			const symbol: SymbolStruct = await context.viewFacet.getSymbol(intent.tradeAgreements.symbolId)
 			const premiumFromView = await context.viewFacet.getOpenIntentPremium(1)
