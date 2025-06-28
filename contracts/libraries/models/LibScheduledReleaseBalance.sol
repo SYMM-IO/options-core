@@ -139,8 +139,7 @@ library ScheduledReleaseBalanceOps {
 	/// @notice Debit funds from `isolatedBalance` only.
 	function isolatedSub(ScheduledReleaseBalance storage self, uint256 value, DecreaseBalanceReason reason) internal {
 		if (value == 0) return;
-		if (self.isolatedBalance < value)
-			revert BalanceErrors.InsufficientIntBalance(self.user, self.collateral, value, int256(self.isolatedBalance));
+		if (self.isolatedBalance < value) revert BalanceErrors.InsufficientBalance(self.user, self.collateral, value, self.isolatedBalance);
 		self.isolatedBalance -= value;
 		emit DecreaseBalance(self.user, address(0), self.collateral, value, reason, MarginType.ISOLATED);
 	}
