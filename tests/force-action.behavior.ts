@@ -75,7 +75,7 @@ export function shouldBehaveLikeForceActionFacet(): void {
 			})
 
 			it("Should force cancel open intent successfuly", async function () {
-				await time.increase(await context.viewFacet.forceCancelOpenIntentTimeout())
+				await time.increase(await context.viewFacet.getForceCancelOpenIntentTimeout())
 				await expect(partyA1.forceCancelOpenIntent("1")).to.not.reverted
 
 				const { statusModifyTimestamp, status } = await context.viewFacet.getOpenIntent(1)

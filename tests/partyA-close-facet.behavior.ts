@@ -90,14 +90,15 @@ export function shouldBehaveLikePartyACloseFacet(): void {
 		})
 
 		it("Should fail when instant action mode is active", async function () {
-			await context.controlFacet.setInstantActionsMode(partyA1.getSigner, true)
+			await partyA1.bindToCounterParty(partyB1.getSigner)
+			await partyA1.activateInstantActionMode()
 			const latestBlock = await getLatestBlockTime()
 			await expect(partyA1.sendCloseIntent(1, 7, 100, latestBlock + 140)).to.be.revertedWithCustomError(context.partyACloseFacet, "InstantModeActive")
 		})
 
 		it("Should fail when msgSender not be PartyA", async function () {
 			const latestBlock = await getLatestBlockTime()
-			await expect(partyA2.sendCloseIntent(1, 7, 100, latestBlock + 140)).to.be.revertedWithCustomError(context.partyACloseFacet, "NotPartyAOfTrade")
+			await expect(partyA2.sendCloseIntent(1, 7, 100, latestBlock + 140)).to.be.revertedWithCustomError(context.partyACloseFacet, "UnauthorizedSender")
 		})
 
 		it("Should fail when Trade in Invalid state", async function () {

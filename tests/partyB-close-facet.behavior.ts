@@ -152,8 +152,8 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 
 			const quantity = BigInt(closeIntent.quantity) / 2n
 			const price = 8
-			const partyBBalanceBefore = await context.viewFacet.balanceOf(partyB1.getSigner, context.collateral)
-			const partyABalanceBefore = await context.viewFacet.balanceOf(partyA1.getSigner, context.collateral)
+			const partyBBalanceBefore = await context.viewFacet.getIsolatedBalance(partyB1.getSigner, context.collateral)
+			const partyABalanceBefore = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral)
 			await expect(partyB1.fillCloseIntent(closeIntentID, quantity, price)).to.not.be.reverted
 
 			// 2 intervals pass for schedules
@@ -165,9 +165,9 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 
 			const trade: TradeStruct = await context.viewFacet.getTrade(closeIntent.tradeId)
 			const symbol: SymbolStruct = await context.viewFacet.getSymbol(trade.tradeAgreements.symbolId)
-			const partyBBalanceAfter = await context.viewFacet.balanceOf(trade.partyB, symbol.collateral)
+			const partyBBalanceAfter = await context.viewFacet.getIsolatedBalance(trade.partyB, symbol.collateral)
 			const premium = await context.viewFacet.getTradePremium(closeIntent.tradeId)
-			let partyABalanceAfter = await context.viewFacet.balanceOf(partyA1.getSigner, context.collateral)
+			let partyABalanceAfter = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral)
 			let scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA1.getSigner, context.collateral, partyB1.getSigner)
 			const pnl = (BigInt(price) * BigInt(2n * quantity)) / BigInt(1000000000000000000)
 			const finalPremium = (premium * 2n * quantity) / BigInt(trade.tradeAgreements.quantity)
@@ -208,7 +208,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			await network.provider.send("evm_mine")
 
 			await context.controlFacet.syncTradeWindow(partyA1.getSigner, context.collateral, partyB1.getSigner)
-			partyABalanceAfter = await context.viewFacet.balanceOf(partyA1.getSigner, context.collateral)
+			partyABalanceAfter = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral)
 			scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA1.getSigner, context.collateral, partyB1.getSigner)
 
 			console.log("PartyA balance after window sync:", partyABalanceAfter)

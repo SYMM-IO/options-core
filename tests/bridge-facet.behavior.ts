@@ -28,7 +28,7 @@ export function shouldBehaveLikeBridgeFacet(): void {
 		await partyA1.setBalances(context.collateral, e(100000), e(100000))
 		await partyA1.setBalances(context.collateralNL, e(100000), e(100000))
 
-		await context.controlFacet.setBridgeStatus(context.signers.bridge1, true)
+		await context.controlFacet.setBridgeValidationState(context.signers.bridge1, true)
 
 		await context.controlFacet.setPartyADeallocateCooldown(ONE_DAY_IN_SEC)
 	})

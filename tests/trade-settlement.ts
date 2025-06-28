@@ -63,7 +63,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			const ID = 1
 			const priceSig: SettlementPriceSigStruct = settlementSigBuilder().build()
-			await expect(context.tradeSettlementFacet.executeTrade(ID, priceSig)).to.be.revertedWithCustomError(
+			await expect(context.tradeSettlementFacet.executeTrades([ID], priceSig)).to.be.revertedWithCustomError(
 				context.tradeSettlementFacet,
 				"GlobalPaused",
 			)
@@ -89,9 +89,9 @@ export function shouldBehaveLikeSettlementFacet(): void {
 				},
 			}
 
-			await expect(context.tradeSettlementFacet.executeTrade(ID, priceSig)).to.be.revertedWithCustomError(
+			await expect(context.tradeSettlementFacet.executeTrades([ID], priceSig)).to.be.revertedWithCustomError(
 				context.tradeSettlementFacet,
-				"PartyBActionsPaused",
+				"ThirdPartyActionsPaused",
 			)
 		})
 
@@ -114,7 +114,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 				},
 			}
 
-			await expect(context.tradeSettlementFacet.executeTrade(ID, priceSig)).to.be.revertedWithCustomError(
+			await expect(context.tradeSettlementFacet.executeTrades([ID], priceSig)).to.be.revertedWithCustomError(
 				context.tradeSettlementFacet,
 				"MismatchedSymbolId",
 			)
@@ -164,7 +164,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 				},
 			}
 
-			await expect(context.tradeSettlementFacet.executeTrade(tradeID, priceSig)).to.be.revertedWithCustomError(
+			await expect(context.tradeSettlementFacet.executeTrades([tradeID], priceSig)).to.be.revertedWithCustomError(
 				context.tradeSettlementFacet,
 				"InvalidState",
 			)
@@ -189,8 +189,8 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			await partyA2.sendOpenIntent(request)
 			await partyB2.lockOpenIntent(intentID)
-			const intentPremium = await context.viewFacet.getPremium(intentID)
-			const partyBBalanceBeforeSettlementInit = await context.viewFacet.balanceOf(partyB2.getSigner, await context.collateral.getAddress())
+			const intentPremium = await context.viewFacet.getOpenIntentPremium(intentID)
+			const partyBBalanceBeforeSettlementInit = await context.viewFacet.getIsolatedBalance(partyB2.getSigner, await context.collateral.getAddress())
 			await partyB2.fillOpenIntent(intentID, e(100), 7)
 
 			const closePrice = 7
@@ -217,7 +217,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 				},
 			}
 
-			const openAmount = await context.viewFacet.getOpenAmount(tradeID)
+			const openAmount = await context.viewFacet.getTradeOpenAmount(tradeID)
 			let tradePremium = await context.viewFacet.getTradePremium(tradeID)
 			const trade: TradeStruct = await context.viewFacet.getTrade(tradeID)
 
@@ -227,18 +227,18 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			let tradePremiumSettled = (tradePremium * openAmount) / BigInt(trade.tradeAgreements.quantity)
 
-			const pnl = await context.viewFacet.getPnL(tradeID, priceSig.settlementPrice, openAmount)
-			const exerciseFee = await context.viewFacet.getExerciseFee(tradeID, priceSig.settlementPrice, pnl)
+			const pnl = await context.viewFacet.getTradePnl(tradeID, priceSig.settlementPrice, openAmount)
+			const exerciseFee = await context.viewFacet.getTradeExerciseFee(tradeID, priceSig.settlementPrice, pnl)
 
 			const amountToTransfer = ethers.parseUnits((pnl - exerciseFee).toString(), 18) / BigInt(priceSig.collateralPrice)
 
 			const optionSymbol = await context.viewFacet.getSymbol(trade.tradeAgreements.symbolId)
-			const partyABalanceBeforeSettlement = await context.viewFacet.balanceOf(partyA2.getSigner, await context.collateral.getAddress())
+			const partyABalanceBeforeSettlement = await context.viewFacet.getIsolatedBalance(partyA2.getSigner, await context.collateral.getAddress())
 			const partyABalanceBeforeSettlementLocked = await context.viewFacet.getIsolatedLockedBalance(
 				partyA2.getSigner,
 				await context.collateral.getAddress(),
 			)
-			const partyBBalanceBeforeSettlement = await context.viewFacet.balanceOf(partyB2.getSigner, await context.collateral.getAddress())
+			const partyBBalanceBeforeSettlement = await context.viewFacet.getIsolatedBalance(partyB2.getSigner, await context.collateral.getAddress())
 			const partyBBalanceBeforeSettlementLocked = await context.viewFacet.getIsolatedLockedBalance(
 				partyB2.getSigner,
 				await context.collateral.getAddress(),
@@ -267,11 +267,11 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			console.log("Trade PartyB collateral balance Init:", partyBBalanceBeforeSettlementInit)
 			console.log("Trade PartyB collateral balance After Fill:", partyBBalanceBeforeSettlement)
 
-			await expect(context.tradeSettlementFacet.executeTrade(tradeID, priceSig)).to.be.not.reverted
+			await expect(context.tradeSettlementFacet.executeTrades([tradeID], priceSig)).to.be.not.reverted
 
 			// instant premium add to partyB balance
-			const partyBBalanceAfterSettlement = await context.viewFacet.balanceOf(partyB2.getSigner, context.collateral)
-			const partyABalanceAfterSettlement = await context.viewFacet.balanceOf(partyA2.getSigner, context.collateral)
+			const partyBBalanceAfterSettlement = await context.viewFacet.getIsolatedBalance(partyB2.getSigner, context.collateral)
+			const partyABalanceAfterSettlement = await context.viewFacet.getIsolatedBalance(partyA2.getSigner, context.collateral)
 
 			scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA2.getSigner, optionSymbol.collateral, partyB2.getSigner)
 
@@ -282,8 +282,8 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			await context.controlFacet.syncTradeWindow(partyA2.getSigner, context.collateral, partyB2.getSigner)
 
-			const partyABalanceAfterSettlementSchedule = await context.viewFacet.balanceOf(partyA2.getSigner, context.collateral)
-			const partyBBalanceAfterSettlementSchedule = await context.viewFacet.balanceOf(partyB2.getSigner, context.collateral)
+			const partyABalanceAfterSettlementSchedule = await context.viewFacet.getIsolatedBalance(partyA2.getSigner, context.collateral)
+			const partyBBalanceAfterSettlementSchedule = await context.viewFacet.getIsolatedBalance(partyB2.getSigner, context.collateral)
 
 			console.log("Trade PartyB collateral balance After Settlement:", partyBBalanceAfterSettlement)
 			console.log("Trade PartyB collateral balance After Settlement schedule:", partyBBalanceAfterSettlementSchedule)
@@ -322,7 +322,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 				},
 			}
 
-			await expect(context.tradeSettlementFacet.executeTrade(ID, priceSig)).to.be.not.reverted
+			await expect(context.tradeSettlementFacet.executeTrades([ID], priceSig)).to.be.not.reverted
 		})
 
 		it("Should be when executed with option carried out as 'Isolated Sell' ", async () => {
@@ -342,7 +342,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 					nonce: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
 				},
 			}
-			await expect(context.tradeSettlementFacet.executeTrade(ID, priceSig)).to.be.not.reverted
+			await expect(context.tradeSettlementFacet.executeTrades([ID], priceSig)).to.be.not.reverted
 		})
 
 		it("Should be when executed with option carried out as 'Cross Sell' ", async () => {
@@ -363,7 +363,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 				},
 			}
 
-			expect(await context.tradeSettlementFacet.executeTrade(ID, priceSig)).to.be.not.reverted
+			expect(await context.tradeSettlementFacet.executeTrades([ID], priceSig)).to.be.not.reverted
 		})
 	})
 }
