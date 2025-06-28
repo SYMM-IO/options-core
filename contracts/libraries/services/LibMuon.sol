@@ -56,27 +56,38 @@ library LibMuon {
 		IMuonOracle(oracle.contractAddress).verifyTSSAndGW(hash, sig.reqId, sig.sigs, sig.gatewaySignature);
 	}
 
-	function verifyUpnlSig(UpnlSig memory upnlSig, address collateral, address party, address counterParty, uint256 oracleId) internal view {
+	function verifyUpnlSig(UpnlSig memory sig, address collateral, address party, address counterParty, uint256 oracleId) internal view {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		AppStorage.Layout storage appLayout = AppStorage.layout();
 		Oracle storage oracle = SymbolStorage.layout().oracles[oracleId];
+
+		// == SignatureCheck( ==
+		if (block.timestamp > sig.timestamp + appLayout.upnlSigValidTime)
+			revert ValidationErrors.ExpiredSignature(
+				block.timestamp,
+				sig.timestamp,
+				appLayout.upnlSigValidTime,
+				sig.timestamp + appLayout.upnlSigValidTime
+			);
+		// == ) ==
 
 		bytes32 hash = keccak256(
 			abi.encodePacked(
-				upnlSig.reqId,
+				sig.reqId,
 				address(this),
 				"verifyUpnlSig",
 				party,
 				counterParty,
-				upnlSig.partyUpnl,
-				upnlSig.counterPartyUpnl,
+				sig.partyUpnl,
+				sig.counterPartyUpnl,
 				collateral,
-				upnlSig.collateralPrice,
+				sig.collateralPrice,
 				accountLayout.nonces[party][counterParty],
-				upnlSig.timestamp,
+				sig.timestamp,
 				getChainId()
 			)
 		);
 
-		IMuonOracle(oracle.contractAddress).verifyTSSAndGW(hash, upnlSig.reqId, upnlSig.sigs, upnlSig.gatewaySignature);
+		IMuonOracle(oracle.contractAddress).verifyTSSAndGW(hash, sig.reqId, sig.sigs, sig.gatewaySignature);
 	}
 }

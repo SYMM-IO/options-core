@@ -56,6 +56,7 @@ interface IControlFacet is IControlEvents {
 		uint256 _forceCancelOpenTimeout,
 		uint256 _forceCancelCloseTimeout,
 		uint256 _settlementPriceSigValidTime,
+		uint256 _upnlSigValidTime,
 		uint256 _partyBExclusiveWindow,
 		uint256 _unbindingCooldown,
 		uint256 _deactiveInstantActionModeCooldown
@@ -67,6 +68,7 @@ interface IControlFacet is IControlEvents {
 	function setForceCancelOpenIntentTimeout(uint256 _timeout) external;
 	function setForceCancelCloseIntentTimeout(uint256 _timeout) external;
 	function setSettlementPriceSigValidTime(uint256 _time) external;
+	function setUpnlSigValidTime(uint256 _time) external;
 	function setPartyBExclusiveWindow(uint256 _window) external;
 	function setUnbindingCooldown(uint256 _cooldown) external;
 	function setDeactiveInstantActionModeCooldown(uint256 _cooldown) external;
