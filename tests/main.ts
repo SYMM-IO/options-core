@@ -19,9 +19,9 @@ describe(`${name}-v${version}`, () => {
 			shouldBehaveLikeAccountFacet()
 		})
 
-		// describe("Facets_PartyAOpenFacet", async function () {
-		// 	shouldBehaveLikePartyAOpenFacet()
-		// })
+		describe("Facets_PartyAOpenFacet", async function () {
+			shouldBehaveLikePartyAOpenFacet()
+		})
 
 		// describe("Facets_PartyBOpenFacet", async function () {
 		// 	shouldBehaveLikePartyBOpenFacet()

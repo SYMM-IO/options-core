@@ -173,8 +173,9 @@ export function shouldBehaveLikeAccountFacet(): void {
 			).to.be.revertedWithCustomError(context.accountFacet, "InsufficientBalance(address,address,uint256,uint256)")
 		})
 
-		it("Should fail when instant actions mode id active for msgSender", async function () {
-			await context.controlFacet.setInstantActionsMode(partyA1.getSigner, true)
+		it("Should fail when instant actions mode is active for msgSender", async function () {
+			await partyA1.bindToCounterParty(partyB1.getSigner)
+			await partyA1.activateInstantActionMode()
 			await expect(
 				context.accountFacet
 					.connect(partyA1.getSigner)
@@ -356,7 +357,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 			await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
 				isActive: true,
 				lossCoverage: 0,
-				oracleId: 0,
+				oracleId: 1,
 				symbolType: 0,
 			})			
 			await context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(partyB1.address)
@@ -405,7 +406,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 			await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
 				isActive: true,
 				lossCoverage: 0,
-				oracleId: 0,
+				oracleId: 1,
 				symbolType: 0,
 			})
 
@@ -443,7 +444,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 			await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
 				isActive: true,
 				lossCoverage: 0,
-				oracleId: 0,
+				oracleId: 1,
 				symbolType: 0,
 			})
 
@@ -495,7 +496,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 			await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
 				isActive: true,
 				lossCoverage: 0,
-				oracleId: 0,
+				oracleId: 1,
 				symbolType: 0,
 			})
 		})
@@ -537,7 +538,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 			await context.controlFacet.setPartyBConfig(context.signers.partyB2, {
 				isActive: true,
 				lossCoverage: 0,
-				oracleId: 0,
+				oracleId: 1,
 				symbolType: 0,
 			})
 			await expect(context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB2)).to.be.revertedWithCustomError(
@@ -558,7 +559,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 			await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
 				isActive: true,
 				lossCoverage: 0,
-				oracleId: 0,
+				oracleId: 1,
 				symbolType: 0,
 			})
 		})
@@ -679,7 +680,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 			await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
 				isActive: true,
 				lossCoverage: 0,
-				oracleId: 0,
+				oracleId: 1,
 				symbolType: 0,
 			})
 

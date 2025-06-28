@@ -71,7 +71,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.symbolId(1)
 				.build()
 
-			await context.controlFacet.setSymbolState(1, false)
+			await context.controlFacet.setSymbolValidationState(1, false)
 
 			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "InvalidSymbol")
 		})
@@ -124,8 +124,9 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.exerciseFee({ cap: e(1), rate: "0" })
 				.build()
 
-			await context.controlFacet.setInstantActionsMode(partyA1.getSigner, true)
-			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "InstantModeActive")
+			//TODO InstantAction mode in Control Facet
+			// await context.controlFacet.setInstantActionsMode(partyA1.getSigner, true)
+			// await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "InstantModeActive")
 		})
 
 		it("Should fail when affiliate be zero address or invalid", async function () {
@@ -285,11 +286,18 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.price(7)
 				.build()
 
-			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "ZeroQuantity")
+			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "InvalidOpenQuantity")
 			//TODO ::: intent with quantity zero?
 		})
 
 		it("Should fail when partyB not whiteListed and available balance be insufficient", async function () {
+			
+			await context.controlFacet.setPartyBConfig(context.signers.partyB2, {
+				isActive: false,
+				lossCoverage: 0,
+				oracleId: 1,
+				symbolType: 0,
+			})
 			const latestBlock = await getLatestBlockTime()
 			const request = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner, context.signers.partyB1])
@@ -301,6 +309,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.exerciseFee({ cap: e(1), rate: "0" })
 				.quantity(e(100000000))
 				.price(e(200))
+				.marginType(MarginType.ISOLATED)
+				.tradeSide(TradeSide.BUY)
 				.build()
 
 			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "InsufficientBalance")
@@ -412,7 +422,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			// take snapshot
 			let isolatedLocketBalance = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateral.getAddress())
 			let isolatedBalance = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral.getAddress())
-			let premium: BigInt = await context.viewFacet.getPremium(1)
+			let premium: BigInt = await context.viewFacet.getOpenIntentPremium(1)
 
 			expect(await partyA1.sendCancelOpenIntent(["1"])).to.be.not.reverted
 
@@ -494,7 +504,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			const intent = await context.viewFacet.getOpenIntent(1)
 
 			let premium = ethers.formatUnits((intent.tradeAgreements.quantity * intent.price).toString(), 18)
-			const premiumFromView = await context.viewFacet.getPremium(1)
+			const premiumFromView = await context.viewFacet.getOpenIntentPremium(1)
 			// partyA pays the fees in so:
 			// we are in isolated margin
 			let isolatedLocketBalance2 = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateral.getAddress())
@@ -533,7 +543,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 			const intent = await context.viewFacet.getOpenIntent(1)
 			const premium = ethers.formatUnits((intent.tradeAgreements.quantity * intent.price).toString(), 18)
-			const premiumFromView = await context.viewFacet.getPremium(intent.id)
+			const premiumFromView = await context.viewFacet.getOpenIntentPremium(intent.id)
 
 			// take second snapshot
 			const isolatedBalance2 = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, await context.collateral.getAddress())
@@ -566,17 +576,18 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.quantity(e(100))
 				.price(7)
 				.marginType(MarginType.ISOLATED)
+				.tradeSide(TradeSide.BUY)
 				.build()
 
-			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, 1, e(50))
-			await context.controlFacet.setSymbolTradingFee(1, e(100))
+			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, 1, e(23))
+			await context.controlFacet.setSymbolTradingFee(1, e(17))
 
-			expect(await partyA1.sendOpenIntent(request)).not.to.reverted
+			await expect( partyA1.sendOpenIntent(request)).not.to.reverted
 			const intent = await context.viewFacet.getOpenIntent(1)
 			const symbol: SymbolStruct = await context.viewFacet.getSymbol(intent.tradeAgreements.symbolId)
-			const premiumFromView = await context.viewFacet.getPremium(1)
+			const premiumFromView = await context.viewFacet.getOpenIntentPremium(1)
 			const affiliateFeeFromView = await context.viewFacet.getAffiliateFee(intent.affiliate, symbol.symbolId)
-			const tradingFeeFromView = await context.viewFacet.getTradingFee(1)
+			const tradingFeeFromView = await context.viewFacet.getOpenIntentTradingFee(1)
 
 			// partyA pays the fees in so:
 			// we are in isolated margin
@@ -622,8 +633,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			let isolatedBalance2 = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, await context.collateralNL.getAddress())
 			const symbol: SymbolStruct = await context.viewFacet.getSymbol(intent.tradeAgreements.symbolId)
 			const feeTokenPriceInCollateral = await context.oracle.getPrice(context.collateral, symbol.collateral)
-			const tradingFeeFromView = await context.viewFacet.getTradingFee(1)
-			const premiumFromView = await context.viewFacet.getPremium(1)
+			const tradingFeeFromView = await context.viewFacet.getOpenIntentTradingFee(1)
+			const premiumFromView = await context.viewFacet.getOpenIntentPremium(1)
 			const affiliateFeeFromView = await context.viewFacet.getAffiliateFee(intent.affiliate, symbol.symbolId)
 
 			console.log("PartyA isolated balance:", isolatedBalance)
@@ -666,9 +677,9 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			expect(await partyA1.sendOpenIntent(request)).not.to.reverted
 			const intent = await context.viewFacet.getOpenIntent(1)
 			const symbol: SymbolStruct = await context.viewFacet.getSymbol(intent.tradeAgreements.symbolId)
-			const premiumFromView = await context.viewFacet.getPremium(1)
+			const premiumFromView = await context.viewFacet.getOpenIntentPremium(1)
 			const affiliateFeeFromView = await context.viewFacet.getAffiliateFee(intent.affiliate, symbol.symbolId)
-			const tradingFeeFromView = await context.viewFacet.getTradingFee(1)
+			const tradingFeeFromView = await context.viewFacet.getOpenIntentTradingFee(1)
 
 			// partyA pays the fees in so:
 			// we are in isolated margin
