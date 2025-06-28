@@ -2205,6 +2205,18 @@
             },
             {
                 "indexed": false,
+                "internalType": "bool[]",
+                "name": "exercised",
+                "type": "bool[]"
+            },
+            {
+                "indexed": false,
+                "internalType": "bool[]",
+                "name": "expired",
+                "type": "bool[]"
+            },
+            {
+                "indexed": false,
                 "internalType": "uint256",
                 "name": "settlementPrice",
                 "type": "uint256"
