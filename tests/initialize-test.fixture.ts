@@ -46,15 +46,19 @@ export async function initializeTestFixture(): Promise<RunContext> {
 	await context.controlFacet
 		.connect(context.signers.admin)
 		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("PAUSER_ROLE")))
-
-	await context.controlFacet
-		.connect(context.signers.admin)
-		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("SETTER_ROLE")))
-
-	await context.controlFacet
+		
+		await context.controlFacet
 		.connect(context.signers.admin)
 		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("UNPAUSER_ROLE")))
-
+		
+		await context.controlFacet
+			.connect(context.signers.admin)
+			.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("SETTER_ROLE")))
+		
+		await context.controlFacet
+			.connect(context.signers.admin)
+			.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("SUSPENDER_ROLE")))
+		
 	await context.controlFacet
 		.connect(context.signers.admin)
 		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("WINDOW_UPDATER_ROLE")))
@@ -111,7 +115,9 @@ export async function initializeTestFixture(): Promise<RunContext> {
 
 	await context.controlFacet.addSymbol("BTC_PUT", OptionType.PUT, 1, context.collateral.getAddress(), 0, 0)
 	await context.controlFacet.addSymbol("BTC_CALL", OptionType.CALL, 1, context.collateral.getAddress(), 0, 0)
-	await context.controlFacet.addSymbol("USDT", 0, 1, context.collateralNL.getAddress(), 0, 0)
+	await context.controlFacet.addSymbol("USDT", OptionType.PUT, 1, context.collateralNL.getAddress(), 0, 0)
+	await context.controlFacet.addSymbol("USDT", OptionType.CALL, 1, context.collateralNL.getAddress(), 0, 0)
+
 	await context.controlFacet.connect(context.signers.admin).whiteListCollateral(await context.collateral.getAddress())
 	await context.controlFacet.connect(context.signers.admin).whiteListCollateral(await context.collateralNL.getAddress())
 
