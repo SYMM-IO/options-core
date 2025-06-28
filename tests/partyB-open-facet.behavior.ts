@@ -54,22 +54,22 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 		it("Should be failed when in Emergency Mode", async () => {
 			await context.controlFacet.activeEmergencyMode()
-			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "EmergencyMode")
+			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "SystemInEmergencyMode")
 		})
 
 		it("Should be failed when PartyB in Emergency Mode", async () => {
-			await context.controlFacet.activePartyBEmergencyStatus(partyB1.getSigner)
+			await context.controlFacet.activePartyBEmergencyMode(partyB1.getSigner)
 			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "PartyBInEmergencyMode")
 		})
 
 		it("Should be failed when Globally Paused", async () => {
 			await context.controlFacet.pauseGlobal()
-			await expect(context.partyBOpenFacet.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "GlobalPaused")
+			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "GlobalPaused")
 		})
 
 		it("Should failed when PartyB action Paused", async () => {
 			await context.controlFacet.pausePartyBActions()
-			await expect(context.partyBOpenFacet.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "PartyBActionsPaused")
+			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "PartyBActionsPaused")
 		})
 
 		it("Should failed when msgSender is not PartyB", async () => {
@@ -83,13 +83,42 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			await context.controlFacet.setPartyBConfig(partyA1.getSigner, {
 				isActive: true,
 				lossCoverage: 0,
-				oracleId: 2,
+				oracleId: 1,
 				symbolType: 0,
 			})
 
 			await expect(context.partyBOpenFacet.connect(context.signers.partyA1).lockOpenIntent(1)).to.be.revertedWithCustomError(
 				context.partyBOpenFacet,
-				"SelfTradeNotAllowed",
+				"NotWhitelistedPartyB",
+			)
+		})
+
+		it("Should failed when partyA have partyB Roll", async () => {
+			
+			const latestBlock = await getLatestBlockTime()
+			const request = openIntentRequestBuilder()
+				.partyBsWhiteList([])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateralNL)
+				.symbolId(2)
+				.deadline(latestBlock + 140)
+				.expirationTimestamp(latestBlock + 120)
+				.exerciseFee({ cap: e(1), rate: "0" })
+				.quantity(e(10))
+				.price(1)
+				.build()
+			await partyA1.sendOpenIntent(request)
+
+			await context.controlFacet.setPartyBConfig(partyA1.getSigner, {
+				isActive: true,
+				lossCoverage: 0,
+				oracleId: 1,
+				symbolType: 0,
+			})
+
+			await expect(context.partyBOpenFacet.connect(context.signers.partyA1).lockOpenIntent(1)).to.be.revertedWithCustomError(
+				context.partyBOpenFacet,
+				"NotWhitelistedPartyB",
 			)
 		})
 
@@ -123,7 +152,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 				.build()
 			await partyA1.sendOpenIntent(request)
 
-			await context.controlFacet.setSymbolState(2, false)
+			await context.controlFacet.setSymbolValidationState(2, false)
 			await expect(partyB2.lockOpenIntent(2)).to.be.revertedWithCustomError(context.partyBOpenFacet, "InvalidSymbol")
 		})
 
@@ -218,21 +247,21 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 		it("Should be failed when in Emergency Mode", async () => {
 			await context.controlFacet.activeEmergencyMode()
-			await expect(partyB1.fillOpenIntent(1, 100, 7)).to.be.revertedWithCustomError(context.partyBOpenFacet, "EmergencyMode")
+			await expect(partyB1.fillOpenIntent(1, 100, 7)).to.be.revertedWithCustomError(context.partyBOpenFacet, "SystemInEmergencyMode")
 		})
 
 		it("Should be failed when PartyB in Emergency Mode", async () => {
-			await context.controlFacet.activePartyBEmergencyStatus(partyB1.getSigner)
+			await context.controlFacet.activePartyBEmergencyMode(partyB1.getSigner)
 			await expect(partyB1.fillOpenIntent(1, 100, 7)).to.be.revertedWithCustomError(context.partyBOpenFacet, "PartyBInEmergencyMode")
 		})
 
 		it("Should be failed when in Emergency Mode", async () => {
 			await context.controlFacet.activeEmergencyMode()
-			await expect(partyB1.fillOpenIntent(1, 100, 7)).to.be.revertedWithCustomError(context.partyBOpenFacet, "EmergencyMode")
+			await expect(partyB1.fillOpenIntent(1, 100, 7)).to.be.revertedWithCustomError(context.partyBOpenFacet, "SystemInEmergencyMode")
 		})
 
 		it("Should be failed when PartyB in Emergency Mode", async () => {
-			await context.controlFacet.activePartyBEmergencyStatus(partyB1.getSigner)
+			await context.controlFacet.activePartyBEmergencyMode(partyB1.getSigner)
 			await expect(partyB1.fillOpenIntent(1, 100, 7)).to.be.revertedWithCustomError(context.partyBOpenFacet, "PartyBInEmergencyMode")
 		})
 
@@ -253,7 +282,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 
 		it("Should failed when symbol is not valid", async () => {
-			await context.controlFacet.setSymbolState(1, false)
+			await context.controlFacet.setSymbolValidationState(1, false)
 
 			await expect(partyB1.fillOpenIntent(1, 100, 7)).to.revertedWithCustomError(context.partyBOpenFacet, "InvalidSymbol")
 		})
@@ -297,9 +326,12 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			await expect(partyB1.fillOpenIntent(1, 100, 7)).to.revertedWithCustomError(context.partyBOpenFacet, "ExpirationTimestampPassed")
 		})
 
+		it("Should failed when Intent quantity is ZERO", async () => {
+			await expect(partyB1.fillOpenIntent(1, e(0), 7)).to.revertedWithCustomError(context.partyBOpenFacet, "ZeroAmount")
+		})
+
 		it("Should failed when Intent quantity mismatch fill quantity", async () => {
-			await expect(partyB1.fillOpenIntent(1, e(1000), 7)).to.revertedWithCustomError(context.partyBOpenFacet, "InvalidAmount")
-			await expect(partyB1.fillOpenIntent(1, e(0), 7)).to.revertedWithCustomError(context.partyBOpenFacet, "InvalidAmount")
+			await expect(partyB1.fillOpenIntent(1, e(1000), 7)).to.revertedWithCustomError(context.partyBOpenFacet, "InvalidFillAmount")
 		})
 
 		it("Should failed when Intent price mismatch fill type price", async () => {
@@ -558,8 +590,8 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 			const symbol: SymbolStruct = await context.viewFacet.getSymbol(openIntents[2].tradeAgreements.symbolId)
 
-			const tradingFeeFromView = await context.viewFacet.getTradingFee(2)
-			const premiumFromView = await context.viewFacet.getPremium(2)
+			const tradingFeeFromView = await context.viewFacet.getOpenIntentTradingFee(2)
+			const premiumFromView = await context.viewFacet.getOpenIntentPremium(2)
 			const affiliateFeeFromView = await context.viewFacet.getAffiliateFee(openIntents[1].affiliate,symbol.symbolId)
 
 			let partyAFeesPaid = BigInt(openIntents.length) * (tradingFeeFromView + affiliateFeeFromView)

@@ -124,9 +124,10 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.exerciseFee({ cap: e(1), rate: "0" })
 				.build()
 
-			//TODO InstantAction mode in Control Facet
-			// await context.controlFacet.setInstantActionsMode(partyA1.getSigner, true)
-			// await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "InstantModeActive")
+			
+			await partyA1.bindToCounterParty(partyB1.getSigner)
+			await partyA1.activateInstantActionMode()
+			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "InstantModeActive")
 		})
 
 		it("Should fail when affiliate be zero address or invalid", async function () {
@@ -150,6 +151,23 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 			await context.controlFacet.setAffiliateStatus(context.signers.others[1], false)
 			await expect(partyA1.sendOpenIntent(request.build())).to.be.revertedWithCustomError(context.partyAOpenFacet, "InvalidAffiliate")
+		})
+
+		it("Should fail when partyA has NO partyB whitelisted ", async function () {
+			const latestBlock = await getLatestBlockTime()
+			const request = openIntentRequestBuilder()
+				.partyBsWhiteList([])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateral)
+				.symbolId(1)
+				.deadline(latestBlock + 120)
+				.expirationTimestamp(latestBlock + 120)
+				.exerciseFee({ cap: e(1), rate: "0" })
+				.build()
+
+			//TODO zero length partyB whitelist
+			// await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "BoundedToAnotherPartyB")
+
 		})
 
 		it("Should fail when partyA bound to a partyB that is not in whitelisted partyB", async function () {
@@ -183,7 +201,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "InvalidWhitelistEntry")
 		})
 
-		it("Should fail when partyA sends Short intent with isolated margin", async function () {
+		it("Should fail when partyA sends Sell intent with isolated margin", async function () {
 			const latestBlock = await getLatestBlockTime()
 			const request = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner, context.signers.partyB1])
