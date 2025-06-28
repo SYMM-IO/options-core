@@ -27,6 +27,6 @@ interface IClearingHouseEvents {
 		uint256 collateralPrice
 	);
 	event CloseTradesForLiquidation(address operator, uint256[] tradeIds, uint256[] prices);
-    event CancelOpenIntentsForLiquidation(address operator, uint256[] intentId);
+    event CancelOpenIntentsForLiquidation(address operator, uint256[] intentIds);
     event CancelCloseIntentsForLiquidation(address operator, uint256[] intentIds);
 }
