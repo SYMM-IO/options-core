@@ -29,7 +29,10 @@ library LibTradeSettlement {
 	using LibTradeOps for Trade;
 	using LibParty for address;
 
-	function executeTrades(uint256[] memory tradeIds, SettlementPriceSig memory sig) internal returns (bool isExpired) {
+	function executeTrades(
+		uint256[] memory tradeIds,
+		SettlementPriceSig memory sig
+	) internal returns (bool[] memory exercised, bool[] memory expired) {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 
@@ -37,8 +40,18 @@ library LibTradeSettlement {
 
 		Symbol storage symbol = SymbolStorage.layout().symbols[sig.symbolId];
 
+		exercised = new bool[](tradeIds.length);
+		expired = new bool[](tradeIds.length);
+
 		for (uint256 i = 0; i < tradeIds.length; i++) {
 			Trade storage trade = TradeStorage.layout().trades[tradeIds[i]];
+
+			// If the trade is already exercised or expired by another party, we don't need to do anything
+			if (trade.status == TradeStatus.EXERCISED || trade.status == TradeStatus.EXPIRED) {
+				exercised[i] = false;
+				expired[i] = false;
+				continue;
+			}
 
 			if (trade.tradeAgreements.marginType == MarginType.CROSS) {
 				trade.partyA.requireSolvent(trade.partyB, symbol.collateral, trade.tradeAgreements.marginType);
@@ -56,19 +69,19 @@ library LibTradeSettlement {
 
 			if (symbol.optionType == OptionType.PUT) {
 				if (sig.settlementPrice < trade.tradeAgreements.strikePrice) {
-					isExpired = false;
+					exercised[i] = true;
 				} else {
 					trade.settledPrice = sig.settlementPrice;
 					trade.close(TradeStatus.EXPIRED, CloseIntentStatus.CANCELED);
-					isExpired = true;
+					expired[i] = true;
 				}
 			} else {
 				if (sig.settlementPrice > trade.tradeAgreements.strikePrice) {
-					isExpired = false;
+					exercised[i] = true;
 				} else {
 					trade.settledPrice = sig.settlementPrice;
 					trade.close(TradeStatus.EXPIRED, CloseIntentStatus.CANCELED);
-					isExpired = true;
+					expired[i] = true;
 				}
 			}
 
@@ -91,7 +104,7 @@ library LibTradeSettlement {
 				}
 			}
 
-			if (!isExpired) {
+			if (exercised[i]) {
 				if (msg.sender != trade.partyB) {
 					if (trade.tradeAgreements.expirationTimestamp + appLayout.partyBExclusiveWindow > block.timestamp)
 						revert TradeErrors.PartyBExclusiveWindowNotOver(

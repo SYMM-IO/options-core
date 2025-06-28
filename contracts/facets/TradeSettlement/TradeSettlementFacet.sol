@@ -27,7 +27,7 @@ contract TradeSettlementFacet is Accessibility, Pausable, ITradeSettlementFacet 
 	 *                          the verified settlement price of the symbol at expiration time
 	 */
 	function executeTrades(uint256[] memory tradeIds, SettlementPriceSig memory settlementPriceSig) external whenNotThirdPartyActionsPaused {
-		LibTradeSettlement.executeTrades(tradeIds, settlementPriceSig);
-		emit ExecuteTrades(msg.sender, tradeIds, settlementPriceSig.settlementPrice, settlementPriceSig.collateralPrice);
+		(bool[] memory exercised, bool[] memory expired) = LibTradeSettlement.executeTrades(tradeIds, settlementPriceSig);
+		emit ExecuteTrades(msg.sender, tradeIds, exercised, expired, settlementPriceSig.settlementPrice, settlementPriceSig.collateralPrice);
 	}
 }
