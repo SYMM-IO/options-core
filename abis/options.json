@@ -1695,7 +1695,7 @@
             {
                 "indexed": false,
                 "internalType": "uint256[]",
-                "name": "intentId",
+                "name": "intentIds",
                 "type": "uint256[]"
             }
         ],
@@ -4292,7 +4292,7 @@
             },
             {
                 "internalType": "bool[]",
-                "name": "statuses",
+                "name": "states",
                 "type": "bool[]"
             }
         ],
@@ -8188,12 +8188,12 @@
             },
             {
                 "internalType": "uint256",
-                "name": "quantity",
+                "name": "price",
                 "type": "uint256"
             },
             {
                 "internalType": "uint256",
-                "name": "price",
+                "name": "quantity",
                 "type": "uint256"
             },
             {
