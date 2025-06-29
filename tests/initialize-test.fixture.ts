@@ -83,6 +83,10 @@ export async function initializeTestFixture(): Promise<RunContext> {
 		.connect(context.signers.admin)
 		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("SYMBOL_MANAGER_ROLE")))
 
+	await context.controlFacet
+		.connect(context.signers.admin)
+		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("INSTANT_LAYER_ROLE")))
+
 	await context.controlFacet.connect(context.signers.admin).unpauseGlobal()
 
 	await context.controlFacet.setDeactiveInstantActionModeCooldown(120)

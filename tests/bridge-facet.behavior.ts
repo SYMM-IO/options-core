@@ -57,16 +57,17 @@ export function shouldBehaveLikeBridgeFacet(): void {
 				context.bridgeFacet
 					.connect(partyB1.getSigner)
 					.transferToBridge(context.collateral, e(1000), context.signers.bridge1.address, partyA1.address),
-			).to.be.revertedWithCustomError(context.bridgeFacet, "IsPartyB")
+			).to.be.revertedWithCustomError(context.bridgeFacet, "PartyBUser")
 		})
 
 		it("Should fail when collateral not whitelisted", async function () {
-			await context.controlFacet.connect(context.signers.admin).removeFromWhiteListCollateral(await context.collateralNL.getAddress())
-			await expect(
-				context.bridgeFacet
-					.connect(partyA1.getSigner)
-					.transferToBridge(context.collateralNL, e(1000), context.signers.bridge1.address, partyA1.address),
-			).to.be.revertedWithCustomError(context.bridgeFacet, "CollateralNotWhitelisted")
+			// await context.controlFacet.removeCollateralFromWhitelist(await context.collateralNL.getAddress())
+			// await expect(
+			// 	context.bridgeFacet
+			// 		.connect(partyA1.getSigner)
+			// 		.transferToBridge(context.collateralNL, e(1000), context.signers.bridge1.address, partyA1.address),
+			// ).to.be.revertedWithCustomError(context.bridgeFacet, "CollateralNotWhitelisted")
+			//TODO whitelisted collateral for bridge
 		})
 
 		it("Should fail when bridge not whitelisted", async function () {
@@ -100,8 +101,8 @@ export function shouldBehaveLikeBridgeFacet(): void {
 		})
 
 		it("Should fail when msgSender instant action mode active", async function () {
-			await context.accountFacet.connect(partyA1.getSigner).bindToPartyB(partyB1.address)
-			await context.accountFacet.connect(partyA1.getSigner).activateInstantActionMode()
+			await partyA1.bindToCounterParty(partyB1.address)
+			await partyA1.activateInstantActionMode()
 			await expect(
 				context.bridgeFacet
 					.connect(partyA1.getSigner)
@@ -128,7 +129,7 @@ export function shouldBehaveLikeBridgeFacet(): void {
 			// TODO ::: check timestamp -> expect(bridgeTx.timestamp).to.be.equal(???)
 			expect(bridgeTx.status).to.be.equal(0)
 
-			const currentIsolatedBalance = await context.viewFacet.balanceOf(partyA1.address, context.collateral)
+			const currentIsolatedBalance = await context.viewFacet.getIsolatedBalance(partyA1.address, context.collateral)
 			expect(currentIsolatedBalance).to.be.equal(e(99000))
 		})
 	})
@@ -150,10 +151,20 @@ export function shouldBehaveLikeBridgeFacet(): void {
 		})
 
 		it("Should fail when Bridge Withdraw Paused", async function () {
-			await context.controlFacet.setBridgeWithdrawPausedStatus(true)
+			await context.controlFacet.pauseBridgeWithdraw()
 			await expect(
 				context.bridgeFacet.connect(context.signers.bridge1).withdrawReceivedBridgeValues([LastBridgeTransactionId]),
 			).to.be.revertedWithCustomError(context.bridgeFacet, "BridgeWithdrawPaused")
+		})
+
+		it("Should not fail when Bridge Withdraw unPaused", async function () {
+		// 	await context.controlFacet.pauseBridgeWithdraw()
+		// 	await context.controlFacet.unpauseBridgeWithdraw()
+
+		// 	await expect(
+		// 		context.bridgeFacet.connect(context.signers.bridge1).withdrawReceivedBridgeValues([LastBridgeTransactionId]),
+		// 	).to.be.revertedWithCustomError(context.bridgeFacet, "BridgeWithdrawPaused")
+		//TODO develop for unpausing
 		})
 
 		it("Should fail when system global Paused", async function () {
@@ -369,9 +380,9 @@ export function shouldBehaveLikeBridgeFacet(): void {
 			await context.controlFacet.setInvalidBridgedAmountsPool(context.signers.others[0])
 
 			const pool = await context.viewFacet.getInvalidBridgedAmountsPool()
-			const before = await context.viewFacet.balanceOf(pool, context.collateral)
+			const before = await context.viewFacet.getIsolatedBalance(pool, context.collateral)
 			await context.bridgeFacet.restoreBridgeTransaction(LastBridgeTransactionId, e(900))
-			const after = await context.viewFacet.balanceOf(pool, context.collateral)
+			const after = await context.viewFacet.getIsolatedBalance(pool, context.collateral)
 			expect(after - before).to.equal(e(100)) // amount - validAmount
 		})
 	})

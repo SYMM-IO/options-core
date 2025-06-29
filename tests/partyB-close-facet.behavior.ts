@@ -198,7 +198,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 
 			expect(scheduleEntry.scheduled).to.be.equal(pnl / 2n)
 
-			await context.controlFacet.syncTradeWindow(partyA1.getSigner, context.collateral, partyB1.getSigner)
+			await context.accountFacet.syncBalances(context.collateral, partyA1.getSigner, [partyB1.getSigner])
 			scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA1.getSigner, context.collateral, partyB1.getSigner)
 
 			expect(scheduleEntry.transitioning).to.be.equal(pnl / 2n)
@@ -207,7 +207,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTime])
 			await network.provider.send("evm_mine")
 
-			await context.controlFacet.syncTradeWindow(partyA1.getSigner, context.collateral, partyB1.getSigner)
+			await context.accountFacet.syncBalances(context.collateral, partyA1.getSigner, [partyB1.getSigner])
 			partyABalanceAfter = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral)
 			scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA1.getSigner, context.collateral, partyB1.getSigner)
 

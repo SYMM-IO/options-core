@@ -69,8 +69,8 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			)
 		})
 
-		it("Should failed when PartyB action Paused", async () => {
-			await context.controlFacet.pausePartyBActions()
+		it("Should failed when ThirdParty action Paused", async () => {
+			await context.controlFacet.pauseThirdPartyActions()
 			const timestamp = await getLatestBlockTime()
 
 			const ID = 1
@@ -280,7 +280,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
 			await network.provider.send("evm_mine")
 
-			await context.controlFacet.syncTradeWindow(partyA2.getSigner, context.collateral, partyB2.getSigner)
+			await context.accountFacet.syncBalances(context.collateral, partyA2.getSigner, [partyB2.getSigner])
 
 			const partyABalanceAfterSettlementSchedule = await context.viewFacet.getIsolatedBalance(partyA2.getSigner, context.collateral)
 			const partyBBalanceAfterSettlementSchedule = await context.viewFacet.getIsolatedBalance(partyB2.getSigner, context.collateral)
