@@ -21,6 +21,7 @@ import { Symbol, Oracle, OptionType } from "../../types/SymbolTypes.sol";
 import { ScheduledReleaseBalance } from "../../types/BalanceTypes.sol";
 
 import { ValidationErrors } from "../../errors/ValidationErrors.sol";
+import { SystemErrors } from "../../errors/SystemErrors.sol";
 
 import { Ownable } from "../../utils/Ownable.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
@@ -488,6 +489,14 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		emit ThirdPartyActionsPaused();
 	}
 
+	/**
+	 * @notice Pauses the instant layer
+	 */
+	function pauseInstantLayer() external onlyRole(LibAccessibility.PAUSER_ROLE) {
+		StateControlStorage.layout().instantLayerPaused = true;
+		emit InstantLayerPaused();
+	}
+
 	// Unpause functions
 
 	/**
@@ -568,6 +577,14 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	function unpauseThirdPartyActions() external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
 		StateControlStorage.layout().thirdPartyActionsPaused = false;
 		emit ThirdPartyActionsUnpaused();
+	}
+
+	/**
+	 * @notice Unpauses the instant layer
+	 */
+	function unpauseInstantLayer() external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
+		StateControlStorage.layout().instantLayerPaused = false;
+		emit InstantLayerUnpaused();
 	}
 
 	// ═══════════════════════════════════════════════════════════════════════════
@@ -846,6 +863,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	 * @param _callFromInstantLayer The call from instant layer
 	 */
 	function setCallFromInstantLayer(bool _callFromInstantLayer) external onlyRole(LibAccessibility.INSTANT_LAYER_ROLE) {
+		if (_callFromInstantLayer && StateControlStorage.layout().instantLayerPaused) revert SystemErrors.InstantLayerPaused();
 		AppStorage.layout().callFromInstantLayer = _callFromInstantLayer;
 	}
 }
