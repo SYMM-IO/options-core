@@ -727,6 +727,14 @@ contract ViewFacet is IViewFacet {
 	}
 
 	/**
+	 * @notice Checks if instant layer is paused
+	 * @return Whether instant layer is paused
+	 */
+	function isInstantLayerPaused() external view returns (bool) {
+		return StateControlStorage.layout().instantLayerPaused;
+	}
+
+	/**
 	 * @notice Returns all system pause states
 	 * @return globalPaused Whether global operations are paused
 	 * @return depositingPaused Whether depositing is paused
@@ -738,6 +746,7 @@ contract ViewFacet is IViewFacet {
 	 * @return internalTransferPaused Whether internal transfers are paused
 	 * @return bridgePaused Whether bridge operations are paused
 	 * @return bridgeWithdrawPaused Whether bridge withdrawals are paused
+	 * @return instantLayerPaused Whether instant layer is paused
 	 * @return emergencyMode Whether emergency mode is active
 	 */
 	function getAllPauseStates()
@@ -754,6 +763,7 @@ contract ViewFacet is IViewFacet {
 			bool internalTransferPaused,
 			bool bridgePaused,
 			bool bridgeWithdrawPaused,
+			bool instantLayerPaused,
 			bool emergencyMode
 		)
 	{
@@ -769,6 +779,7 @@ contract ViewFacet is IViewFacet {
 			stateLayout.internalTransferPaused,
 			stateLayout.bridgePaused,
 			stateLayout.bridgeWithdrawPaused,
+			stateLayout.instantLayerPaused,
 			stateLayout.emergencyMode
 		);
 	}

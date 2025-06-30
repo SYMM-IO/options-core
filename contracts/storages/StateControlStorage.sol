@@ -18,6 +18,7 @@ library StateControlStorage {
 		bool internalTransferPaused;
 		bool bridgePaused;
 		bool bridgeWithdrawPaused;
+		bool instantLayerPaused;
 		///////////////////////////////////
 		bool emergencyMode;
 		mapping(address => bool) partyBEmergencyMode;

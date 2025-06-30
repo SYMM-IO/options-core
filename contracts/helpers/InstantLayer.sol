@@ -137,6 +137,7 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	function registerPartyBBatch(address[] calldata partyBs) external onlyRole(SETTER_ROLE) {
 		for (uint256 i = 0; i < partyBs.length; i++) {
 			registeredPartyBs[partyBs[i]] = true;
+			_grantRole(OPERATOR_ROLE, partyBs[i]);
 			emit PartyBRegistered(partyBs[i]);
 		}
 	}
@@ -320,18 +321,15 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	 * @return result The return data
 	 */
 	function _executeOperationSafe(SignedOperation calldata signedOp, bytes memory callData) private returns (bool success, bytes memory result) {
-		// Determine target based on accountSource type
-		bool isPartyBOperation = isPartyB(signedOp.signer);
-
 		bytes[] memory callDatas = new bytes[](1);
 		callDatas[0] = callData;
 
-		if (!isPartyBOperation) {
-			// PartyA operation through MultiAccount
-			(success, result) = signedOp.accountSource.call(abi.encodeWithSelector(IMultiAccount._call.selector, signedOp.account, callDatas));
-		} else {
+		if (isPartyB(signedOp.signer)) {
 			// PartyB operation
 			(success, result) = signedOp.signer.call(abi.encodeWithSelector(ISymmioPartyB._call.selector, callDatas));
+		} else {
+			// PartyA operation through MultiAccount
+			(success, result) = signedOp.accountSource.call(abi.encodeWithSelector(IMultiAccount._call.selector, signedOp.account, callDatas));
 		}
 	}
 

@@ -36,6 +36,7 @@ library SystemErrors {
 	error PartyBActionsPaused();
 	error ThirdPartyActionsPaused();
 	error LiquidatingPaused();
+	error InstantLayerPaused();
 
 	// Emergency states
 	error PartyBInEmergencyMode(address partyB);

@@ -26,6 +26,7 @@ interface IControlEvents {
 	event PartyBActionsPaused();
 	event PartyAActionsPaused();
 	event LiquidatingPaused();
+	event InstantLayerPaused();
 	event GlobalUnpaused();
 	event DepositUnpaused();
 	event WithdrawUnpaused();
@@ -33,6 +34,7 @@ interface IControlEvents {
 	event PartyAActionsUnpaused();
 	event ThirdPartyActionsUnpaused();
 	event LiquidatingUnpaused();
+	event InstantLayerUnpaused();
 	event EmergencyModeActivated();
 	event EmergencyModeDeactivated();
 	event PartyBEmergencyModeActivated(address indexed partyB);

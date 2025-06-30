@@ -277,6 +277,11 @@
         "type": "error"
     },
     {
+        "inputs": [],
+        "name": "InstantLayerPaused",
+        "type": "error"
+    },
+    {
         "inputs": [
             {
                 "internalType": "address",
@@ -2602,6 +2607,18 @@
     },
     {
         "anonymous": false,
+        "inputs": [],
+        "name": "InstantLayerPaused",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [],
+        "name": "InstantLayerUnpaused",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
         "inputs": [
             {
                 "indexed": false,
@@ -4305,7 +4322,7 @@
             },
             {
                 "internalType": "bool[]",
-                "name": "states",
+                "name": "statuses",
                 "type": "bool[]"
             }
         ],
@@ -5597,6 +5614,11 @@
             {
                 "internalType": "bool",
                 "name": "bridgeWithdrawPaused",
+                "type": "bool"
+            },
+            {
+                "internalType": "bool",
+                "name": "instantLayerPaused",
                 "type": "bool"
             },
             {
@@ -7755,6 +7777,19 @@
     },
     {
         "inputs": [],
+        "name": "isInstantLayerPaused",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
         "name": "isInternalTransferPaused",
         "outputs": [
             {
@@ -8068,6 +8103,13 @@
     },
     {
         "inputs": [],
+        "name": "pauseInstantLayer",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
         "name": "pauseInternalTransfer",
         "outputs": [],
         "stateMutability": "nonpayable",
@@ -8214,12 +8256,12 @@
             },
             {
                 "internalType": "uint256",
-                "name": "price",
+                "name": "quantity",
                 "type": "uint256"
             },
             {
                 "internalType": "uint256",
-                "name": "quantity",
+                "name": "price",
                 "type": "uint256"
             },
             {
@@ -9367,6 +9409,13 @@
     {
         "inputs": [],
         "name": "unpauseGlobal",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "unpauseInstantLayer",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"

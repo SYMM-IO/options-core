@@ -72,7 +72,7 @@ interface IControlFacet is IControlEvents {
 	function setPartyBExclusiveWindow(uint256 _window) external;
 	function setUnbindingCooldown(uint256 _cooldown) external;
 	function setDeactiveInstantActionModeCooldown(uint256 _cooldown) external;
-	
+
 	// Release Interval Management
 	function setPartyBReleaseInterval(address _partyB, uint256 _interval) external;
 	function setDefaultReleaseInterval(uint256 _interval) external;
@@ -99,6 +99,7 @@ interface IControlFacet is IControlEvents {
 	function pausePartyAActions() external;
 	function pauseLiquidating() external;
 	function pauseThirdPartyActions() external;
+	function pauseInstantLayer() external;
 
 	// Unpause Management
 	function unpauseGlobal() external;
@@ -111,6 +112,7 @@ interface IControlFacet is IControlEvents {
 	function unpausePartyAActions() external;
 	function unpauseLiquidating() external;
 	function unpauseThirdPartyActions() external;
+	function unpauseInstantLayer() external;
 
 	// Emergency Controls
 	function activeEmergencyMode() external;

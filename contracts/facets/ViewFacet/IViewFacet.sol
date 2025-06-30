@@ -133,6 +133,7 @@ interface IViewFacet {
 	function isInternalTransferPaused() external view returns (bool);
 	function isBridgePaused() external view returns (bool);
 	function isBridgeWithdrawPaused() external view returns (bool);
+	function isInstantLayerPaused() external view returns (bool);
 	function getAllPauseStates()
 		external
 		view
@@ -147,6 +148,7 @@ interface IViewFacet {
 			bool internalTransferPaused,
 			bool bridgePaused,
 			bool bridgeWithdrawPaused,
+			bool instantLayerPaused,
 			bool emergencyMode
 		);
 	function isEmergencyMode() external view returns (bool);
