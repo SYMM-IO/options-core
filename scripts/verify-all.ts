@@ -11,7 +11,6 @@ async function main() {
 		ClearingHouseFacet: "",
 		InstantActionsOpenFacet: "",
 		InstantActionsCloseFacet: "",
-		InterdealerFacet: "",
 		PartyAOpenFacet: "",
 		PartyACloseFacet: "",
 		PartyBCloseFacet: "",
