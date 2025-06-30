@@ -37,12 +37,4 @@ contract ForceActionsFacet is Pausable, IForceActionsFacet {
 		LibForceActions.forceCancelCloseIntent(intentId);
 		emit ForceCancelCloseIntent(intentId);
 	}
-
-	/**
-	 * @notice Forces the cancellation of an interdealer intent when the counterparty is unresponsive
-	 * @param intentId The unique identifier of the interdealer intent to be forcibly canceled
-	 */
-	function forceCancelInterdealerIntent(uint256 intentId) external {
-		// TODO: Implement interdealer intent forced cancellation
-	}
 }
