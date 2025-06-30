@@ -9,13 +9,13 @@ task("deploy:InstantLayer", "Deploys the InstantLayer contract")
 
 		const [deployer] = await ethers.getSigners()
 
-		console.log("Deploying contracts with the account:", deployer.address)		
+		console.log("Deploying contracts with the account:", deployer.address)
 		const InstantLayerFactory = await ethers.getContractFactory("InstantLayer")
 		const instantLayer = await InstantLayerFactory.connect(deployer).deploy(symmioaddress, admin)
 		await instantLayer.waitForDeployment()
 
 		await instantLayer.deploymentTransaction()!.wait()
-		console.log("InstantLayer deployed:",await instantLayer.getAddress())
+		console.log("InstantLayer deployed:", await instantLayer.getAddress())
 
 		return instantLayer
 	})

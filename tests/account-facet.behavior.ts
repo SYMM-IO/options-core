@@ -111,7 +111,9 @@ export function shouldBehaveLikeAccountFacet(): void {
 			).to.be.not.reverted
 
 			expect(await context.viewFacet.getIsolatedBalance(partyA1.getSigner, await context.collateral.getAddress())).to.be.equal("100")
-			expect(await context.viewFacet.getIsolatedBalance(await context.signers.partyA2.getAddress(), await context.collateral.getAddress())).to.be.equal("100")
+			expect(
+				await context.viewFacet.getIsolatedBalance(await context.signers.partyA2.getAddress(), await context.collateral.getAddress()),
+			).to.be.equal("100")
 			expect(await context.collateral.balanceOf(partyA1.getSigner)).to.be.equal("300")
 		})
 	})
@@ -191,7 +193,9 @@ export function shouldBehaveLikeAccountFacet(): void {
 			).to.be.not.reverted
 
 			expect(await context.viewFacet.getIsolatedBalance(partyA1.getSigner, await context.collateral.getAddress())).to.be.equal("0")
-			expect(await context.viewFacet.getIsolatedBalance(await context.signers.partyA2.getAddress(), await context.collateral.getAddress())).to.be.equal("0")
+			expect(
+				await context.viewFacet.getIsolatedBalance(await context.signers.partyA2.getAddress(), await context.collateral.getAddress()),
+			).to.be.equal("0")
 			expect(await context.collateral.balanceOf(partyA1.getSigner)).to.be.equal("400")
 
 			const withdraw = await context.viewFacet.getWithdrawal(1)
@@ -359,7 +363,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 				lossCoverage: 0,
 				oracleId: 1,
 				symbolType: 0,
-			})			
+			})
 			await context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(partyB1.address)
 		})
 
@@ -410,10 +414,9 @@ export function shouldBehaveLikeAccountFacet(): void {
 				symbolType: 0,
 			})
 
-			await expect(context.counterPartyRelation.connect(context.signers.partyB1).proposeToDeactivateInstantActionMode()).to.be.revertedWithCustomError(
-				context.counterPartyRelation,
-				"PartyBUser",
-			)
+			await expect(
+				context.counterPartyRelation.connect(context.signers.partyB1).proposeToDeactivateInstantActionMode(),
+			).to.be.revertedWithCustomError(context.counterPartyRelation, "PartyBUser")
 		})
 
 		it("Should fail when instance mode is not active", async function () {
@@ -426,7 +429,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 		it("Should propose to deactivate instance mode successfully", async function () {
 			await context.counterPartyRelation.connect(partyA1.getSigner).activateInstantActionMode()
 
-			await expect( context.counterPartyRelation.connect(partyA1.getSigner).proposeToDeactivateInstantActionMode()).to.be.not.reverted
+			await expect(context.counterPartyRelation.connect(partyA1.getSigner).proposeToDeactivateInstantActionMode()).to.be.not.reverted
 			expect(await context.viewFacet.isInstantActionsModeActive(partyA1.getSigner)).to.be.equal(true)
 
 			const latestBlock = await ethers.provider.getBlock("latest")
@@ -448,10 +451,9 @@ export function shouldBehaveLikeAccountFacet(): void {
 				symbolType: 0,
 			})
 
-			await expect(context.counterPartyRelation.connect(context.signers.partyB1).proposeToDeactivateInstantActionMode()).to.be.revertedWithCustomError(
-				context.counterPartyRelation,
-				"PartyBUser",
-			)
+			await expect(
+				context.counterPartyRelation.connect(context.signers.partyB1).proposeToDeactivateInstantActionMode(),
+			).to.be.revertedWithCustomError(context.counterPartyRelation, "PartyBUser")
 		})
 
 		it("Should fail when instance mode is not active", async function () {

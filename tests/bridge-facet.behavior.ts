@@ -158,13 +158,12 @@ export function shouldBehaveLikeBridgeFacet(): void {
 		})
 
 		it("Should not fail when Bridge Withdraw unPaused", async function () {
-		// 	await context.controlFacet.pauseBridgeWithdraw()
-		// 	await context.controlFacet.unpauseBridgeWithdraw()
-
-		// 	await expect(
-		// 		context.bridgeFacet.connect(context.signers.bridge1).withdrawReceivedBridgeValues([LastBridgeTransactionId]),
-		// 	).to.be.revertedWithCustomError(context.bridgeFacet, "BridgeWithdrawPaused")
-		//TODO develop for unpausing
+			// 	await context.controlFacet.pauseBridgeWithdraw()
+			// 	await context.controlFacet.unpauseBridgeWithdraw()
+			// 	await expect(
+			// 		context.bridgeFacet.connect(context.signers.bridge1).withdrawReceivedBridgeValues([LastBridgeTransactionId]),
+			// 	).to.be.revertedWithCustomError(context.bridgeFacet, "BridgeWithdrawPaused")
+			//TODO develop for unpausing
 		})
 
 		it("Should fail when system global Paused", async function () {

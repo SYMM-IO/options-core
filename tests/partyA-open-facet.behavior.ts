@@ -124,7 +124,6 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.exerciseFee({ cap: e(1), rate: "0" })
 				.build()
 
-			
 			await partyA1.bindToCounterParty(partyB1.getSigner)
 			await partyA1.activateInstantActionMode()
 			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "InstantModeActive")
@@ -167,7 +166,6 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 			//TODO zero length partyB whitelist
 			// await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "BoundedToAnotherPartyB")
-
 		})
 
 		it("Should fail when partyA bound to a partyB that is not in whitelisted partyB", async function () {
@@ -309,7 +307,6 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 		})
 
 		it("Should fail when partyB not whiteListed and available balance be insufficient", async function () {
-			
 			await context.controlFacet.setPartyBConfig(context.signers.partyB2, {
 				isActive: false,
 				lossCoverage: 0,
@@ -600,8 +597,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, 1, e(20))
 			await context.controlFacet.setSymbolTradingFee(1, e(10))
 
-			await expect( partyA1.sendOpenIntent(request)).not.to.reverted
-			
+			await expect(partyA1.sendOpenIntent(request)).not.to.reverted
+
 			const intent = await context.viewFacet.getOpenIntent(1)
 			const symbol: SymbolStruct = await context.viewFacet.getSymbol(intent.tradeAgreements.symbolId)
 			const premiumFromView = await context.viewFacet.getOpenIntentPremium(1)

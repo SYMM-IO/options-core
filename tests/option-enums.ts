@@ -42,5 +42,5 @@ export enum TradeStatus {
 export enum WithdrawStatus {
 	INITIATED,
 	CANCELED,
-	COMPLETED
+	COMPLETED,
 }

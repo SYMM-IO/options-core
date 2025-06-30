@@ -114,7 +114,7 @@ export async function createRunContext(
 	context.partyBCloseFacet = await ethers.getContractAt("PartyBCloseFacet", diamond)
 	context.partyBOpenFacet = await ethers.getContractAt("PartyBOpenFacet", diamond)
 	context.bridgeFacet = await ethers.getContractAt("BridgeFacet", diamond)
-	context.counterPartyRelation = await ethers.getContractAt("CounterPartyRelationsFacet",diamond)
+	context.counterPartyRelation = await ethers.getContractAt("CounterPartyRelationsFacet", diamond)
 
 	context.tradeSettlementFacet = await ethers.getContractAt("TradeSettlementFacet", diamond)
 

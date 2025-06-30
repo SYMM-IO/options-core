@@ -1,7 +1,7 @@
 import { ethers, run } from "hardhat"
 import { Diamond, FakeOracle, FakeStablecoin, InstantLayer, SignatureVerifier } from "../types"
 import { createRunContext, RunContext } from "./run-context"
-import {  toUtf8Bytes } from "ethers"
+import { toUtf8Bytes } from "ethers"
 import { e } from "../utils/e"
 import { OptionType } from "./option-enums"
 import { MultiAccount } from "../types/contracts/helpers"
@@ -10,7 +10,7 @@ export async function initializeTestFixture(): Promise<RunContext> {
 	const mocks: Map<string, string> = await run("deploy:mocks")
 	const verifier: SignatureVerifier = await run("deploy:SignatureVerifier")
 	const oracle: FakeOracle = await run("deploy:oracle")
-	
+
 	const stableCoin: FakeStablecoin = await run("deploy:stablecoin", {
 		name: "MyFakeStablecoin",
 		symbol: "FUSD",
@@ -18,10 +18,10 @@ export async function initializeTestFixture(): Promise<RunContext> {
 	const stableCoinNL: FakeStablecoin = await run("deploy:stablecoin", {
 		name: "StablecoinNotListed",
 		symbol: "NLUSD",
-	})	
-	
-	const diamond: Diamond = await run("deploy:diamond",true)
-	
+	})
+
+	const diamond: Diamond = await run("deploy:diamond", true)
+
 	let context = await createRunContext(
 		await diamond.getAddress(),
 		[await stableCoin.getAddress(), await stableCoinNL.getAddress()],
@@ -29,36 +29,35 @@ export async function initializeTestFixture(): Promise<RunContext> {
 		await verifier.getAddress(),
 		mocks,
 	)
-	
+
 	const instantLayer: InstantLayer = await run("deploy:InstantLayer", {
 		symmioaddress: context.signers.symmioAddress.address,
-		admin:context.signers.admin.address
+		admin: context.signers.admin.address,
 	})
-	const multiAccount: MultiAccount = await run("deploy:multiAccount",{
+	const multiAccount: MultiAccount = await run("deploy:multiAccount", {
 		symmioaddress: context.signers.symmioAddress.address,
-		admin:context.signers.admin.address
+		admin: context.signers.admin.address,
 	})
-	context.multiAccount = await ethers.getContractAt("MultiAccount",await multiAccount.getAddress())	
-	context.instantLayer = await ethers.getContractAt("InstantLayer",await instantLayer.getAddress())
-	
+	context.multiAccount = await ethers.getContractAt("MultiAccount", await multiAccount.getAddress())
+	context.instantLayer = await ethers.getContractAt("InstantLayer", await instantLayer.getAddress())
 
 	await context.controlFacet.connect(context.signers.admin).setAdmin(context.signers.admin.getAddress())
 	await context.controlFacet
 		.connect(context.signers.admin)
 		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("PAUSER_ROLE")))
-		
-		await context.controlFacet
+
+	await context.controlFacet
 		.connect(context.signers.admin)
 		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("UNPAUSER_ROLE")))
-		
-		await context.controlFacet
-			.connect(context.signers.admin)
-			.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("SETTER_ROLE")))
-		
-		await context.controlFacet
-			.connect(context.signers.admin)
-			.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("SUSPENDER_ROLE")))
-		
+
+	await context.controlFacet
+		.connect(context.signers.admin)
+		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("SETTER_ROLE")))
+
+	await context.controlFacet
+		.connect(context.signers.admin)
+		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("SUSPENDER_ROLE")))
+
 	await context.controlFacet
 		.connect(context.signers.admin)
 		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("WINDOW_UPDATER_ROLE")))

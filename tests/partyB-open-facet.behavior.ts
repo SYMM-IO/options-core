@@ -94,7 +94,6 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 
 		it("Should failed when partyA have partyB Roll", async () => {
-			
 			const latestBlock = await getLatestBlockTime()
 			const request = openIntentRequestBuilder()
 				.partyBsWhiteList([])
@@ -592,7 +591,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 			const tradingFeeFromView = await context.viewFacet.getOpenIntentTradingFee(2)
 			const premiumFromView = await context.viewFacet.getOpenIntentPremium(2)
-			const affiliateFeeFromView = await context.viewFacet.getAffiliateFee(openIntents[1].affiliate,symbol.symbolId)
+			const affiliateFeeFromView = await context.viewFacet.getAffiliateFee(openIntents[1].affiliate, symbol.symbolId)
 
 			let partyAFeesPaid = BigInt(openIntents.length) * (tradingFeeFromView + affiliateFeeFromView)
 			let partyAPremiumPaid = BigInt(openIntents.length) * premiumFromView
