@@ -38,3 +38,4 @@ docs
 .yarn/
 .venv
 .cursorignore
+/scripts/config/setup.json

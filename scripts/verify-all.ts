@@ -3,19 +3,18 @@ import { run } from "hardhat"
 async function main() {
 	let facets: { [x: string]: string } = {
 		AccountFacet: "",
-		DiamondLoupeFacet: "",
-		ForceActionsFacet: "",
-		ViewFacet: "",
-		ControlFacet: "",
 		BridgeFacet: "",
 		ClearingHouseFacet: "",
-		InstantActionsOpenFacet: "",
-		InstantActionsCloseFacet: "",
-		PartyAOpenFacet: "",
+		ControlFacet: "",
+		CounterPartyRelationsFacet: "",
+		DiamondLoupeFacet: "",
+		ForceActionsFacet: "",
 		PartyACloseFacet: "",
+		PartyAOpenFacet: "",
 		PartyBCloseFacet: "",
 		PartyBOpenFacet: "",
 		TradeSettlementFacet: "",
+		ViewFacet: "",
 	}
 	for (const facet in facets) {
 		if (!facets.hasOwnProperty(facet)) continue
