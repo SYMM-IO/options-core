@@ -4,6 +4,27 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
+/**
+ * @title  MultiAccount
+ * @notice Advanced multi-account management system for the Symmio protocol.
+ *         Enables users to create and manage multiple trading accounts with signature
+ *         verification, access control, and seamless integration with InstantLayer operations.
+ *
+ * @dev    Core features include:
+ *         • Upgradeable contract architecture with proper initialization
+ *         • CREATE2-based deterministic account deployment
+ *         • EIP-1271 signature verification for account operations
+ *         • Role-based access control with granular permissions
+ *         • InstantLayer integration for authorized batch operations
+ *         • Admin functionality for PartyA contract management
+ *         • Pause functionality for emergency controls
+ *         • Comprehensive account lifecycle management
+ *
+ *         The contract extends SignatureVerifier for advanced cryptographic operations
+ *         and maintains full compatibility with the Symmio protocol ecosystem through
+ *         seamless call forwarding and signature validation mechanisms.
+ */
+
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
@@ -19,40 +40,116 @@ import { SignatureVerifier } from "./SignatureVerifier.sol";
 contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, PausableUpgradeable, AccessControlUpgradeable {
 	using SafeERC20Upgradeable for IERC20Upgradeable;
 
-	// ==================== CUSTOM ERRORS ====================
-	error NotOwnerOfAccount(address sender, address account, address owner);
-	error ContractDeploymentFailed();
-	error PartyACallFailed(bytes returnData);
-	error InvalidCallData(bytes callData);
-	error UnauthorizedAccess(address account, address sender, bytes4 selector);
+	/* ─────────────────────────────── Roles ─────────────────────────────── */
 
-	// ==================== CONSTANTS ====================
+	/// @notice Role for updating contract configuration and account implementations.
 	bytes32 public constant SETTER_ROLE = keccak256("SETTER_ROLE");
+
+	/// @notice Role that can pause contract operations.
 	bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+
+	/// @notice Role that can unpause contract operations.
 	bytes32 public constant UNPAUSER_ROLE = keccak256("UNPAUSER_ROLE");
 
-	// ==================== STATE VARIABLES ====================
-	address public symmioAddress; // Address of the Symmio platform
-	uint256 public saltCounter; // Counter for generating unique addresses with create2
+	/* ──────────────────────── Storage Variables ──────────────────────── */
+
+	/// @notice Address of the core Symmio protocol contract.
+	address public symmioAddress;
+
+	/// @notice Counter for generating unique CREATE2 salts for account deployment.
+	uint256 public saltCounter;
+
+	/// @notice Bytecode of the account implementation contract.
 	bytes public accountImplementation;
 
-	// Account mappings
-	mapping(address => Account[]) public accounts; // User to their accounts mapping
-	mapping(address => uint256) public indexOfAccount; // Account to its index mapping
-	mapping(address => address) public owners; // Account to its owner mapping
+	/// @notice Mapping from user addresses to their array of trading accounts.
+	mapping(address => Account[]) public accounts;
 
-	// ===================== MODIFIERS =====================
+	/// @notice Mapping from account address to its index in the owner's accounts array.
+	mapping(address => uint256) public indexOfAccount;
+
+	/// @notice Mapping from account address to its owner address.
+	mapping(address => address) public owners;
+
+	/* ─────────────────────────────── Structs ─────────────────────────────── */
+
 	/**
-	 * @dev Modifier to check if the sender is the owner of the account
-	 * @param account The account address to check ownership for
-	 * @param sender The address to verify as owner
+	 * @notice Account struct containing account address and name.
+	 * @param account Account address.
+	 * @param name    Human-readable name for the account.
 	 */
-	modifier onlyOwner(address account, address sender) {
-		if (owners[account] != sender) revert NotOwnerOfAccount(sender, account, owners[account]);
-		_;
+	struct Account {
+		address account;
+		string name;
 	}
 
-	// ==================== CONSTRUCTOR & INITIALIZER ====================
+	/* ─────────────────────────────── Events ─────────────────────────────── */
+
+	/**
+	 * @notice Emitted when account implementation bytecode is updated.
+	 * @param oldImplementation Previous implementation bytecode.
+	 * @param newImplementation New implementation bytecode.
+	 */
+	event SetAccountImplementation(bytes oldImplementation, bytes newImplementation);
+
+	/**
+	 * @notice Emitted when the Symmio protocol address is updated.
+	 * @param oldSymmioAddress Previous Symmio contract address.
+	 * @param newSymmioAddress New Symmio contract address.
+	 */
+	event SetSymmioAddress(address oldSymmioAddress, address newSymmioAddress);
+
+	/**
+	 * @notice Emitted when a new account is created for a user.
+	 * @param user    User who owns the new account.
+	 * @param account Address of the newly created account.
+	 * @param name    Human-readable name for the account.
+	 */
+	event AddAccount(address indexed user, address indexed account, string name);
+
+	/**
+	 * @notice Emitted when an account's name is updated.
+	 * @param user           Account owner address.
+	 * @param accountAddress Account address being renamed.
+	 * @param name           New account name.
+	 */
+	event EditAccountName(address indexed user, address indexed accountAddress, string name);
+
+	/**
+	 * @notice Emitted when a new contract is deployed via CREATE2.
+	 * @param deployer        Address that initiated the deployment.
+	 * @param contractAddress Address of the newly deployed contract.
+	 */
+	event DeployContract(address indexed deployer, address indexed contractAddress);
+
+	/**
+	 * @notice Emitted when a function call is executed on behalf of an account.
+	 * @param sender     Address that initiated the call.
+	 * @param account    Account address the call was made for.
+	 * @param callData   Encoded function call data.
+	 * @param success    Whether the call was successful.
+	 * @param resultData Return data from the call.
+	 */
+	event Call(address indexed sender, address indexed account, bytes callData, bool success, bytes resultData);
+
+	/**
+	 * @notice Emitted when an admin call is made to a PartyA contract.
+	 * @param partyA     PartyA contract address.
+	 * @param data       Call data sent to the contract.
+	 * @param success    Whether the call was successful.
+	 * @param returnData Return data from the call.
+	 */
+	event AdminPartyACall(address indexed partyA, bytes data, bool success, bytes returnData);
+
+	/* ─────────────────────────────── Errors ─────────────────────────────── */
+
+	error NotOwnerOfAccount(address sender, address account, address owner); // caller not account owner
+	error ContractDeploymentFailed(); // CREATE2 deployment failed
+	error PartyACallFailed(bytes returnData); // admin call to PartyA failed
+	error InvalidCallData(bytes callData); // call data is invalid
+	error UnauthorizedAccess(address account, address sender, bytes4 selector); // unauthorized call attempt
+
+	/* ─────────────────────────── Initialization ─────────────────────────── */
 
 	/// @custom:oz-upgrades-unsafe-allow constructor
 	constructor() {
@@ -60,10 +157,13 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 	}
 
 	/**
-	 * @dev Initializes the contract with necessary parameters.
-	 * @param admin The admin address for the accounts contracts.
-	 * @param symmioAddress_ The address of the Symmio platform.
-	 * @param accountImplementation_ The bytecode of the account implementation contract.
+	 * @notice Initialize the upgradeable MultiAccount contract.
+	 * @param admin                     Address receiving all admin roles.
+	 * @param symmioAddress_            Address of the core Symmio protocol contract.
+	 * @param accountImplementation_    Bytecode of the account implementation contract.
+	 *
+	 * @dev Sets up initial roles and contract references. The admin receives
+	 *      DEFAULT_ADMIN_ROLE, SETTER_ROLE, PAUSER_ROLE, and UNPAUSER_ROLE.
 	 */
 	function initialize(address admin, address symmioAddress_, bytes memory accountImplementation_) public initializer {
 		__Pausable_init();
@@ -77,73 +177,13 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 		accountImplementation = accountImplementation_;
 	}
 
-	// ==================== SETTER FUNCTIONS ====================
-	/**
-	 * @dev Sets the implementation contract for the account.
-	 * @param accountImplementation_ The bytecodes of the new implementation contract.
-	 */
-	function setAccountImplementation(bytes memory accountImplementation_) external onlyRole(SETTER_ROLE) {
-		emit SetAccountImplementation(accountImplementation, accountImplementation_);
-		accountImplementation = accountImplementation_;
-	}
+	/* ────────────────────────── Account Management ────────────────────────── */
 
 	/**
-	 * @dev Sets the address of the Symmio platform.
-	 * @param addr The address of the Symmio platform.
-	 */
-	function setSymmioAddress(address addr) external onlyRole(SETTER_ROLE) {
-		emit SetSymmioAddress(symmioAddress, addr);
-		symmioAddress = addr;
-	}
-
-	// ================ CONTRACT DEPLOYMENT FUNCTIONS ================
-	/**
-	 * @dev Internal function to deploy a new party A account contract.
-	 * @return account The address of the newly deployed account contract.
-	 */
-	function _deployPartyA() internal returns (address account) {
-		bytes32 salt = keccak256(abi.encodePacked("MultiAccount_", saltCounter));
-		saltCounter += 1;
-
-		bytes memory bytecode = abi.encodePacked(accountImplementation, abi.encode(address(this), symmioAddress));
-		account = _deployContract(bytecode, salt);
-		return account;
-	}
-
-	/**
-	 * @dev Internal function to deploy a contract with create2.
-	 * @param bytecode The bytecode of the contract to be deployed.
-	 * @param salt The salt used for contract deployment.
-	 * @return contractAddress The address of the deployed contract.
-	 */
-	function _deployContract(bytes memory bytecode, bytes32 salt) internal returns (address contractAddress) {
-		assembly {
-			contractAddress := create2(0, add(bytecode, 32), mload(bytecode), salt)
-		}
-		if (contractAddress == address(0)) revert ContractDeploymentFailed();
-		emit DeployContract(msg.sender, contractAddress);
-		return contractAddress;
-	}
-
-	// =================== PAUSE FUNCTIONS ===================
-	/**
-	 * @dev Pauses the contract, preventing execution of transactions.
-	 */
-	function pause() external onlyRole(PAUSER_ROLE) {
-		_pause();
-	}
-
-	/**
-	 * @dev Unpauses the contract, allowing execution of transactions.
-	 */
-	function unpause() external onlyRole(UNPAUSER_ROLE) {
-		_unpause();
-	}
-
-	// ================ ACCOUNT MANAGEMENT FUNCTIONS ================
-	/**
-	 * @dev Adds a new account for the caller with the specified name.
-	 * @param name The name of the new account.
+	 * @notice Create a new trading account for the caller.
+	 * @param name Human-readable name for the new account.
+	 *
+	 * @dev Deploys a new PartyA account contract using CREATE2 for deterministic addresses.
 	 */
 	function addAccount(string memory name) external whenNotPaused {
 		address account = _deployPartyA();
@@ -154,9 +194,11 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 	}
 
 	/**
-	 * @dev Edits the name of the specified account.
-	 * @param accountAddress The address of the account to edit.
-	 * @param name The new name for the account.
+	 * @notice Update the display name of an existing account.
+	 * @param accountAddress Address of the account to rename.
+	 * @param name           New display name for the account.
+	 *
+	 * @dev Only the account owner can change the account name.
 	 */
 	function editAccountName(address accountAddress, string memory name) external whenNotPaused {
 		uint256 index = indexOfAccount[accountAddress];
@@ -164,27 +206,41 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 		emit EditAccountName(msg.sender, accountAddress, name);
 	}
 
+	/* ───────────────────── Call Execution & Management ───────────────────── */
+
 	/**
-	 * @dev Allows the admin to execute an arbitrary admin call on a PartyA contract.
-	 * @param partyA The address of the PartyA contract.
-	 * @param data The calldata for the admin call.
+	 * @notice Execute multiple function calls on behalf of a PartyA account.
+	 * @param account    Account address to execute calls for.
+	 * @param _callDatas Array of encoded function call data.
 	 *
-	 * This function can be used to forward any admin-level operation to the PartyA contract.
-	 * Requirements:
-	 * - Caller must have the SETTER_ROLE.
-	 * - The call must succeed, otherwise the transaction reverts.
+	 * @dev Access is restricted to account owners or InstantLayer when enabled.
+	 *      All calls must succeed for the transaction to complete.
 	 */
-	function adminCallPartyA(address partyA, bytes calldata data) external onlyRole(SETTER_ROLE) {
-		(bool success, bytes memory returnData) = partyA.call(data);
-		if (!success) revert PartyACallFailed(returnData);
-		emit AdminPartyACall(partyA, data, success, returnData);
+	function _call(address account, bytes[] memory _callDatas) external whenNotPaused {
+		if (msg.sender != owners[account] && !ISymmio(symmioAddress).isCallFromInstantLayer())
+			revert UnauthorizedAccess(account, msg.sender, bytes4(0));
+		for (uint8 i; i < _callDatas.length; i++) innerCall(account, _callDatas[i]);
 	}
 
-	// ================ CALL MANAGEMENT FUNCTIONS ================
 	/**
-	 * @dev Send a call to symmio from partyA account.
-	 * @param account The address of the account to execute the calls on behalf of.
-	 * @param _callData The input calldata to pass by the call.
+	 * @notice Verify signature for an account using EIP-1271 standard.
+	 * @param account   Account address to verify signature for.
+	 * @param hash      Hash of the data that was signed.
+	 * @param signature Signature bytes to verify.
+	 * @return Magic value (0x1626ba7e) if signature is valid, 0xffffffff otherwise.
+	 *
+	 * @dev Delegates signature verification to the account owner using SignatureVerifier.
+	 */
+	function verifySignatureOfAccount(address account, bytes32 hash, bytes calldata signature) external view returns (bytes4) {
+		return isValidSignatureEIP1271(owners[account], hash, signature);
+	}
+
+	/* ───────────────────────── Internal Helpers ───────────────────────── */
+
+	/**
+	 * @dev Execute a function call on a PartyA account with comprehensive error handling.
+	 * @param account   Account address to call.
+	 * @param _callData Encoded function call data.
 	 */
 	function innerCall(address account, bytes memory _callData) internal {
 		(bool _success, bytes memory _resultData) = ISymmioPartyA(account).call(_callData);
@@ -197,43 +253,104 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 	}
 
 	/**
-	 * @dev Executes a series of calls on behalf of the specified account.
-	 * @param account The address of the account to execute the calls on behalf of.
-	 * @param _callDatas An array of call data to execute.
+	 * @dev Deploy a new PartyA account contract using CREATE2.
+	 * @return account Address of the newly deployed account contract.
 	 */
-	function _call(address account, bytes[] memory _callDatas) external whenNotPaused {
-		if (msg.sender != owners[account] && !ISymmio(symmioAddress).isCallFromInstantLayer())
-			revert UnauthorizedAccess(account, msg.sender, bytes4(0));
-		for (uint8 i; i < _callDatas.length; i++) innerCall(account, _callDatas[i]);
+	function _deployPartyA() internal returns (address account) {
+		bytes32 salt = keccak256(abi.encodePacked("MultiAccount_", saltCounter));
+		saltCounter += 1;
+
+		bytes memory bytecode = abi.encodePacked(accountImplementation, abi.encode(address(this), symmioAddress));
+		account = _deployContract(bytecode, salt);
+		return account;
 	}
 
 	/**
-	 * @dev Verifies the signature of an account owner.
-	 * @param account The address of the account.
-	 * @param hash The hash of the data signed.
-	 * @param signature The signature generated by the signer.
-	 * @return magic value if the signature is valid.
+	 * @dev Deploy a contract using CREATE2 with the specified bytecode and salt.
+	 * @param bytecode Bytecode of the contract to deploy.
+	 * @param salt     Salt for CREATE2 deployment.
+	 * @return contractAddress Address of the deployed contract.
 	 */
-	function verifySignatureOfAccount(address account, bytes32 hash, bytes calldata signature) external view returns (bytes4) {
-		return isValidSignatureEIP1271(owners[account], hash, signature);
+	function _deployContract(bytes memory bytecode, bytes32 salt) internal returns (address contractAddress) {
+		assembly {
+			contractAddress := create2(0, add(bytecode, 32), mload(bytecode), salt)
+		}
+		if (contractAddress == address(0)) revert ContractDeploymentFailed();
+		emit DeployContract(msg.sender, contractAddress);
+		return contractAddress;
 	}
 
-	// ==================== VIEW FUNCTIONS ====================
+	/* ────────────────────────── Admin Functions ────────────────────────── */
+
 	/**
-	 * @dev Returns the number of accounts belonging to the specified user.
-	 * @param user The address of the user.
-	 * @return The number of accounts.
+	 * @notice Update the bytecode for new account deployments.
+	 * @param accountImplementation_ New account implementation bytecode.
+	 *
+	 * @dev Only callable by accounts with SETTER_ROLE.
+	 */
+	function setAccountImplementation(bytes memory accountImplementation_) external onlyRole(SETTER_ROLE) {
+		emit SetAccountImplementation(accountImplementation, accountImplementation_);
+		accountImplementation = accountImplementation_;
+	}
+
+	/**
+	 * @notice Update the Symmio protocol contract address.
+	 * @param addr New Symmio protocol address.
+	 *
+	 * @dev Only callable by accounts with SETTER_ROLE.
+	 */
+	function setSymmioAddress(address addr) external onlyRole(SETTER_ROLE) {
+		emit SetSymmioAddress(symmioAddress, addr);
+		symmioAddress = addr;
+	}
+
+	/**
+	 * @notice Execute an arbitrary admin call on a PartyA contract.
+	 * @param partyA PartyA contract address to call.
+	 * @param data   Encoded function call data for the admin operation.
+	 *
+	 * @dev Only callable by accounts with SETTER_ROLE. Used for forwarding
+	 *      admin-level operations to PartyA contracts.
+	 */
+	function adminCallPartyA(address partyA, bytes calldata data) external onlyRole(SETTER_ROLE) {
+		(bool success, bytes memory returnData) = partyA.call(data);
+		if (!success) revert PartyACallFailed(returnData);
+		emit AdminPartyACall(partyA, data, success, returnData);
+	}
+
+	/**
+	 * @notice Pause all contract operations except view functions.
+	 * @dev Only callable by accounts with PAUSER_ROLE.
+	 */
+	function pause() external onlyRole(PAUSER_ROLE) {
+		_pause();
+	}
+
+	/**
+	 * @notice Resume all contract operations.
+	 * @dev Only callable by accounts with UNPAUSER_ROLE.
+	 */
+	function unpause() external onlyRole(UNPAUSER_ROLE) {
+		_unpause();
+	}
+
+	/* ────────────────────────── View Functions ────────────────────────── */
+
+	/**
+	 * @notice Get the number of accounts owned by a user.
+	 * @param user User address to query.
+	 * @return Number of accounts owned by the user.
 	 */
 	function getAccountsLength(address user) external view returns (uint256) {
 		return accounts[user].length;
 	}
 
 	/**
-	 * @dev Returns an array of accounts belonging to the specified user.
-	 * @param user The address of the user.
-	 * @param start The index to start retrieving accounts from.
-	 * @param size The maximum number of accounts to retrieve.
-	 * @return An array of Account structures.
+	 * @notice Get a paginated list of accounts owned by a user.
+	 * @param user  User address to query.
+	 * @param start Starting index for pagination.
+	 * @param size  Maximum number of accounts to return.
+	 * @return Array of Account structures.
 	 */
 	function getAccounts(address user, uint256 start, uint256 size) external view returns (Account[] memory) {
 		uint256 len = size > accounts[user].length - start ? accounts[user].length - start : size;
@@ -242,5 +359,17 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 			userAccounts[i - start] = accounts[user][i];
 		}
 		return userAccounts;
+	}
+
+	/* ─────────────────────────────── Modifiers ─────────────────────────────── */
+
+	/**
+	 * @notice Restricts function access to the owner of the specified account.
+	 * @param account Account address to check ownership for.
+	 * @param sender  Address to verify as owner.
+	 */
+	modifier onlyOwner(address account, address sender) {
+		if (owners[account] != sender) revert NotOwnerOfAccount(sender, account, owners[account]);
+		_;
 	}
 }
