@@ -118,6 +118,28 @@
         "type": "error"
     },
     {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "multiAccount",
+                "type": "address"
+            }
+        ],
+        "name": "UnregisteredMultiAccount",
+        "type": "error"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "partyB",
+                "type": "address"
+            }
+        ],
+        "name": "UnregisteredPartyB",
+        "type": "error"
+    },
+    {
         "anonymous": false,
         "inputs": [
             {
@@ -140,6 +162,32 @@
         "anonymous": false,
         "inputs": [],
         "name": "EIP712DomainChanged",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "multiAccount",
+                "type": "address"
+            }
+        ],
+        "name": "MultiAccountRegistered",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "multiAccount",
+                "type": "address"
+            }
+        ],
+        "name": "MultiAccountUnregistered",
         "type": "event"
     },
     {
@@ -482,6 +530,11 @@
                         "type": "uint256"
                     },
                     {
+                        "internalType": "bytes32",
+                        "name": "salt",
+                        "type": "bytes32"
+                    },
+                    {
                         "internalType": "uint256",
                         "name": "deadline",
                         "type": "uint256"
@@ -532,6 +585,11 @@
                         "type": "uint256"
                     },
                     {
+                        "internalType": "bytes32",
+                        "name": "salt",
+                        "type": "bytes32"
+                    },
+                    {
                         "internalType": "uint256",
                         "name": "deadline",
                         "type": "uint256"
@@ -575,6 +633,11 @@
                         "internalType": "uint256",
                         "name": "nonce",
                         "type": "uint256"
+                    },
+                    {
+                        "internalType": "bytes32",
+                        "name": "salt",
+                        "type": "bytes32"
                     },
                     {
                         "internalType": "uint256",
@@ -794,7 +857,26 @@
                 "type": "address"
             }
         ],
-        "name": "isPartyB",
+        "name": "isMultiAccountRegistered",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "addr",
+                "type": "address"
+            }
+        ],
+        "name": "isPartyBRegistered",
         "outputs": [
             {
                 "internalType": "bool",
@@ -841,6 +923,32 @@
         "inputs": [
             {
                 "internalType": "address",
+                "name": "multiAccount",
+                "type": "address"
+            }
+        ],
+        "name": "registerMultiAccount",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address[]",
+                "name": "multiAccounts",
+                "type": "address[]"
+            }
+        ],
+        "name": "registerMultiAccountBatch",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
                 "name": "partyB",
                 "type": "address"
             }
@@ -861,6 +969,25 @@
         "name": "registerPartyBBatch",
         "outputs": [],
         "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "name": "registeredMultiAccounts",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
         "type": "function"
     },
     {
@@ -990,6 +1117,19 @@
             }
         ],
         "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "multiAccount",
+                "type": "address"
+            }
+        ],
+        "name": "unregisterMultiAccount",
+        "outputs": [],
+        "stateMutability": "nonpayable",
         "type": "function"
     },
     {
