@@ -20,7 +20,6 @@ import {
 	PartyBCloseFacet,
 	PartyBOpenFacet,
 	SignatureVerifier,
-	TradeSettlementFacet,
 	ViewFacet,
 } from "../types"
 import { counterPartyRelations } from "../types/contracts/facets"
@@ -34,7 +33,6 @@ export class RunContext {
 	partyBCloseFacet!: PartyBCloseFacet
 	partyBOpenFacet!: PartyBOpenFacet
 	viewFacet!: ViewFacet
-	tradeSettlementFacet!: TradeSettlementFacet
 	controlFacet!: ControlFacet
 	forceActionsFacet!: ForceActionsFacet
 	clearingHouse!: ClearingHouseFacet
@@ -115,8 +113,6 @@ export async function createRunContext(
 	context.partyBOpenFacet = await ethers.getContractAt("PartyBOpenFacet", diamond)
 	context.bridgeFacet = await ethers.getContractAt("BridgeFacet", diamond)
 	context.counterPartyRelation = await ethers.getContractAt("CounterPartyRelationsFacet", diamond)
-
-	context.tradeSettlementFacet = await ethers.getContractAt("TradeSettlementFacet", diamond)
 
 	if (mocks) {
 		context.mocks = {
