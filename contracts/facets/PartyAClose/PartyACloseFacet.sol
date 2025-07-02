@@ -76,36 +76,4 @@ contract PartyACloseFacet is Accessibility, Pausable, IPartyACloseFacet {
 			}
 		}
 	}
-
-	/**
-	 * @notice Transfers ownership of a trade to another address
-	 * @dev Only the current PartyA owner of the trade can initiate this transfer
-	 *      If the trade has an associated NFT, the NFT will also be transferred
-	 * @param receiver The address that will become the new owner of the trade
-	 * @param tradeId The unique identifier of the trade to be transferred
-	 */
-	function transferTrade(
-		address receiver,
-		uint256 tradeId
-	) external whenPartyNotPaused(msg.sender) onlyPartyAOfTrade(tradeId) whenNotSuspended(msg.sender) whenNotSuspended(receiver) {
-		LibPartyAClose.transferTrade(receiver, tradeId);
-		emit TransferTradeByPartyA(msg.sender, receiver, tradeId);
-	}
-
-	/**
-	 * @notice Updates trade ownership when an associated NFT is transferred
-	 * @dev This function is designed to be called only by the NFT contract itself
-	 *      It synchronizes the trade ownership with the NFT ownership after transfers
-	 * @param sender The previous owner of the trade/NFT
-	 * @param receiver The new owner who will receive ownership of the trade
-	 * @param tradeId The unique identifier of the trade whose ownership is being updated
-	 */
-	function transferTradeFromNFT(
-		address sender,
-		address receiver,
-		uint256 tradeId
-	) external whenPartyNotPaused(msg.sender) whenNotSuspended(sender) whenNotSuspended(receiver) {
-		LibPartyAClose.transferTradeFromNFT(sender, receiver, tradeId);
-		emit TransferTradeByPartyA(sender, receiver, tradeId);
-	}
 }

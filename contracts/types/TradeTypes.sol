@@ -4,7 +4,8 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { MarginType, TradeAgreements } from "./BaseTypes.sol";
+import { TradeAgreements } from "./BaseTypes.sol";
+import { SchnorrSign } from "./MuonTypes.sol";
 
 enum TradeStatus {
 	OPENED,
@@ -29,4 +30,20 @@ struct Trade {
 	TradeStatus status;
 	uint256 createTimestamp;
 	uint256 statusModifyTimestamp;
+}
+
+struct SettlementState {
+	int256 amount;
+	bool pending;
+}
+
+struct SettlementPriceSig {
+	bytes reqId;
+	uint256 timestamp;
+	uint256 symbolId;
+	uint256 settlementPrice;
+	uint256 settlementTimestamp;
+	uint256 collateralPrice;
+	bytes gatewaySignature;
+	SchnorrSign sigs;
 }

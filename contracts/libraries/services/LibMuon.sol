@@ -10,7 +10,7 @@ import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { SymbolStorage, Symbol, Oracle } from "../../storages/SymbolStorage.sol";
 
 import { UpnlSig } from "../../types/WithdrawTypes.sol";
-import { SettlementPriceSig } from "../../types/SettlementTypes.sol";
+import { SettlementPriceSig } from "../../types/TradeTypes.sol";
 
 import { IMuonOracle } from "../../interfaces/IMuonOracle.sol";
 

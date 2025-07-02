@@ -5,7 +5,8 @@
 pragma solidity >=0.8.18;
 
 import "../facets/Bridge/IBridgeFacet.sol";
-import "../facets/ViewFacet/IViewFacet.sol";
+import "../facets/Trade/ITradeFacet.sol";
+import "../facets/View/IViewFacet.sol";
 import "../facets/Account/IAccountFacet.sol";
 import "../facets/Control/IControlFacet.sol";
 import "../facets/DiamondCut/IDiamondCut.sol";
@@ -20,6 +21,7 @@ import "../facets/ClearingHouse/IClearingHouseFacet.sol";
 interface ISymmio is
 	IAccountFacet,
 	IBridgeFacet,
+	ITradeFacet,
 	IClearingHouseFacet,
 	IControlFacet,
 	IForceActionsFacet,

@@ -4,8 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { IPartiesEvents } from "../../interfaces/IPartiesEvents.sol";
-
-interface ITradeSettlementEvents is IPartiesEvents {
+interface ITradeEvents {
+	event TransferTradeByPartyA(address sender, address receiver, uint256 tradeId);
 	event ExecuteTrades(address operator, uint256[] tradeIds, bool[] exercised, bool[] expired, uint256 settlementPrice, uint256 collateralPrice);
 }
