@@ -88,6 +88,9 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	/// @notice Counter for generating unique template IDs.
 	uint256 public nextTemplateId;
 
+	/// @notice Mapping to track used operation hashes for replay protection
+	mapping(bytes32 => bool) public usedOperationHashes;
+
 	/* ─────────────────────────────── Structs ─────────────────────────────── */
 
 	/**
@@ -172,7 +175,8 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	error ArrayLengthMismatch(); // input arrays have different lengths
 	error UnregisteredMultiAccount(address multiAccount); // MultiAccount not registered
 	error UnregisteredPartyB(address partyB); // PartyB not registered
-
+	error OperationAlreadyExecuted(bytes32 hash); // operation already executed
+	
 	/* ─────────────────────────── Initialization ─────────────────────────── */
 
 	/**
@@ -379,6 +383,10 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 		}
 
 		bytes32 hash = getOperationHash(signedOp);
+
+		// Check for replay attacks - this should be done for ALL operations
+		if (usedOperationHashes[hash]) revert OperationAlreadyExecuted(hash);
+		usedOperationHashes[hash] = true;
 
 		// Verify signature using OpenZeppelin's SignatureChecker
 		if (!SignatureChecker.isValidSignatureNow(signedOp.signer, hash, signedOp.signature)) revert InvalidSignature(signedOp.signer);
