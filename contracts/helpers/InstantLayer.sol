@@ -28,7 +28,7 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 
 	// EIP-712 type hash
 	bytes32 public constant OPERATION_TYPEHASH =
-		keccak256("SignedOperation(address account,address accountSource,address signer,bytes callData,uint256 nonce,uint256 deadline)");
+		keccak256("SignedOperation(address accountSource,address signer,bytes callData,uint256 nonce,uint256 deadline)");
 
 	ISymmio public immutable symmio;
 
@@ -39,11 +39,8 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	uint256 public nextTemplateId;
 
 	struct Operation {
-		address account; // For PartyA operations - which account to use
-		bytes callData; // The actual calldata with placeholders
 		uint256[] insertionPoints; // Where to insert return values
 		uint256[] sourceIndices; // Which operation's return value to use
-		address signer; // Expected signer for this operation
 	}
 
 	struct Template {
@@ -53,9 +50,8 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	}
 
 	struct SignedOperation {
-		address account; // The account to use (for PartyA operations)
 		address accountSource; // The MultiAccount contract (for PartyA operations)
-		address signer; // The signer (for PartyB operations only)
+		address signer; // The signer
 		bytes callData; // The actual Symmio core call
 		uint256 nonce;
 		uint256 deadline;
@@ -79,8 +75,6 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	error InvalidTemplate(uint256 templateId);
 	error OperationFailed(uint256 operationIndex, bytes revertData);
 	error ArrayLengthMismatch();
-	error InvalidAccount(address account);
-	error InvalidSigner(address expected, address provided);
 	error UnregisteredTarget();
 	error UnregisteredPartyB(address partyB);
 
@@ -205,13 +199,10 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 			SignedOperation calldata signedOp = signedOps[i];
 
 			// Verify signature and nonce
-			_verifyOperation(op, signedOp);
+			_verifyOperation(signedOp);
 
 			// Prepare calldata with insertions from previous results
 			bytes memory finalCallData = _insertResults(signedOp.callData, op.insertionPoints, op.sourceIndices, results);
-
-			// Update operation with account from signed op
-			op.account = signedOp.account;
 
 			// Execute operation
 			(success, results[i]) = _executeOperationSafe(signedOp, finalCallData);
@@ -237,16 +228,8 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 
 		bool success = true;
 		for (uint256 i = 0; i < signedOps.length && success; i++) {
-			Operation memory op = Operation({
-				account: signedOps[i].account,
-				callData: "",
-				insertionPoints: new uint256[](0),
-				sourceIndices: new uint256[](0),
-				signer: signedOps[i].signer
-			});
-
 			// Verify signature and nonce
-			_verifyOperation(op, signedOps[i]);
+			_verifyOperation(signedOps[i]);
 
 			(success, results[i]) = _executeOperationSafe(signedOps[i], signedOps[i].callData);
 			if (!success) {
@@ -261,56 +244,22 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 
 	/**
 	 * @notice Verify signature for an operation
-	 * @param op The operation details
 	 * @param signedOp The signed operation
 	 */
-	function _verifyOperation(Operation memory op, SignedOperation calldata signedOp) private {
+	function _verifyOperation(SignedOperation calldata signedOp) private {
 		if (signedOp.deadline < block.timestamp) revert DeadlineExpired(signedOp.deadline);
-
-		address expectedSigner;
-
-		// Determine if this is a PartyB operation based on accountSource
-		if (isPartyB(signedOp.signer)) {
-			// PartyB operation - the signer is the PartyB contract itself
-			expectedSigner = signedOp.signer;
-
-			// Verify the signer matches accountSource for PartyB
-			if (signedOp.signer != signedOp.accountSource) {
-				revert InvalidSigner(signedOp.accountSource, signedOp.signer);
-			}
-		} else if (isMultiAccount(signedOp.accountSource)) {
-			// PartyA operation - verify the account owner's signature
-			if (signedOp.account == address(0)) revert InvalidAccount(signedOp.account);
-
-			IMultiAccount multiAccount = IMultiAccount(signedOp.accountSource);
-			address owner = multiAccount.owners(signedOp.account);
-			if (owner == address(0)) revert InvalidAccount(signedOp.account);
-			expectedSigner = owner;
-		} else {
-			// Neither registered PartyB nor MultiAccount
-			revert UnregisteredTarget();
-		}
-
-		// Check template signer requirement if specified
-		if (op.signer != address(0) && op.signer != expectedSigner) {
-			revert InvalidSigner(op.signer, expectedSigner);
-		}
 
 		bytes32 hash = getOperationHash(signedOp);
 
 		// Verify signature using OpenZeppelin's SignatureChecker
-		if (!SignatureChecker.isValidSignatureNow(expectedSigner, hash, signedOp.signature)) {
-			revert InvalidSignature(expectedSigner);
-		}
+		if (!SignatureChecker.isValidSignatureNow(signedOp.signer, hash, signedOp.signature)) revert InvalidSignature(signedOp.signer);
 
 		// Verify and increment nonce
-		uint256 expectedNonce = nonces[expectedSigner];
-		if (signedOp.nonce != expectedNonce) {
-			revert InvalidNonce(expectedSigner, expectedNonce, signedOp.nonce);
-		}
+		uint256 expectedNonce = nonces[signedOp.signer];
+		if (signedOp.nonce != expectedNonce) revert InvalidNonce(signedOp.signer, expectedNonce, signedOp.nonce);
 
-		nonces[expectedSigner]++;
-		emit NonceIncremented(expectedSigner, nonces[expectedSigner]);
+		nonces[signedOp.signer]++;
+		emit NonceIncremented(signedOp.signer, nonces[signedOp.signer]);
 	}
 
 	/**
@@ -329,7 +278,7 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 			(success, result) = signedOp.signer.call(abi.encodeWithSelector(ISymmioPartyB._call.selector, callDatas));
 		} else {
 			// PartyA operation through MultiAccount
-			(success, result) = signedOp.accountSource.call(abi.encodeWithSelector(IMultiAccount._call.selector, signedOp.account, callDatas));
+			(success, result) = signedOp.accountSource.call(abi.encodeWithSelector(IMultiAccount._call.selector, signedOp.signer, callDatas));
 		}
 	}
 
@@ -380,12 +329,12 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 
 	/**
 	 * @notice Get the EIP-712 typed data hash for an operation
-	 * @param op The signed operation
+	 * @param signedOp The signed operation (No need to include signature itself when calling it from off-chain apps)
 	 * @return The EIP-712 hash that should be signed
 	 */
-	function getOperationHash(SignedOperation calldata op) public view returns (bytes32) {
+	function getOperationHash(SignedOperation calldata signedOp) public view returns (bytes32) {
 		bytes32 structHash = keccak256(
-			abi.encode(OPERATION_TYPEHASH, op.account, op.accountSource, op.signer, keccak256(op.callData), op.nonce, op.deadline)
+			abi.encode(OPERATION_TYPEHASH, signedOp.accountSource, signedOp.signer, keccak256(signedOp.callData), signedOp.nonce, signedOp.deadline)
 		);
 
 		return _hashTypedDataV4(structHash);
