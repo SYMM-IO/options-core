@@ -14,14 +14,8 @@ interface IMultiAccount {
 	event DeployContract(address sender, address contractAddress);
 	event AddAccount(address user, address account, string name);
 	event EditAccountName(address user, address account, string newName);
-	event DepositForAccount(address collateral, address user, address account, uint256 amount);
-	event AllocateForAccount(address user, address account, uint256 amount);
 	event CompleteWithdrawFromAccount(uint256 id, address account);
 	event Call(address user, address account, bytes _callData, bool _success, bytes _resultData);
-	event DelegateAccess(address account, address target, bytes4 selector, bool state);
-	event DelegateAccesses(address account, address target, bytes4[] selector, bool state);
-	event ProposeToRevokeAccesses(address account, address target, bytes4[] selector);
-	event SetDelegateAccessRevokeCooldown(uint256 oldCooldown, uint256 newCooldown);
 	event AdminPartyACall(address partyA, bytes data, bool success, bytes returnData);
 
 	function owners(address user) external view returns (address);
