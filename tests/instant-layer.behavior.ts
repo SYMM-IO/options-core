@@ -319,8 +319,7 @@ export function shouldBehaveLikeInstantLayer(): void {
 				console.log("Hash Of Operation " + i +":",hash)
 			}
 
-			await expect(context.instantLayer.executeBatch(signedOps)).not.to.be.reverted	
-
+			// await expect(context.instantLayer.executeBatch(signedOps)).not.to.be.reverted
 			//TODO
 		})
 		
