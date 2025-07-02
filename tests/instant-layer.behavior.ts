@@ -17,18 +17,18 @@ import { MarginType } from "./option-enums"
 import { getLatestBlockTime } from "../utils/time"
 import { InstantLayer } from "../types"
 
-import * as diamond from "../artifacts/contracts/Diamond.sol/Diamond.json";
-import * as partyAOpenIntent from "../artifacts/contracts/facets/PartyAOpen/PartyAOpenFacet.sol/PartyAOpenFacet.json";
-import * as partyBOpenIntent from "../artifacts/contracts/facets/PartyBOpen/PartyBOpenFacet.sol/PartyBOpenFacet.json";
+import * as diamond from "../artifacts/contracts/Diamond.sol/Diamond.json"
+import * as partyAOpenIntent from "../artifacts/contracts/facets/PartyAOpen/PartyAOpenFacet.sol/PartyAOpenFacet.json"
+import * as partyBOpenIntent from "../artifacts/contracts/facets/PartyBOpen/PartyBOpenFacet.sol/PartyBOpenFacet.json"
 import { trace } from "console"
 import { zeroPad } from "@ethersproject/bytes"
 
 export function shouldBehaveLikeInstantLayer(): void {
 	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyB1: PartyB, partyB2: PartyB
 
-	let ops:InstantLayer.OperationStruct[]
-	let signedOps:InstantLayer.SignedOperationStruct[]
-	let ABI:InterfaceAbi
+	let ops: InstantLayer.OperationStruct[]
+	let signedOps: InstantLayer.SignedOperationStruct[]
+	let ABI: InterfaceAbi
 
 	beforeEach(async function () {
 		context = await loadFixture(initializeTestFixture)
@@ -56,7 +56,7 @@ export function shouldBehaveLikeInstantLayer(): void {
 			.build()
 
 		let partyAOpenABI = new ethers.Interface(partyAOpenIntent.abi)
-		const openIntentCallData = partyAOpenABI.encodeFunctionData("sendOpenIntent",[
+		const openIntentCallData = partyAOpenABI.encodeFunctionData("sendOpenIntent", [
 			[partyB1.getSigner.address],
 			request.symbolId,
 			request.price,
@@ -70,12 +70,12 @@ export function shouldBehaveLikeInstantLayer(): void {
 			request.deadline,
 			await context.collateralNL.getAddress(),
 			await context.signers.affiliate1.getAddress(),
-			request.userData
+			request.userData,
 		])
-		
+
 		let partyBOpenABI = new ethers.Interface(partyBOpenIntent.abi)
-		const lockIntentCallData =  partyBOpenABI.encodeFunctionData("lockOpenIntent",[0])
-		const fillIntentCallData =  partyBOpenABI.encodeFunctionData("fillOpenIntent",[0,e(100),7])
+		const lockIntentCallData = partyBOpenABI.encodeFunctionData("lockOpenIntent", [0])
+		const fillIntentCallData = partyBOpenABI.encodeFunctionData("fillOpenIntent", [0, e(100), 7])
 
 		// ops = [
 		// 		{
@@ -118,7 +118,7 @@ export function shouldBehaveLikeInstantLayer(): void {
 		// 			nonce: 0,
 		// 			deadline: latestBlock + 120,
 		// 			signature: "0x"
-					
+
 		// 		},
 		// 		{
 		// 			account : partyB1.getSigner ,
@@ -131,85 +131,79 @@ export function shouldBehaveLikeInstantLayer(): void {
 
 		// 		}
 		// ]
-
-		
-
 	})
 
 	describe("Registering PartyB", async function () {
 		it("Should be failed when Sender not Setter Role ", async () => {
 			await expect(context.instantLayer.connect(partyA1.getSigner).registerPartyB(partyB1.getSigner)).to.be.reverted
 		})
-		
-		it("Should Add PartyB to Whitelisted Bs", async () => {
-			await expect(context.instantLayer.registerPartyB(partyB1.getSigner)).not.to.be.reverted 
 
-			expect(await context.instantLayer.registeredPartyBs( partyB1.getSigner )).to.be.equal(true)			
-			expect(await context.instantLayer.registeredPartyBs( partyB2.getSigner )).to.be.equal(false)			
+		it("Should Add PartyB to Whitelisted Bs", async () => {
+			await expect(context.instantLayer.registerPartyB(partyB1.getSigner)).not.to.be.reverted
+
+			expect(await context.instantLayer.registeredPartyBs(partyB1.getSigner)).to.be.equal(true)
+			expect(await context.instantLayer.registeredPartyBs(partyB2.getSigner)).to.be.equal(false)
 		})
-		
+
 		it("Should be granted the right role", async () => {
 			await expect(context.instantLayer.registerPartyB(partyB1.getSigner)).not.to.be.reverted
-			const OPERATOR_ROLE = ethers.keccak256(ethers.toUtf8Bytes("OPERATOR_ROLE"));
+			const OPERATOR_ROLE = ethers.keccak256(ethers.toUtf8Bytes("OPERATOR_ROLE"))
 
 			expect(await context.instantLayer.hasRole(OPERATOR_ROLE, partyB1.getSigner)).to.be.equal(true)
 		})
-
 	})
 
 	describe("Unregistering PartyB", async function () {
 		it("Should be failed when Sender not Setter Role ", async () => {
 			await expect(context.instantLayer.connect(partyA1.getSigner).unregisterPartyB(partyB1.getSigner)).to.be.reverted
 		})
-		
-		it("Should remove PartyB from Whitelisted Bs", async () => {
-			await expect(context.instantLayer.unregisterPartyB(partyB1.getSigner)).not.to.be.reverted 
 
-			expect(await context.instantLayer.registeredPartyBs( partyB1.getSigner )).to.be.equal(false)			
+		it("Should remove PartyB from Whitelisted Bs", async () => {
+			await expect(context.instantLayer.unregisterPartyB(partyB1.getSigner)).not.to.be.reverted
+
+			expect(await context.instantLayer.registeredPartyBs(partyB1.getSigner)).to.be.equal(false)
 		})
-		
+
 		it("Should remove the right role", async () => {
 			await expect(context.instantLayer.registerPartyB(partyB1.getSigner)).not.to.be.reverted
-			const OPERATOR_ROLE = ethers.keccak256(ethers.toUtf8Bytes("OPERATOR_ROLE"));
+			const OPERATOR_ROLE = ethers.keccak256(ethers.toUtf8Bytes("OPERATOR_ROLE"))
 
 			expect(await context.instantLayer.hasRole(OPERATOR_ROLE, partyB1.getSigner)).to.be.equal(true)
 		})
-
 	})
 
 	describe("Registering PartyB Batch", async function () {
 		it("Should be failed when Sender not Setter Role ", async () => {
 			await expect(context.instantLayer.connect(partyA1.getSigner).registerPartyBBatch([partyB1.getSigner, partyB2.getSigner])).to.be.reverted
 		})
-		
-		it("Should Add PartyB to Whitelisted Bs", async () => {
-			await expect(context.instantLayer.registerPartyBBatch([partyB1.getSigner, partyB2.getSigner])).not.to.be.reverted 
 
-			expect(await context.instantLayer.registeredPartyBs( partyB1.getSigner )).to.be.equal(true)			
-			expect(await context.instantLayer.registeredPartyBs( partyB2.getSigner )).to.be.equal(true)			
+		it("Should Add PartyB to Whitelisted Bs", async () => {
+			await expect(context.instantLayer.registerPartyBBatch([partyB1.getSigner, partyB2.getSigner])).not.to.be.reverted
+
+			expect(await context.instantLayer.registeredPartyBs(partyB1.getSigner)).to.be.equal(true)
+			expect(await context.instantLayer.registeredPartyBs(partyB2.getSigner)).to.be.equal(true)
 		})
-		
+
 		it("Should be granted the right role", async () => {
 			await expect(context.instantLayer.registerPartyBBatch([partyB1.getSigner, partyB2.getSigner])).not.to.be.reverted
-			const OPERATOR_ROLE = ethers.keccak256(ethers.toUtf8Bytes("OPERATOR_ROLE"));
+			const OPERATOR_ROLE = ethers.keccak256(ethers.toUtf8Bytes("OPERATOR_ROLE"))
 
 			// expect(await context.instantLayer.hasRole(OPERATOR_ROLE, partyB1.getSigner)).to.be.equal(true)
 			// expect(await context.instantLayer.hasRole(OPERATOR_ROLE, partyB2.getSigner)).to.be.equal(true)
 			//TODO
 		})
-
 	})
 
 	describe("Registering MultiAccount Batch", async function () {
 		it("Should be failed when Sender not Setter Role ", async () => {
 			await expect(context.instantLayer.connect(partyA1.getSigner).registerMultiAccountBatch([partyB1.getSigner])).to.be.reverted
 		})
-		
-		it("Should Add the multiAccount addresses batch to Whitelisted mapping", async () => {
-			await expect(context.instantLayer.registerMultiAccountBatch([partyB1.getSigner, partyB2.getSigner])).not.to.be.reverted 
 
-			expect(await context.instantLayer.registeredMultiAccounts( partyB1.getSigner )).to.be.equal(true)			
-			expect(await context.instantLayer.registeredMultiAccounts( partyB2.getSigner )).to.be.equal(true)			
+		it("Should Add the multiAccount addresses batch to Whitelisted mapping", async () => {
+			await expect(context.instantLayer.registerMultiAccountBatch([partyB1.getSigner, partyB2.getSigner])).not.to.be.reverted
+
+			expect(await context.instantLayer.registeredMultiAccounts(partyB1.getSigner)).to.be.equal(true)
+			expect(await context.instantLayer.registeredMultiAccounts(partyB2.getSigner)).to.be.equal(true)
 		})
 	})
 
@@ -217,11 +211,11 @@ export function shouldBehaveLikeInstantLayer(): void {
 		it("Should be failed when Sender not Setter Role ", async () => {
 			await expect(context.instantLayer.connect(partyA1.getSigner).registerMultiAccount(partyB1.getSigner)).to.be.reverted
 		})
-		
-		it("Should Add the multiAccount address to Whitelisted mapping", async () => {
-			await expect(context.instantLayer.registerMultiAccount(partyB1.getSigner)).not.to.be.reverted 
 
-			expect(await context.instantLayer.registeredMultiAccounts( partyB1.getSigner )).to.be.equal(true)			
+		it("Should Add the multiAccount address to Whitelisted mapping", async () => {
+			await expect(context.instantLayer.registerMultiAccount(partyB1.getSigner)).not.to.be.reverted
+
+			expect(await context.instantLayer.registeredMultiAccounts(partyB1.getSigner)).to.be.equal(true)
 		})
 	})
 
@@ -229,42 +223,38 @@ export function shouldBehaveLikeInstantLayer(): void {
 		it("Should be failed when Sender not Setter Role ", async () => {
 			await expect(context.instantLayer.connect(partyA1.getSigner).unregisterMultiAccount(partyB1.getSigner)).to.be.reverted
 		})
-		
-		it("Should Remove the multiAccount address from Whitelisted mapping", async () => {
-			await expect(context.instantLayer.unregisterMultiAccount(partyB1.getSigner)).not.to.be.reverted 
 
-			expect(await context.instantLayer.registeredMultiAccounts( partyB1.getSigner )).to.be.equal(false)			
+		it("Should Remove the multiAccount address from Whitelisted mapping", async () => {
+			await expect(context.instantLayer.unregisterMultiAccount(partyB1.getSigner)).not.to.be.reverted
+
+			expect(await context.instantLayer.registeredMultiAccounts(partyB1.getSigner)).to.be.equal(false)
 		})
 	})
 
-	describe("Adding Template", async function () {	
-		
+	describe("Adding Template", async function () {
 		it("Should be failed when Sender not have Setter Role ", async () => {
-			// await expect(context.instantLayer.connect(partyA1.getSigner).addTemplate("test",ops)).to.be.reverted			
+			// await expect(context.instantLayer.connect(partyA1.getSigner).addTemplate("test",ops)).to.be.reverted
 			//TODO adapt to recent changes
 		})
 
-		it("Should Set the template Active Mode to true", async () =>{
+		it("Should Set the template Active Mode to true", async () => {
 			// await expect(context.instantLayer.addTemplate("test",ops)).not.to.be.reverted
-
 			// let template = await context.instantLayer.getTemplate(0)
-			// expect(template.active).to.be.equal(true)		
-			//TODO adapt to recent changes	
-		})
-
-		it("Should Set the template Name as expected", async () =>{
-			// let name = "myTemp"
-			// await expect(context.instantLayer.addTemplate(name,ops)).not.to.be.reverted
-
-			// let template = await context.instantLayer.getTemplate(0)
-			// expect(template.name).to.be.equal(name)			
+			// expect(template.active).to.be.equal(true)
 			//TODO adapt to recent changes
 		})
 
-		it("Should Set the template Operations as expected", async () =>{
+		it("Should Set the template Name as expected", async () => {
 			// let name = "myTemp"
 			// await expect(context.instantLayer.addTemplate(name,ops)).not.to.be.reverted
+			// let template = await context.instantLayer.getTemplate(0)
+			// expect(template.name).to.be.equal(name)
+			//TODO adapt to recent changes
+		})
 
+		it("Should Set the template Operations as expected", async () => {
+			// let name = "myTemp"
+			// await expect(context.instantLayer.addTemplate(name,ops)).not.to.be.reverted
 			// let operations = await context.instantLayer.getTemplateOperations(0)
 			// expect(operations.length).to.be.equal(ops.length)
 			// for(let i=0;i<ops.length;i++){
@@ -283,55 +273,45 @@ export function shouldBehaveLikeInstantLayer(): void {
 	})
 
 	describe("execute Batch", async function () {
-		beforeEach(async function () {
-		})
-		
+		beforeEach(async function () {})
+
 		it("Should be failed when Sender not have Operator Role ", async () => {
-			await expect(context.instantLayer.connect(partyA1.getSigner).executeBatch([])).to.be.reverted			
+			await expect(context.instantLayer.connect(partyA1.getSigner).executeBatch([])).to.be.reverted
 		})
-		
+
 		it("Should be failed when input Ops have zero length ", async () => {
-			// await expect(context.instantLayer.executeBatch([])).to.be.reverted		
+			// await expect(context.instantLayer.executeBatch([])).to.be.reverted
 			//TODO
 		})
-		
+
 		it("Should be failed when input Ops have passed the Deadline ", async () => {
 			const newBlock = (await getLatestBlockTime()) + 120 + 12
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
 			await network.provider.send("evm_mine")
 
-			await context.instantLayer.registerPartyB(partyB1.getSigner)	
+			await context.instantLayer.registerPartyB(partyB1.getSigner)
 			// await expect(context.instantLayer.executeBatch(signedOps)).to.be.revertedWithCustomError(context.instantLayer,"DeadlineExpired")
 			//TODO
 		})
-		
+
 		it("Should be able to set CallFromInstantLayer state with the right role", async () => {
 			await expect(context.controlFacet.connect(partyA1.getSigner).setCallFromInstantLayer(true)).to.be.reverted
-			
+
 			await expect(context.controlFacet.setCallFromInstantLayer(true)).not.to.be.reverted
-			expect(await context.viewFacet.isCallFromInstantLayer()).to.be.equal(true)	
-			
+			expect(await context.viewFacet.isCallFromInstantLayer()).to.be.equal(true)
+
 			await expect(context.controlFacet.setCallFromInstantLayer(false)).not.to.be.reverted
-			expect(await context.viewFacet.isCallFromInstantLayer()).to.be.equal(false)		
+			expect(await context.viewFacet.isCallFromInstantLayer()).to.be.equal(false)
 		})
-		
+
 		it("Should be failed when ", async () => {
 			// await context.instantLayer.registerPartyB(partyB1.getSigner)
 			// for(let i =0; i< signedOps.length; i++){
 			// 	let hash = await context.instantLayer.getOperationHash(signedOps[i])
 			// 	console.log("Hash Of Operation " + i +":",hash)
 			// }
-
 			// await expect(context.instantLayer.executeBatch(signedOps)).not.to.be.reverted
 			//TODO
 		})
-		
-
-
-
-
-
-
 	})
-
 }
