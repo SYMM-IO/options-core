@@ -41,25 +41,25 @@ describe(`${name}-v${version}`, () => {
 			shouldBehaveLikePartyBCloseFacet()
 		})
 
-		// describe("Libraries_LibCloseIntent", async function () {
-		// 	shouldBehaveLikeLibCloseIntent()
-		// })
+		describe("Libraries_LibCloseIntent", async function () {
+			shouldBehaveLikeLibCloseIntent()
+		})
 
-		// describe("Facets_PartyBCloseFacet", async function () {
-		// 	shouldBehaveLikePartyBCloseFacet()
-		// })
+		describe("Facets_PartyBCloseFacet", async function () {
+			shouldBehaveLikePartyBCloseFacet()
+		})
 
-		// describe("Facets_Settlement", async function () {
-		// 	shouldBehaveLikeSettlementFacet()
-		// })
+		describe("Facets_Settlement", async function () {
+			shouldBehaveLikeSettlementFacet()
+		})
 
-		// describe("Facets_ForceActions", async function () {
-		// 	shouldBehaveLikeForceActionFacet()
-		// })
+		describe("Facets_ForceActions", async function () {
+			shouldBehaveLikeForceActionFacet()
+		})
 
-		// describe("Facet_BridgeFacet", async function () {
-		// 	shouldBehaveLikeBridgeFacet()
-		// })
+		describe("Facet_BridgeFacet", async function () {
+			shouldBehaveLikeBridgeFacet()
+		})
 
 		describe("Instant Layer", async function () {
 			shouldBehaveLikeInstantLayer()
