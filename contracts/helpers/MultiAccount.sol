@@ -21,9 +21,6 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 
 	// ==================== CUSTOM ERRORS ====================
 	error NotOwnerOfAccount(address sender, address account, address owner);
-	error InvalidTarget(address target, address sender, address account);
-	error RevokeAccessNotProposed(address account, address target, bytes4 selector);
-	error CooldownNotReached(address account, address target, bytes4 selector, uint256 current, uint256 required);
 	error ContractDeploymentFailed();
 	error PartyACallFailed(bytes returnData);
 	error InvalidCallData(bytes callData);
@@ -38,16 +35,11 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 	address public symmioAddress; // Address of the Symmio platform
 	uint256 public saltCounter; // Counter for generating unique addresses with create2
 	bytes public accountImplementation;
-	uint256 public delegatedAccessRevokeCooldown;
 
 	// Account mappings
 	mapping(address => Account[]) public accounts; // User to their accounts mapping
 	mapping(address => uint256) public indexOfAccount; // Account to its index mapping
 	mapping(address => address) public owners; // Account to its owner mapping
-
-	// Delegate access management
-	mapping(address => mapping(address => mapping(bytes4 => bool))) public delegatedAccesses; // account -> target -> selector -> state
-	mapping(address => mapping(address => mapping(bytes4 => uint256))) public revokeProposalTimestamp; // account -> target -> selector -> timestamp
 
 	// ===================== MODIFIERS =====================
 	/**
@@ -85,67 +77,6 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 		accountImplementation = accountImplementation_;
 	}
 
-	// ================ ACCESS DELEGATION FUNCTIONS ================
-	/**
-	 * @dev Allows the owner of an account to delegate access to a specific function selector of a target contract.
-	 * @param account The address of the account.
-	 * @param target The address of the target contract.
-	 * @param selector The function selector.
-	 */
-	function delegateAccess(address account, address target, bytes4 selector) external onlyOwner(account, msg.sender) {
-		if (target == msg.sender || target == account) revert InvalidTarget(target, msg.sender, account);
-		emit DelegateAccess(account, target, selector, true);
-		delegatedAccesses[account][target][selector] = true;
-	}
-
-	/**
-	 * @dev Allows the owner of an account to delegate access to a single target contract and multiple function selectors.
-	 * @param account The address of the account.
-	 * @param target The address of the target contract.
-	 * @param selector An array of function selectors.
-	 */
-	function delegateAccesses(address account, address target, bytes4[] memory selector) external onlyOwner(account, msg.sender) {
-		if (target == msg.sender || target == account) revert InvalidTarget(target, msg.sender, account);
-		for (uint256 i = selector.length; i != 0; i--) {
-			delegatedAccesses[account][target][selector[i - 1]] = true;
-		}
-		emit DelegateAccesses(account, target, selector, true);
-	}
-
-	/**
-	 * @dev Allows the owner of an account to propose revoke access from a single target contract and multiple function selectors.
-	 * @param account The address of the account.
-	 * @param target The address of the target contract.
-	 * @param selector An array of function selectors.
-	 */
-	function proposeToRevokeAccesses(address account, address target, bytes4[] memory selector) external onlyOwner(account, msg.sender) {
-		if (target == msg.sender || target == account) revert InvalidTarget(target, msg.sender, account);
-		for (uint256 i = selector.length; i != 0; i--) {
-			revokeProposalTimestamp[account][target][selector[i - 1]] = block.timestamp;
-		}
-		emit ProposeToRevokeAccesses(account, target, selector);
-	}
-
-	/**
-	 * @dev Allows the owner of an account to revoke access from a single target contract and multiple function selectors.
-	 * @param account The address of the account.
-	 * @param target The address of the target contract.
-	 * @param selector An array of function selectors.
-	 */
-	function revokeAccesses(address account, address target, bytes4[] memory selector) external onlyOwner(account, msg.sender) {
-		if (target == msg.sender || target == account) revert InvalidTarget(target, msg.sender, account);
-		for (uint256 i = selector.length; i != 0; i--) {
-			if (revokeProposalTimestamp[account][target][selector[i - 1]] == 0) revert RevokeAccessNotProposed(account, target, selector[i - 1]);
-
-			uint256 requiredTime = revokeProposalTimestamp[account][target][selector[i - 1]] + delegatedAccessRevokeCooldown;
-			if (block.timestamp < requiredTime) revert CooldownNotReached(account, target, selector[i - 1], block.timestamp, requiredTime);
-
-			delegatedAccesses[account][target][selector[i - 1]] = false;
-			revokeProposalTimestamp[account][target][selector[i - 1]] = 0;
-		}
-		emit DelegateAccesses(account, target, selector, false);
-	}
-
 	// ==================== SETTER FUNCTIONS ====================
 	/**
 	 * @dev Sets the implementation contract for the account.
@@ -154,15 +85,6 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 	function setAccountImplementation(bytes memory accountImplementation_) external onlyRole(SETTER_ROLE) {
 		emit SetAccountImplementation(accountImplementation, accountImplementation_);
 		accountImplementation = accountImplementation_;
-	}
-
-	/**
-	 * @dev Sets the revoke cooldown.
-	 * @param cooldown the new revoke cooldown.
-	 */
-	function setDelegateAccessRevokeCooldown(uint256 cooldown) external onlyRole(SETTER_ROLE) {
-		emit SetDelegateAccessRevokeCooldown(delegatedAccessRevokeCooldown, cooldown);
-		delegatedAccessRevokeCooldown = cooldown;
 	}
 
 	/**
@@ -243,20 +165,6 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 	}
 
 	/**
-	 * @dev Deposits specific collateral into the specified account.
-	 * @param collateral The address of the collateral to be deposited.
-	 * @param account The address of the account to deposit funds into.
-	 * @param amount The amount of funds to deposit.
-	 */
-	function depositForAccount(address collateral, address account, uint256 amount) external onlyOwner(account, msg.sender) whenNotPaused {
-		// TODO: check collateral
-		IERC20Upgradeable(collateral).safeTransferFrom(msg.sender, address(this), amount);
-		IERC20Upgradeable(collateral).safeApprove(symmioAddress, amount);
-		ISymmio(symmioAddress).depositFor(collateral, account, amount);
-		emit DepositForAccount(collateral, msg.sender, account, amount);
-	}
-
-	/**
 	 * @dev Allows the admin to execute an arbitrary admin call on a PartyA contract.
 	 * @param partyA The address of the PartyA contract.
 	 * @param data The calldata for the admin call.
@@ -294,21 +202,9 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 	 * @param _callDatas An array of call data to execute.
 	 */
 	function _call(address account, bytes[] memory _callDatas) external whenNotPaused {
-		bool isOwner = owners[account] == msg.sender;
-		for (uint8 i; i < _callDatas.length; i++) {
-			bytes memory _callData = _callDatas[i];
-			if (!isOwner) {
-				if (_callData.length < 4) revert InvalidCallData(_callData);
-
-				bytes4 functionSelector;
-				assembly {
-					functionSelector := mload(add(_callData, 0x20))
-				}
-
-				if (!delegatedAccesses[account][msg.sender][functionSelector]) revert UnauthorizedAccess(account, msg.sender, functionSelector);
-			}
-			innerCall(account, _callData);
-		}
+		if (msg.sender != owners[account] && !ISymmio(symmioAddress).isCallFromInstantLayer())
+			revert UnauthorizedAccess(account, msg.sender, bytes4(0));
+		for (uint8 i; i < _callDatas.length; i++) innerCall(account, _callDatas[i]);
 	}
 
 	/**
