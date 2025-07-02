@@ -8,4 +8,5 @@ interface IMultiAccount {
 	function owners(address user) external view returns (address);
 	function _call(address account, bytes[] memory _callDatas) external;
 	function verifySignatureOfAccount(address account, bytes32 hash, bytes calldata signature) external view returns (bytes4);
+	function transferTradeNFT(address account, address to, uint256 tokenId) external;
 }
