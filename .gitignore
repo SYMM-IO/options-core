@@ -13,6 +13,7 @@ typechain-types
 /artifacts/
 /src/
 /types/
+/abis/
 .cache
 .local
 .npm
