@@ -6,4 +6,5 @@ pragma solidity >=0.8.19;
 
 interface ITradeNFT {
 	function transferNFTInitiatedInSymmio(address from, address to, uint256 tokenId) external;
+	function mintNFTForTrade(address to, uint256 tradeId) external;
 }

@@ -11,18 +11,14 @@ import { ScheduledReleaseBalanceOps } from "../../libraries/models/LibScheduledR
 
 import { AppStorage } from "../../storages/AppStorage.sol";
 import { TradeStorage } from "../../storages/TradeStorage.sol";
-import { Symbol, SymbolStorage } from "../../storages/SymbolStorage.sol";
 import { CloseIntentStorage } from "../../storages/CloseIntentStorage.sol";
 
 import { Trade, TradeStatus } from "../../types/TradeTypes.sol";
 import { ScheduledReleaseBalance } from "../../types/BalanceTypes.sol";
 import { CloseIntent, CloseIntentStatus } from "../../types/IntentTypes.sol";
-import { MarginType } from "../../types/BaseTypes.sol";
 
 import { ValidationErrors } from "../../errors/ValidationErrors.sol";
-import { TradeErrors } from "../../errors/TradeErrors.sol";
 import { IntentErrors } from "../../errors/IntentErrors.sol";
-import { ITradeNFT } from "../../interfaces/ITradeNFT.sol";
 
 library LibPartyAClose {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
@@ -77,39 +73,5 @@ library LibPartyAClose {
 			intent.status = CloseIntentStatus.CANCEL_PENDING;
 			return CloseIntentStatus.CANCEL_PENDING;
 		}
-	}
-
-	/**
-	 * @dev Shared logic for both diamond-initiated and NFT-initiated trade transfers.
-	 */
-	function validateAndTransferTrade(address sender, address receiver, uint256 tradeId) internal {
-		Trade storage trade = TradeStorage.layout().trades[tradeId];
-		Symbol memory symbol = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId];
-
-		if (trade.partyA != sender) revert ValidationErrors.UnauthorizedSender(sender, trade.partyA);
-		if (trade.partyB == receiver) revert TradeErrors.ReceiverIsPartyB(receiver, trade.partyB);
-		if (receiver == address(0)) revert ValidationErrors.ZeroAddress("receiver");
-		if (receiver.isPartyB()) revert TradeErrors.ReceiverIsPartyB(receiver, trade.partyB);
-		ValidationErrors.requireStatus("TradeStatus", uint8(trade.status), uint8(TradeStatus.OPENED));
-		if (trade.tradeAgreements.marginType == MarginType.CROSS) revert TradeErrors.CrossTradeTransferNotAllowed(tradeId);
-		trade.partyB.requireSolvent(address(0), symbol.collateral, MarginType.ISOLATED);
-
-		trade.remove();
-		trade.partyA = receiver;
-		trade.save();
-	}
-
-	function transferTrade(address receiver, uint256 tradeId) internal {
-		validateAndTransferTrade(msg.sender, receiver, tradeId);
-		if (AppStorage.layout().tradeNftAddress != address(0)) {
-			ITradeNFT(AppStorage.layout().tradeNftAddress).transferNFTInitiatedInSymmio(msg.sender, receiver, tradeId);
-		}
-	}
-
-	function transferTradeFromNFT(address sender, address receiver, uint256 tradeId) internal {
-		if (msg.sender != AppStorage.layout().tradeNftAddress)
-			revert ValidationErrors.UnauthorizedSender(msg.sender, AppStorage.layout().tradeNftAddress);
-
-		validateAndTransferTrade(sender, receiver, tradeId);
 	}
 }

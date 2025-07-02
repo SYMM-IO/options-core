@@ -4,10 +4,16 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { SettlementPriceSig } from "../../types/SettlementTypes.sol";
+import { SettlementPriceSig } from "../../types/TradeTypes.sol";
 
-import { ITradeSettlementEvents } from "./ITradeSettlementEvents.sol";
+import { ITradeEvents } from "./ITradeEvents.sol";
 
-interface ITradeSettlementFacet is ITradeSettlementEvents {
+interface ITradeFacet is ITradeEvents {
+	function transferTrade(address receiver, uint256 tradeId) external;
+
+	function transferTradeFromNFT(address sender, address receiver, uint256 tradeId) external;
+
 	function executeTrades(uint256[] memory tradeIds, SettlementPriceSig memory settlementPriceSig) external;
+
+	function mintNFTForTrade(uint256 tradeId) external;
 }
