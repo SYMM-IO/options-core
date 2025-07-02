@@ -176,6 +176,7 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	error UnregisteredMultiAccount(address multiAccount); // MultiAccount not registered
 	error UnregisteredPartyB(address partyB); // PartyB not registered
 	error OperationAlreadyExecuted(bytes32 hash); // operation already executed
+	error EmptyBatch(); // batch is empty
 	
 	/* ─────────────────────────── Initialization ─────────────────────────── */
 
@@ -341,6 +342,8 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	 *      All operations must succeed for the transaction to complete.
 	 */
 	function executeBatch(SignedOperation[] calldata signedOps) external nonReentrant onlyRole(OPERATOR_ROLE) {
+		if (signedOps.length == 0) revert EmptyBatch();
+
 		symmio.setCallFromInstantLayer(true);
 
 		bytes[] memory results = new bytes[](signedOps.length);
