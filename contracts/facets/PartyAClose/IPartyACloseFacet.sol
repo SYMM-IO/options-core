@@ -12,6 +12,4 @@ interface IPartyACloseFacet is IPartyACloseEvents {
 	function cancelCloseIntent(uint256[] memory intentIds) external;
 
 	function sendCloseIntent(uint256 tradeId, uint256 price, uint256 quantity, uint256 deadline) external returns (uint256 intentId);
-
-	function transferTrade(address receiver, uint256 tradeId) external;
 }

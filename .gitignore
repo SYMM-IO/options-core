@@ -13,6 +13,7 @@ typechain-types
 /artifacts/
 /src/
 /types/
+/abis/
 .cache
 .local
 .npm
@@ -38,3 +39,4 @@ docs
 .yarn/
 .venv
 .cursorignore
+/scripts/config/setup.json

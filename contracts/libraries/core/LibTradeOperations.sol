@@ -4,30 +4,63 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { LibMuon } from "../../libraries/services/LibMuon.sol";
-import { LibParty } from "../../libraries/models/LibParty.sol";
-import { LibTradeOps } from "../../libraries/models/LibTrade.sol";
-import { ScheduledReleaseBalanceOps } from "../../libraries/models/LibScheduledReleaseBalance.sol";
+import { LibMuon } from "../services/LibMuon.sol";
+import { LibParty } from "../models/LibParty.sol";
+import { LibTradeOps } from "../models/LibTrade.sol";
+import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance.sol";
 
 import { AppStorage } from "../../storages/AppStorage.sol";
 import { TradeStorage } from "../../storages/TradeStorage.sol";
 import { SymbolStorage } from "../../storages/SymbolStorage.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 
-import { TradeSide, MarginType } from "../../types/BaseTypes.sol";
 import { CloseIntentStatus } from "../../types/IntentTypes.sol";
-import { Trade, TradeStatus } from "../../types/TradeTypes.sol";
 import { Symbol, OptionType } from "../../types/SymbolTypes.sol";
-import { SettlementPriceSig } from "../../types/SettlementTypes.sol";
+import { TradeSide, MarginType } from "../../types/BaseTypes.sol";
+import { Trade, TradeStatus, SettlementPriceSig } from "../../types/TradeTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 
-import { ValidationErrors } from "../../errors/ValidationErrors.sol";
 import { TradeErrors } from "../../errors/TradeErrors.sol";
+import { ValidationErrors } from "../../errors/ValidationErrors.sol";
 
-library LibTradeSettlement {
-	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
+import { ITradeNFT } from "../../interfaces/ITradeNFT.sol";
+import { IMultiAccount } from "../../interfaces/IMultiAccount.sol";
+
+library LibTradeOperations {
 	using LibTradeOps for Trade;
 	using LibParty for address;
+	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
+
+	/**
+	 * @dev Shared logic for both diamond-initiated and NFT-initiated trade transfers.
+	 */
+	function validateAndTransferTrade(address sender, address receiver, uint256 tradeId) internal {
+		Trade storage trade = TradeStorage.layout().trades[tradeId];
+		Symbol memory symbol = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId];
+
+		if (trade.partyA != sender) revert ValidationErrors.UnauthorizedSender(sender, trade.partyA);
+		if (receiver == address(0)) revert ValidationErrors.ZeroAddress("receiver");
+		if (receiver.isPartyB()) revert TradeErrors.ReceiverIsPartyB(receiver, trade.partyB);
+		ValidationErrors.requireStatus("TradeStatus", uint8(trade.status), uint8(TradeStatus.OPENED));
+		if (trade.tradeAgreements.marginType == MarginType.CROSS) revert TradeErrors.CrossTradeTransferNotAllowed(tradeId);
+		trade.partyB.requireSolvent(address(0), symbol.collateral, MarginType.ISOLATED);
+
+		trade.remove();
+		trade.partyA = receiver;
+		trade.save();
+	}
+
+	function transferTrade(address receiver, uint256 tradeId) internal {
+		validateAndTransferTrade(msg.sender, receiver, tradeId);
+		if (AppStorage.layout().tradeNftAddress != address(0))
+			ITradeNFT(AppStorage.layout().tradeNftAddress).transferNFTInitiatedInSymmio(msg.sender, receiver, tradeId);
+	}
+
+	function transferTradeFromNFT(address sender, address receiver, uint256 tradeId) internal {
+		if (msg.sender != AppStorage.layout().tradeNftAddress)
+			revert ValidationErrors.UnauthorizedSender(msg.sender, AppStorage.layout().tradeNftAddress);
+		validateAndTransferTrade(sender, receiver, tradeId);
+	}
 
 	function executeTrades(
 		uint256[] memory tradeIds,
@@ -149,5 +182,10 @@ library LibTradeSettlement {
 				accountLayout.nonces[trade.partyB][trade.partyA] += 1;
 			}
 		}
+	}
+
+	function mintNFTForTrade(uint256 tradeId) internal {
+		Trade storage trade = TradeStorage.layout().trades[tradeId];
+		ITradeNFT(AppStorage.layout().tradeNftAddress).mintNFTForTrade(trade.partyA, tradeId);
 	}
 }

@@ -4,101 +4,114 @@
 // https://docs.symm.io/legal-disclaimer/license
 pragma solidity ^0.8.19;
 
+/**
+ * @title  TradeNFT
+ * @notice ERC721-based NFT contract representing trade ownership within the Symmio protocol.
+ *         Each NFT corresponds to a specific trade, with ownership transfers automatically
+ *         synchronized between the NFT contract and the underlying Symmio protocol state.
+ *
+ * @dev    Core features include:
+ *         • ERC721 enumerable NFTs representing individual trades
+ *         • Bidirectional synchronization with Symmio protocol trade ownership
+ *         • Mint-only access restricted to Symmio contract
+ *         • Recursive transfer prevention during internal operations
+ *         • Automatic trade ownership updates on NFT transfers
+ *
+ *         The contract maintains perfect consistency between NFT ownership and
+ *         trade ownership in the Symmio protocol through coordinated transfer hooks.
+ */
+
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Counters } from "@openzeppelin/contracts/utils/Counters.sol";
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { ERC721Enumerable } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 
+/* ────────────────────────── External Interfaces ────────────────────────── */
+
 /**
- * @title ISymmio Interface
- * @notice Defines the interface for the Symmio contract, including the trade transfer functionality.
+ * @title  ISymmio Interface
+ * @notice Defines the interface for the Symmio contract trade transfer functionality.
  */
 interface ISymmio {
 	/**
-	 * @notice Transfers the trade ownership associated with an NFT.
-	 * @param from The address of the current owner.
-	 * @param to The address of the new owner.
-	 * @param tradeId The unique identifier of the trade/NFT.
+	 * @notice Transfer trade ownership associated with an NFT.
+	 * @param from    Current trade owner address.
+	 * @param to      New trade owner address.
+	 * @param tradeId Unique identifier of the trade/NFT.
 	 */
 	function transferTradeFromNFT(address from, address to, uint256 tradeId) external;
 }
 
-/**
- * @title TradeNFT
- * @notice ERC721-based NFT contract that represents the ownership of trades within the Symmio protocol.
- * @dev This contract integrates with the Symmio contract to ensure that trade ownership is kept in sync with NFT transfers.
- */
 contract TradeNFT is ERC721Enumerable, Ownable {
 	using Counters for Counters.Counter;
 
-	// Custom errors
-	error InvalidSymmioAddress();
-	error CallerNotSymmio(address caller, address symmioAddress);
+	/* ──────────────────────── Storage Variables ──────────────────────── */
 
-	// ==================== STATE VARIABLES ====================
-	/// @notice The instance of the Symmio contract used for synchronizing trade state with NFT transfers.
+	/// @notice Symmio contract instance for synchronizing trade ownership state.
 	ISymmio public symmio;
 
-	/// @dev A flag used to prevent recursive calls during internal transfer operations initiated by Symmio.
+	/// @notice Flag to prevent recursive calls during Symmio-initiated transfers.
 	bool private transferInitiatedInSymmio;
 
-	// ==================== EVENTS ====================
+	/* ─────────────────────────────── Events ─────────────────────────────── */
+
 	/**
 	 * @notice Emitted when a new Trade NFT is minted.
-	 * @param owner The address that receives the newly minted NFT.
-	 * @param tokenId The unique identifier of the minted NFT.
+	 * @param owner   Address receiving the newly minted NFT.
+	 * @param tokenId Unique identifier of the minted NFT.
 	 */
-	event PositionNFTMinted(address indexed owner, uint256 indexed tokenId);
+	event TradeNFTMinted(address indexed owner, uint256 indexed tokenId);
 
 	/**
 	 * @notice Emitted when an NFT is transferred between addresses.
-	 * @param tokenId The unique identifier of the transferred NFT.
-	 * @param from The address from which the NFT is transferred.
-	 * @param to The address to which the NFT is transferred.
+	 * @param tokenId Unique identifier of the transferred NFT.
+	 * @param from    Address from which the NFT is transferred.
+	 * @param to      Address to which the NFT is transferred.
 	 */
-	event PositionNFTTransferred(uint256 indexed tokenId, address indexed from, address indexed to);
+	event TradeNFTTransferred(uint256 indexed tokenId, address indexed from, address indexed to);
 
-	// ==================== CONSTRUCTOR ====================
+	/* ─────────────────────────────── Errors ─────────────────────────────── */
+
+	error InvalidSymmioAddress(); // Symmio address is zero
+	error UnauthorizedSender(address sender, address requiredSender);
+
+	/* ─────────────────────────── Initialization ─────────────────────────── */
+
 	/**
-	 * @notice Initializes the TradeNFT contract with a reference to the Symmio contract.
-	 * @param symmio_ The address of the deployed Symmio contract.
-	 * @dev Reverts if `symmio_` is the zero address. The token ID counter starts at 1 to avoid using token ID 0.
+	 * @notice Initialize the TradeNFT contract with Symmio integration.
+	 * @param symmio_ Address of the deployed Symmio contract.
+	 *
+	 * @dev Reverts if `symmio_` is the zero address. NFTs use token IDs that
+	 *      correspond directly to trade IDs in the Symmio protocol.
 	 */
 	constructor(address symmio_) ERC721("Trade Ownership NFT", "TRNFT") {
 		if (symmio_ == address(0)) revert InvalidSymmioAddress();
 		symmio = ISymmio(symmio_);
 	}
 
-	// ==================== MODIFIERS ====================
-	/**
-	 * @notice Restricts function calls to only the Symmio contract.
-	 * @dev Reverts if called by an address other than the Symmio contract.
-	 */
-	modifier onlySymmio() {
-		if (msg.sender != address(symmio)) revert CallerNotSymmio(msg.sender, address(symmio));
-		_;
-	}
-
-	// ==================== EXTERNAL FUNCTIONS ====================
+	/* ───────────────────────── External Functions ───────────────────────── */
 
 	/**
-	 * @notice Mints a new NFT representing a specific trade.
-	 * @dev This function can only be called by the Symmio contract. It emits a {PositionNFTMinted} event upon minting.
-	 * @param to The address that will own the minted NFT.
-	 * @param tokenId the Id of the trade in Symmio
+	 * @notice Mint a new NFT representing a specific trade.
+	 * @param partyA      Address that will own the minted NFT.
+	 * @param tradeId Trade ID from Symmio protocol (becomes NFT token ID).
+	 *
+	 * @dev Only callable by the Symmio contract. Emits TradeNFTMinted event.
 	 */
-	function mintNFTForTrade(address to, uint256 tokenId) external onlySymmio {
-		_mint(to, tokenId);
-		emit PositionNFTMinted(to, tokenId);
+	function mintNFTForTrade(address partyA, uint256 tradeId) external onlySymmio {
+		_mint(partyA, tradeId);
+		emit TradeNFTMinted(partyA, tradeId);
 	}
 
 	/**
-	 * @notice Transfers an NFT from one address to another as initiated by the Symmio contract.
-	 * @dev This function sets a flag to bypass the usual transfer hook logic to prevent recursive calls.
-	 * @param from The current owner's address of the NFT.
-	 * @param to The new owner's address for the NFT.
-	 * @param tokenId The unique identifier of the NFT to transfer.
+	 * @notice Transfer NFT as initiated by the Symmio contract.
+	 * @param from    Current owner address of the NFT.
+	 * @param to      New owner address for the NFT.
+	 * @param tokenId Unique identifier of the NFT to transfer.
+	 *
+	 * @dev Sets flag to bypass transfer hook logic and prevent recursive calls
+	 *      during Symmio-initiated transfers.
 	 */
 	function transferNFTInitiatedInSymmio(address from, address to, uint256 tokenId) external onlySymmio {
 		transferInitiatedInSymmio = true;
@@ -106,39 +119,50 @@ contract TradeNFT is ERC721Enumerable, Ownable {
 		transferInitiatedInSymmio = false;
 	}
 
-	// ==================== INTERNAL FUNCTIONS ====================
+	/* ────────────────────────── Public Functions ────────────────────────── */
 
 	/**
-	 * @dev Hook that is called before any token transfer, including minting and burning.
-	 * @notice When a user-initiated transfer occurs (i.e., not during minting, burning, or an internal Symmio-initiated transfer),
-	 * the function calls the Symmio contract to update the trade ownership state accordingly.
-	 * @param from The address which currently owns the token (or zero address during minting).
-	 * @param to The address that will receive the token (or zero address during burning).
-	 * @param tokenId The unique identifier of the token being transferred.
-	 * @param batchSize The number of tokens being transferred (typically 1 for standard transfers).
-	 * @dev If `from` and `to` are both non-zero and the transfer was not initiated by the Symmio contract,
-	 * it calls `symmio.transferTradeFromNFT` and emits a {PositionNFTTransferred} event.
+	 * @notice Check interface support for ERC-165 compatibility.
+	 * @param interfaceId Interface identifier to check.
+	 * @return bool True if the interface is supported, false otherwise.
+	 *
+	 * @dev Supports ERC721, ERC721Enumerable, and parent contract interfaces.
+	 */
+	function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
+		return (interfaceId == type(IERC721).interfaceId ||
+			interfaceId == type(ERC721Enumerable).interfaceId ||
+			super.supportsInterface(interfaceId));
+	}
+
+	/* ───────────────────────── Internal Functions ───────────────────────── */
+
+	/**
+	 * @dev Hook called before any token transfer, including minting and burning.
+	 *      Synchronizes trade ownership with Symmio protocol during user-initiated transfers.
+	 *
+	 * @param from      Address currently owning the token (zero during minting).
+	 * @param to        Address receiving the token (zero during burning).
+	 * @param tokenId   Unique identifier of the token being transferred.
+	 * @param batchSize Number of tokens being transferred (typically 1).
+	 *
+	 * @dev When both `from` and `to` are non-zero and the transfer was not initiated
+	 *      by Symmio, calls `symmio.transferTradeFromNFT` to update trade ownership
+	 *      and emits TradeNFTTransferred event.
 	 */
 	function _beforeTokenTransfer(address from, address to, uint256 tokenId, uint256 batchSize) internal override {
 		super._beforeTokenTransfer(from, to, tokenId, batchSize);
 
 		if (from != address(0) && to != address(0) && !transferInitiatedInSymmio) {
 			symmio.transferTradeFromNFT(from, to, tokenId);
-			emit PositionNFTTransferred(tokenId, from, to);
+			emit TradeNFTTransferred(tokenId, from, to);
 		}
 	}
 
-	// ==================== PUBLIC FUNCTIONS ====================
+	/* ─────────────────────────────── Modifiers ─────────────────────────────── */
 
-	/**
-	 * @notice Checks whether the contract implements the interface defined by `interfaceId`.
-	 * @param interfaceId The identifier of the interface as specified in ERC-165.
-	 * @return bool True if the interface is supported, false otherwise.
-	 * @dev This contract supports ERC721, ERC721Enumerable, and any additional interfaces implemented by parent contracts.
-	 */
-	function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
-		return (interfaceId == type(IERC721).interfaceId ||
-			interfaceId == type(ERC721Enumerable).interfaceId ||
-			super.supportsInterface(interfaceId));
+	/// @notice Restricts function calls to only the Symmio contract.
+	modifier onlySymmio() {
+		if (msg.sender != address(symmio)) revert UnauthorizedSender(msg.sender, address(symmio));
+		_;
 	}
 }
