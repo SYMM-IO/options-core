@@ -17,12 +17,14 @@ pragma solidity >=0.8.19;
  */
 
 import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 
 import { IMultiAccount } from "../interfaces/IMultiAccount.sol";
 import { ISymmioPartyA } from "../interfaces/ISymmioPartyA.sol";
 
-contract SymmioPartyA is AccessControl, IERC1271, ISymmioPartyA {
+contract SymmioPartyA is AccessControl, IERC1271, ISymmioPartyA, IERC721Receiver {
 	/* ──────────────────────── Storage Variables ──────────────────────── */
 
 	/// @notice Address of the core Symmio protocol contract for trading operations.
@@ -40,9 +42,18 @@ contract SymmioPartyA is AccessControl, IERC1271, ISymmioPartyA {
 	 */
 	event SetSymmioAddress(address oldSymmioContractAddress, address newSymmioContractAddress);
 
+	/**
+	 * @notice Emitted when a position NFT is transferred to another address.
+	 * @param to The recipient account address.
+	 * @param tokenId The NFT token ID that was transferred.
+	 */
+	event NFTTransferred(address to, uint256 tokenId);
+
 	/* ─────────────────────────────── Errors ─────────────────────────────── */
 
 	error OnlyMultiAccount(address sender, address expectedMultiAccount); // unauthorized access attempt
+
+	error NFTTransferFailed();
 
 	/* ─────────────────────────── Initialization ─────────────────────────── */
 
@@ -83,7 +94,7 @@ contract SymmioPartyA is AccessControl, IERC1271, ISymmioPartyA {
 	 * @dev Only callable by the designated MultiAccount contract. Provides
 	 *      secure delegation of Symmio protocol interactions.
 	 */
-	function call(bytes memory callData) external onlyMultiAccount(msg.sender) returns (bool success, bytes memory resultData) {
+	function call(bytes memory callData) external onlyMultiAccount returns (bool success, bytes memory resultData) {
 		return symmioAddress.call{ value: 0 }(callData);
 	}
 
@@ -102,14 +113,39 @@ contract SymmioPartyA is AccessControl, IERC1271, ISymmioPartyA {
 		return IMultiAccount(multiAccountAddress).verifySignatureOfAccount(address(this), hash, signature);
 	}
 
+	/* ─────────────────────────── NFT TRANSFER ─────────────────────────────── */
+
+	/**
+	 * @notice Handle the receipt of an NFT
+	 * @dev This function is called when a trade NFT is transferred to this contract
+	 * @return bytes4 IERC721Receiver.onERC721Received.selector
+	 */
+	function onERC721Received(address, address, uint256, bytes calldata) external pure returns (bytes4) {
+		return IERC721Receiver.onERC721Received.selector;
+	}
+
+	/**
+	 * @notice Transfer a trade NFT to another address
+	 * @dev Only transfers to accounts with the same symmioAddress
+	 * @param nftContract The address of the NFT contract (should be TradeNFT)
+	 * @param to The recipient account address
+	 * @param tokenId The NFT token ID to transfer
+	 */
+	function transferTradeNFT(address nftContract, address to, uint256 tokenId) external onlyMultiAccount {
+		try IERC721(nftContract).safeTransferFrom(address(this), to, tokenId) {
+			emit NFTTransferred(to, tokenId);
+		} catch {
+			revert NFTTransferFailed();
+		}
+	}
+
 	/* ─────────────────────────────── Modifiers ─────────────────────────────── */
 
 	/**
 	 * @notice Restricts function access to only the designated MultiAccount contract.
-	 * @param sender Address attempting to call the function.
 	 */
-	modifier onlyMultiAccount(address sender) {
-		if (multiAccountAddress != sender) revert OnlyMultiAccount(sender, multiAccountAddress);
+	modifier onlyMultiAccount() {
+		if (multiAccountAddress != msg.sender) revert OnlyMultiAccount(msg.sender, multiAccountAddress);
 		_;
 	}
 }

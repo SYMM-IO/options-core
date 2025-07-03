@@ -33,9 +33,9 @@ library BalanceErrors {
     error InvalidWithdrawalId(uint256 id);
 
     // Bridge operations
-	error BridgeNotWhitelisted(address bridge);
-	error SelfBridgeNotAllowed(address bridge);
-	error TransactionIdNotFound(uint256 transactionId);
-	error MismatchedCollateral(address expectedCollateral, address transactionCollateral);
-	error ValidAmountExceedsOriginal(uint256 givenValidAmount, uint256 bridgeAmount);
+	error ProviderNotWhitelisted(address provider);
+	error SelfProviderNotAllowed(address provider);
+	error ExpressWithdrawIdNotFound(uint256 expressWithdrawId);
+	error MismatchedCollateral(address expectedCollateral, address expressWithdrawCollateral);
+	error ValidAmountExceedsOriginal(uint256 givenValidAmount, uint256 expressWithdrawAmount);
 }

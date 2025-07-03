@@ -9,7 +9,7 @@ import { Symbol, Oracle } from "../../storages/SymbolStorage.sol";
 
 import { Trade } from "../../types/TradeTypes.sol";
 import { Withdraw } from "../../types/WithdrawTypes.sol";
-import { BridgeTransaction } from "../../types/BridgeTypes.sol";
+import { ExpressWithdraw } from "../../types/ExpressWithdrawTypes.sol";
 import { OpenIntent, CloseIntent } from "../../types/IntentTypes.sol";
 import { LiquidationDetail } from "../../types/LiquidationTypes.sol";
 import { ScheduledReleaseEntry, CrossEntry } from "../../types/BalanceTypes.sol";
@@ -62,13 +62,13 @@ interface IViewFacet {
 	function isCallFromInstantLayer() external view returns (bool);
 
 	// ════════════════════════════════════════════════════════════════════════════
-	//                           BRIDGE STORAGE VIEWS
+	//                           EXPRESS WITHDRAW STORAGE VIEWS
 	// ════════════════════════════════════════════════════════════════════════════
 
-	function isBridgeWhitelisted(address bridge) external view returns (bool);
-	function getBridgeTransaction(uint256 transactionId) external view returns (BridgeTransaction memory);
-	function getLastBridgeTransactionId() external view returns (uint256);
-	function getInvalidBridgedAmountsPool() external view returns (address);
+	function isExpressWithdrawProviderWhitelisted(address provider) external view returns (bool);
+	function getExpressWithdraw(uint256 expressWithdrawId) external view returns (ExpressWithdraw memory);
+	function getLastExpressWithdrawId() external view returns (uint256);
+	function getInvalidExpressWithdrawsPool() external view returns (address);
 
 	// ════════════════════════════════════════════════════════════════════════════
 	//                        CLOSE INTENT STORAGE VIEWS
@@ -131,8 +131,8 @@ interface IViewFacet {
 	function isLiquidatingPaused() external view returns (bool);
 	function isThirdPartyActionsPaused() external view returns (bool);
 	function isInternalTransferPaused() external view returns (bool);
-	function isBridgePaused() external view returns (bool);
-	function isBridgeWithdrawPaused() external view returns (bool);
+	function isExpressWithdrawPaused() external view returns (bool);
+	function isExpressWithdrawCollectionPaused() external view returns (bool);
 	function isInstantLayerPaused() external view returns (bool);
 	function getAllPauseStates()
 		external

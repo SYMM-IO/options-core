@@ -27,8 +27,8 @@ library SystemErrors {
 
 	// Pausable states
 	error GlobalPaused();
-	error BridgePaused();
-	error BridgeWithdrawPaused();
+	error ExpressWithdrawPaused();
+	error ExpressWithdrawCollectionPaused();
 	error DepositingPaused();
 	error InternalTransferPaused();
 	error WithdrawingPaused();

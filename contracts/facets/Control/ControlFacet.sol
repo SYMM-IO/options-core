@@ -14,7 +14,7 @@ import { StateControlStorage } from "../../storages/StateControlStorage.sol";
 import { AccessControlStorage } from "../../storages/AccessControlStorage.sol";
 import { FeeManagementStorage } from "../../storages/FeeManagementStorage.sol";
 import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
-import { BridgeStorage } from "../../storages/BridgeStorage.sol";
+import { ExpressWithdrawStorage } from "../../storages/ExpressWithdrawStorage.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 
 import { Symbol, Oracle, OptionType } from "../../types/SymbolTypes.sol";
@@ -442,19 +442,19 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	}
 
 	/**
-	 * @notice Pauses the bridge operations
+	 * @notice Pauses the express withdraw operations
 	 */
-	function pauseBridge() external onlyRole(LibAccessibility.PAUSER_ROLE) {
-		StateControlStorage.layout().bridgePaused = true;
-		emit BridgePaused();
+	function pauseExpressWithdraw() external onlyRole(LibAccessibility.PAUSER_ROLE) {
+		StateControlStorage.layout().expressWithdrawPaused = true;
+		emit ExpressWithdrawPaused();
 	}
 
 	/**
-	 * @notice Pauses the bridge withdraw operations
+	 * @notice Pauses the express withdraw collection operations
 	 */
-	function pauseBridgeWithdraw() external onlyRole(LibAccessibility.PAUSER_ROLE) {
-		StateControlStorage.layout().bridgeWithdrawPaused = true;
-		emit BridgeWithdrawPaused();
+	function pauseExpressWithdrawCollection() external onlyRole(LibAccessibility.PAUSER_ROLE) {
+		StateControlStorage.layout().expressWithdrawCollectionPaused = true;
+		emit ExpressWithdrawCollectionPaused();
 	}
 
 	/**
@@ -532,19 +532,19 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	}
 
 	/**
-	 * @notice Unpauses the bridge operations
+	 * @notice Unpauses the express withdraw operations
 	 */
-	function unpauseBridge() external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
-		StateControlStorage.layout().bridgePaused = false;
-		emit BridgeUnpaused();
+	function unpauseExpressWithdraw() external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
+		StateControlStorage.layout().expressWithdrawPaused = false;
+		emit ExpressWithdrawUnpaused();
 	}
 
 	/**
-	 * @notice Unpauses the bridge withdraw operations
+	 * @notice Unpauses the express withdraw collection operations
 	 */
-	function unpauseBridgeWithdraw() external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
-		StateControlStorage.layout().bridgeWithdrawPaused = false;
-		emit BridgeWithdrawUnpaused();
+	function unpauseExpressWithdrawCollection() external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
+		StateControlStorage.layout().expressWithdrawCollectionPaused = false;
+		emit ExpressWithdrawCollectionUnpaused();
 	}
 
 	/**
@@ -826,32 +826,32 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	}
 
 	// ═══════════════════════════════════════════════════════════════════════════
-	//                          BRIDGE MANAGEMENT
+	//                          EXPRESS WITHDRAW MANAGEMENT
 	// ═══════════════════════════════════════════════════════════════════════════
 
 	/**
-	 * @notice Sets the bridge validation state
-	 * @param _bridgeAddress The bridge address
-	 * @param _state The validation state
+	 * @notice Sets the express withdraw provider
+	 * @param _provider The express withdraw provider address
+	 * @param _state The provider state
 	 */
-	function setBridgeValidationState(address _bridgeAddress, bool _state) external onlyRole(LibAccessibility.SETTER_ROLE) {
-		if (_bridgeAddress == address(0)) revert ValidationErrors.ZeroAddress("bridgeAddress");
-		BridgeStorage.Layout storage s = BridgeStorage.layout();
+	function setExpressWithdrawProviderState(address _provider, bool _state) external onlyRole(LibAccessibility.SETTER_ROLE) {
+		if (_provider == address(0)) revert ValidationErrors.ZeroAddress("provider");
+		ExpressWithdrawStorage.Layout storage s = ExpressWithdrawStorage.layout();
 
-		s.bridges[_bridgeAddress] = _state;
-		emit SetBridgeValidationState(_bridgeAddress, _state);
+		s.providers[_provider] = _state;
+		emit SetExpressWithdrawProvider(_provider, _state);
 	}
 
 	/**
-	 * @notice Sets the invalid bridged amounts pool
-	 * @param _pool The invalid bridged amounts pool address
+	 * @notice Sets the invalid express withdraws pool
+	 * @param _pool The invalid express withdraws pool address
 	 */
-	function setInvalidBridgedAmountsPool(address _pool) external onlyRole(LibAccessibility.SETTER_ROLE) {
+	function setInvalidExpressWithdrawsPool(address _pool) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		if (_pool == address(0)) revert ValidationErrors.ZeroAddress("pool");
-		BridgeStorage.Layout storage s = BridgeStorage.layout();
+		ExpressWithdrawStorage.Layout storage s = ExpressWithdrawStorage.layout();
 
-		s.invalidBridgedAmountsPool = _pool;
-		emit SetInvalidBridgedAmountsPool(_pool);
+		s.invalidExpressWithdrawsPool = _pool;
+		emit SetInvalidExpressWithdrawsPool(_pool);
 	}
 
 	// ═══════════════════════════════════════════════════════════════════════════

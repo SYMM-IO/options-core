@@ -77,13 +77,13 @@
         "anonymous": false,
         "inputs": [
             {
-                "indexed": false,
+                "indexed": true,
                 "internalType": "address",
                 "name": "user",
                 "type": "address"
             },
             {
-                "indexed": false,
+                "indexed": true,
                 "internalType": "address",
                 "name": "account",
                 "type": "address"
@@ -102,7 +102,7 @@
         "anonymous": false,
         "inputs": [
             {
-                "indexed": false,
+                "indexed": true,
                 "internalType": "address",
                 "name": "partyA",
                 "type": "address"
@@ -133,13 +133,13 @@
         "anonymous": false,
         "inputs": [
             {
-                "indexed": false,
+                "indexed": true,
                 "internalType": "address",
-                "name": "user",
+                "name": "sender",
                 "type": "address"
             },
             {
-                "indexed": false,
+                "indexed": true,
                 "internalType": "address",
                 "name": "account",
                 "type": "address"
@@ -147,19 +147,19 @@
             {
                 "indexed": false,
                 "internalType": "bytes",
-                "name": "_callData",
+                "name": "callData",
                 "type": "bytes"
             },
             {
                 "indexed": false,
                 "internalType": "bool",
-                "name": "_success",
+                "name": "success",
                 "type": "bool"
             },
             {
                 "indexed": false,
                 "internalType": "bytes",
-                "name": "_resultData",
+                "name": "resultData",
                 "type": "bytes"
             }
         ],
@@ -170,32 +170,13 @@
         "anonymous": false,
         "inputs": [
             {
-                "indexed": false,
-                "internalType": "uint256",
-                "name": "id",
-                "type": "uint256"
-            },
-            {
-                "indexed": false,
+                "indexed": true,
                 "internalType": "address",
-                "name": "account",
-                "type": "address"
-            }
-        ],
-        "name": "CompleteWithdrawFromAccount",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            {
-                "indexed": false,
-                "internalType": "address",
-                "name": "sender",
+                "name": "deployer",
                 "type": "address"
             },
             {
-                "indexed": false,
+                "indexed": true,
                 "internalType": "address",
                 "name": "contractAddress",
                 "type": "address"
@@ -208,21 +189,21 @@
         "anonymous": false,
         "inputs": [
             {
-                "indexed": false,
+                "indexed": true,
                 "internalType": "address",
                 "name": "user",
                 "type": "address"
             },
             {
-                "indexed": false,
+                "indexed": true,
                 "internalType": "address",
-                "name": "account",
+                "name": "accountAddress",
                 "type": "address"
             },
             {
                 "indexed": false,
                 "internalType": "string",
-                "name": "newName",
+                "name": "name",
                 "type": "string"
             }
         ],
@@ -336,13 +317,13 @@
             {
                 "indexed": false,
                 "internalType": "bytes",
-                "name": "oldAddress",
+                "name": "oldImplementation",
                 "type": "bytes"
             },
             {
                 "indexed": false,
                 "internalType": "bytes",
-                "name": "newAddress",
+                "name": "newImplementation",
                 "type": "bytes"
             }
         ],
@@ -355,17 +336,36 @@
             {
                 "indexed": false,
                 "internalType": "address",
-                "name": "oldAddress",
+                "name": "oldSymmioAddress",
                 "type": "address"
             },
             {
                 "indexed": false,
                 "internalType": "address",
-                "name": "newAddress",
+                "name": "newSymmioAddress",
                 "type": "address"
             }
         ],
         "name": "SetSymmioAddress",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "oldTradeNFTAddress",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "newTradeNFTAddress",
+                "type": "address"
+            }
+        ],
+        "name": "SetTradeNFTAddress",
         "type": "event"
     },
     {
@@ -481,7 +481,7 @@
         "outputs": [
             {
                 "internalType": "address",
-                "name": "accountAddress",
+                "name": "account",
                 "type": "address"
             },
             {
@@ -566,7 +566,7 @@
                 "components": [
                     {
                         "internalType": "address",
-                        "name": "accountAddress",
+                        "name": "account",
                         "type": "address"
                     },
                     {
@@ -575,7 +575,7 @@
                         "type": "string"
                     }
                 ],
-                "internalType": "struct IMultiAccount.Account[]",
+                "internalType": "struct MultiAccount.Account[]",
                 "name": "",
                 "type": "tuple[]"
             }
@@ -698,6 +698,11 @@
                 "internalType": "bytes",
                 "name": "accountImplementation_",
                 "type": "bytes"
+            },
+            {
+                "internalType": "address",
+                "name": "tradeNFTAddress_",
+                "type": "address"
             }
         ],
         "name": "initialize",
@@ -851,6 +856,19 @@
     {
         "inputs": [
             {
+                "internalType": "address",
+                "name": "addr",
+                "type": "address"
+            }
+        ],
+        "name": "setTradeNFTAddress",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
                 "internalType": "bytes4",
                 "name": "interfaceId",
                 "type": "bytes4"
@@ -878,6 +896,42 @@
             }
         ],
         "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "tradeNFTAddress",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "to",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "tokenId",
+                "type": "uint256"
+            }
+        ],
+        "name": "transferTradeNFT",
+        "outputs": [],
+        "stateMutability": "nonpayable",
         "type": "function"
     },
     {

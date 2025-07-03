@@ -56,6 +56,9 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 	/// @notice Address of the core Symmio protocol contract.
 	address public symmioAddress;
 
+	/// @notice Address of the TradeNFT contract.
+	address public tradeNFTAddress;
+
 	/// @notice Counter for generating unique CREATE2 salts for account deployment.
 	uint256 public saltCounter;
 
@@ -98,6 +101,13 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 	 * @param newSymmioAddress New Symmio contract address.
 	 */
 	event SetSymmioAddress(address oldSymmioAddress, address newSymmioAddress);
+
+	/**
+	 * @notice Emitted when the TradeNFT contract address is updated.
+	 * @param oldTradeNFTAddress Previous TradeNFT contract address.
+	 * @param newTradeNFTAddress New TradeNFT contract address.
+	 */
+	event SetTradeNFTAddress(address oldTradeNFTAddress, address newTradeNFTAddress);
 
 	/**
 	 * @notice Emitted when a new account is created for a user.
@@ -165,7 +175,7 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 	 * @dev Sets up initial roles and contract references. The admin receives
 	 *      DEFAULT_ADMIN_ROLE, SETTER_ROLE, PAUSER_ROLE, and UNPAUSER_ROLE.
 	 */
-	function initialize(address admin, address symmioAddress_, bytes memory accountImplementation_) public initializer {
+	function initialize(address admin, address symmioAddress_, bytes memory accountImplementation_, address tradeNFTAddress_) public initializer {
 		__Pausable_init();
 		__AccessControl_init();
 
@@ -175,6 +185,7 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 		_grantRole(SETTER_ROLE, admin);
 		symmioAddress = symmioAddress_;
 		accountImplementation = accountImplementation_;
+		tradeNFTAddress = tradeNFTAddress_;
 	}
 
 	/* ────────────────────────── Account Management ────────────────────────── */
@@ -200,7 +211,7 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 	 *
 	 * @dev Only the account owner can change the account name.
 	 */
-	function editAccountName(address accountAddress, string memory name) external whenNotPaused {
+	function editAccountName(address accountAddress, string memory name) external whenNotPaused onlyOwner(accountAddress, msg.sender) {
 		uint256 index = indexOfAccount[accountAddress];
 		accounts[msg.sender][index].name = name;
 		emit EditAccountName(msg.sender, accountAddress, name);
@@ -220,6 +231,16 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 		if (msg.sender != owners[account] && !ISymmio(symmioAddress).isCallFromInstantLayer())
 			revert UnauthorizedAccess(account, msg.sender, bytes4(0));
 		for (uint8 i; i < _callDatas.length; i++) innerCall(account, _callDatas[i]);
+	}
+
+	/**
+	 * @notice Transfer a trade NFT from one account to another address.
+	 * @param account Address of the account to transfer the NFT from.
+	 * @param to      Address of the account to transfer the NFT to.
+	 * @param tokenId The ID of the NFT to transfer.
+	 */
+	function transferTradeNFT(address account, address to, uint256 tokenId) external whenNotPaused onlyOwner(account, msg.sender) {
+		ISymmioPartyA(account).transferTradeNFT(tradeNFTAddress, to, tokenId);
 	}
 
 	/**
@@ -302,6 +323,17 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 	function setSymmioAddress(address addr) external onlyRole(SETTER_ROLE) {
 		emit SetSymmioAddress(symmioAddress, addr);
 		symmioAddress = addr;
+	}
+
+	/**
+	 * @notice Update the TradeNFT contract address.
+	 * @param addr New TradeNFT contract address.
+	 *
+	 * @dev Only callable by accounts with SETTER_ROLE.
+	 */
+	function setTradeNFTAddress(address addr) external onlyRole(SETTER_ROLE) {
+		emit SetTradeNFTAddress(tradeNFTAddress, addr);
+		tradeNFTAddress = addr;
 	}
 
 	/**

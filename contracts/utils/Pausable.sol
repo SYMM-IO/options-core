@@ -7,7 +7,6 @@ pragma solidity >=0.8.19;
 import { LibParty } from "../libraries/models/LibParty.sol";
 
 import { StateControlStorage } from "../storages/StateControlStorage.sol";
-import { AppStorage } from "../storages/AppStorage.sol";
 
 import { SystemErrors } from "../errors/SystemErrors.sol";
 
@@ -19,19 +18,19 @@ abstract contract Pausable {
 		_;
 	}
 
-	modifier whenNotBridgePaused() {
+	modifier whenNotExpressWithdrawPaused() {
 		StateControlStorage.Layout storage layout = StateControlStorage.layout();
 
 		if (layout.globalPaused) revert SystemErrors.GlobalPaused();
-		if (layout.bridgePaused) revert SystemErrors.BridgePaused();
+		if (layout.expressWithdrawPaused) revert SystemErrors.ExpressWithdrawPaused();
 		_;
 	}
 
-	modifier whenNotBridgeWithdrawPaused() {
+	modifier whenNotExpressWithdrawCollectionPaused() {
 		StateControlStorage.Layout storage layout = StateControlStorage.layout();
 
 		if (layout.globalPaused) revert SystemErrors.GlobalPaused();
-		if (layout.bridgeWithdrawPaused) revert SystemErrors.BridgeWithdrawPaused();
+		if (layout.expressWithdrawCollectionPaused) revert SystemErrors.ExpressWithdrawCollectionPaused();
 		_;
 	}
 

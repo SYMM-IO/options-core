@@ -4,7 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.18;
 
-import "../facets/Bridge/IBridgeFacet.sol";
+import "../facets/ExpressWithdraw/IExpressWithdrawFacet.sol";
 import "../facets/Trade/ITradeFacet.sol";
 import "../facets/View/IViewFacet.sol";
 import "../facets/Account/IAccountFacet.sol";
@@ -20,7 +20,7 @@ import "../facets/ClearingHouse/IClearingHouseFacet.sol";
 
 interface ISymmio is
 	IAccountFacet,
-	IBridgeFacet,
+	IExpressWithdrawFacet,
 	ITradeFacet,
 	IClearingHouseFacet,
 	IControlFacet,

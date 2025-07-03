@@ -6,4 +6,5 @@ pragma solidity >=0.8.18;
 
 interface ISymmioPartyA {
 	function call(bytes calldata _callData) external returns (bool _success, bytes memory _resultData);
+	function transferTradeNFT(address nftContract, address to, uint256 tokenId) external;
 }

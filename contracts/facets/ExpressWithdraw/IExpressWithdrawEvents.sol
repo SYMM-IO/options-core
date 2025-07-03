@@ -4,18 +4,17 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-interface IBridgeEvents {
-	event TransferToBridge(
+interface IExpressWithdrawEvents {
+	event ExpressWithdraw(
 		address sender,
 		address receiver,
 		address collateral,
 		uint256 amount,
-		address bridgeAddress,
-		uint256 transactionId,
+		address provider,
+		uint256 expressWithdrawId,
 		uint256 newBalance
 	);
-	event WithdrawReceivedBridgeValue(uint256 transactionId);
-	event SuspendBridgeTransaction(uint256 transactionId);
-	event RestoreBridgeTransaction(uint256 transactionId, uint256 validAmount);
-	event WithdrawReceivedBridgeValues(uint256[] transactionIds);
+	event SuspendExpressWithdraw(uint256 expressWithdrawId);
+	event RestoreExpressWithdraw(uint256 expressWithdrawId, uint256 validAmount);
+	event CollectReceivedExpressWithdraws(uint256[] expressWithdrawIds);
 }

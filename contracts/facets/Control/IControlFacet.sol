@@ -93,8 +93,8 @@ interface IControlFacet is IControlEvents {
 	function pauseDeposit() external;
 	function pauseWithdraw() external;
 	function pauseInternalTransfer() external;
-	function pauseBridge() external;
-	function pauseBridgeWithdraw() external;
+	function pauseExpressWithdraw() external;
+	function pauseExpressWithdrawCollection() external;
 	function pausePartyBActions() external;
 	function pausePartyAActions() external;
 	function pauseLiquidating() external;
@@ -106,8 +106,8 @@ interface IControlFacet is IControlEvents {
 	function unpauseDeposit() external;
 	function unpauseWithdraw() external;
 	function unpauseInternalTransfer() external;
-	function unpauseBridge() external;
-	function unpauseBridgeWithdraw() external;
+	function unpauseExpressWithdraw() external;
+	function unpauseExpressWithdrawCollection() external;
 	function unpausePartyBActions() external;
 	function unpausePartyAActions() external;
 	function unpauseLiquidating() external;
@@ -146,8 +146,8 @@ interface IControlFacet is IControlEvents {
 	function setSignatureVerifier(address _verifier) external;
 
 	// Bridge Management
-	function setBridgeValidationState(address _bridgeAddress, bool _state) external;
-	function setInvalidBridgedAmountsPool(address _pool) external;
+	function setExpressWithdrawProviderState(address _provider, bool _state) external;
+	function setInvalidExpressWithdrawsPool(address _pool) external;
 
 	// Instant Layer
 	function setCallFromInstantLayer(bool _callFromInstantLayer) external;

@@ -4,18 +4,18 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-struct BridgeTransaction {
+struct ExpressWithdraw {
 	uint256 id;
 	uint256 amount;
 	address collateral;
 	address sender;
 	address receiver;
-	address bridge;
+	address provider;
 	uint256 timestamp;
-	BridgeTransactionStatus status;
+	ExpressWithdrawStatus status;
 }
 
-enum BridgeTransactionStatus {
+enum ExpressWithdrawStatus {
 	RECEIVED,
 	SUSPENDED,
 	WITHDRAWN
