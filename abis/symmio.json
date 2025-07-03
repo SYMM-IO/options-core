@@ -764,31 +764,12 @@
         "inputs": [
             {
                 "indexed": false,
-                "internalType": "uint256",
-                "name": "transactionId",
-                "type": "uint256"
-            },
-            {
-                "indexed": false,
-                "internalType": "uint256",
-                "name": "validAmount",
-                "type": "uint256"
+                "internalType": "uint256[]",
+                "name": "expressWithdrawIds",
+                "type": "uint256[]"
             }
         ],
-        "name": "RestoreBridgeTransaction",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            {
-                "indexed": false,
-                "internalType": "uint256",
-                "name": "transactionId",
-                "type": "uint256"
-            }
-        ],
-        "name": "SuspendBridgeTransaction",
+        "name": "CollectReceivedExpressWithdraws",
         "type": "event"
     },
     {
@@ -821,13 +802,13 @@
             {
                 "indexed": false,
                 "internalType": "address",
-                "name": "bridgeAddress",
+                "name": "provider",
                 "type": "address"
             },
             {
                 "indexed": false,
                 "internalType": "uint256",
-                "name": "transactionId",
+                "name": "expressWithdrawId",
                 "type": "uint256"
             },
             {
@@ -837,7 +818,7 @@
                 "type": "uint256"
             }
         ],
-        "name": "TransferToBridge",
+        "name": "ExpressWithdraw",
         "type": "event"
     },
     {
@@ -846,53 +827,41 @@
             {
                 "indexed": false,
                 "internalType": "uint256",
-                "name": "transactionId",
-                "type": "uint256"
-            }
-        ],
-        "name": "WithdrawReceivedBridgeValue",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            {
-                "indexed": false,
-                "internalType": "uint256[]",
-                "name": "transactionIds",
-                "type": "uint256[]"
-            }
-        ],
-        "name": "WithdrawReceivedBridgeValues",
-        "type": "event"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "transactionId",
+                "name": "expressWithdrawId",
                 "type": "uint256"
             },
             {
+                "indexed": false,
                 "internalType": "uint256",
                 "name": "validAmount",
                 "type": "uint256"
             }
         ],
-        "name": "restoreBridgeTransaction",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
+        "name": "RestoreExpressWithdraw",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "expressWithdrawId",
+                "type": "uint256"
+            }
+        ],
+        "name": "SuspendExpressWithdraw",
+        "type": "event"
     },
     {
         "inputs": [
             {
-                "internalType": "uint256",
-                "name": "transactionId",
-                "type": "uint256"
+                "internalType": "uint256[]",
+                "name": "expressWithdrawIds",
+                "type": "uint256[]"
             }
         ],
-        "name": "suspendBridgeTransaction",
+        "name": "collectReceivedExpressWithdraws",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -911,7 +880,7 @@
             },
             {
                 "internalType": "address",
-                "name": "bridgeAddress",
+                "name": "provider",
                 "type": "address"
             },
             {
@@ -920,7 +889,7 @@
                 "type": "address"
             }
         ],
-        "name": "transferToBridge",
+        "name": "expressWithdraw",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -928,12 +897,17 @@
     {
         "inputs": [
             {
-                "internalType": "uint256[]",
-                "name": "transactionIds",
-                "type": "uint256[]"
+                "internalType": "uint256",
+                "name": "expressWithdrawId",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "validAmount",
+                "type": "uint256"
             }
         ],
-        "name": "withdrawReceivedBridgeValues",
+        "name": "restoreExpressWithdraw",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -941,23 +915,15 @@
     {
         "inputs": [
             {
-                "internalType": "address",
-                "name": "bridge",
-                "type": "address"
+                "internalType": "uint256",
+                "name": "expressWithdrawId",
+                "type": "uint256"
             }
         ],
-        "name": "BridgeNotWhitelisted",
-        "type": "error"
-    },
-    {
-        "inputs": [],
-        "name": "BridgePaused",
-        "type": "error"
-    },
-    {
-        "inputs": [],
-        "name": "BridgeWithdrawPaused",
-        "type": "error"
+        "name": "suspendExpressWithdraw",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
     },
     {
         "inputs": [
@@ -986,6 +952,27 @@
         "type": "error"
     },
     {
+        "inputs": [],
+        "name": "ExpressWithdrawCollectionPaused",
+        "type": "error"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "expressWithdrawId",
+                "type": "uint256"
+            }
+        ],
+        "name": "ExpressWithdrawIdNotFound",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "ExpressWithdrawPaused",
+        "type": "error"
+    },
+    {
         "inputs": [
             {
                 "internalType": "address",
@@ -1005,7 +992,7 @@
             },
             {
                 "internalType": "address",
-                "name": "transactionCollateral",
+                "name": "expressWithdrawCollateral",
                 "type": "address"
             }
         ],
@@ -1043,22 +1030,22 @@
         "inputs": [
             {
                 "internalType": "address",
-                "name": "bridge",
+                "name": "provider",
                 "type": "address"
             }
         ],
-        "name": "SelfBridgeNotAllowed",
+        "name": "ProviderNotWhitelisted",
         "type": "error"
     },
     {
         "inputs": [
             {
-                "internalType": "uint256",
-                "name": "transactionId",
-                "type": "uint256"
+                "internalType": "address",
+                "name": "provider",
+                "type": "address"
             }
         ],
-        "name": "TransactionIdNotFound",
+        "name": "SelfProviderNotAllowed",
         "type": "error"
     },
     {
@@ -1070,7 +1057,7 @@
             },
             {
                 "internalType": "uint256",
-                "name": "bridgeAmount",
+                "name": "expressWithdrawAmount",
                 "type": "uint256"
             }
         ],
@@ -2538,67 +2525,6 @@
         "inputs": [
             {
                 "internalType": "uint256",
-                "name": "transactionId",
-                "type": "uint256"
-            }
-        ],
-        "name": "getBridgeTransaction",
-        "outputs": [
-            {
-                "components": [
-                    {
-                        "internalType": "uint256",
-                        "name": "id",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "amount",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "collateral",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "sender",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "receiver",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "bridge",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "timestamp",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "enum BridgeTransactionStatus",
-                        "name": "status",
-                        "type": "uint8"
-                    }
-                ],
-                "internalType": "struct BridgeTransaction",
-                "name": "",
-                "type": "tuple"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
                 "name": "intentId",
                 "type": "uint256"
             }
@@ -2866,6 +2792,67 @@
         "type": "function"
     },
     {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "expressWithdrawId",
+                "type": "uint256"
+            }
+        ],
+        "name": "getExpressWithdraw",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "uint256",
+                        "name": "id",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "amount",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "collateral",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "sender",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "receiver",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "provider",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "timestamp",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "enum ExpressWithdrawStatus",
+                        "name": "status",
+                        "type": "uint8"
+                    }
+                ],
+                "internalType": "struct ExpressWithdraw",
+                "name": "",
+                "type": "tuple"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
         "inputs": [],
         "name": "getForceCancelCloseIntentTimeout",
         "outputs": [
@@ -2941,7 +2928,7 @@
     },
     {
         "inputs": [],
-        "name": "getInvalidBridgedAmountsPool",
+        "name": "getInvalidExpressWithdrawsPool",
         "outputs": [
             {
                 "internalType": "address",
@@ -3002,7 +2989,7 @@
     },
     {
         "inputs": [],
-        "name": "getLastBridgeTransactionId",
+        "name": "getLastCloseIntentId",
         "outputs": [
             {
                 "internalType": "uint256",
@@ -3015,7 +3002,7 @@
     },
     {
         "inputs": [],
-        "name": "getLastCloseIntentId",
+        "name": "getLastExpressWithdrawId",
         "outputs": [
             {
                 "internalType": "uint256",
@@ -4443,51 +4430,6 @@
     },
     {
         "inputs": [],
-        "name": "isBridgePaused",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "bridge",
-                "type": "address"
-            }
-        ],
-        "name": "isBridgeWhitelisted",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "isBridgeWithdrawPaused",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
         "name": "isCallFromInstantLayer",
         "outputs": [
             {
@@ -4515,6 +4457,51 @@
     {
         "inputs": [],
         "name": "isEmergencyMode",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "isExpressWithdrawCollectionPaused",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "isExpressWithdrawPaused",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "provider",
+                "type": "address"
+            }
+        ],
+        "name": "isExpressWithdrawProviderWhitelisted",
         "outputs": [
             {
                 "internalType": "bool",
@@ -6777,30 +6764,6 @@
     },
     {
         "anonymous": false,
-        "inputs": [],
-        "name": "BridgePaused",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [],
-        "name": "BridgeUnpaused",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [],
-        "name": "BridgeWithdrawPaused",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [],
-        "name": "BridgeWithdrawUnpaused",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
         "inputs": [
             {
                 "indexed": true,
@@ -6886,6 +6849,30 @@
         "anonymous": false,
         "inputs": [],
         "name": "EmergencyModeDeactivated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [],
+        "name": "ExpressWithdrawCollectionPaused",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [],
+        "name": "ExpressWithdrawCollectionUnpaused",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [],
+        "name": "ExpressWithdrawPaused",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [],
+        "name": "ExpressWithdrawUnpaused",
         "type": "event"
     },
     {
@@ -7301,7 +7288,7 @@
             {
                 "indexed": true,
                 "internalType": "address",
-                "name": "_bridgeAddress",
+                "name": "_provider",
                 "type": "address"
             },
             {
@@ -7311,20 +7298,7 @@
                 "type": "bool"
             }
         ],
-        "name": "SetBridgeValidationState",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            {
-                "indexed": false,
-                "internalType": "bool",
-                "name": "_pause",
-                "type": "bool"
-            }
-        ],
-        "name": "SetBridgeWithdrawPausedStatus",
+        "name": "SetExpressWithdrawProvider",
         "type": "event"
     },
     {
@@ -7337,7 +7311,7 @@
                 "type": "address"
             }
         ],
-        "name": "SetInvalidBridgedAmountsPool",
+        "name": "SetInvalidExpressWithdrawsPool",
         "type": "event"
     },
     {
@@ -7821,21 +7795,21 @@
     },
     {
         "inputs": [],
-        "name": "pauseBridge",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "pauseBridgeWithdraw",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [],
         "name": "pauseDeposit",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "pauseExpressWithdraw",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "pauseExpressWithdrawCollection",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -8020,24 +7994,6 @@
     {
         "inputs": [
             {
-                "internalType": "address",
-                "name": "_bridgeAddress",
-                "type": "address"
-            },
-            {
-                "internalType": "bool",
-                "name": "_state",
-                "type": "bool"
-            }
-        ],
-        "name": "setBridgeValidationState",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
                 "internalType": "bool",
                 "name": "_callFromInstantLayer",
                 "type": "bool"
@@ -8090,6 +8046,24 @@
     {
         "inputs": [
             {
+                "internalType": "address",
+                "name": "_provider",
+                "type": "address"
+            },
+            {
+                "internalType": "bool",
+                "name": "_state",
+                "type": "bool"
+            }
+        ],
+        "name": "setExpressWithdrawProviderState",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
                 "internalType": "uint256",
                 "name": "_timeout",
                 "type": "uint256"
@@ -8121,7 +8095,7 @@
                 "type": "address"
             }
         ],
-        "name": "setInvalidBridgedAmountsPool",
+        "name": "setInvalidExpressWithdrawsPool",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -8454,21 +8428,21 @@
     },
     {
         "inputs": [],
-        "name": "unpauseBridge",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "unpauseBridgeWithdraw",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [],
         "name": "unpauseDeposit",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "unpauseExpressWithdraw",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "unpauseExpressWithdrawCollection",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
