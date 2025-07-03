@@ -4,16 +4,16 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { BridgeTransaction } from "../types/BridgeTypes.sol";
+import { ExpressWithdraw } from "../types/ExpressWithdrawTypes.sol";
 
-library BridgeStorage {
-	bytes32 internal constant STORAGE_SLOT = keccak256("diamond.standard.storage.bridge");
+library ExpressWithdrawStorage {
+	bytes32 internal constant STORAGE_SLOT = keccak256("diamond.standard.storage.expressWithdraw");
 
 	struct Layout {
-		mapping(address => bool) bridges; // bridge -> isActive
-		mapping(uint256 => BridgeTransaction) bridgeTransactions;
-		uint256 lastBridgeTransactionId;
-		address invalidBridgedAmountsPool;
+		mapping(address => bool) providers; // provider -> isActive
+		mapping(uint256 => ExpressWithdraw) expressWithdraws;
+		uint256 lastExpressWithdrawId;
+		address invalidExpressWithdrawsPool;
 	}
 
 	function layout() internal pure returns (Layout storage l) {

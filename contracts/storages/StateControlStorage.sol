@@ -16,8 +16,8 @@ library StateControlStorage {
 		bool liquidatingPaused;
 		bool thirdPartyActionsPaused;
 		bool internalTransferPaused;
-		bool bridgePaused;
-		bool bridgeWithdrawPaused;
+		bool expressWithdrawPaused;
+		bool expressWithdrawCollectionPaused;
 		bool instantLayerPaused;
 		///////////////////////////////////
 		bool emergencyMode;

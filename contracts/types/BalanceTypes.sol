@@ -66,7 +66,7 @@ struct ScheduledReleaseBalance {
 enum IncreaseBalanceReason {
 	DEPOSIT,
 	INTERNAL_TRANSFER,
-	BRIDGE,
+	EXPRESS_WITHDRAW,
 	FEE,
 	PREMIUM,
 	REALIZED_PNL,
@@ -76,7 +76,7 @@ enum IncreaseBalanceReason {
 enum DecreaseBalanceReason {
 	WITHDRAW,
 	INTERNAL_TRANSFER,
-	BRIDGE,
+	EXPRESS_WITHDRAW,
 	FEE,
 	PREMIUM,
 	REALIZED_PNL,

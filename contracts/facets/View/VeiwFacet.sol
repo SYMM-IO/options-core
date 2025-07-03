@@ -9,7 +9,7 @@ import { LibOpenIntentOps } from "../../libraries/models/LibOpenIntent.sol";
 import { LibTradeOps } from "../../libraries/models/LibTrade.sol";
 
 import { TradeStorage } from "../../storages/TradeStorage.sol";
-import { BridgeStorage } from "../../storages/BridgeStorage.sol";
+import { ExpressWithdrawStorage } from "../../storages/ExpressWithdrawStorage.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
 import { AppStorage, PartyBConfig } from "../../storages/AppStorage.sol";
@@ -23,7 +23,7 @@ import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelatio
 
 import { Trade } from "../../types/TradeTypes.sol";
 import { Withdraw } from "../../types/WithdrawTypes.sol";
-import { BridgeTransaction } from "../../types/BridgeTypes.sol";
+import { ExpressWithdraw } from "../../types/ExpressWithdrawTypes.sol";
 import { OpenIntent, CloseIntent } from "../../types/IntentTypes.sol";
 import { LiquidationDetail } from "../../types/LiquidationTypes.sol";
 import { ScheduledReleaseEntry, CrossEntry } from "../../types/BalanceTypes.sol";
@@ -334,41 +334,41 @@ contract ViewFacet is IViewFacet {
 	}
 
 	// ════════════════════════════════════════════════════════════════════════════
-	//                           BRIDGE STORAGE VIEWS
+	//                           EXPRESS WITHDRAW STORAGE VIEWS
 	// ════════════════════════════════════════════════════════════════════════════
 
 	/**
-	 * @notice Checks if a bridge is whitelisted
-	 * @param bridge The bridge address
-	 * @return Whether the bridge is whitelisted
+	 * @notice Checks if a express withdraw provider is whitelisted
+	 * @param provider The express withdraw provider address
+	 * @return Whether the express withdraw provider is whitelisted
 	 */
-	function isBridgeWhitelisted(address bridge) external view returns (bool) {
-		return BridgeStorage.layout().bridges[bridge];
+	function isExpressWithdrawProviderWhitelisted(address provider) external view returns (bool) {
+		return ExpressWithdrawStorage.layout().providers[provider];
 	}
 
 	/**
-	 * @notice Gets bridge transaction details
-	 * @param transactionId The transaction ID
-	 * @return The bridge transaction details
+	 * @notice Gets express withdraw details
+	 * @param expressWithdrawId The express withdraw ID
+	 * @return The express withdraw details
 	 */
-	function getBridgeTransaction(uint256 transactionId) external view returns (BridgeTransaction memory) {
-		return BridgeStorage.layout().bridgeTransactions[transactionId];
+	function getExpressWithdraw(uint256 expressWithdrawId) external view returns (ExpressWithdraw memory) {
+		return ExpressWithdrawStorage.layout().expressWithdraws[expressWithdrawId];
 	}
 
 	/**
-	 * @notice Gets the last bridge transaction ID
-	 * @return The last transaction ID
+	 * @notice Gets the last express withdraw ID
+	 * @return The last express withdraw ID
 	 */
-	function getLastBridgeTransactionId() external view returns (uint256) {
-		return BridgeStorage.layout().lastBridgeTransactionId;
+	function getLastExpressWithdrawId() external view returns (uint256) {
+		return ExpressWithdrawStorage.layout().lastExpressWithdrawId;
 	}
 
 	/**
-	 * @notice Gets the invalid bridged amounts pool address
+	 * @notice Gets the invalid express withdraws pool address
 	 * @return The pool address
 	 */
-	function getInvalidBridgedAmountsPool() external view returns (address) {
-		return BridgeStorage.layout().invalidBridgedAmountsPool;
+	function getInvalidExpressWithdrawsPool() external view returns (address) {
+		return ExpressWithdrawStorage.layout().invalidExpressWithdrawsPool;
 	}
 
 	// ════════════════════════════════════════════════════════════════════════════
@@ -711,19 +711,19 @@ contract ViewFacet is IViewFacet {
 	}
 
 	/**
-	 * @notice Checks if bridge operations are paused
-	 * @return Whether bridge operations are paused
+	 * @notice Checks if express withdraw operations are paused
+	 * @return Whether express withdraw operations are paused
 	 */
-	function isBridgePaused() external view returns (bool) {
-		return StateControlStorage.layout().bridgePaused;
+	function isExpressWithdrawPaused() external view returns (bool) {
+		return StateControlStorage.layout().expressWithdrawPaused;
 	}
 
 	/**
-	 * @notice Checks if bridge withdrawals are paused
-	 * @return Whether bridge withdrawals are paused
+	 * @notice Checks if express withdraw collection operations are paused
+	 * @return Whether express withdraw collection operations are paused
 	 */
-	function isBridgeWithdrawPaused() external view returns (bool) {
-		return StateControlStorage.layout().bridgeWithdrawPaused;
+	function isExpressWithdrawCollectionPaused() external view returns (bool) {
+		return StateControlStorage.layout().expressWithdrawCollectionPaused;
 	}
 
 	/**
@@ -744,8 +744,8 @@ contract ViewFacet is IViewFacet {
 	 * @return liquidatingPaused Whether liquidating is paused
 	 * @return thirdPartyActionsPaused Whether third party actions are paused
 	 * @return internalTransferPaused Whether internal transfers are paused
-	 * @return bridgePaused Whether bridge operations are paused
-	 * @return bridgeWithdrawPaused Whether bridge withdrawals are paused
+	 * @return expressWithdrawPaused Whether express withdraw operations are paused
+	 * @return expressWithdrawCollectionPaused Whether express withdraw collection operations are paused
 	 * @return instantLayerPaused Whether instant layer is paused
 	 * @return emergencyMode Whether emergency mode is active
 	 */
@@ -761,8 +761,8 @@ contract ViewFacet is IViewFacet {
 			bool liquidatingPaused,
 			bool thirdPartyActionsPaused,
 			bool internalTransferPaused,
-			bool bridgePaused,
-			bool bridgeWithdrawPaused,
+			bool expressWithdrawPaused,
+			bool expressWithdrawCollectionPaused,
 			bool instantLayerPaused,
 			bool emergencyMode
 		)
@@ -777,8 +777,8 @@ contract ViewFacet is IViewFacet {
 			stateLayout.liquidatingPaused,
 			stateLayout.thirdPartyActionsPaused,
 			stateLayout.internalTransferPaused,
-			stateLayout.bridgePaused,
-			stateLayout.bridgeWithdrawPaused,
+			stateLayout.expressWithdrawPaused,
+			stateLayout.expressWithdrawCollectionPaused,
 			stateLayout.instantLayerPaused,
 			stateLayout.emergencyMode
 		);
