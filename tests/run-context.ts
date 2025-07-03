@@ -3,7 +3,7 @@ import { ethers } from "hardhat"
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers"
 import {
 	AccountFacet,
-	BridgeFacet,
+	ExpressWithdrawFacet,
 	ClearingHouseFacet,
 	CloseIntentOpsMock,
 	ControlFacet,
@@ -22,7 +22,7 @@ import {
 	SignatureVerifier,
 	ViewFacet,
 } from "../types"
-import { counterPartyRelations } from "../types/contracts/facets"
+import { counterPartyRelations, expressWithdraw } from "../types/contracts/facets"
 
 export class RunContext {
 	accountFacet!: AccountFacet
@@ -36,7 +36,7 @@ export class RunContext {
 	controlFacet!: ControlFacet
 	forceActionsFacet!: ForceActionsFacet
 	clearingHouse!: ClearingHouseFacet
-	bridgeFacet!: BridgeFacet
+	expressWithdrawFacet!: ExpressWithdrawFacet
 	counterPartyRelation!: CounterPartyRelationsFacet
 	instantLayer!: InstantLayer
 	multiAccount!: MultiAccount
@@ -111,7 +111,7 @@ export async function createRunContext(
 
 	context.partyBCloseFacet = await ethers.getContractAt("PartyBCloseFacet", diamond)
 	context.partyBOpenFacet = await ethers.getContractAt("PartyBOpenFacet", diamond)
-	context.bridgeFacet = await ethers.getContractAt("BridgeFacet", diamond)
+	context.expressWithdrawFacet = await ethers.getContractAt("ExpressWithdrawFacet", diamond)
 	context.counterPartyRelation = await ethers.getContractAt("CounterPartyRelationsFacet", diamond)
 
 	if (mocks) {

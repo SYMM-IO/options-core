@@ -1,7 +1,7 @@
 import { ethers, run } from "hardhat"
 import { Diamond, FakeOracle, FakeStablecoin, InstantLayer, SignatureVerifier } from "../types"
 import { createRunContext, RunContext } from "./run-context"
-import { toUtf8Bytes } from "ethers"
+import { toUtf8Bytes, ZeroAddress } from "ethers"
 import { e } from "../utils/e"
 import { OptionType } from "./option-enums"
 import { MultiAccount } from "../types/contracts/helpers"
@@ -37,6 +37,7 @@ export async function initializeTestFixture(): Promise<RunContext> {
 	const multiAccount: MultiAccount = await run("deploy:multiAccount", {
 		symmioaddress: context.signers.symmioAddress.address,
 		admin: context.signers.admin.address,
+		tradeNFTAddress: ZeroAddress,
 	})
 	context.multiAccount = await ethers.getContractAt("MultiAccount", await multiAccount.getAddress())
 	context.instantLayer = await ethers.getContractAt("InstantLayer", await instantLayer.getAddress())
