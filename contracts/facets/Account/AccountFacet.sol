@@ -105,6 +105,24 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	}
 
 	/**
+	 * @notice Transfers collateral from sender's available balance to whitelisted target without any cooldown
+	 * @dev sender must not be suspended for the operation to succeed
+	 * @param collateral The address of the collateral token to transfer
+	 * @param user The address of the recipient user in the target contract
+	 * @param amount The amount to transfer, specified in collateral decimals
+	 * @param target The address of the target contract that will receive the collateral
+	 */
+	function externalTransfer(
+		address collateral,
+		address user,
+		uint256 amount,
+		address target
+	) external whenNotExternalTransferPaused whenNotSuspended(msg.sender) whenInstantModeIsNotActive(msg.sender) whenPartyNotPaused(msg.sender) {
+		LibBalanceOperations.externalTransfer(collateral, msg.sender, user, amount, target);
+		emit ExternalTransfer(msg.sender, user, collateral, amount, target);
+	}
+
+	/**
 	 * @notice Initiates a withdrawal request for collateral
 	 * @dev Starts the withdrawal process, moving funds to a pending state
 	 * @param collateral The address of the collateral token to withdraw
@@ -140,7 +158,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		address collateral,
 		uint256 amount,
 		address to,
-		address provider, 
+		address provider,
 		bytes memory userData
 	)
 		external

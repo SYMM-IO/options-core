@@ -33,6 +33,9 @@ library ValidationErrors {
 	// Data validation
 	error InsufficientBytes(uint256 providedLength, uint256 minimumLength);
 
+	// External transfer validation
+	error ExternalTransferTargetNotWhitelisted(address target, address collateral);
+
 	// Helper function for requireStatus pattern used throughout the codebase
 	function requireStatus(string memory property, uint8 current, uint8 expected) internal pure {
 		if (current != expected) {

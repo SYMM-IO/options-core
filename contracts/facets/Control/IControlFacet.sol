@@ -151,6 +151,9 @@ interface IControlFacet is IControlEvents {
 	function setExpressWithdrawProviderConfig(address _provider, address _collateral, ExpressWithdrawProviderConfig memory _config) external;
 	function setInvalidWithdrawalsAmountsPool(address _pool) external;
 
+	// External Transfer Target Management
+	function setExternalTransferTargetValidationStatus(address _target, address _collateral, bool _status) external;
+
 	// Instant Layer
 	function setCallFromInstantLayer(bool _callFromInstantLayer) external;
 }

@@ -8,8 +8,8 @@ import { LibParty } from "../models/LibParty.sol";
 import { LibDecimals } from "../utils/LibDecimals.sol";
 import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance.sol";
 
-import { ValidationErrors } from "../../errors/ValidationErrors.sol";
 import { BalanceErrors } from "../../errors/BalanceErrors.sol";
+import { ValidationErrors } from "../../errors/ValidationErrors.sol";
 
 import { AppStorage } from "../../storages/AppStorage.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
@@ -18,10 +18,11 @@ import { MarginType } from "../../types/BaseTypes.sol";
 import { Withdraw, WithdrawStatus, ExpressWithdrawProviderConfig } from "../../types/WithdrawTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 
+import { IExternalTransferTarget } from "../../interfaces/IExternalTransferTarget.sol";
+import { IExpressWithdrawProvider } from "../../interfaces/IExpressWithdrawProvider.sol";
+
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
-import { IExpressWithdrawProvider } from "../../interfaces/IExpressWithdrawProvider.sol";
 
 library LibBalanceOperations {
 	using SafeERC20 for IERC20;
@@ -80,6 +81,24 @@ library LibBalanceOperations {
 		sourceBalance.isolatedSub(amount, DecreaseBalanceReason.INTERNAL_TRANSFER);
 		targetBalance.setup(receiver, collateral);
 		targetBalance.instantIsolatedAdd(amount, IncreaseBalanceReason.INTERNAL_TRANSFER);
+	}
+
+	function externalTransfer(address collateral, address sender, address receiver, uint256 amount, address target) internal {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+
+		if (amount == 0) revert ValidationErrors.ZeroAmount();
+		if (receiver == address(0)) revert ValidationErrors.ZeroAddress("user");
+		if (target == address(0)) revert ValidationErrors.ZeroAddress("target");
+		if (!accountLayout.externalTransferTargets[target][collateral])
+			revert ValidationErrors.ExternalTransferTargetNotWhitelisted(target, collateral);
+
+		ScheduledReleaseBalance storage sourceBalance = sender.balanceOf(collateral);
+		sourceBalance.isolatedSub(amount, DecreaseBalanceReason.EXTERNAL_TRANSFER);
+
+		uint256 amountInCollateralDecimals = LibDecimals.denormalizeAmount(collateral, amount);
+		IERC20(collateral).safeTransfer(target, amountInCollateralDecimals);
+
+		IExternalTransferTarget(target).onTransfer(collateral, sender, receiver, amount);
 	}
 
 	function initiateWithdraw(

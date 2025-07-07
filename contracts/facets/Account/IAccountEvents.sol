@@ -14,6 +14,7 @@ interface IAccountEvents {
 		uint256 newBalanceOfSender,
 		uint256 newBalanceOfReceiver
 	);
+	event ExternalTransfer(address sender, address user, address collateral, uint256 amount, address target);
 	event InitiateWithdraw(uint256 id, address user, address to, address collateral, uint256 amount, uint256 newBalance);
 	event CompleteWithdraw(uint256 id);
 	event CancelWithdraw(uint256 id, address user, address collateral, uint256 amount, uint256 newBalance);

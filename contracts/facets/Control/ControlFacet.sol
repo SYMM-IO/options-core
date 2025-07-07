@@ -856,6 +856,28 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	}
 
 	// ═══════════════════════════════════════════════════════════════════════════
+	//                          EXTERNAL TRANSFER TARGETS
+	// ═══════════════════════════════════════════════════════════════════════════
+
+	/**
+	 * @notice Sets the validation status for an external transfer target
+	 * @param _target The target address
+	 * @param _collateral The collateral address
+	 * @param _status The validation status
+	 */
+	function setExternalTransferTargetValidationStatus(
+		address _target,
+		address _collateral,
+		bool _status
+	) external onlyRole(LibAccessibility.EXTERNAL_TRANSFER_TARGET_MANAGER_ROLE) {
+		if (_target == address(0)) revert ValidationErrors.ZeroAddress("target");
+		if (_collateral == address(0)) revert ValidationErrors.ZeroAddress("collateral");
+
+		AccountStorage.layout().externalTransferTargets[_target][_collateral] = _status;
+		emit ExternalTransferTargetValidationStatusUpdated(_target, _collateral, _status);
+	}
+
+	// ═══════════════════════════════════════════════════════════════════════════
 	//                          INSTANT LAYER MANAGEMENT
 	// ═══════════════════════════════════════════════════════════════════════════
 

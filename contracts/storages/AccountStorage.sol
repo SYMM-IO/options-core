@@ -22,7 +22,9 @@ library AccountStorage {
 		mapping(uint256 => Withdraw) withdrawals;
 		uint256 lastWithdrawId;
 		address invalidWithdrawalsAmountsPool;
-		mapping(address => mapping(address => ExpressWithdrawProviderConfig)) expressWithdrawProviderConfigs;
+		mapping(address => mapping(address => ExpressWithdrawProviderConfig)) expressWithdrawProviderConfigs; // provider => collateral => config
+		/////////////////////////////////////////////////////////
+		mapping(address => mapping(address => bool)) externalTransferTargets; // target => collateral => isValid
 	}
 
 	function layout() internal pure returns (Layout storage l) {
