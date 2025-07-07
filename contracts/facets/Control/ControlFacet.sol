@@ -4,24 +4,24 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { LibAccessibility } from "../../libraries/core/LibAccessibility.sol";
 import { LibParty } from "../../libraries/models/LibParty.sol";
+import { LibAccessibility } from "../../libraries/core/LibAccessibility.sol";
 import { ScheduledReleaseBalanceOps } from "../../libraries/models/LibScheduledReleaseBalance.sol";
 
 import { SymbolStorage } from "../../storages/SymbolStorage.sol";
+import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { AppStorage, PartyBConfig } from "../../storages/AppStorage.sol";
 import { StateControlStorage } from "../../storages/StateControlStorage.sol";
 import { AccessControlStorage } from "../../storages/AccessControlStorage.sol";
 import { FeeManagementStorage } from "../../storages/FeeManagementStorage.sol";
 import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
-import { ExpressWithdrawStorage } from "../../storages/ExpressWithdrawStorage.sol";
-import { AccountStorage } from "../../storages/AccountStorage.sol";
 
-import { Symbol, Oracle, OptionType } from "../../types/SymbolTypes.sol";
 import { ScheduledReleaseBalance } from "../../types/BalanceTypes.sol";
+import { Symbol, Oracle, OptionType } from "../../types/SymbolTypes.sol";
+import { ExpressWithdrawProviderConfig } from "../../types/WithdrawTypes.sol";
 
-import { ValidationErrors } from "../../errors/ValidationErrors.sol";
 import { SystemErrors } from "../../errors/SystemErrors.sol";
+import { ValidationErrors } from "../../errors/ValidationErrors.sol";
 
 import { Ownable } from "../../utils/Ownable.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
@@ -826,32 +826,33 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	}
 
 	// ═══════════════════════════════════════════════════════════════════════════
-	//                          EXPRESS WITHDRAW MANAGEMENT
+	//                          WITHDRAW MANAGEMENT
 	// ═══════════════════════════════════════════════════════════════════════════
 
 	/**
-	 * @notice Sets the express withdraw provider
+	 * @notice Sets the express withdraw provider config
 	 * @param _provider The express withdraw provider address
-	 * @param _state The provider state
+	 * @param _collateral The collateral address of this provider config
+	 * @param _config The express withdraw provider config
 	 */
-	function setExpressWithdrawProviderState(address _provider, bool _state) external onlyRole(LibAccessibility.SETTER_ROLE) {
+	function setExpressWithdrawProviderConfig(
+		address _provider,
+		address _collateral,
+		ExpressWithdrawProviderConfig memory _config
+	) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		if (_provider == address(0)) revert ValidationErrors.ZeroAddress("provider");
-		ExpressWithdrawStorage.Layout storage s = ExpressWithdrawStorage.layout();
-
-		s.providers[_provider] = _state;
-		emit SetExpressWithdrawProvider(_provider, _state);
+		AccountStorage.layout().expressWithdrawProviderConfigs[_provider][_collateral] = _config;
+		emit ExpressWithdrawProviderConfigUpdated(_provider, _config);
 	}
 
 	/**
-	 * @notice Sets the invalid express withdraws pool
-	 * @param _pool The invalid express withdraws pool address
+	 * @notice Sets the invalid withdrawals amounts pool
+	 * @param _pool The invalid withdrawals amounts pool address
 	 */
-	function setInvalidExpressWithdrawsPool(address _pool) external onlyRole(LibAccessibility.SETTER_ROLE) {
+	function setInvalidWithdrawalsAmountsPool(address _pool) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		if (_pool == address(0)) revert ValidationErrors.ZeroAddress("pool");
-		ExpressWithdrawStorage.Layout storage s = ExpressWithdrawStorage.layout();
-
-		s.invalidExpressWithdrawsPool = _pool;
-		emit SetInvalidExpressWithdrawsPool(_pool);
+		AccountStorage.layout().invalidWithdrawalsAmountsPool = _pool;
+		emit InvalidWithdrawalsAmountsPoolUpdated(_pool);
 	}
 
 	// ═══════════════════════════════════════════════════════════════════════════

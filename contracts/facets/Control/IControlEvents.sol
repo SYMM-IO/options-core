@@ -7,6 +7,7 @@ pragma solidity >=0.8.19;
 import { PartyBConfig } from "../../storages/AppStorage.sol";
 
 import { OptionType } from "../../types/SymbolTypes.sol";
+import { ExpressWithdrawProviderConfig } from "../../types/WithdrawTypes.sol";
 
 interface IControlEvents {
 	event CollateralWhitelisted(address indexed collateral);
@@ -72,8 +73,8 @@ interface IControlEvents {
 	event PriceOracleAddressUpdated(address indexed oracle);
 	event SetManualSync(address user, bool isManual);
 	event SignatureVerifierUpdated(address indexed verifier);
-	event SetExpressWithdrawProvider(address indexed _provider, bool _state);
-	event SetInvalidExpressWithdrawsPool(address indexed _pool);
+	event ExpressWithdrawProviderConfigUpdated(address indexed _provider, ExpressWithdrawProviderConfig _config);
+	event InvalidWithdrawalsAmountsPoolUpdated(address indexed _pool);
 	event UserWindowUpdated(address indexed user, address indexed collateral, address indexed counterParty);
 	event PartyBExclusiveWindowUpdated(uint256 window);
 	event InternalTransferPaused();

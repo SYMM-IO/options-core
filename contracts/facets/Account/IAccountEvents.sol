@@ -17,6 +17,8 @@ interface IAccountEvents {
 	event InitiateWithdraw(uint256 id, address user, address to, address collateral, uint256 amount, uint256 newBalance);
 	event CompleteWithdraw(uint256 id);
 	event CancelWithdraw(uint256 id, address user, address collateral, uint256 amount, uint256 newBalance);
+	event SuspendWithdraw(uint256 id, address suspender);
+	event RestoreWithdraw(uint256 id, uint256 validAmount);
 	event Allocate(
 		address indexed user,
 		address indexed collateral,

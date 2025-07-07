@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: SYMM-Core-Business-Source-License-1.1
 pragma solidity >=0.8.19;
 
-import { Symbol } from "../../types/SymbolTypes.sol";
-
 import { PartyBConfig } from "../../storages/AppStorage.sol";
+
+import { Symbol } from "../../types/SymbolTypes.sol";
 import { OptionType } from "../../types/SymbolTypes.sol";
+import { ExpressWithdrawProviderConfig } from "../../types/WithdrawTypes.sol";
+
 import { IControlEvents } from "./IControlEvents.sol";
 
 // Structs for view functions
@@ -145,9 +147,9 @@ interface IControlFacet is IControlEvents {
 	function setPriceOracleAddress(address _oracle) external;
 	function setSignatureVerifier(address _verifier) external;
 
-	// Bridge Management
-	function setExpressWithdrawProviderState(address _provider, bool _state) external;
-	function setInvalidExpressWithdrawsPool(address _pool) external;
+	// Withdrawal Management
+	function setExpressWithdrawProviderConfig(address _provider, address _collateral, ExpressWithdrawProviderConfig memory _config) external;
+	function setInvalidWithdrawalsAmountsPool(address _pool) external;
 
 	// Instant Layer
 	function setCallFromInstantLayer(bool _callFromInstantLayer) external;

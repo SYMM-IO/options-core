@@ -12,6 +12,8 @@ struct Withdraw {
 	address collateral;
 	address user;
 	address to;
+	address provider;
+	bytes userData;
 	uint256 timestamp;
 	WithdrawStatus status;
 }
@@ -29,5 +31,11 @@ struct UpnlSig {
 enum WithdrawStatus {
 	INITIATED,
 	CANCELED,
-	COMPLETED
+	COMPLETED,
+	SUSPENDED
+}
+
+struct ExpressWithdrawProviderConfig {
+	bool isActive;
+	address receiver;
 }
