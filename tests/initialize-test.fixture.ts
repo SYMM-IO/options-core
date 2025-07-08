@@ -31,11 +31,11 @@ export async function initializeTestFixture(): Promise<RunContext> {
 	)
 
 	const instantLayer: InstantLayer = await run("deploy:InstantLayer", {
-		symmioaddress: context.signers.symmioAddress.address,
+		symmioaddress: context.common.diamondAddress,
 		admin: context.signers.admin.address,
 	})
 	const multiAccount: MultiAccount = await run("deploy:multiAccount", {
-		symmioaddress: context.signers.symmioAddress.address,
+		symmioaddress: context.common.diamondAddress,
 		admin: context.signers.admin.address,
 		tradeNFTAddress: ZeroAddress,
 	})
