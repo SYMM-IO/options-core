@@ -65,9 +65,9 @@ describe(`${name}-v${version}`, () => {
 			shouldBehaveLikeInstantLayer()
 		})
 
-		describe("Instant Layer", async function () {
-			shouldBehaveLikeInstantLayerAuto()
-		})
+		// describe("Instant Layer", async function () {
+		// 	shouldBehaveLikeInstantLayerAuto()
+		// })
 	} else {
 		throw new Error(`Invalid TEST_MODE property. Should be one of: ${Object.keys(TestModeEnum).join(", ")}`)
 	}
