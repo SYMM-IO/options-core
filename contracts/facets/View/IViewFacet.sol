@@ -141,9 +141,9 @@ interface IViewFacet {
 			bool bridgePaused,
 			bool bridgeWithdrawPaused,
 			bool instantLayerPaused,
-			bool emergencyMode
+			bool partyBsEmergencyMode
 		);
-	function isEmergencyMode() external view returns (bool);
+	function isPartyBsEmergencyMode() external view returns (bool);
 	function isPartyBInEmergencyMode(address partyB) external view returns (bool);
 	function isAddressSuspended(address user) external view returns (bool);
 	function isWithdrawalSuspended(uint256 withdrawId) external view returns (bool);

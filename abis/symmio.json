@@ -1120,6 +1120,11 @@
         "type": "error"
     },
     {
+        "inputs": [],
+        "name": "PartyBsInEmergencyMode",
+        "type": "error"
+    },
+    {
         "inputs": [
             {
                 "internalType": "address",
@@ -1154,11 +1159,6 @@
             }
         ],
         "name": "SymbolTypeMismatch",
-        "type": "error"
-    },
-    {
-        "inputs": [],
-        "name": "SystemInEmergencyMode",
         "type": "error"
     },
     {
@@ -2160,18 +2160,6 @@
             }
         ],
         "name": "DistributeCollateral",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [],
-        "name": "EmergencyModeActivated",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [],
-        "name": "EmergencyModeDeactivated",
         "type": "event"
     },
     {
@@ -3246,6 +3234,18 @@
     },
     {
         "anonymous": false,
+        "inputs": [],
+        "name": "PartyBsEmergencyModeActivated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [],
+        "name": "PartyBsEmergencyModeDeactivated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
         "inputs": [
             {
                 "indexed": true,
@@ -4139,13 +4139,6 @@
         "type": "function"
     },
     {
-        "inputs": [],
-        "name": "activeEmergencyMode",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
         "inputs": [
             {
                 "internalType": "address",
@@ -4154,6 +4147,13 @@
             }
         ],
         "name": "activePartyBEmergencyMode",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "activePartyBsEmergencyMode",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -4505,13 +4505,6 @@
         "type": "function"
     },
     {
-        "inputs": [],
-        "name": "deactiveEmergencyMode",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
         "inputs": [
             {
                 "internalType": "address",
@@ -4520,6 +4513,13 @@
             }
         ],
         "name": "deactivePartyBEmergencyMode",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "deactivePartyBsEmergencyMode",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -5627,7 +5627,7 @@
             },
             {
                 "internalType": "bool",
-                "name": "emergencyMode",
+                "name": "partyBsEmergencyMode",
                 "type": "bool"
             }
         ],
@@ -7696,19 +7696,6 @@
     },
     {
         "inputs": [],
-        "name": "isEmergencyMode",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
         "name": "isExpressWithdrawPaused",
         "outputs": [
             {
@@ -7858,6 +7845,19 @@
             }
         ],
         "name": "isPartyBInEmergencyMode",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "isPartyBsEmergencyMode",
         "outputs": [
             {
                 "internalType": "bool",

@@ -41,7 +41,7 @@ library SystemErrors {
 
 	// Emergency states
 	error PartyBInEmergencyMode(address partyB);
-	error SystemInEmergencyMode();
+	error PartyBsInEmergencyMode();
 
 	// Suspension/Status validation
 	error UserSuspended(address user);

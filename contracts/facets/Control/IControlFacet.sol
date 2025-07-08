@@ -35,7 +35,7 @@ struct PauseStates {
 	bool partyAActionsPaused;
 	bool liquidatingPaused;
 	bool thirdPartyActionsPaused;
-	bool emergencyMode;
+	bool partyBsEmergencyMode;
 }
 
 interface IControlFacet is IControlEvents {
@@ -116,8 +116,8 @@ interface IControlFacet is IControlEvents {
 	function unpauseInstantLayer() external;
 
 	// Emergency Controls
-	function activeEmergencyMode() external;
-	function deactiveEmergencyMode() external;
+	function activePartyBsEmergencyMode() external;
+	function deactivePartyBsEmergencyMode() external;
 	function activePartyBEmergencyMode(address _partyB) external;
 	function deactivePartyBEmergencyMode(address _partyB) external;
 

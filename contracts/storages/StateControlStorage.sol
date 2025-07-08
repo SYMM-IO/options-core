@@ -20,7 +20,7 @@ library StateControlStorage {
 		bool expressWithdrawPaused;
 		bool instantLayerPaused;
 		///////////////////////////////////
-		bool emergencyMode;
+		bool partyBsEmergencyMode;
 		mapping(address => bool) partyBEmergencyMode;
 		///////////////////////////////////
 		mapping(address => bool) suspendedAddresses;

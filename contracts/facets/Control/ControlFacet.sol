@@ -381,7 +381,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	 */
 	function setPartyBConfig(address _partyB, PartyBConfig calldata _config) external onlyRole(LibAccessibility.PARTY_B_MANAGER_ROLE) {
 		if (_partyB == address(0)) revert ValidationErrors.ZeroAddress("partyB");
-		if (_config.isActive && _config.oracleId == 0) revert ValidationErrors.OracleNotFound(_config.oracleId);
+		if (_config.isActive) verifyOracle(_config.oracleId);
 
 		AppStorage.layout().partyBConfigs[_partyB] = _config;
 		AccountStorage.layout().manualSync[_partyB] = true;
@@ -577,19 +577,19 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	// ═══════════════════════════════════════════════════════════════════════════
 
 	/**
-	 * @notice Activates the emergency mode
+	 * @notice Activates the PartyB emergency mode
 	 */
-	function activeEmergencyMode() external onlyRole(LibAccessibility.PAUSER_ROLE) {
-		StateControlStorage.layout().emergencyMode = true;
-		emit EmergencyModeActivated();
+	function activePartyBsEmergencyMode() external onlyRole(LibAccessibility.PAUSER_ROLE) {
+		StateControlStorage.layout().partyBsEmergencyMode = true;
+		emit PartyBsEmergencyModeActivated();
 	}
 
 	/**
-	 * @notice Deactivates the emergency mode
+	 * @notice Deactivates the PartyB emergency mode
 	 */
-	function deactiveEmergencyMode() external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
-		StateControlStorage.layout().emergencyMode = false;
-		emit EmergencyModeDeactivated();
+	function deactivePartyBsEmergencyMode() external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
+		StateControlStorage.layout().partyBsEmergencyMode = false;
+		emit PartyBsEmergencyModeDeactivated();
 	}
 
 	/**
@@ -659,6 +659,16 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	// ═══════════════════════════════════════════════════════════════════════════
 
 	/**
+	 * @notice Verifies if an oracle exists
+	 * @param _oracleId The oracle ID
+	 */
+	function verifyOracle(uint256 _oracleId) internal view {
+		SymbolStorage.Layout storage symbolLayout = SymbolStorage.layout();
+		if (symbolLayout.oracles[_oracleId].contractAddress == address(0) || symbolLayout.lastOracleId < _oracleId)
+			revert ValidationErrors.OracleNotFound(_oracleId);
+	}
+
+	/**
 	 * @notice Adds an oracle
 	 * @param _name The oracle name
 	 * @param _contractAddress The oracle contract address
@@ -682,7 +692,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		if (_contractAddress == address(0)) revert ValidationErrors.ZeroAddress("contractAddress");
 
 		SymbolStorage.Layout storage s = SymbolStorage.layout();
-		if (_oracleId == 0 || _oracleId > s.lastOracleId) revert ValidationErrors.OracleNotFound(_oracleId);
+		verifyOracle(_oracleId);
 
 		address oldAddress = s.oracles[_oracleId].contractAddress;
 		s.oracles[_oracleId].contractAddress = _contractAddress;
@@ -724,7 +734,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		if (bytes(_name).length == 0) revert ValidationErrors.EmptyField("name");
 
 		SymbolStorage.Layout storage s = SymbolStorage.layout();
-		if (s.oracles[_oracleId].contractAddress == address(0) || s.lastOracleId < _oracleId) revert ValidationErrors.OracleNotFound(_oracleId);
+		verifyOracle(_oracleId);
 
 		s.lastSymbolId++;
 		s.symbols[s.lastSymbolId] = Symbol({

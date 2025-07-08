@@ -36,8 +36,8 @@ interface IControlEvents {
 	event ThirdPartyActionsUnpaused();
 	event LiquidatingUnpaused();
 	event InstantLayerUnpaused();
-	event EmergencyModeActivated();
-	event EmergencyModeDeactivated();
+	event PartyBsEmergencyModeActivated();
+	event PartyBsEmergencyModeDeactivated();
 	event PartyBEmergencyModeActivated(address indexed partyB);
 	event PartyBEmergencyModeDeactivated(address indexed partyB);
 	event AffiliateStatusUpdated(address indexed affiliate, bool status);

@@ -53,7 +53,7 @@ library LibTradeOperations {
 	function transferTrade(address receiver, uint256 tradeId) internal {
 		validateAndTransferTrade(msg.sender, receiver, tradeId);
 		if (AppStorage.layout().tradeNftAddress != address(0))
-			ITradeNFT(AppStorage.layout().tradeNftAddress).transferNFTInitiatedInSymmio(msg.sender, receiver, tradeId);
+			ITradeNFT(AppStorage.layout().tradeNftAddress).transferTradeNFT(msg.sender, receiver, tradeId);
 	}
 
 	function transferTradeFromNFT(address sender, address receiver, uint256 tradeId) internal {

@@ -79,7 +79,6 @@ abstract contract Pausable {
 
 		if (layout.globalPaused) revert SystemErrors.GlobalPaused();
 		if (layout.partyBActionsPaused) revert SystemErrors.PartyBActionsPaused();
-		if (layout.emergencyMode) revert SystemErrors.SystemInEmergencyMode();
 	}
 
 	modifier whenNotThirdPartyActionsPaused() {

@@ -725,7 +725,7 @@ contract ViewFacet is IViewFacet {
 	 * @return internalTransferPaused Whether internal transfers are paused
 	 * @return externalTransferPaused Whether external transfers are paused
 	 * @return instantLayerPaused Whether instant layer is paused
-	 * @return emergencyMode Whether emergency mode is active
+	 * @return partyBsEmergencyMode Whether PartyB emergency mode is active
 	 */
 	function getAllPauseStates()
 		external
@@ -742,7 +742,7 @@ contract ViewFacet is IViewFacet {
 			bool internalTransferPaused,
 			bool externalTransferPaused,
 			bool instantLayerPaused,
-			bool emergencyMode
+			bool partyBsEmergencyMode
 		)
 	{
 		StateControlStorage.Layout storage stateLayout = StateControlStorage.layout();
@@ -758,16 +758,16 @@ contract ViewFacet is IViewFacet {
 			stateLayout.internalTransferPaused,
 			stateLayout.externalTransferPaused,
 			stateLayout.instantLayerPaused,
-			stateLayout.emergencyMode
+			stateLayout.partyBsEmergencyMode
 		);
 	}
 
 	/**
-	 * @notice Checks if emergency mode is active
-	 * @return Whether emergency mode is active
+	 * @notice Checks if PartyBs emergency mode is active
+	 * @return Whether PartyBs emergency mode is active
 	 */
-	function isEmergencyMode() external view returns (bool) {
-		return StateControlStorage.layout().emergencyMode;
+	function isPartyBsEmergencyMode() external view returns (bool) {
+		return StateControlStorage.layout().partyBsEmergencyMode;
 	}
 
 	/**

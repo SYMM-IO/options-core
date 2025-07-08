@@ -108,14 +108,15 @@ contract TradeNFT is ERC721Enumerable, Ownable {
 	 * @notice Transfer NFT as initiated by the Symmio contract.
 	 * @param from    Current owner address of the NFT.
 	 * @param to      New owner address for the NFT.
-	 * @param tokenId Unique identifier of the NFT to transfer.
+	 * @param tradeId Unique identifier of the trade to transfer.
 	 *
 	 * @dev Sets flag to bypass transfer hook logic and prevent recursive calls
 	 *      during Symmio-initiated transfers.
 	 */
-	function transferNFTInitiatedInSymmio(address from, address to, uint256 tokenId) external onlySymmio {
+	function transferTradeNFT(address from, address to, uint256 tradeId) external onlySymmio {
+		if (ownerOf(tradeId) != from) return; // the nft is not minted for this trade
 		transferInitiatedInSymmio = true;
-		_transfer(from, to, tokenId);
+		_transfer(from, to, tradeId);
 		transferInitiatedInSymmio = false;
 	}
 
