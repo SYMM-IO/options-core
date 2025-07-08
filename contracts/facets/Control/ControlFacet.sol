@@ -388,6 +388,26 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		emit PartyBConfigUpdated(_partyB, _config);
 	}
 
+	/**
+	 * @notice Sets the supported symbol types for a PartyB in batch
+	 * @param _partyB The PartyB address
+	 * @param _symbolTypes Array of symbol types
+	 * @param _statuses Array of statuses
+	 */
+	function setPartyBSupportedSymbolTypes(
+		address _partyB,
+		uint256[] calldata _symbolTypes,
+		bool[] calldata _statuses
+	) external onlyRole(LibAccessibility.PARTY_B_MANAGER_ROLE) {
+		if (_partyB == address(0)) revert ValidationErrors.ZeroAddress("partyB");
+		if (_symbolTypes.length != _statuses.length) revert ValidationErrors.MismatchedLengths();
+		AppStorage.Layout storage appLayout = AppStorage.layout();
+		for (uint256 i = 0; i < _symbolTypes.length; i++) {
+			appLayout.partyBSupportedSymbolTypes[_partyB][_symbolTypes[i]] = _statuses[i];
+			emit PartyBSupportedSymbolTypesUpdated(_partyB, _symbolTypes[i], _statuses[i]);
+		}
+	}
+
 	// ═══════════════════════════════════════════════════════════════════════════
 	//                          PAUSE MANAGEMENT
 	// ═══════════════════════════════════════════════════════════════════════════

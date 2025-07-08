@@ -74,8 +74,7 @@ library LibPartyBOpen {
 
 		if (!isValidPartyB) revert IntentErrors.NotWhitelistedPartyB(sender, intent.partyBsWhiteList);
 
-		if (appLayout.partyBConfigs[sender].symbolType != symbol.symbolType)
-			revert IntentErrors.SymbolTypeMismatch(sender, appLayout.partyBConfigs[sender].symbolType, symbol.symbolType);
+		if (!appLayout.partyBSupportedSymbolTypes[sender][symbol.symbolType]) revert IntentErrors.SymbolTypeNotSupported(sender, symbol.symbolType);
 
 		sender.requireSolvent(intent.partyA, symbol.collateral, MarginType.ISOLATED);
 
@@ -273,7 +272,7 @@ library LibPartyBOpen {
 			partyBBalance.subForCounterParty(trade.partyA, trade.getPremium(), trade.tradeAgreements.marginType, DecreaseBalanceReason.PREMIUM);
 			partyABalance.scheduledAdd(trade.partyB, trade.getPremium(), MarginType.CROSS, IncreaseBalanceReason.PREMIUM);
 		}
-		
+
 		if (trade.tradeAgreements.marginType == MarginType.CROSS) {
 			accountLayout.nonces[trade.partyA][trade.partyB] += 1;
 			accountLayout.nonces[trade.partyB][trade.partyA] += 1;

@@ -8,7 +8,6 @@ struct PartyBConfig {
 	bool isActive;
 	uint256 lossCoverage;
 	uint256 oracleId;
-	uint256 symbolType;
 }
 
 library AppStorage {
@@ -37,6 +36,7 @@ library AppStorage {
 		uint256 upnlSigValidTime;
 		/////////////////////////////////////////////////////////
 		mapping(address => PartyBConfig) partyBConfigs;
+		mapping(address => mapping(uint256 => bool)) partyBSupportedSymbolTypes;
 		/////////////////////////////////////////////////////////
 		bool callFromInstantLayer;
 	}

@@ -342,6 +342,16 @@ contract ViewFacet is IViewFacet {
 	}
 
 	/**
+	 * @notice Checks if a symbol type is supported by a PartyB
+	 * @param partyB The PartyB address
+	 * @param symbolType The symbol type
+	 * @return Whether the symbol type is supported
+	 */
+	function isSymbolTypesSupportedByPartyB(address partyB, uint256 symbolType) external view returns (bool) {
+		return AppStorage.layout().partyBSupportedSymbolTypes[partyB][symbolType];
+	}
+
+	/**
 	 * @notice Checks if being called from instant layer
 	 * @return Whether the call is from instant layer
 	 */

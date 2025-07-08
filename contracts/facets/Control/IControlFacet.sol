@@ -88,7 +88,8 @@ interface IControlFacet is IControlEvents {
 
 	// Party B Configuration
 	function setPartyBConfig(address _partyB, PartyBConfig calldata _config) external;
-
+	function setPartyBSupportedSymbolTypes(address _partyB, uint256[] calldata _symbolTypes, bool[] calldata _statuses) external;
+	
 	// Pause Management
 	function pauseGlobal() external;
 	function pauseDeposit() external;

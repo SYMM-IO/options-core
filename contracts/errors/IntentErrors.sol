@@ -22,7 +22,7 @@ library IntentErrors {
 	// Open intent - PartyB specific
 	error IntentNotFound(uint256 intentId);
 	error OracleMismatch(address partyB, uint256 partyBOracleId, uint256 symbolOracleId);
-	error SymbolTypeMismatch(address partyB, uint256 partyBSymbolType, uint256 symbolType);
+	error SymbolTypeNotSupported(address partyB, uint256 symbolType);
 	error NotWhitelistedPartyB(address sender, address[] whiteList);
 	error InvalidOpenPrice(uint256 providedPrice, uint256 thresholdPrice);
 

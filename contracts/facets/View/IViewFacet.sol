@@ -60,6 +60,7 @@ interface IViewFacet {
 	function getPartyBExclusiveWindow() external view returns (uint256);
 	function getSettlementPriceSigValidTime() external view returns (uint256);
 	function getPartyBConfig(address partyB) external view returns (PartyBConfig memory);
+	function isSymbolTypesSupportedByPartyB(address partyB, uint256 symbolType) external view returns (bool);
 	function isCallFromInstantLayer() external view returns (bool);
 
 	// ════════════════════════════════════════════════════════════════════════════
