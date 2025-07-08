@@ -71,7 +71,8 @@ enum IncreaseBalanceReason {
 	PREMIUM,
 	REALIZED_PNL,
 	LIQUIDATION,
-	INVALID_WITHDRAWAL
+	INVALID_WITHDRAWAL,
+	ALLOCATE_FROM_RESERVE
 }
 
 enum DecreaseBalanceReason {

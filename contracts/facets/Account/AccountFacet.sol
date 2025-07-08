@@ -85,7 +85,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		uint256 amount
 	)
 		external
-		whenNotInternalTransferPaused
+		whenInternalTransferNotPaused
 		whenNotSuspended(msg.sender)
 		whenNotSuspended(user)
 		whenInstantModeIsNotActive(msg.sender)
@@ -135,7 +135,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		address to
 	)
 		external
-		whenNotWithdrawingPaused
+		whenWithdrawingNotPaused
 		whenNotSuspended(msg.sender)
 		whenInstantModeIsNotActive(msg.sender)
 		whenNotSuspended(to)
@@ -162,7 +162,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		bytes memory userData
 	)
 		external
-		whenNotWithdrawingPaused
+		whenWithdrawingNotPaused
 		whenNotExpressWithdrawPaused
 		whenNotSuspended(msg.sender)
 		whenInstantModeIsNotActive(msg.sender)
@@ -199,7 +199,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @dev Transfers the collateral to the destination address specified in the withdrawal request
 	 * @param id The unique identifier of the withdrawal request to complete
 	 */
-	function completeWithdraw(uint256 id) external whenNotWithdrawingPaused whenWithdrawalNotSuspended(id) whenPartyNotPaused(msg.sender) {
+	function completeWithdraw(uint256 id) external whenWithdrawingNotPaused whenWithdrawalNotSuspended(id) whenPartyNotPaused(msg.sender) {
 		LibBalanceOperations.completeWithdraw(id);
 		emit CompleteWithdraw(id);
 	}
@@ -209,7 +209,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @dev Returns the funds back to the user's available balance
 	 * @param id The unique identifier of the withdrawal request to cancel
 	 */
-	function cancelWithdraw(uint256 id) external whenNotWithdrawingPaused whenWithdrawalNotSuspended(id) whenPartyNotPaused(msg.sender) {
+	function cancelWithdraw(uint256 id) external whenWithdrawingNotPaused whenWithdrawalNotSuspended(id) whenPartyNotPaused(msg.sender) {
 		Withdraw storage withdrawObject = AccountStorage.layout().withdrawals[id];
 		LibBalanceOperations.cancelWithdraw(id);
 		emit CancelWithdraw(

@@ -228,7 +228,7 @@ library LibClearingHouse {
 		ScheduledReleaseBalance storage balance = party.balanceOf(collateral);
 		if (balance.reserveBalance < amount) revert();
 		balance.reserveBalance -= amount;
-		balance.crossBalance[counterParty].balance += int256(amount);
+		balance.scheduledAdd(counterParty, amount, MarginType.CROSS, IncreaseBalanceReason.ALLOCATE_FROM_RESERVE);
 	}
 
 	function confiscatePartyA(uint256 liquidationId, uint256 amount) internal {

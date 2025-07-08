@@ -34,7 +34,7 @@ abstract contract Pausable {
 		_;
 	}
 
-	modifier whenNotInternalTransferPaused() {
+	modifier whenInternalTransferNotPaused() {
 		StateControlStorage.Layout storage layout = StateControlStorage.layout();
 
 		if (layout.globalPaused) revert SystemErrors.GlobalPaused();
@@ -50,7 +50,7 @@ abstract contract Pausable {
 		_;
 	}
 
-	modifier whenNotWithdrawingPaused() {
+	modifier whenWithdrawingNotPaused() {
 		StateControlStorage.Layout storage layout = StateControlStorage.layout();
 
 		if (layout.globalPaused) revert SystemErrors.GlobalPaused();

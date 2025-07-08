@@ -114,7 +114,7 @@ contract TradeNFT is ERC721Enumerable, Ownable {
 	 *      during Symmio-initiated transfers.
 	 */
 	function transferTradeNFT(address from, address to, uint256 tradeId) external onlySymmio {
-		if (ownerOf(tradeId) != from) return; // the nft is not minted for this trade
+		if (!_exists(tradeId)) return;
 		transferInitiatedInSymmio = true;
 		_transfer(from, to, tradeId);
 		transferInitiatedInSymmio = false;
