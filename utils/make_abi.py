@@ -95,12 +95,21 @@ def process_directories(subdirs: List[str], output_filename: str, description: s
     # Remove duplicates
     unique_abi_data, duplicate_count = remove_duplicates(abi_data)
 
+    # Sort ABI by type and name
+    unique_abi_data_sorted = sorted(
+        unique_abi_data,
+        key=lambda x: (
+            x.get('type', ''),
+            x.get('name', '')
+        )
+    )
+
     # Save the ABI file
     os.makedirs("abis", exist_ok=True)  # Ensure the output directory exists
 
     output_path = os.path.join("abis", output_filename)
     with open(output_path, "w") as f:
-        json.dump(unique_abi_data, f, indent=4)
+        json.dump(unique_abi_data_sorted, f, indent=4)
 
     # Print summary
     print(f"\nSummary for {description}:")
@@ -159,12 +168,21 @@ def process_specific_contract(
     # Remove duplicates (though unlikely in a single contract)
     unique_abi_data, duplicate_count = remove_duplicates(abi_data)
 
+    # Sort ABI by type and name
+    unique_abi_data_sorted = sorted(
+        unique_abi_data,
+        key=lambda x: (
+            x.get('type', ''),
+            x.get('name', '')
+        )
+    )
+
     # Save the ABI file
     os.makedirs("abis", exist_ok=True)
 
     output_path = os.path.join("abis", output_filename)
     with open(output_path, "w") as f:
-        json.dump(unique_abi_data, f, indent=4)
+        json.dump(unique_abi_data_sorted, f, indent=4)
 
     # Print summary
     print(f"\nSummary for {description}:")
