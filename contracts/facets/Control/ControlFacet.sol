@@ -348,27 +348,12 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	}
 
 	/**
-	 * @notice Sets the affiliate fees
-	 * @param _affiliate The affiliate address
-	 * @param _symbolId The symbol ID
-	 * @param fee The affiliate fees
-	 */
-	function setAffiliateFees(address _affiliate, uint256 _symbolId, uint256 fee) external {
-		if (_affiliate == address(0)) revert ValidationErrors.ZeroAddress("affiliate");
-		if (_affiliate != msg.sender && !LibAccessibility.hasRole(msg.sender, LibAccessibility.AFFILIATE_FEE_MANAGER_ROLE))
-			revert ValidationErrors.UnauthorizedSender(msg.sender, _affiliate);
-
-		FeeManagementStorage.layout().affiliateFees[_affiliate][_symbolId] = fee;
-		emit AffiliateFeesUpdated(_affiliate, _symbolId, fee);
-	}
-
-	/**
-	 * @notice Batch updates affiliate fees for multiple symbols
+	 * @notice Sets the affiliate fees for multiple symbols
 	 * @param _affiliate The affiliate address
 	 * @param _symbolIds Array of symbol IDs
 	 * @param _fees Array of fee amounts
 	 */
-	function batchSetAffiliateFees(
+	function setAffiliateFees(
 		address _affiliate,
 		uint256[] calldata _symbolIds,
 		uint256[] calldata _fees
@@ -376,7 +361,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		if (_affiliate == address(0)) revert ValidationErrors.ZeroAddress("affiliate");
 		if (_affiliate != msg.sender && !LibAccessibility.hasRole(msg.sender, LibAccessibility.AFFILIATE_FEE_MANAGER_ROLE))
 			revert ValidationErrors.UnauthorizedSender(msg.sender, _affiliate);
-		if (_symbolIds.length != _fees.length) revert ValidationErrors.EmptyList();
+		if (_symbolIds.length != _fees.length) revert ValidationErrors.MismatchedLengths();
 
 		FeeManagementStorage.Layout storage feeLayout = FeeManagementStorage.layout();
 		for (uint256 i = 0; i < _symbolIds.length; i++) {
@@ -654,12 +639,12 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	}
 
 	/**
-	 * @notice Batch suspend/unsuspend multiple addresses
+	 * @notice Suspend/unsuspend multiple addresses
 	 * @param users Array of user addresses
 	 * @param statuses Array of suspension statuses
 	 */
-	function batchSuspendAddresses(address[] calldata users, bool[] calldata statuses) external onlyRole(LibAccessibility.SUSPENDER_ROLE) {
-		if (users.length != statuses.length) revert ValidationErrors.EmptyList();
+	function suspendAddresses(address[] calldata users, bool[] calldata statuses) external onlyRole(LibAccessibility.SUSPENDER_ROLE) {
+		if (users.length != statuses.length) revert ValidationErrors.MismatchedLengths();
 
 		StateControlStorage.Layout storage layout = StateControlStorage.layout();
 		for (uint256 i = 0; i < users.length; i++) {
@@ -767,47 +752,71 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	}
 
 	/**
-	 * @notice Sets the trading fee for a symbol
-	 * @param _symbolId The symbol ID
-	 * @param _fee The trading fee
+	 * @notice Sets the trading fees for symbols
+	 * @param _symbolIds Array of symbol IDs
+	 * @param _fees Array of trading fees
 	 */
-	function setSymbolTradingFee(uint256 _symbolId, uint256 _fee) external onlyRole(LibAccessibility.SYMBOL_MANAGER_ROLE) {
-		SymbolStorage.Layout storage s = SymbolStorage.layout();
-		if (s.lastSymbolId < _symbolId) revert ValidationErrors.InvalidSymbol(_symbolId);
+	function setSymbolsTradingFees(uint256[] calldata _symbolIds, uint256[] calldata _fees) external onlyRole(LibAccessibility.SYMBOL_MANAGER_ROLE) {
+		if (_symbolIds.length != _fees.length) revert ValidationErrors.MismatchedLengths();
 
-		s.symbols[_symbolId].tradingFee = _fee;
-		emit SymbolTradingFeeUpdated(_symbolId, s.symbols[_symbolId].tradingFee, _fee);
+		SymbolStorage.Layout storage s = SymbolStorage.layout();
+		for (uint256 i = 0; i < _symbolIds.length; i++) {
+			if (s.lastSymbolId < _symbolIds[i]) revert ValidationErrors.InvalidSymbol(_symbolIds[i]);
+			uint256 oldFee = s.symbols[_symbolIds[i]].tradingFee;
+			s.symbols[_symbolIds[i]].tradingFee = _fees[i];
+			emit SymbolTradingFeeUpdated(_symbolIds[i], oldFee, _fees[i]);
+		}
 	}
 
 	/**
-	 * @notice Sets the validation state for a symbol
-	 * @param _symbolId The symbol ID
-	 * @param _state The validation state
+	 * @notice Sets the validation states for symbols
+	 * @param _symbolIds Array of symbol IDs
+	 * @param _states Array of validation states
 	 */
-	function setSymbolValidationState(uint256 _symbolId, bool _state) external onlyRole(LibAccessibility.SYMBOL_MANAGER_ROLE) {
-		SymbolStorage.Layout storage s = SymbolStorage.layout();
-		if (s.lastSymbolId < _symbolId) revert ValidationErrors.InvalidSymbol(_symbolId);
-
-		s.symbols[_symbolId].isValid = _state;
-		emit SymbolStateUpdated(_symbolId, _state);
-	}
-
-	/**
-	 * @notice Batch updates symbol states
-	 * @param symbolIds Array of symbol IDs
-	 * @param states Array of validity states
-	 */
-	function batchSetSymbolValidationState(
-		uint256[] calldata symbolIds,
-		bool[] calldata states
+	function setSymbolsValidationState(
+		uint256[] calldata _symbolIds,
+		bool[] calldata _states
 	) external onlyRole(LibAccessibility.SYMBOL_MANAGER_ROLE) {
-		if (symbolIds.length != states.length) revert ValidationErrors.EmptyList();
+		if (_symbolIds.length != _states.length) revert ValidationErrors.MismatchedLengths();
 
 		SymbolStorage.Layout storage s = SymbolStorage.layout();
-		for (uint256 i = 0; i < symbolIds.length; i++) {
-			if (s.lastSymbolId < symbolIds[i]) revert ValidationErrors.InvalidSymbol(symbolIds[i]);
-			s.symbols[symbolIds[i]].isValid = states[i];
-			emit SymbolStateUpdated(symbolIds[i], states[i]);
+		for (uint256 i = 0; i < _symbolIds.length; i++) {
+			if (s.lastSymbolId < _symbolIds[i]) revert ValidationErrors.InvalidSymbol(_symbolIds[i]);
+			s.symbols[_symbolIds[i]].isValid = _states[i];
+			emit SymbolStateUpdated(_symbolIds[i], _states[i]);
+		}
+	}
+
+	/**
+	 * @notice Sets the names for symbols
+	 * @param _symbolIds Array of symbol IDs
+	 * @param _names Array of new names
+	 */
+	function setSymbolsNames(uint256[] calldata _symbolIds, string[] calldata _names) external onlyRole(LibAccessibility.SYMBOL_MANAGER_ROLE) {
+		if (_symbolIds.length != _names.length) revert ValidationErrors.MismatchedLengths();
+
+		SymbolStorage.Layout storage s = SymbolStorage.layout();
+		for (uint256 i = 0; i < _symbolIds.length; i++) {
+			if (s.lastSymbolId < _symbolIds[i]) revert ValidationErrors.InvalidSymbol(_symbolIds[i]);
+			if (bytes(_names[i]).length == 0) revert ValidationErrors.EmptyField("name");
+			s.symbols[_symbolIds[i]].name = _names[i];
+			emit SymbolNameUpdated(_symbolIds[i], _names[i]);
+		}
+	}
+
+	/**
+	 * @notice Sets the types for symbols
+	 * @param _symbolIds Array of symbol IDs
+	 * @param _types Array of types
+	 */
+	function setSymbolsTypes(uint256[] calldata _symbolIds, uint256[] calldata _types) external onlyRole(LibAccessibility.SYMBOL_MANAGER_ROLE) {
+		if (_symbolIds.length != _types.length) revert ValidationErrors.MismatchedLengths();
+
+		SymbolStorage.Layout storage s = SymbolStorage.layout();
+		for (uint256 i = 0; i < _symbolIds.length; i++) {
+			if (s.lastSymbolId < _symbolIds[i]) revert ValidationErrors.InvalidSymbol(_symbolIds[i]);
+			s.symbols[_symbolIds[i]].symbolType = _types[i];
+			emit SymbolTypeUpdated(_symbolIds[i], _types[i]);
 		}
 	}
 

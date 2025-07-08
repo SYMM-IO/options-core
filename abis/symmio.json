@@ -7399,6 +7399,25 @@
         "inputs": [
             {
                 "indexed": true,
+                "internalType": "uint256",
+                "name": "symbolId",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "string",
+                "name": "name",
+                "type": "string"
+            }
+        ],
+        "name": "SymbolNameUpdated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
                 "internalType": "address",
                 "name": "partyB",
                 "type": "address"
@@ -7455,6 +7474,25 @@
             }
         ],
         "name": "SymbolTradingFeeUpdated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "symbolId",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "symbolType",
+                "type": "uint256"
+            }
+        ],
+        "name": "SymbolTypeUpdated",
         "type": "event"
     },
     {
@@ -7683,65 +7721,6 @@
         "type": "function"
     },
     {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "_affiliate",
-                "type": "address"
-            },
-            {
-                "internalType": "uint256[]",
-                "name": "_symbolIds",
-                "type": "uint256[]"
-            },
-            {
-                "internalType": "uint256[]",
-                "name": "_fees",
-                "type": "uint256[]"
-            }
-        ],
-        "name": "batchSetAffiliateFees",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256[]",
-                "name": "symbolIds",
-                "type": "uint256[]"
-            },
-            {
-                "internalType": "bool[]",
-                "name": "statuses",
-                "type": "bool[]"
-            }
-        ],
-        "name": "batchSetSymbolValidationState",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address[]",
-                "name": "users",
-                "type": "address[]"
-            },
-            {
-                "internalType": "bool[]",
-                "name": "statuses",
-                "type": "bool[]"
-            }
-        ],
-        "name": "batchSuspendAddresses",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
         "inputs": [],
         "name": "deactiveEmergencyMode",
         "outputs": [],
@@ -7908,14 +7887,14 @@
                 "type": "address"
             },
             {
-                "internalType": "uint256",
-                "name": "_symbolId",
-                "type": "uint256"
+                "internalType": "uint256[]",
+                "name": "_symbolIds",
+                "type": "uint256[]"
             },
             {
-                "internalType": "uint256",
-                "name": "fee",
-                "type": "uint256"
+                "internalType": "uint256[]",
+                "name": "_fees",
+                "type": "uint256[]"
             }
         ],
         "name": "setAffiliateFees",
@@ -8304,17 +8283,17 @@
     {
         "inputs": [
             {
-                "internalType": "uint256",
-                "name": "_symbolId",
-                "type": "uint256"
+                "internalType": "uint256[]",
+                "name": "_symbolIds",
+                "type": "uint256[]"
             },
             {
-                "internalType": "uint256",
-                "name": "_fee",
-                "type": "uint256"
+                "internalType": "string[]",
+                "name": "_names",
+                "type": "string[]"
             }
         ],
-        "name": "setSymbolTradingFee",
+        "name": "setSymbolsNames",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -8322,17 +8301,35 @@
     {
         "inputs": [
             {
-                "internalType": "uint256",
-                "name": "_symbolId",
-                "type": "uint256"
+                "internalType": "uint256[]",
+                "name": "_symbolIds",
+                "type": "uint256[]"
             },
             {
-                "internalType": "bool",
-                "name": "_state",
-                "type": "bool"
+                "internalType": "uint256[]",
+                "name": "_fees",
+                "type": "uint256[]"
             }
         ],
-        "name": "setSymbolValidationState",
+        "name": "setSymbolsTradingFees",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256[]",
+                "name": "_symbolIds",
+                "type": "uint256[]"
+            },
+            {
+                "internalType": "bool[]",
+                "name": "_states",
+                "type": "bool[]"
+            }
+        ],
+        "name": "setSymbolsValidationState",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -8430,6 +8427,24 @@
             }
         ],
         "name": "suspendAddress",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address[]",
+                "name": "users",
+                "type": "address[]"
+            },
+            {
+                "internalType": "bool[]",
+                "name": "statuses",
+                "type": "bool[]"
+            }
+        ],
+        "name": "suspendAddresses",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -8573,12 +8588,12 @@
     },
     {
         "inputs": [],
-        "name": "EmptyList",
+        "name": "InstantLayerPaused",
         "type": "error"
     },
     {
         "inputs": [],
-        "name": "InstantLayerPaused",
+        "name": "MismatchedLengths",
         "type": "error"
     },
     {
@@ -8607,6 +8622,24 @@
         ],
         "name": "OracleNotFound",
         "type": "error"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256[]",
+                "name": "_symbolIds",
+                "type": "uint256[]"
+            },
+            {
+                "internalType": "uint256[]",
+                "name": "_types",
+                "type": "uint256[]"
+            }
+        ],
+        "name": "setSymbolsTypes",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
     },
     {
         "inputs": [

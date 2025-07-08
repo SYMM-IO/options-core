@@ -84,8 +84,7 @@ interface IControlFacet is IControlEvents {
 	function setDefaultFeeCollector(address _collector) external;
 	function setAffiliateStatus(address _affiliate, bool _status) external;
 	function setAffiliateFeesCollector(address _affiliate, address _collector) external;
-	function setAffiliateFees(address _affiliate, uint256 _symbolId, uint256 fee) external;
-	function batchSetAffiliateFees(address _affiliate, uint256[] calldata _symbolIds, uint256[] calldata _fees) external;
+	function setAffiliateFees(address _affiliate, uint256[] calldata _symbolIds, uint256[] calldata _fees) external;
 
 	// Party B Configuration
 	function setPartyBConfig(address _partyB, PartyBConfig calldata _config) external;
@@ -125,7 +124,7 @@ interface IControlFacet is IControlEvents {
 	// Suspension Controls
 	function suspendAddress(address _user, bool _status) external;
 	function suspendWithdrawal(uint256 _withdrawId, bool _status) external;
-	function batchSuspendAddresses(address[] calldata users, bool[] calldata statuses) external;
+	function suspendAddresses(address[] calldata users, bool[] calldata statuses) external;
 
 	// Oracle & Symbol Management
 	function addOracle(string calldata _name, address _contractAddress) external;
@@ -139,9 +138,9 @@ interface IControlFacet is IControlEvents {
 		uint256 _symbolType
 	) external;
 	function addSymbols(Symbol[] memory symbols) external;
-	function setSymbolTradingFee(uint256 _symbolId, uint256 _fee) external;
-	function setSymbolValidationState(uint256 _symbolId, bool _state) external;
-	function batchSetSymbolValidationState(uint256[] calldata symbolIds, bool[] calldata statuses) external;
+	function setSymbolsTradingFees(uint256[] calldata _symbolIds, uint256[] calldata _fees) external;
+	function setSymbolsValidationState(uint256[] calldata _symbolIds, bool[] calldata _states) external;
+	function setSymbolsNames(uint256[] calldata _symbolIds, string[] calldata _names) external;
 
 	// Oracle & Signature Management
 	function setPriceOracleAddress(address _oracle) external;
