@@ -3,7 +3,6 @@ import { ethers } from "hardhat"
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers"
 import {
 	AccountFacet,
-	ExpressWithdrawFacet,
 	ClearingHouseFacet,
 	CloseIntentOpsMock,
 	ControlFacet,
@@ -22,7 +21,6 @@ import {
 	SignatureVerifier,
 	ViewFacet,
 } from "../types"
-import { counterPartyRelations, expressWithdraw } from "../types/contracts/facets"
 
 export class RunContext {
 	accountFacet!: AccountFacet
@@ -36,7 +34,6 @@ export class RunContext {
 	controlFacet!: ControlFacet
 	forceActionsFacet!: ForceActionsFacet
 	clearingHouse!: ClearingHouseFacet
-	expressWithdrawFacet!: ExpressWithdrawFacet
 	counterPartyRelation!: CounterPartyRelationsFacet
 	instantLayer!: InstantLayer
 	multiAccount!: MultiAccount
@@ -80,17 +77,17 @@ export async function createRunContext(
 	const signers: SignerWithAddress[] = await ethers.getSigners()
 	context.signers = {
 		admin: signers[0],
-		symmioAddress: signers[12],
-		partyA1: signers[1],
-		partyA2: signers[2],
-		feeCollector: signers[3],
-		partyB1: signers[4],
-		partyB2: signers[5],
-		oracle1: signers[6],
-		affiliate1: signers[7],
-		bridge1: signers[8],
-		bridge2: signers[9],
-		others: [signers[10], signers[11]],
+		symmioAddress: signers[1],
+		partyA1: signers[2],
+		partyA2: signers[3],
+		feeCollector: signers[4],
+		partyB1: signers[5],
+		partyB2: signers[6],
+		oracle1: signers[7],
+		affiliate1: signers[8],
+		bridge1: signers[9],
+		bridge2: signers[10],
+		others: [signers[11], signers[12]],
 	}
 
 	context.collateral = await ethers.getContractAt("FakeStablecoin", collateral[0])
