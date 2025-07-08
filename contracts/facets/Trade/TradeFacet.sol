@@ -12,9 +12,6 @@ import { Accessibility } from "../../utils/Accessibility.sol";
 import { ITradeFacet } from "./ITradeFacet.sol";
 import { SettlementPriceSig } from "../../types/TradeTypes.sol";
 
-import { Pausable } from "../../utils/Pausable.sol";
-import { Accessibility } from "../../utils/Accessibility.sol";
-
 /**
  * @title TradeFacet
  * @notice Manages trade transactions through trade operations
