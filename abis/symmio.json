@@ -214,6 +214,11 @@
         "type": "error"
     },
     {
+        "inputs": [],
+        "name": "ExpressWithdrawPaused",
+        "type": "error"
+    },
+    {
         "inputs": [
             {
                 "internalType": "address",
@@ -2241,18 +2246,6 @@
     {
         "anonymous": false,
         "inputs": [],
-        "name": "ExpressWithdrawCollectionPaused",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [],
-        "name": "ExpressWithdrawCollectionUnpaused",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [],
         "name": "ExpressWithdrawPaused",
         "type": "event"
     },
@@ -2332,6 +2325,12 @@
     },
     {
         "anonymous": false,
+        "inputs": [],
+        "name": "ExternalTransferPaused",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
         "inputs": [
             {
                 "indexed": true,
@@ -2353,6 +2352,12 @@
             }
         ],
         "name": "ExternalTransferTargetValidationStatusUpdated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [],
+        "name": "ExternalTransferUnpaused",
         "type": "event"
     },
     {
@@ -7704,7 +7709,7 @@
     },
     {
         "inputs": [],
-        "name": "isExpressWithdrawCollectionPaused",
+        "name": "isExpressWithdrawPaused",
         "outputs": [
             {
                 "internalType": "bool",
@@ -7717,7 +7722,7 @@
     },
     {
         "inputs": [],
-        "name": "isExpressWithdrawPaused",
+        "name": "isExternalTransferPaused",
         "outputs": [
             {
                 "internalType": "bool",
@@ -8087,7 +8092,7 @@
     },
     {
         "inputs": [],
-        "name": "pauseExpressWithdrawCollection",
+        "name": "pauseExternalTransfer",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -9465,7 +9470,7 @@
     },
     {
         "inputs": [],
-        "name": "unpauseExpressWithdrawCollection",
+        "name": "unpauseExternalTransfer",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"

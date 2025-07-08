@@ -93,9 +93,9 @@ interface IControlFacet is IControlEvents {
 	function pauseGlobal() external;
 	function pauseDeposit() external;
 	function pauseWithdraw() external;
-	function pauseInternalTransfer() external;
 	function pauseExpressWithdraw() external;
-	function pauseExpressWithdrawCollection() external;
+	function pauseInternalTransfer() external;
+	function pauseExternalTransfer() external;
 	function pausePartyBActions() external;
 	function pausePartyAActions() external;
 	function pauseLiquidating() external;
@@ -106,9 +106,9 @@ interface IControlFacet is IControlEvents {
 	function unpauseGlobal() external;
 	function unpauseDeposit() external;
 	function unpauseWithdraw() external;
-	function unpauseInternalTransfer() external;
 	function unpauseExpressWithdraw() external;
-	function unpauseExpressWithdrawCollection() external;
+	function unpauseInternalTransfer() external;
+	function unpauseExternalTransfer() external;
 	function unpausePartyBActions() external;
 	function unpausePartyAActions() external;
 	function unpauseLiquidating() external;

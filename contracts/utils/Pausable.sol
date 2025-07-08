@@ -26,14 +26,6 @@ abstract contract Pausable {
 		_;
 	}
 
-	modifier whenNotExpressWithdrawCollectionPaused() {
-		StateControlStorage.Layout storage layout = StateControlStorage.layout();
-
-		if (layout.globalPaused) revert SystemErrors.GlobalPaused();
-		if (layout.expressWithdrawCollectionPaused) revert SystemErrors.ExpressWithdrawCollectionPaused();
-		_;
-	}
-
 	modifier whenDepositingNotPaused() {
 		StateControlStorage.Layout storage layout = StateControlStorage.layout();
 

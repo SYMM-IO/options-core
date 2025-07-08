@@ -83,8 +83,8 @@ interface IControlEvents {
 	event InternalTransferUnpaused();
 	event ExpressWithdrawPaused();
 	event ExpressWithdrawUnpaused();
-	event ExpressWithdrawCollectionPaused();
-	event ExpressWithdrawCollectionUnpaused();
+	event ExternalTransferPaused();
+	event ExternalTransferUnpaused();
 	event OracleUpdated(uint256 indexed oracleId, address oldAddress, address newAddress);
 	event ExternalTransferTargetValidationStatusUpdated(address indexed target, address indexed collateral, bool status);
 }

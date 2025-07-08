@@ -689,19 +689,19 @@ contract ViewFacet is IViewFacet {
 	}
 
 	/**
+	 * @notice Checks if external transfers are paused
+	 * @return Whether external transfers are paused
+	 */
+	function isExternalTransferPaused() external view returns (bool) {
+		return StateControlStorage.layout().externalTransferPaused;
+	}
+
+	/**
 	 * @notice Checks if express withdraw operations are paused
 	 * @return Whether express withdraw operations are paused
 	 */
 	function isExpressWithdrawPaused() external view returns (bool) {
 		return StateControlStorage.layout().expressWithdrawPaused;
-	}
-
-	/**
-	 * @notice Checks if express withdraw collection operations are paused
-	 * @return Whether express withdraw collection operations are paused
-	 */
-	function isExpressWithdrawCollectionPaused() external view returns (bool) {
-		return StateControlStorage.layout().expressWithdrawCollectionPaused;
 	}
 
 	/**
@@ -717,13 +717,13 @@ contract ViewFacet is IViewFacet {
 	 * @return globalPaused Whether global operations are paused
 	 * @return depositingPaused Whether depositing is paused
 	 * @return withdrawingPaused Whether withdrawing is paused
+	 * @return expressWithdrawPaused Whether express withdraw operations are paused
 	 * @return partyBActionsPaused Whether PartyB actions are paused
 	 * @return partyAActionsPaused Whether PartyA actions are paused
 	 * @return liquidatingPaused Whether liquidating is paused
 	 * @return thirdPartyActionsPaused Whether third party actions are paused
 	 * @return internalTransferPaused Whether internal transfers are paused
-	 * @return expressWithdrawPaused Whether express withdraw operations are paused
-	 * @return expressWithdrawCollectionPaused Whether express withdraw collection operations are paused
+	 * @return externalTransferPaused Whether external transfers are paused
 	 * @return instantLayerPaused Whether instant layer is paused
 	 * @return emergencyMode Whether emergency mode is active
 	 */
@@ -734,13 +734,13 @@ contract ViewFacet is IViewFacet {
 			bool globalPaused,
 			bool depositingPaused,
 			bool withdrawingPaused,
+			bool expressWithdrawPaused,
 			bool partyBActionsPaused,
 			bool partyAActionsPaused,
 			bool liquidatingPaused,
 			bool thirdPartyActionsPaused,
 			bool internalTransferPaused,
-			bool expressWithdrawPaused,
-			bool expressWithdrawCollectionPaused,
+			bool externalTransferPaused,
 			bool instantLayerPaused,
 			bool emergencyMode
 		)
@@ -750,13 +750,13 @@ contract ViewFacet is IViewFacet {
 			stateLayout.globalPaused,
 			stateLayout.depositingPaused,
 			stateLayout.withdrawingPaused,
+			stateLayout.expressWithdrawPaused,
 			stateLayout.partyBActionsPaused,
 			stateLayout.partyAActionsPaused,
 			stateLayout.liquidatingPaused,
 			stateLayout.thirdPartyActionsPaused,
 			stateLayout.internalTransferPaused,
-			stateLayout.expressWithdrawPaused,
-			stateLayout.expressWithdrawCollectionPaused,
+			stateLayout.externalTransferPaused,
 			stateLayout.instantLayerPaused,
 			stateLayout.emergencyMode
 		);

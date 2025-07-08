@@ -124,7 +124,7 @@ interface IViewFacet {
 	function isThirdPartyActionsPaused() external view returns (bool);
 	function isInternalTransferPaused() external view returns (bool);
 	function isExpressWithdrawPaused() external view returns (bool);
-	function isExpressWithdrawCollectionPaused() external view returns (bool);
+	function isExternalTransferPaused() external view returns (bool);
 	function isInstantLayerPaused() external view returns (bool);
 	function getAllPauseStates()
 		external

@@ -419,14 +419,6 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	}
 
 	/**
-	 * @notice Pauses the internal transfer operations
-	 */
-	function pauseInternalTransfer() external onlyRole(LibAccessibility.PAUSER_ROLE) {
-		StateControlStorage.layout().internalTransferPaused = true;
-		emit InternalTransferPaused();
-	}
-
-	/**
 	 * @notice Pauses the express withdraw operations
 	 */
 	function pauseExpressWithdraw() external onlyRole(LibAccessibility.PAUSER_ROLE) {
@@ -435,11 +427,19 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	}
 
 	/**
-	 * @notice Pauses the express withdraw collection operations
+	 * @notice Pauses the internal transfer operations
 	 */
-	function pauseExpressWithdrawCollection() external onlyRole(LibAccessibility.PAUSER_ROLE) {
-		StateControlStorage.layout().expressWithdrawCollectionPaused = true;
-		emit ExpressWithdrawCollectionPaused();
+	function pauseInternalTransfer() external onlyRole(LibAccessibility.PAUSER_ROLE) {
+		StateControlStorage.layout().internalTransferPaused = true;
+		emit InternalTransferPaused();
+	}
+
+	/**
+	 * @notice Pauses the external transfer operations
+	 */
+	function pauseExternalTransfer() external onlyRole(LibAccessibility.PAUSER_ROLE) {
+		StateControlStorage.layout().externalTransferPaused = true;
+		emit ExternalTransferPaused();
 	}
 
 	/**
@@ -517,19 +517,19 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	}
 
 	/**
+	 * @notice Unpauses the external transfer operations
+	 */
+	function unpauseExternalTransfer() external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
+		StateControlStorage.layout().externalTransferPaused = false;
+		emit ExternalTransferUnpaused();
+	}
+
+	/**
 	 * @notice Unpauses the express withdraw operations
 	 */
 	function unpauseExpressWithdraw() external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
 		StateControlStorage.layout().expressWithdrawPaused = false;
 		emit ExpressWithdrawUnpaused();
-	}
-
-	/**
-	 * @notice Unpauses the express withdraw collection operations
-	 */
-	function unpauseExpressWithdrawCollection() external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
-		StateControlStorage.layout().expressWithdrawCollectionPaused = false;
-		emit ExpressWithdrawCollectionUnpaused();
 	}
 
 	/**

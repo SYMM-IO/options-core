@@ -163,6 +163,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	)
 		external
 		whenNotWithdrawingPaused
+		whenNotExpressWithdrawPaused
 		whenNotSuspended(msg.sender)
 		whenInstantModeIsNotActive(msg.sender)
 		whenNotSuspended(to)

@@ -18,7 +18,6 @@ library StateControlStorage {
 		bool internalTransferPaused;
 		bool externalTransferPaused;
 		bool expressWithdrawPaused;
-		bool expressWithdrawCollectionPaused;
 		bool instantLayerPaused;
 		///////////////////////////////////
 		bool emergencyMode;
