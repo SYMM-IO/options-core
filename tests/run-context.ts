@@ -3,24 +3,22 @@ import { ethers } from "hardhat"
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers"
 import {
 	AccountFacet,
-	BridgeFacet,
 	ClearingHouseFacet,
 	CloseIntentOpsMock,
 	ControlFacet,
+	CounterPartyRelationsFacet,
 	DiamondCutFacet,
 	DiamondLoupeFacet,
 	FakeOracle,
 	FakeStablecoin,
 	ForceActionsFacet,
-	InstantActionsCloseFacet,
-	InstantActionsOpenFacet,
-	InstantActionsPartyBOpenFacet,
+	InstantLayer,
+	MultiAccount,
 	PartyACloseFacet,
 	PartyAOpenFacet,
 	PartyBCloseFacet,
 	PartyBOpenFacet,
 	SignatureVerifier,
-	TradeSettlementFacet,
 	ViewFacet,
 } from "../types"
 
@@ -33,14 +31,12 @@ export class RunContext {
 	partyBCloseFacet!: PartyBCloseFacet
 	partyBOpenFacet!: PartyBOpenFacet
 	viewFacet!: ViewFacet
-	tradeSettlementFacet!: TradeSettlementFacet
 	controlFacet!: ControlFacet
 	forceActionsFacet!: ForceActionsFacet
-	instantActionOpenFacet!: InstantActionsOpenFacet
-	instantActionCloseFacet!: InstantActionsCloseFacet
-	InstantActionsPartyBOpenFacet!: InstantActionsPartyBOpenFacet
 	clearingHouse!: ClearingHouseFacet
-	bridgeFacet!: BridgeFacet
+	counterPartyRelation!: CounterPartyRelationsFacet
+	instantLayer!: InstantLayer
+	multiAccount!: MultiAccount
 
 	signers!: {
 		admin: SignerWithAddress
@@ -96,16 +92,13 @@ export async function createRunContext(
 	context.collateralNL = await ethers.getContractAt("FakeStablecoin", collateral[1])
 
 	context.oracle = await ethers.getContractAt("FakeOracle", oracle)
+	context.signatureVerifier = await ethers.getContractAt("SignatureVerifier", signatureVerifier)
 	context.accountFacet = await ethers.getContractAt("AccountFacet", diamond)
 	context.diamondCutFacet = await ethers.getContractAt("DiamondCutFacet", diamond)
 	context.diamondLoupeFacet = await ethers.getContractAt("DiamondLoupeFacet", diamond)
 	context.viewFacet = await ethers.getContractAt("ViewFacet", diamond)
 	context.controlFacet = await ethers.getContractAt("ControlFacet", diamond)
 	context.forceActionsFacet = await ethers.getContractAt("ForceActionsFacet", diamond)
-	context.instantActionCloseFacet = await ethers.getContractAt("InstantActionsCloseFacet", diamond)
-	context.instantActionOpenFacet = await ethers.getContractAt("InstantActionsOpenFacet", diamond)
-	context.InstantActionsPartyBOpenFacet = await ethers.getContractAt("InstantActionsPartyBOpenFacet", diamond)
-	context.signatureVerifier = await ethers.getContractAt("SignatureVerifier", signatureVerifier)
 	context.clearingHouse = await ethers.getContractAt("ClearingHouseFacet", diamond)
 
 	context.partyAOpenFacet = await ethers.getContractAt("PartyAOpenFacet", diamond)
@@ -113,9 +106,7 @@ export async function createRunContext(
 
 	context.partyBCloseFacet = await ethers.getContractAt("PartyBCloseFacet", diamond)
 	context.partyBOpenFacet = await ethers.getContractAt("PartyBOpenFacet", diamond)
-	context.bridgeFacet = await ethers.getContractAt("BridgeFacet", diamond)
-
-	context.tradeSettlementFacet = await ethers.getContractAt("TradeSettlementFacet", diamond)
+	context.counterPartyRelation = await ethers.getContractAt("CounterPartyRelationsFacet", diamond)
 
 	if (mocks) {
 		context.mocks = {

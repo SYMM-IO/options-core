@@ -1,10 +1,12 @@
+import { ZeroAddress } from "ethers"
 import { task, types } from "hardhat/config"
 
 task("deploy:multiAccount", "Deploys the MultiAccount")
 	.addParam("symmioaddress", "The address of the Symmio contract")
 	.addParam("admin", "The admin address")
+	.addParam("tradeNFTAddress", "The trade NFT address")
 	.addOptionalParam("logData", "Write the deployed addresses to a data file", true, types.boolean)
-	.setAction(async ({ symmioaddress, admin, logData }, { ethers, upgrades, run }) => {
+	.setAction(async ({ symmioaddress, admin, tradeNFTAddress, logData }, { ethers, upgrades, run }) => {
 		console.log("Running deploy:MultiAccount")
 
 		const [deployer] = await ethers.getSigners()
@@ -14,7 +16,9 @@ task("deploy:multiAccount", "Deploys the MultiAccount")
 
 		// Deploy MultiAccount as upgradeable
 		const SymmioPartyBFactory = await ethers.getContractFactory("MultiAccount")
-		const symmioPartyB = await upgrades.deployProxy(SymmioPartyBFactory, [admin, symmioaddress, SymmioPartyA.bytecode], { initializer: "initialize" })
+		const symmioPartyB = await upgrades.deployProxy(SymmioPartyBFactory, [admin, symmioaddress, SymmioPartyA.bytecode, tradeNFTAddress], {
+			initializer: "initialize",
+		})
 		await symmioPartyB.waitForDeployment()
 
 		const addresses = {

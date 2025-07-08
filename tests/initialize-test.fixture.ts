@@ -1,14 +1,16 @@
-import { run } from "hardhat"
-import { Diamond, FakeStablecoin, SignatureVerifier } from "../types"
+import { ethers, run } from "hardhat"
+import { Diamond, FakeOracle, FakeStablecoin, InstantLayer, SignatureVerifier } from "../types"
 import { createRunContext, RunContext } from "./run-context"
-import { ethers, toUtf8Bytes } from "ethers"
+import { toUtf8Bytes, ZeroAddress } from "ethers"
 import { e } from "../utils/e"
 import { OptionType } from "./option-enums"
+import { MultiAccount } from "../types/contracts/helpers"
 
 export async function initializeTestFixture(): Promise<RunContext> {
-	const diamond: Diamond = await run("deploy:diamond")
 	const mocks: Map<string, string> = await run("deploy:mocks")
 	const verifier: SignatureVerifier = await run("deploy:SignatureVerifier")
+	const oracle: FakeOracle = await run("deploy:oracle")
+
 	const stableCoin: FakeStablecoin = await run("deploy:stablecoin", {
 		name: "MyFakeStablecoin",
 		symbol: "FUSD",
@@ -17,7 +19,8 @@ export async function initializeTestFixture(): Promise<RunContext> {
 		name: "StablecoinNotListed",
 		symbol: "NLUSD",
 	})
-	const oracle: FakeStablecoin = await run("deploy:oracle")
+
+	const diamond: Diamond = await run("deploy:diamond", true)
 
 	let context = await createRunContext(
 		await diamond.getAddress(),
@@ -27,6 +30,18 @@ export async function initializeTestFixture(): Promise<RunContext> {
 		mocks,
 	)
 
+	const instantLayer: InstantLayer = await run("deploy:InstantLayer", {
+		symmioaddress: context.common.diamondAddress,
+		admin: context.signers.admin.address,
+	})
+	const multiAccount: MultiAccount = await run("deploy:multiAccount", {
+		symmioaddress: context.common.diamondAddress,
+		admin: context.signers.admin.address,
+		tradeNFTAddress: ZeroAddress,
+	})
+	context.multiAccount = await ethers.getContractAt("MultiAccount", await multiAccount.getAddress())
+	context.instantLayer = await ethers.getContractAt("InstantLayer", await instantLayer.getAddress())
+
 	await context.controlFacet.connect(context.signers.admin).setAdmin(context.signers.admin.getAddress())
 	await context.controlFacet
 		.connect(context.signers.admin)
@@ -34,15 +49,43 @@ export async function initializeTestFixture(): Promise<RunContext> {
 
 	await context.controlFacet
 		.connect(context.signers.admin)
-		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("SETTER_ROLE")))
-
-	await context.controlFacet
-		.connect(context.signers.admin)
 		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("UNPAUSER_ROLE")))
 
 	await context.controlFacet
 		.connect(context.signers.admin)
+		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("SETTER_ROLE")))
+
+	await context.controlFacet
+		.connect(context.signers.admin)
+		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("SUSPENDER_ROLE")))
+
+	await context.controlFacet
+		.connect(context.signers.admin)
 		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("WINDOW_UPDATER_ROLE")))
+
+	await context.controlFacet
+		.connect(context.signers.admin)
+		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("PARTY_B_MANAGER_ROLE")))
+
+	await context.controlFacet
+		.connect(context.signers.admin)
+		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("AFFILIATE_MANAGER_ROLE")))
+
+	await context.controlFacet
+		.connect(context.signers.admin)
+		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("AFFILIATE_FEE_MANAGER_ROLE")))
+
+	await context.controlFacet
+		.connect(context.signers.admin)
+		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("ORACLE_MANAGER_ROLE")))
+
+	await context.controlFacet
+		.connect(context.signers.admin)
+		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("SYMBOL_MANAGER_ROLE")))
+
+	await context.controlFacet
+		.connect(context.signers.admin)
+		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("INSTANT_LAYER_ROLE")))
 
 	await context.controlFacet.connect(context.signers.admin).unpauseGlobal()
 
@@ -76,7 +119,9 @@ export async function initializeTestFixture(): Promise<RunContext> {
 
 	await context.controlFacet.addSymbol("BTC_PUT", OptionType.PUT, 1, context.collateral.getAddress(), 0, 0)
 	await context.controlFacet.addSymbol("BTC_CALL", OptionType.CALL, 1, context.collateral.getAddress(), 0, 0)
-	await context.controlFacet.addSymbol("USDT", 0, 1, context.collateralNL.getAddress(), 0, 0)
+	await context.controlFacet.addSymbol("USDT", OptionType.PUT, 1, context.collateralNL.getAddress(), 0, 0)
+	await context.controlFacet.addSymbol("USDT", OptionType.CALL, 1, context.collateralNL.getAddress(), 0, 0)
+
 	await context.controlFacet.connect(context.signers.admin).whiteListCollateral(await context.collateral.getAddress())
 	await context.controlFacet.connect(context.signers.admin).whiteListCollateral(await context.collateralNL.getAddress())
 

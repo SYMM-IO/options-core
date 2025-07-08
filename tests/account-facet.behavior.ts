@@ -6,6 +6,8 @@ import { RunContext } from "./run-context"
 import { ZeroAddress } from "ethers"
 import { ethers, network } from "hardhat"
 import { PartyB } from "./models/partyB.model"
+import { withDefaults } from "@openzeppelin/hardhat-upgrades/dist/utils"
+import { WithdrawStatus } from "./option-enums"
 
 export function shouldBehaveLikeAccountFacet(): void {
 	let context: RunContext, partyA1: PartyA, partyB1: PartyB
@@ -19,7 +21,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 		await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
 			isActive: true,
 			lossCoverage: 0,
-			oracleId: 0,
+			oracleId: 1,
 			symbolType: 0,
 		})
 
@@ -58,7 +60,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 		it("Should deposit successfully", async function () {
 			expect(await context.accountFacet.connect(partyA1.getSigner).deposit(await context.collateral.getAddress(), "100")).to.be.not.reverted
 
-			expect(await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress())).to.be.equal("200")
+			expect(await context.viewFacet.getIsolatedBalance(partyA1.getSigner, await context.collateral.getAddress())).to.be.equal("200")
 			expect(await context.collateral.balanceOf(partyA1.getSigner)).to.be.equal("300")
 		})
 	})
@@ -108,8 +110,10 @@ export function shouldBehaveLikeAccountFacet(): void {
 					.depositFor(await context.collateral.getAddress(), await context.signers.partyA2.getAddress(), "100"),
 			).to.be.not.reverted
 
-			expect(await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress())).to.be.equal("100")
-			expect(await context.viewFacet.balanceOf(await context.signers.partyA2.getAddress(), await context.collateral.getAddress())).to.be.equal("100")
+			expect(await context.viewFacet.getIsolatedBalance(partyA1.getSigner, await context.collateral.getAddress())).to.be.equal("100")
+			expect(
+				await context.viewFacet.getIsolatedBalance(await context.signers.partyA2.getAddress(), await context.collateral.getAddress()),
+			).to.be.equal("100")
 			expect(await context.collateral.balanceOf(partyA1.getSigner)).to.be.equal("300")
 		})
 	})
@@ -171,8 +175,9 @@ export function shouldBehaveLikeAccountFacet(): void {
 			).to.be.revertedWithCustomError(context.accountFacet, "InsufficientBalance(address,address,uint256,uint256)")
 		})
 
-		it("Should fail when instant actions mode id active for msgSender", async function () {
-			await context.controlFacet.setInstantActionsMode(partyA1.getSigner, true)
+		it("Should fail when instant actions mode is active for msgSender", async function () {
+			await partyA1.bindToCounterParty(partyB1.getSigner)
+			await partyA1.activateInstantActionMode()
 			await expect(
 				context.accountFacet
 					.connect(partyA1.getSigner)
@@ -187,11 +192,13 @@ export function shouldBehaveLikeAccountFacet(): void {
 					.initiateWithdraw(await context.collateral.getAddress(), "100", await context.signers.partyA2.getAddress()),
 			).to.be.not.reverted
 
-			expect(await context.viewFacet.balanceOf(partyA1.getSigner, await context.collateral.getAddress())).to.be.equal("0")
-			expect(await context.viewFacet.balanceOf(await context.signers.partyA2.getAddress(), await context.collateral.getAddress())).to.be.equal("0")
+			expect(await context.viewFacet.getIsolatedBalance(partyA1.getSigner, await context.collateral.getAddress())).to.be.equal("0")
+			expect(
+				await context.viewFacet.getIsolatedBalance(await context.signers.partyA2.getAddress(), await context.collateral.getAddress()),
+			).to.be.equal("0")
 			expect(await context.collateral.balanceOf(partyA1.getSigner)).to.be.equal("400")
 
-			const withdraw = await context.viewFacet.getWithdraw(1)
+			const withdraw = await context.viewFacet.getWithdrawal(1)
 
 			expect(withdraw.status).to.be.equal(0) // WithdrawStatus.INITIATED
 			expect(withdraw.amount).to.be.equal("100")
@@ -199,7 +206,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 			expect(withdraw.to).to.be.equal(await context.signers.partyA2.getAddress())
 			expect(withdraw.collateral).to.be.equal(await context.collateral.getAddress())
 
-			expect(await context.viewFacet.getLastWithdrawId()).to.equal(1)
+			expect(await context.viewFacet.getLastWithdrawalId()).to.equal(1)
 		})
 	})
 
@@ -239,7 +246,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 			await context.controlFacet.suspendAddress(await context.signers.partyA2.getAddress(), true)
 			await expect(context.accountFacet.connect(partyA1.getSigner).completeWithdraw(1)).to.be.revertedWithCustomError(
 				context.accountFacet,
-				"ReceiverSuspended",
+				"UserSuspended",
 			)
 		})
 
@@ -269,9 +276,9 @@ export function shouldBehaveLikeAccountFacet(): void {
 		it("Should withdraw successfully", async function () {
 			expect(await context.accountFacet.connect(partyA1.getSigner).completeWithdraw(1)).to.be.not.reverted
 
-			const withdraw = await context.viewFacet.getWithdraw(1)
+			const withdraw = await context.viewFacet.getWithdrawal(1)
 
-			expect(withdraw.status).to.be.equal(2) // WithdrawStatus.COMPLETED
+			expect(withdraw.status).to.be.equal(WithdrawStatus.COMPLETED)
 			expect(await context.collateral.balanceOf(context.signers.partyA2)).to.be.equal("100")
 		})
 	})
@@ -312,7 +319,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 			await context.controlFacet.suspendAddress(await context.signers.partyA2.getAddress(), true)
 			await expect(context.accountFacet.connect(partyA1.getSigner).cancelWithdraw(1)).to.be.revertedWithCustomError(
 				context.accountFacet,
-				"ReceiverSuspended",
+				"UserSuspended",
 			)
 		})
 
@@ -342,90 +349,88 @@ export function shouldBehaveLikeAccountFacet(): void {
 		it("Should cancel withdraw successfully", async function () {
 			expect(await context.accountFacet.connect(partyA1.getSigner).cancelWithdraw(1)).to.be.not.reverted
 
-			const withdraw = await context.viewFacet.getWithdraw(1)
+			const withdraw = await context.viewFacet.getWithdrawal(1)
 
-			expect(withdraw.status).to.be.equal(1) // WithdrawStatus.CANCELED
-			expect(await context.viewFacet.balanceOf(partyA1.getSigner, context.collateral)).to.be.equal(100)
+			expect(withdraw.status).to.be.equal(WithdrawStatus.CANCELED)
+			expect(await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral)).to.be.equal(100)
 		})
 	})
 
 	describe("activateInstantActionMode", async function () {
 		beforeEach(async () => {
-			await context.accountFacet.connect(partyA1.getSigner).bindToPartyB(partyB1.address)
+			await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
+				isActive: true,
+				lossCoverage: 0,
+				oracleId: 1,
+				symbolType: 0,
+			})
+			await context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(partyB1.address)
 		})
 
 		it("Should fail when not bound to any partyB", async function () {
-			await context.accountFacet.connect(partyA1.getSigner).initiateUnbindingFromPartyB()
+			await context.counterPartyRelation.connect(partyA1.getSigner).initiateUnbindingFromPartyB()
 
 			const newBlock = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 120
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
 
-			await context.accountFacet.connect(partyA1.getSigner).completeUnbindingFromPartyB()
+			await context.counterPartyRelation.connect(partyA1.getSigner).completeUnbindingFromPartyB()
 
-			await expect(context.accountFacet.connect(partyA1.getSigner).activateInstantActionMode()).to.be.revertedWithCustomError(
-				context.accountFacet,
+			await expect(context.counterPartyRelation.connect(partyA1.getSigner).activateInstantActionMode()).to.be.revertedWithCustomError(
+				context.counterPartyRelation,
 				"BoundedPartyBNotFound",
 			)
 		})
 
 		it("Should fail when msgSender be PartyB", async function () {
-			await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
-				isActive: true,
-				lossCoverage: 0,
-				oracleId: 0,
-				symbolType: 0,
-			})
-
-			await expect(context.accountFacet.connect(context.signers.partyB1).activateInstantActionMode()).to.be.revertedWithCustomError(
-				context.accountFacet,
-				"IsPartyB",
+			await expect(context.counterPartyRelation.connect(context.signers.partyB1).activateInstantActionMode()).to.be.revertedWithCustomError(
+				context.counterPartyRelation,
+				"PartyBUser",
 			)
 		})
 
 		it("Should fail when instance mode is active", async function () {
-			await context.accountFacet.connect(partyA1.getSigner).activateInstantActionMode()
-			await expect(context.accountFacet.connect(partyA1.getSigner).activateInstantActionMode()).to.be.revertedWithCustomError(
-				context.accountFacet,
-				"InstantActionModeAlreadyActivated",
+			await context.counterPartyRelation.connect(partyA1.getSigner).activateInstantActionMode()
+			await expect(context.counterPartyRelation.connect(partyA1.getSigner).activateInstantActionMode()).to.be.revertedWithCustomError(
+				context.counterPartyRelation,
+				"InstantModeActive",
 			)
 		})
 
 		it("Should active instance mode successfully", async function () {
-			expect(await context.accountFacet.connect(partyA1.getSigner).activateInstantActionMode()).to.be.not.reverted
-			expect(await context.viewFacet.getInstantActionsModeStatus(partyA1.getSigner)).to.be.equal(true)
+			await expect(context.counterPartyRelation.connect(partyA1.getSigner).activateInstantActionMode()).to.be.not.reverted
+			expect(await context.viewFacet.isInstantActionsModeActive(partyA1.getSigner)).to.be.equal(true)
 		})
 	})
 
 	describe("proposeToDeactivateInstantActionMode", async function () {
 		beforeEach(async () => {
-			await context.accountFacet.connect(partyA1.getSigner).bindToPartyB(partyB1.address)
+			await context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(partyB1.address)
 		})
 		it("Should fail when msgSender be PartyB", async function () {
 			await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
 				isActive: true,
 				lossCoverage: 0,
-				oracleId: 0,
+				oracleId: 1,
 				symbolType: 0,
 			})
 
-			await expect(context.accountFacet.connect(context.signers.partyB1).proposeToDeactivateInstantActionMode()).to.be.revertedWithCustomError(
-				context.accountFacet,
-				"IsPartyB",
-			)
+			await expect(
+				context.counterPartyRelation.connect(context.signers.partyB1).proposeToDeactivateInstantActionMode(),
+			).to.be.revertedWithCustomError(context.counterPartyRelation, "PartyBUser")
 		})
 
 		it("Should fail when instance mode is not active", async function () {
-			await expect(context.accountFacet.connect(partyA1.getSigner).proposeToDeactivateInstantActionMode()).to.be.revertedWithCustomError(
-				context.accountFacet,
-				"InstantActionModeNotActivated",
+			await expect(context.counterPartyRelation.connect(partyA1.getSigner).proposeToDeactivateInstantActionMode()).to.be.revertedWithCustomError(
+				context.counterPartyRelation,
+				"InstantModeNotActive",
 			)
 		})
 
 		it("Should propose to deactivate instance mode successfully", async function () {
-			await context.accountFacet.connect(partyA1.getSigner).activateInstantActionMode()
+			await context.counterPartyRelation.connect(partyA1.getSigner).activateInstantActionMode()
 
-			expect(await context.accountFacet.connect(partyA1.getSigner).proposeToDeactivateInstantActionMode()).to.be.not.reverted
-			expect(await context.viewFacet.getInstantActionsModeStatus(partyA1.getSigner)).to.be.equal(true)
+			await expect(context.counterPartyRelation.connect(partyA1.getSigner).proposeToDeactivateInstantActionMode()).to.be.not.reverted
+			expect(await context.viewFacet.isInstantActionsModeActive(partyA1.getSigner)).to.be.equal(true)
 
 			const latestBlock = await ethers.provider.getBlock("latest")
 			const time = (latestBlock?.timestamp ?? 0) + Number(await context.viewFacet.getDeactiveInstantActionModeCooldown())
@@ -436,51 +441,50 @@ export function shouldBehaveLikeAccountFacet(): void {
 
 	describe("deactivateInstantActionMode", async function () {
 		beforeEach(async () => {
-			await context.accountFacet.connect(partyA1.getSigner).bindToPartyB(partyB1.address)
+			await context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(partyB1.address)
 		})
 		it("Should fail when msgSender be PartyB", async function () {
 			await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
 				isActive: true,
 				lossCoverage: 0,
-				oracleId: 0,
+				oracleId: 1,
 				symbolType: 0,
 			})
 
-			await expect(context.accountFacet.connect(context.signers.partyB1).proposeToDeactivateInstantActionMode()).to.be.revertedWithCustomError(
-				context.accountFacet,
-				"IsPartyB",
-			)
+			await expect(
+				context.counterPartyRelation.connect(context.signers.partyB1).proposeToDeactivateInstantActionMode(),
+			).to.be.revertedWithCustomError(context.counterPartyRelation, "PartyBUser")
 		})
 
 		it("Should fail when instance mode is not active", async function () {
-			await expect(context.accountFacet.connect(partyA1.getSigner).proposeToDeactivateInstantActionMode()).to.be.revertedWithCustomError(
-				context.accountFacet,
-				"InstantActionModeNotActivated",
+			await expect(context.counterPartyRelation.connect(partyA1.getSigner).proposeToDeactivateInstantActionMode()).to.be.revertedWithCustomError(
+				context.counterPartyRelation,
+				"InstantModeNotActive",
 			)
 		})
 
 		it("Should fail when deactivate instance mode cooldown not reached", async function () {
-			await context.accountFacet.connect(partyA1.getSigner).activateInstantActionMode()
-			await context.accountFacet.connect(partyA1.getSigner).proposeToDeactivateInstantActionMode()
-			await expect(context.accountFacet.connect(partyA1.getSigner).deactivateInstantActionMode()).to.be.revertedWithCustomError(
+			await context.counterPartyRelation.connect(partyA1.getSigner).activateInstantActionMode()
+			await context.counterPartyRelation.connect(partyA1.getSigner).proposeToDeactivateInstantActionMode()
+			await expect(context.counterPartyRelation.connect(partyA1.getSigner).deactivateInstantActionMode()).to.be.revertedWithCustomError(
 				context.accountFacet,
 				"CooldownNotOver",
 			)
 		})
 
 		it("Should fail when Deactivation is not proposed", async function () {
-			await context.accountFacet.connect(partyA1.getSigner).activateInstantActionMode()
-			await expect(context.accountFacet.connect(partyA1.getSigner).deactivateInstantActionMode()).to.be.revertedWithCustomError(
-				context.accountFacet,
+			await context.counterPartyRelation.connect(partyA1.getSigner).activateInstantActionMode()
+			await expect(context.counterPartyRelation.connect(partyA1.getSigner).deactivateInstantActionMode()).to.be.revertedWithCustomError(
+				context.counterPartyRelation,
 				"DeactivationNotProposed",
 			)
 		})
 
 		it("Should propose to deactivate instance mode successfully", async function () {
-			await context.accountFacet.connect(partyA1.getSigner).activateInstantActionMode()
+			await context.counterPartyRelation.connect(partyA1.getSigner).activateInstantActionMode()
 
-			expect(await context.accountFacet.connect(partyA1.getSigner).proposeToDeactivateInstantActionMode()).to.be.not.reverted
-			expect(await context.viewFacet.getInstantActionsModeStatus(partyA1.getSigner)).to.be.equal(true)
+			expect(await context.counterPartyRelation.connect(partyA1.getSigner).proposeToDeactivateInstantActionMode()).to.be.not.reverted
+			expect(await context.viewFacet.isInstantActionsModeActive(partyA1.getSigner)).to.be.equal(true)
 
 			const latestBlock = await ethers.provider.getBlock("latest")
 			const time = (latestBlock?.timestamp ?? 0) + Number(await context.viewFacet.getDeactiveInstantActionModeCooldown())
@@ -494,22 +498,22 @@ export function shouldBehaveLikeAccountFacet(): void {
 			await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
 				isActive: true,
 				lossCoverage: 0,
-				oracleId: 0,
+				oracleId: 1,
 				symbolType: 0,
 			})
 		})
 
 		it("Should fail when msgSender be PartyB", async function () {
-			await expect(context.accountFacet.connect(context.signers.partyB1).bindToPartyB(context.signers.partyB2)).to.be.revertedWithCustomError(
-				context.accountFacet,
-				"IsPartyB",
+			await expect(context.counterPartyRelation.connect(context.signers.partyB1).bindToPartyB(context.signers.partyB2)).to.be.revertedWithCustomError(
+				context.counterPartyRelation,
+				"PartyBUser",
 			)
 		})
 
 		it("Should fail when global paused", async function () {
 			await context.controlFacet.pauseGlobal()
-			await expect(context.accountFacet.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)).to.be.revertedWithCustomError(
-				context.accountFacet,
+			await expect(context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)).to.be.revertedWithCustomError(
+				context.counterPartyRelation,
 				"GlobalPaused",
 			)
 		})
@@ -517,36 +521,36 @@ export function shouldBehaveLikeAccountFacet(): void {
 		it("Should fail when PartyA actions paused", async function () {
 			await context.controlFacet.pausePartyAActions()
 			await context.controlFacet.unpauseGlobal()
-			await expect(context.accountFacet.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)).to.be.revertedWithCustomError(
-				context.accountFacet,
+			await expect(context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)).to.be.revertedWithCustomError(
+				context.counterPartyRelation,
 				"PartyAActionsPaused",
 			)
 		})
 
 		it("Should fail when PartyB not active", async function () {
-			await expect(context.accountFacet.connect(partyA1.getSigner).bindToPartyB(context.signers.others[0])).to.be.revertedWithCustomError(
-				context.accountFacet,
-				"InactivePartyB",
+			await expect(context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(context.signers.others[0])).to.be.revertedWithCustomError(
+				context.counterPartyRelation,
+				"PartyBNotActive",
 			)
 		})
 
 		it("Should fail when already bound", async function () {
-			await context.accountFacet.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)
+			await context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)
 
 			await context.controlFacet.setPartyBConfig(context.signers.partyB2, {
 				isActive: true,
 				lossCoverage: 0,
-				oracleId: 0,
+				oracleId: 1,
 				symbolType: 0,
 			})
-			await expect(context.accountFacet.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB2)).to.be.revertedWithCustomError(
-				context.accountFacet,
+			await expect(context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB2)).to.be.revertedWithCustomError(
+				context.counterPartyRelation,
 				"BoundedToAnotherPartyB",
 			)
 		})
 
 		it("Should bind successfully", async function () {
-			expect(await context.accountFacet.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)).to.be.not.reverted
+			expect(await context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)).to.be.not.reverted
 
 			expect(await context.viewFacet.getBoundPartyB(partyA1.getSigner)).to.be.equal(await context.signers.partyB1.getAddress())
 		})
@@ -557,22 +561,22 @@ export function shouldBehaveLikeAccountFacet(): void {
 			await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
 				isActive: true,
 				lossCoverage: 0,
-				oracleId: 0,
+				oracleId: 1,
 				symbolType: 0,
 			})
 		})
 
 		it("Should fail when msgSender be PartyB", async function () {
-			await expect(context.accountFacet.connect(context.signers.partyB1).bindToPartyB(context.signers.partyB2)).to.be.revertedWithCustomError(
-				context.accountFacet,
-				"IsPartyB",
+			await expect(context.counterPartyRelation.connect(context.signers.partyB1).bindToPartyB(context.signers.partyB2)).to.be.revertedWithCustomError(
+				context.counterPartyRelation,
+				"PartyBUser",
 			)
 		})
 
 		it("Should fail when global paused", async function () {
 			await context.controlFacet.pauseGlobal()
-			await expect(context.accountFacet.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)).to.be.revertedWithCustomError(
-				context.accountFacet,
+			await expect(context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)).to.be.revertedWithCustomError(
+				context.counterPartyRelation,
 				"GlobalPaused",
 			)
 		})
@@ -580,32 +584,32 @@ export function shouldBehaveLikeAccountFacet(): void {
 		it("Should fail when PartyA actions paused", async function () {
 			await context.controlFacet.pausePartyAActions()
 			await context.controlFacet.unpauseGlobal()
-			await expect(context.accountFacet.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)).to.be.revertedWithCustomError(
-				context.accountFacet,
+			await expect(context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)).to.be.revertedWithCustomError(
+				context.counterPartyRelation,
 				"PartyAActionsPaused",
 			)
 		})
 
 		it("Should fail when not bound to any partyB", async function () {
-			await expect(context.accountFacet.connect(partyA1.getSigner).initiateUnbindingFromPartyB()).to.be.revertedWithCustomError(
-				context.accountFacet,
+			await expect(context.counterPartyRelation.connect(partyA1.getSigner).initiateUnbindingFromPartyB()).to.be.revertedWithCustomError(
+				context.counterPartyRelation,
 				"BoundedPartyBNotFound",
 			)
 		})
 
 		it("Should fail when unbindingRequestTime not zero", async function () {
-			await context.accountFacet.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)
-			await context.accountFacet.connect(partyA1.getSigner).initiateUnbindingFromPartyB()
+			await context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)
+			await context.counterPartyRelation.connect(partyA1.getSigner).initiateUnbindingFromPartyB()
 
-			await expect(context.accountFacet.connect(partyA1.getSigner).initiateUnbindingFromPartyB()).to.be.revertedWithCustomError(
-				context.accountFacet,
+			await expect(context.counterPartyRelation.connect(partyA1.getSigner).initiateUnbindingFromPartyB()).to.be.revertedWithCustomError(
+				context.counterPartyRelation,
 				"UnbindingAlreadyInProgress",
 			)
 		})
 
 		it("Should initiate Unbinding From PartyB successfully", async function () {
-			await context.accountFacet.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)
-			expect(await context.accountFacet.connect(partyA1.getSigner).initiateUnbindingFromPartyB()).to.be.not.reverted
+			await context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)
+			expect(await context.counterPartyRelation.connect(partyA1.getSigner).initiateUnbindingFromPartyB()).to.be.not.reverted
 
 			const latestBlock = await ethers.provider.getBlock("latest")
 			expect(await context.viewFacet.getUnbindingRequestTime(partyA1.getSigner)).to.be.equal(latestBlock?.timestamp)
@@ -614,15 +618,15 @@ export function shouldBehaveLikeAccountFacet(): void {
 
 	describe("completeUnbindingFromPartyB", async function () {
 		it("Should fail when msgSender be PartyB", async function () {
-			await expect(context.accountFacet.connect(context.signers.partyB1).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(
-				context.accountFacet,
-				"IsPartyB",
+			await expect(context.counterPartyRelation.connect(context.signers.partyB1).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(
+				context.counterPartyRelation,
+				"PartyBUser",
 			)
 		})
 
 		it("Should fail when global paused", async function () {
 			await context.controlFacet.pauseGlobal()
-			await expect(context.accountFacet.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(
+			await expect(context.counterPartyRelation.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(
 				context.accountFacet,
 				"GlobalPaused",
 			)
@@ -631,42 +635,42 @@ export function shouldBehaveLikeAccountFacet(): void {
 		it("Should fail when PartyA actions paused", async function () {
 			await context.controlFacet.pausePartyAActions()
 			await context.controlFacet.unpauseGlobal()
-			await expect(context.accountFacet.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(
+			await expect(context.counterPartyRelation.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(
 				context.accountFacet,
 				"PartyAActionsPaused",
 			)
 		})
 
 		it("Should fail when not bound to any partyB", async function () {
-			await expect(context.accountFacet.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(
-				context.accountFacet,
+			await expect(context.counterPartyRelation.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(
+				context.counterPartyRelation,
 				"BoundedPartyBNotFound",
 			)
 		})
 
 		it("Should fail when unbindingRequestTime be zero", async function () {
-			await context.accountFacet.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)
-			await context.accountFacet.connect(partyA1.getSigner).initiateUnbindingFromPartyB()
-			await expect(context.accountFacet.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(
-				context.accountFacet,
+			await context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)
+			await context.counterPartyRelation.connect(partyA1.getSigner).initiateUnbindingFromPartyB()
+			await expect(context.counterPartyRelation.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(
+				context.counterPartyRelation,
 				"CooldownNotOver",
 			)
 		})
 
 		it("Should fail when Unbinding cooldown not reached", async function () {
-			await context.accountFacet.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)
-			await expect(context.accountFacet.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(
-				context.accountFacet,
+			await context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)
+			await expect(context.counterPartyRelation.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(
+				context.counterPartyRelation,
 				"UnbindingNotInitiated",
 			)
 		})
 
 		it("Should complete Unbinding From PartyB successfully", async function () {
-			await context.accountFacet.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)
-			await context.accountFacet.connect(partyA1.getSigner).initiateUnbindingFromPartyB()
+			await context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)
+			await context.counterPartyRelation.connect(partyA1.getSigner).initiateUnbindingFromPartyB()
 			const newBlock = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 120
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
-			expect(await context.accountFacet.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.not.reverted
+			expect(await context.counterPartyRelation.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.not.reverted
 
 			expect(await context.viewFacet.getBoundPartyB(partyA1.getSigner)).to.be.equal(ZeroAddress)
 			expect(await context.viewFacet.getUnbindingRequestTime(partyA1.getSigner)).to.be.equal(0)
@@ -678,7 +682,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 			await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
 				isActive: true,
 				lossCoverage: 0,
-				oracleId: 0,
+				oracleId: 1,
 				symbolType: 0,
 			})
 
@@ -686,15 +690,15 @@ export function shouldBehaveLikeAccountFacet(): void {
 		})
 
 		it("Should fail when msgSender be PartyB", async function () {
-			await expect(context.accountFacet.connect(context.signers.partyB1).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(
+			await expect(context.counterPartyRelation.connect(context.signers.partyB1).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(
 				context.accountFacet,
-				"IsPartyB",
+				"PartyBUser",
 			)
 		})
 
 		it("Should fail when global paused", async function () {
 			await context.controlFacet.pauseGlobal()
-			await expect(context.accountFacet.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(
+			await expect(context.counterPartyRelation.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(
 				context.accountFacet,
 				"GlobalPaused",
 			)
@@ -703,33 +707,33 @@ export function shouldBehaveLikeAccountFacet(): void {
 		it("Should fail when PartyA actions paused", async function () {
 			await context.controlFacet.pausePartyAActions()
 			await context.controlFacet.unpauseGlobal()
-			await expect(context.accountFacet.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(
+			await expect(context.counterPartyRelation.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(
 				context.accountFacet,
 				"PartyAActionsPaused",
 			)
 		})
 
 		it("Should fail when not bound to any partyB", async function () {
-			await expect(context.accountFacet.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(
-				context.accountFacet,
+			await expect(context.counterPartyRelation.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.revertedWithCustomError(
+				context.counterPartyRelation,
 				"BoundedPartyBNotFound",
 			)
 		})
 
 		it("Should fail when no pending unbinding exist", async function () {
-			await context.accountFacet.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)
-			await expect(context.accountFacet.connect(partyA1.getSigner).cancelUnbindingFromPartyB()).to.be.revertedWithCustomError(
-				context.accountFacet,
+			await context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)
+			await expect(context.counterPartyRelation.connect(partyA1.getSigner).cancelUnbindingFromPartyB()).to.be.revertedWithCustomError(
+				context.counterPartyRelation,
 				"UnbindingNotInitiated",
 			)
 		})
 
 		it("Should cancel Unbinding From PartyB successfully", async function () {
-			await context.accountFacet.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)
-			await context.accountFacet.connect(partyA1.getSigner).initiateUnbindingFromPartyB()
+			await context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)
+			await context.counterPartyRelation.connect(partyA1.getSigner).initiateUnbindingFromPartyB()
 			const newBlock = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 120
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
-			expect(await context.accountFacet.connect(partyA1.getSigner).cancelUnbindingFromPartyB()).to.be.not.reverted
+			expect(await context.counterPartyRelation.connect(partyA1.getSigner).cancelUnbindingFromPartyB()).to.be.not.reverted
 
 			expect(await context.viewFacet.getBoundPartyB(partyA1.getSigner)).to.be.equal(context.signers.partyB1)
 			expect(await context.viewFacet.getUnbindingRequestTime(partyA1.getSigner)).to.be.equal(0)

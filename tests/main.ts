@@ -12,6 +12,8 @@ import { shouldBehaveLikeSettlementFacet } from "./trade-settlement"
 import { shouldBehaveLikeInstantActionCloseFacet } from "./instant-action-close.behavior"
 import { shouldBehaveLikeInstantActionsPartyBOpenFacet } from "./instant-actions-partyb-open-facet.behavior"
 import { shouldBehaveLikeBridgeFacet } from "./bridge-facet.behavior"
+import { shouldBehaveLikeInstantLayer } from "./instant-layer.behavior"
+import { shouldBehaveLikeInstantLayerAuto } from "./instant-layer.behavior-auto"
 
 describe(`${name}-v${version}`, () => {
 	if (process.env.TEST_MODE === TestModeEnum.UNIT_TEST) {
@@ -35,16 +37,12 @@ describe(`${name}-v${version}`, () => {
 			shouldBehaveLikeLibCloseIntent()
 		})
 
-		describe("Facets_InstantActionOpenFacet", async function () {
-			shouldBehaveLikeInstantActionOpenFacet()
+		describe("Facets_PartyBCloseFacet", async function () {
+			shouldBehaveLikePartyBCloseFacet()
 		})
 
-		describe("Facets_InstantActionCloseFacet", async function () {
-			shouldBehaveLikeInstantActionCloseFacet()
-		})
-
-		describe("shouldBehaveLikeInstantActionsPartyBOpenFacet", async function () {
-			shouldBehaveLikeInstantActionsPartyBOpenFacet()
+		describe("Libraries_LibCloseIntent", async function () {
+			shouldBehaveLikeLibCloseIntent()
 		})
 
 		describe("Facets_PartyBCloseFacet", async function () {
@@ -62,6 +60,14 @@ describe(`${name}-v${version}`, () => {
 		describe("Facet_BridgeFacet", async function () {
 			shouldBehaveLikeBridgeFacet()
 		})
+
+		describe("Instant Layer", async function () {
+			shouldBehaveLikeInstantLayer()
+		})
+
+		// describe("Instant Layer", async function () {
+		// 	shouldBehaveLikeInstantLayerAuto()
+		// })
 	} else {
 		throw new Error(`Invalid TEST_MODE property. Should be one of: ${Object.keys(TestModeEnum).join(", ")}`)
 	}
