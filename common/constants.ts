@@ -1,6 +1,5 @@
 export const FacetNames = [
 	"AccountFacet",
-	"ExpressWithdrawFacet",
 	"ClearingHouseFacet",
 	"ControlFacet",
 	"CounterPartyRelationsFacet",

@@ -111,7 +111,6 @@ export async function createRunContext(
 
 	context.partyBCloseFacet = await ethers.getContractAt("PartyBCloseFacet", diamond)
 	context.partyBOpenFacet = await ethers.getContractAt("PartyBOpenFacet", diamond)
-	context.expressWithdrawFacet = await ethers.getContractAt("ExpressWithdrawFacet", diamond)
 	context.counterPartyRelation = await ethers.getContractAt("CounterPartyRelationsFacet", diamond)
 
 	if (mocks) {
