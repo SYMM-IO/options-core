@@ -9,7 +9,6 @@ import { LibOpenIntentOps } from "../../libraries/models/LibOpenIntent.sol";
 import { LibTradeOps } from "../../libraries/models/LibTrade.sol";
 
 import { TradeStorage } from "../../storages/TradeStorage.sol";
-import { ExpressWithdrawStorage } from "../../storages/ExpressWithdrawStorage.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
 import { AppStorage, PartyBConfig } from "../../storages/AppStorage.sol";
@@ -22,8 +21,7 @@ import { SymbolStorage, Symbol, Oracle } from "../../storages/SymbolStorage.sol"
 import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
 
 import { Trade } from "../../types/TradeTypes.sol";
-import { Withdraw } from "../../types/WithdrawTypes.sol";
-import { ExpressWithdraw } from "../../types/ExpressWithdrawTypes.sol";
+import { Withdraw, ExpressWithdrawProviderConfig } from "../../types/WithdrawTypes.sol";
 import { OpenIntent, CloseIntent } from "../../types/IntentTypes.sol";
 import { LiquidationDetail } from "../../types/LiquidationTypes.sol";
 import { ScheduledReleaseEntry, CrossEntry } from "../../types/BalanceTypes.sol";
@@ -124,6 +122,24 @@ contract ViewFacet is IViewFacet {
 	 */
 	function getLastWithdrawalId() external view returns (uint256) {
 		return AccountStorage.layout().lastWithdrawId;
+	}
+
+	/**
+	 * @notice Gets the express withdraw provider config
+	 * @param provider The express withdraw provider address
+	 * @param collateral The collateral of configuration
+	 * @return The express withdraw provider config
+	 */
+	function getExpressWithdrawProviderConfig(address provider, address collateral) external view returns (ExpressWithdrawProviderConfig memory) {
+		return AccountStorage.layout().expressWithdrawProviderConfigs[provider][collateral];
+	}
+
+	/**
+	 * @notice Gets the invalid withdrawals pool address
+	 * @return The pool address
+	 */
+	function getInvalidWithdrawalsPool() external view returns (address) {
+		return AccountStorage.layout().invalidWithdrawalsAmountsPool;
 	}
 
 	/**
@@ -331,44 +347,6 @@ contract ViewFacet is IViewFacet {
 	 */
 	function isCallFromInstantLayer() external view returns (bool) {
 		return AppStorage.layout().callFromInstantLayer;
-	}
-
-	// ════════════════════════════════════════════════════════════════════════════
-	//                           EXPRESS WITHDRAW STORAGE VIEWS
-	// ════════════════════════════════════════════════════════════════════════════
-
-	/**
-	 * @notice Checks if a express withdraw provider is whitelisted
-	 * @param provider The express withdraw provider address
-	 * @return Whether the express withdraw provider is whitelisted
-	 */
-	function isExpressWithdrawProviderWhitelisted(address provider) external view returns (bool) {
-		return ExpressWithdrawStorage.layout().providers[provider];
-	}
-
-	/**
-	 * @notice Gets express withdraw details
-	 * @param expressWithdrawId The express withdraw ID
-	 * @return The express withdraw details
-	 */
-	function getExpressWithdraw(uint256 expressWithdrawId) external view returns (ExpressWithdraw memory) {
-		return ExpressWithdrawStorage.layout().expressWithdraws[expressWithdrawId];
-	}
-
-	/**
-	 * @notice Gets the last express withdraw ID
-	 * @return The last express withdraw ID
-	 */
-	function getLastExpressWithdrawId() external view returns (uint256) {
-		return ExpressWithdrawStorage.layout().lastExpressWithdrawId;
-	}
-
-	/**
-	 * @notice Gets the invalid express withdraws pool address
-	 * @return The pool address
-	 */
-	function getInvalidExpressWithdrawsPool() external view returns (address) {
-		return ExpressWithdrawStorage.layout().invalidExpressWithdrawsPool;
 	}
 
 	// ════════════════════════════════════════════════════════════════════════════

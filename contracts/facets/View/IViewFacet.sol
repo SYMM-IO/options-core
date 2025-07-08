@@ -8,8 +8,7 @@ import { PartyBConfig } from "../../storages/AppStorage.sol";
 import { Symbol, Oracle } from "../../storages/SymbolStorage.sol";
 
 import { Trade } from "../../types/TradeTypes.sol";
-import { Withdraw } from "../../types/WithdrawTypes.sol";
-import { ExpressWithdraw } from "../../types/ExpressWithdrawTypes.sol";
+import { Withdraw, ExpressWithdrawProviderConfig } from "../../types/WithdrawTypes.sol";
 import { OpenIntent, CloseIntent } from "../../types/IntentTypes.sol";
 import { LiquidationDetail } from "../../types/LiquidationTypes.sol";
 import { ScheduledReleaseEntry, CrossEntry } from "../../types/BalanceTypes.sol";
@@ -32,6 +31,8 @@ interface IViewFacet {
 	function getCounterPartyAddresses(address user, address collateral) external view returns (address[] memory);
 	function getWithdrawal(uint256 withdrawId) external view returns (Withdraw memory);
 	function getLastWithdrawalId() external view returns (uint256);
+	function getExpressWithdrawProviderConfig(address provider, address collateral) external view returns (ExpressWithdrawProviderConfig memory);
+	function getInvalidWithdrawalsPool() external view returns (address);
 	function getReleaseInterval(address user) external view returns (uint256);
 	function getDefaultReleaseInterval() external view returns (uint256);
 	function getUserReleaseInterval(address user) external view returns (bool hasConfigured, uint256 interval);
@@ -60,15 +61,6 @@ interface IViewFacet {
 	function getSettlementPriceSigValidTime() external view returns (uint256);
 	function getPartyBConfig(address partyB) external view returns (PartyBConfig memory);
 	function isCallFromInstantLayer() external view returns (bool);
-
-	// ════════════════════════════════════════════════════════════════════════════
-	//                           EXPRESS WITHDRAW STORAGE VIEWS
-	// ════════════════════════════════════════════════════════════════════════════
-
-	function isExpressWithdrawProviderWhitelisted(address provider) external view returns (bool);
-	function getExpressWithdraw(uint256 expressWithdrawId) external view returns (ExpressWithdraw memory);
-	function getLastExpressWithdrawId() external view returns (uint256);
-	function getInvalidExpressWithdrawsPool() external view returns (address);
 
 	// ════════════════════════════════════════════════════════════════════════════
 	//                        CLOSE INTENT STORAGE VIEWS

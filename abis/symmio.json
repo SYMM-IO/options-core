@@ -760,172 +760,6 @@
         "type": "function"
     },
     {
-        "anonymous": false,
-        "inputs": [
-            {
-                "indexed": false,
-                "internalType": "uint256[]",
-                "name": "expressWithdrawIds",
-                "type": "uint256[]"
-            }
-        ],
-        "name": "CollectReceivedExpressWithdraws",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            {
-                "indexed": false,
-                "internalType": "address",
-                "name": "sender",
-                "type": "address"
-            },
-            {
-                "indexed": false,
-                "internalType": "address",
-                "name": "receiver",
-                "type": "address"
-            },
-            {
-                "indexed": false,
-                "internalType": "address",
-                "name": "collateral",
-                "type": "address"
-            },
-            {
-                "indexed": false,
-                "internalType": "uint256",
-                "name": "amount",
-                "type": "uint256"
-            },
-            {
-                "indexed": false,
-                "internalType": "address",
-                "name": "provider",
-                "type": "address"
-            },
-            {
-                "indexed": false,
-                "internalType": "uint256",
-                "name": "expressWithdrawId",
-                "type": "uint256"
-            },
-            {
-                "indexed": false,
-                "internalType": "uint256",
-                "name": "newBalance",
-                "type": "uint256"
-            }
-        ],
-        "name": "ExpressWithdraw",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            {
-                "indexed": false,
-                "internalType": "uint256",
-                "name": "expressWithdrawId",
-                "type": "uint256"
-            },
-            {
-                "indexed": false,
-                "internalType": "uint256",
-                "name": "validAmount",
-                "type": "uint256"
-            }
-        ],
-        "name": "RestoreExpressWithdraw",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            {
-                "indexed": false,
-                "internalType": "uint256",
-                "name": "expressWithdrawId",
-                "type": "uint256"
-            }
-        ],
-        "name": "SuspendExpressWithdraw",
-        "type": "event"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256[]",
-                "name": "expressWithdrawIds",
-                "type": "uint256[]"
-            }
-        ],
-        "name": "collectReceivedExpressWithdraws",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "collateral",
-                "type": "address"
-            },
-            {
-                "internalType": "uint256",
-                "name": "amount",
-                "type": "uint256"
-            },
-            {
-                "internalType": "address",
-                "name": "provider",
-                "type": "address"
-            },
-            {
-                "internalType": "address",
-                "name": "receiver",
-                "type": "address"
-            }
-        ],
-        "name": "expressWithdraw",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "expressWithdrawId",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "validAmount",
-                "type": "uint256"
-            }
-        ],
-        "name": "restoreExpressWithdraw",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "expressWithdrawId",
-                "type": "uint256"
-            }
-        ],
-        "name": "suspendExpressWithdraw",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
         "inputs": [
             {
                 "internalType": "string",
@@ -944,124 +778,6 @@
             }
         ],
         "name": "CooldownNotOver",
-        "type": "error"
-    },
-    {
-        "inputs": [],
-        "name": "EmptyList",
-        "type": "error"
-    },
-    {
-        "inputs": [],
-        "name": "ExpressWithdrawCollectionPaused",
-        "type": "error"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "expressWithdrawId",
-                "type": "uint256"
-            }
-        ],
-        "name": "ExpressWithdrawIdNotFound",
-        "type": "error"
-    },
-    {
-        "inputs": [],
-        "name": "ExpressWithdrawPaused",
-        "type": "error"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "sender",
-                "type": "address"
-            }
-        ],
-        "name": "InstantModeActive",
-        "type": "error"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "expectedCollateral",
-                "type": "address"
-            },
-            {
-                "internalType": "address",
-                "name": "expressWithdrawCollateral",
-                "type": "address"
-            }
-        ],
-        "name": "MismatchedCollateral",
-        "type": "error"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "sender",
-                "type": "address"
-            },
-            {
-                "internalType": "bytes32",
-                "name": "role",
-                "type": "bytes32"
-            }
-        ],
-        "name": "MissingRole",
-        "type": "error"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            }
-        ],
-        "name": "PartyBUser",
-        "type": "error"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "provider",
-                "type": "address"
-            }
-        ],
-        "name": "ProviderNotWhitelisted",
-        "type": "error"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "provider",
-                "type": "address"
-            }
-        ],
-        "name": "SelfProviderNotAllowed",
-        "type": "error"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "givenValidAmount",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "expressWithdrawAmount",
-                "type": "uint256"
-            }
-        ],
-        "name": "ValidAmountExceedsOriginal",
         "type": "error"
     },
     {
@@ -1315,6 +1031,17 @@
             }
         ],
         "name": "ExpirationTimestampPassed",
+        "type": "error"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "sender",
+                "type": "address"
+            }
+        ],
+        "name": "InstantModeActive",
         "type": "error"
     },
     {
@@ -1870,6 +1597,17 @@
             }
         ],
         "name": "PartyBNotActive",
+        "type": "error"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            }
+        ],
+        "name": "PartyBUser",
         "type": "error"
     },
     {
@@ -2794,57 +2532,32 @@
     {
         "inputs": [
             {
-                "internalType": "uint256",
-                "name": "expressWithdrawId",
-                "type": "uint256"
+                "internalType": "address",
+                "name": "provider",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "collateral",
+                "type": "address"
             }
         ],
-        "name": "getExpressWithdraw",
+        "name": "getExpressWithdrawProviderConfig",
         "outputs": [
             {
                 "components": [
                     {
-                        "internalType": "uint256",
-                        "name": "id",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "amount",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "collateral",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "sender",
-                        "type": "address"
+                        "internalType": "bool",
+                        "name": "isActive",
+                        "type": "bool"
                     },
                     {
                         "internalType": "address",
                         "name": "receiver",
                         "type": "address"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "provider",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "timestamp",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "enum ExpressWithdrawStatus",
-                        "name": "status",
-                        "type": "uint8"
                     }
                 ],
-                "internalType": "struct ExpressWithdraw",
+                "internalType": "struct ExpressWithdrawProviderConfig",
                 "name": "",
                 "type": "tuple"
             }
@@ -2928,7 +2641,7 @@
     },
     {
         "inputs": [],
-        "name": "getInvalidExpressWithdrawsPool",
+        "name": "getInvalidWithdrawalsPool",
         "outputs": [
             {
                 "internalType": "address",
@@ -2990,19 +2703,6 @@
     {
         "inputs": [],
         "name": "getLastCloseIntentId",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "getLastExpressWithdrawId",
         "outputs": [
             {
                 "internalType": "uint256",
@@ -4348,6 +4048,16 @@
                         "type": "address"
                     },
                     {
+                        "internalType": "address",
+                        "name": "provider",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "bytes",
+                        "name": "userData",
+                        "type": "bytes"
+                    },
+                    {
                         "internalType": "uint256",
                         "name": "timestamp",
                         "type": "uint256"
@@ -4483,25 +4193,6 @@
     {
         "inputs": [],
         "name": "isExpressWithdrawPaused",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "provider",
-                "type": "address"
-            }
-        ],
-        "name": "isExpressWithdrawProviderWhitelisted",
         "outputs": [
             {
                 "internalType": "bool",
@@ -5078,6 +4769,43 @@
         "inputs": [
             {
                 "indexed": false,
+                "internalType": "address",
+                "name": "sender",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "collateral",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "target",
+                "type": "address"
+            }
+        ],
+        "name": "ExternalTransfer",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
                 "internalType": "uint256",
                 "name": "id",
                 "type": "uint256"
@@ -5157,6 +4885,44 @@
             }
         ],
         "name": "InternalTransfer",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "id",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "validAmount",
+                "type": "uint256"
+            }
+        ],
+        "name": "RestoreWithdraw",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "id",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "suspender",
+                "type": "address"
+            }
+        ],
+        "name": "SuspendWithdraw",
         "type": "event"
     },
     {
@@ -5505,6 +5271,65 @@
         "inputs": [
             {
                 "internalType": "address",
+                "name": "provider",
+                "type": "address"
+            }
+        ],
+        "name": "ExpressWithdrawCancellationNotAllowed",
+        "type": "error"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "provider",
+                "type": "address"
+            }
+        ],
+        "name": "ExpressWithdrawProviderNotActive",
+        "type": "error"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "provider",
+                "type": "address"
+            },
+            {
+                "internalType": "string",
+                "name": "reason",
+                "type": "string"
+            }
+        ],
+        "name": "ExpressWithdrawRejectedByProvider",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "ExternalTransferPaused",
+        "type": "error"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "target",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "collateral",
+                "type": "address"
+            }
+        ],
+        "name": "ExternalTransferTargetNotWhitelisted",
+        "type": "error"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
                 "name": "party",
                 "type": "address"
             },
@@ -5567,6 +5392,38 @@
     {
         "inputs": [
             {
+                "internalType": "address",
+                "name": "sender",
+                "type": "address"
+            },
+            {
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            }
+        ],
+        "name": "MissingRole",
+        "type": "error"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "givenValidAmount",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "expressWithdrawAmount",
+                "type": "uint256"
+            }
+        ],
+        "name": "ValidAmountExceedsOriginal",
+        "type": "error"
+    },
+    {
+        "inputs": [
+            {
                 "internalType": "uint256",
                 "name": "withdrawId",
                 "type": "uint256"
@@ -5579,6 +5436,98 @@
         "inputs": [],
         "name": "WithdrawingPaused",
         "type": "error"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "collateral",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            },
+            {
+                "internalType": "address",
+                "name": "target",
+                "type": "address"
+            }
+        ],
+        "name": "externalTransfer",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "collateral",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            },
+            {
+                "internalType": "address",
+                "name": "to",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "provider",
+                "type": "address"
+            },
+            {
+                "internalType": "bytes",
+                "name": "userData",
+                "type": "bytes"
+            }
+        ],
+        "name": "initiateExpressWithdraw",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "id",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "validAmount",
+                "type": "uint256"
+            }
+        ],
+        "name": "restoreWithdraw",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "id",
+                "type": "uint256"
+            }
+        ],
+        "name": "suspendWithdraw",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
     },
     {
         "inputs": [],
@@ -6871,8 +6820,64 @@
     },
     {
         "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "_provider",
+                "type": "address"
+            },
+            {
+                "components": [
+                    {
+                        "internalType": "bool",
+                        "name": "isActive",
+                        "type": "bool"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "receiver",
+                        "type": "address"
+                    }
+                ],
+                "indexed": false,
+                "internalType": "struct ExpressWithdrawProviderConfig",
+                "name": "_config",
+                "type": "tuple"
+            }
+        ],
+        "name": "ExpressWithdrawProviderConfigUpdated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
         "inputs": [],
         "name": "ExpressWithdrawUnpaused",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "target",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "collateral",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "bool",
+                "name": "status",
+                "type": "bool"
+            }
+        ],
+        "name": "ExternalTransferTargetValidationStatusUpdated",
         "type": "event"
     },
     {
@@ -6935,6 +6940,19 @@
         "anonymous": false,
         "inputs": [],
         "name": "InternalTransferUnpaused",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "_pool",
+                "type": "address"
+            }
+        ],
+        "name": "InvalidWithdrawalsAmountsPoolUpdated",
         "type": "event"
     },
     {
@@ -7280,38 +7298,6 @@
             }
         ],
         "name": "RoleUpdated",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            {
-                "indexed": true,
-                "internalType": "address",
-                "name": "_provider",
-                "type": "address"
-            },
-            {
-                "indexed": false,
-                "internalType": "bool",
-                "name": "_state",
-                "type": "bool"
-            }
-        ],
-        "name": "SetExpressWithdrawProvider",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            {
-                "indexed": true,
-                "internalType": "address",
-                "name": "_pool",
-                "type": "address"
-            }
-        ],
-        "name": "SetInvalidExpressWithdrawsPool",
         "type": "event"
     },
     {
@@ -8051,12 +8037,52 @@
                 "type": "address"
             },
             {
+                "internalType": "address",
+                "name": "_collateral",
+                "type": "address"
+            },
+            {
+                "components": [
+                    {
+                        "internalType": "bool",
+                        "name": "isActive",
+                        "type": "bool"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "receiver",
+                        "type": "address"
+                    }
+                ],
+                "internalType": "struct ExpressWithdrawProviderConfig",
+                "name": "_config",
+                "type": "tuple"
+            }
+        ],
+        "name": "setExpressWithdrawProviderConfig",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "_target",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "_collateral",
+                "type": "address"
+            },
+            {
                 "internalType": "bool",
-                "name": "_state",
+                "name": "_status",
                 "type": "bool"
             }
         ],
-        "name": "setExpressWithdrawProviderState",
+        "name": "setExternalTransferTargetValidationStatus",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -8095,7 +8121,7 @@
                 "type": "address"
             }
         ],
-        "name": "setInvalidExpressWithdrawsPool",
+        "name": "setInvalidWithdrawalsAmountsPool",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -8543,6 +8569,11 @@
             }
         ],
         "name": "EmptyField",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "EmptyList",
         "type": "error"
     },
     {
@@ -9222,7 +9253,20 @@
     },
     {
         "inputs": [],
-        "name": "DISPUTE_ROLE",
+        "name": "DISPUTER_ROLE",
+        "outputs": [
+            {
+                "internalType": "bytes32",
+                "name": "",
+                "type": "bytes32"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "EXTERNAL_TRANSFER_TARGET_MANAGER_ROLE",
         "outputs": [
             {
                 "internalType": "bytes32",

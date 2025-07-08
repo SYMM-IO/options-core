@@ -105,6 +105,24 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	}
 
 	/**
+	 * @notice Transfers collateral from sender's available balance to whitelisted target without any cooldown
+	 * @dev sender must not be suspended for the operation to succeed
+	 * @param collateral The address of the collateral token to transfer
+	 * @param user The address of the recipient user in the target contract
+	 * @param amount The amount to transfer, specified in collateral decimals
+	 * @param target The address of the target contract that will receive the collateral
+	 */
+	function externalTransfer(
+		address collateral,
+		address user,
+		uint256 amount,
+		address target
+	) external whenNotExternalTransferPaused whenNotSuspended(msg.sender) whenInstantModeIsNotActive(msg.sender) whenPartyNotPaused(msg.sender) {
+		LibBalanceOperations.externalTransfer(collateral, msg.sender, user, amount, target);
+		emit ExternalTransfer(msg.sender, user, collateral, amount, target);
+	}
+
+	/**
 	 * @notice Initiates a withdrawal request for collateral
 	 * @dev Starts the withdrawal process, moving funds to a pending state
 	 * @param collateral The address of the collateral token to withdraw
@@ -123,8 +141,56 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		whenNotSuspended(to)
 		whenPartyNotPaused(msg.sender)
 	{
-		uint256 id = LibBalanceOperations.initiateWithdraw(msg.sender, collateral, amount, to);
+		uint256 id = LibBalanceOperations.initiateWithdraw(msg.sender, collateral, amount, to, address(0), "");
 		emit InitiateWithdraw(id, msg.sender, to, collateral, amount, msg.sender.balanceOf(collateral).isolatedBalance);
+	}
+
+	/**
+	 * @notice Initiates a withdrawal request for collateral
+	 * @dev Starts the withdrawal process, moving funds to a pending state
+	 * @param collateral The address of the collateral token to withdraw
+	 * @param amount The precise amount of collateral to be withdrawn, specified in 18 decimals
+	 * @param to The address that will receive the collateral upon completion
+	 * @param provider The address of the express withdraw provider
+	 * @param userData The user data
+	 */
+	function initiateExpressWithdraw(
+		address collateral,
+		uint256 amount,
+		address to,
+		address provider,
+		bytes memory userData
+	)
+		external
+		whenNotWithdrawingPaused
+		whenNotSuspended(msg.sender)
+		whenInstantModeIsNotActive(msg.sender)
+		whenNotSuspended(to)
+		whenPartyNotPaused(msg.sender)
+	{
+		uint256 id = LibBalanceOperations.initiateWithdraw(msg.sender, collateral, amount, to, provider, userData);
+		emit InitiateWithdraw(id, msg.sender, to, collateral, amount, msg.sender.balanceOf(collateral).isolatedBalance);
+	}
+
+	/**
+	 * @notice Suspends a withdrawal request
+	 * @dev Suspends the withdrawal request, preventing it from being completed
+	 * @param id The unique identifier of the withdrawal request to suspend
+	 */
+	function suspendWithdraw(uint256 id) external onlyRole(LibAccessibility.SUSPENDER_ROLE) {
+		LibBalanceOperations.suspendWithdraw(id);
+		emit SuspendWithdraw(id, msg.sender);
+	}
+
+	/**
+	 * @notice Restores a suspended withdrawal request
+	 * @dev Restores the withdrawal request, allowing it to be completed
+	 * @param id The unique identifier of the withdrawal request to restore
+	 * @param validAmount The verified amount to be processed, which may differ from the original amount
+	 */
+	function restoreWithdraw(uint256 id, uint256 validAmount) external onlyRole(LibAccessibility.DISPUTER_ROLE) {
+		LibBalanceOperations.restoreWithdraw(id, validAmount);
+		emit RestoreWithdraw(id, validAmount);
 	}
 
 	/**

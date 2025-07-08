@@ -31,11 +31,9 @@ library BalanceErrors {
     
     // Withdrawal specific
     error InvalidWithdrawalId(uint256 id);
-
-    // Bridge operations
-	error ProviderNotWhitelisted(address provider);
-	error SelfProviderNotAllowed(address provider);
-	error ExpressWithdrawIdNotFound(uint256 expressWithdrawId);
-	error MismatchedCollateral(address expectedCollateral, address expressWithdrawCollateral);
+    error ExpressWithdrawCancellationNotAllowed(address provider);
+    error ExpressWithdrawProviderNotActive(address provider);
+    error ExpressWithdrawProviderReceiverNotSet(address provider);
+    error ExpressWithdrawRejectedByProvider(address provider, string reason);
 	error ValidAmountExceedsOriginal(uint256 givenValidAmount, uint256 expressWithdrawAmount);
 }

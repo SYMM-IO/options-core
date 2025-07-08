@@ -8,15 +8,18 @@ import { LibParty } from "../models/LibParty.sol";
 import { LibDecimals } from "../utils/LibDecimals.sol";
 import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance.sol";
 
-import { ValidationErrors } from "../../errors/ValidationErrors.sol";
 import { BalanceErrors } from "../../errors/BalanceErrors.sol";
+import { ValidationErrors } from "../../errors/ValidationErrors.sol";
 
 import { AppStorage } from "../../storages/AppStorage.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 
 import { MarginType } from "../../types/BaseTypes.sol";
-import { Withdraw, WithdrawStatus } from "../../types/WithdrawTypes.sol";
+import { Withdraw, WithdrawStatus, ExpressWithdrawProviderConfig } from "../../types/WithdrawTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
+
+import { IExternalTransferTarget } from "../../interfaces/IExternalTransferTarget.sol";
+import { IExpressWithdrawProvider } from "../../interfaces/IExpressWithdrawProvider.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -80,7 +83,32 @@ library LibBalanceOperations {
 		targetBalance.instantIsolatedAdd(amount, IncreaseBalanceReason.INTERNAL_TRANSFER);
 	}
 
-	function initiateWithdraw(address sender, address collateral, uint256 amount, address to) internal returns (uint256 currentId) {
+	function externalTransfer(address collateral, address sender, address receiver, uint256 amount, address target) internal {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+
+		if (amount == 0) revert ValidationErrors.ZeroAmount();
+		if (receiver == address(0)) revert ValidationErrors.ZeroAddress("user");
+		if (target == address(0)) revert ValidationErrors.ZeroAddress("target");
+		if (!accountLayout.externalTransferTargets[target][collateral])
+			revert ValidationErrors.ExternalTransferTargetNotWhitelisted(target, collateral);
+
+		ScheduledReleaseBalance storage sourceBalance = sender.balanceOf(collateral);
+		sourceBalance.isolatedSub(amount, DecreaseBalanceReason.EXTERNAL_TRANSFER);
+
+		uint256 amountInCollateralDecimals = LibDecimals.denormalizeAmount(collateral, amount);
+		IERC20(collateral).safeTransfer(target, amountInCollateralDecimals);
+
+		IExternalTransferTarget(target).onTransfer(collateral, sender, receiver, amount);
+	}
+
+	function initiateWithdraw(
+		address sender,
+		address collateral,
+		uint256 amount,
+		address to,
+		address provider,
+		bytes memory userData
+	) internal returns (uint256 currentId) {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
 		if (to == address(0)) revert ValidationErrors.ZeroAddress("to");
@@ -94,6 +122,15 @@ library LibBalanceOperations {
 		if (available < amount) revert BalanceErrors.InsufficientBalance(sender, collateral, amount, available);
 		sender.requireSolvent(address(0), collateral, MarginType.ISOLATED);
 
+		if (provider != address(0)) {
+			ExpressWithdrawProviderConfig storage providerConfig = accountLayout.expressWithdrawProviderConfigs[provider][collateral];
+			if (!providerConfig.isActive) revert BalanceErrors.ExpressWithdrawProviderNotActive(provider);
+			if (providerConfig.receiver == address(0)) revert ValidationErrors.ZeroAddress("receiver");
+
+			(bool isValid, string memory reason) = IExpressWithdrawProvider(provider).validateWithdraw(sender, collateral, amount, to, userData);
+			if (!isValid) revert BalanceErrors.ExpressWithdrawRejectedByProvider(provider, reason);
+		}
+
 		balance.isolatedSub(amount, DecreaseBalanceReason.WITHDRAW);
 
 		currentId = ++accountLayout.lastWithdrawId;
@@ -103,11 +140,41 @@ library LibBalanceOperations {
 			user: sender,
 			collateral: collateral,
 			to: to,
+			provider: provider,
+			userData: userData,
 			timestamp: block.timestamp,
 			status: WithdrawStatus.INITIATED
 		});
 
 		accountLayout.withdrawals[currentId] = withdrawObject;
+	}
+
+	function suspendWithdraw(uint256 id) internal {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		Withdraw storage withdrawal = accountLayout.withdrawals[id];
+
+		ValidationErrors.requireStatus("WithdrawStatus", uint8(withdrawal.status), uint8(WithdrawStatus.INITIATED));
+		withdrawal.status = WithdrawStatus.SUSPENDED;
+	}
+
+	function restoreWithdraw(uint256 id, uint256 validAmount) internal {
+		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		Withdraw storage withdrawal = accountLayout.withdrawals[id];
+
+		ValidationErrors.requireStatus("WithdrawStatus", uint8(withdrawal.status), uint8(WithdrawStatus.SUSPENDED));
+		if (accountLayout.invalidWithdrawalsAmountsPool == address(0)) revert ValidationErrors.ZeroAddress("invalidWithdrawalsAmountsPool");
+		if (validAmount > withdrawal.amount) revert BalanceErrors.ValidAmountExceedsOriginal(validAmount, withdrawal.amount);
+
+		ScheduledReleaseBalance storage balance = accountLayout.invalidWithdrawalsAmountsPool.balanceOf(withdrawal.collateral);
+
+		balance.setup(accountLayout.invalidWithdrawalsAmountsPool, withdrawal.collateral);
+		balance.instantIsolatedAdd(
+			LibDecimals.normalizeAmount(withdrawal.collateral, withdrawal.amount - validAmount),
+			IncreaseBalanceReason.INVALID_WITHDRAWAL
+		);
+
+		withdrawal.status = WithdrawStatus.INITIATED;
+		withdrawal.amount = validAmount;
 	}
 
 	function completeWithdraw(uint256 id) internal {
@@ -134,7 +201,10 @@ library LibBalanceOperations {
 		withdrawal.status = WithdrawStatus.COMPLETED;
 
 		uint256 amountInCollateralDecimals = LibDecimals.denormalizeAmount(withdrawal.collateral, withdrawal.amount);
-		IERC20(withdrawal.collateral).safeTransfer(withdrawal.to, amountInCollateralDecimals);
+		address receiver = withdrawal.to;
+		if (withdrawal.provider != address(0))
+			receiver = accountLayout.expressWithdrawProviderConfigs[withdrawal.provider][withdrawal.collateral].receiver;
+		IERC20(withdrawal.collateral).safeTransfer(receiver, amountInCollateralDecimals);
 	}
 
 	function cancelWithdraw(uint256 id) internal {
@@ -144,6 +214,9 @@ library LibBalanceOperations {
 		if (id > accountLayout.lastWithdrawId) revert BalanceErrors.InvalidWithdrawalId(id);
 
 		Withdraw storage withdrawal = accountLayout.withdrawals[id];
+
+		if (withdrawal.provider != address(0)) revert BalanceErrors.ExpressWithdrawCancellationNotAllowed(withdrawal.provider);
+
 		ScheduledReleaseBalance storage balance = withdrawal.user.balanceOf(withdrawal.collateral);
 
 		ValidationErrors.requireStatus("WithdrawStatus", uint8(withdrawal.status), uint8(WithdrawStatus.INITIATED));

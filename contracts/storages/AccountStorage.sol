@@ -4,7 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { Withdraw } from "../types/WithdrawTypes.sol";
+import { Withdraw, ExpressWithdrawProviderConfig } from "../types/WithdrawTypes.sol";
 import { ScheduledReleaseBalance } from "../types/BalanceTypes.sol";
 
 library AccountStorage {
@@ -21,6 +21,10 @@ library AccountStorage {
 		/////////////////////////////////////////////////////////
 		mapping(uint256 => Withdraw) withdrawals;
 		uint256 lastWithdrawId;
+		address invalidWithdrawalsAmountsPool;
+		mapping(address => mapping(address => ExpressWithdrawProviderConfig)) expressWithdrawProviderConfigs; // provider => collateral => config
+		/////////////////////////////////////////////////////////
+		mapping(address => mapping(address => bool)) externalTransferTargets; // target => collateral => isValid
 	}
 
 	function layout() internal pure returns (Layout storage l) {

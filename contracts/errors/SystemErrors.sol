@@ -31,6 +31,7 @@ library SystemErrors {
 	error ExpressWithdrawCollectionPaused();
 	error DepositingPaused();
 	error InternalTransferPaused();
+	error ExternalTransferPaused();
 	error WithdrawingPaused();
 	error PartyAActionsPaused();
 	error PartyBActionsPaused();

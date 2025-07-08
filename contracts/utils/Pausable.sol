@@ -50,6 +50,14 @@ abstract contract Pausable {
 		_;
 	}
 
+	modifier whenNotExternalTransferPaused() {
+		StateControlStorage.Layout storage layout = StateControlStorage.layout();
+
+		if (layout.globalPaused) revert SystemErrors.GlobalPaused();
+		if (layout.externalTransferPaused) revert SystemErrors.ExternalTransferPaused();
+		_;
+	}
+
 	modifier whenNotWithdrawingPaused() {
 		StateControlStorage.Layout storage layout = StateControlStorage.layout();
 

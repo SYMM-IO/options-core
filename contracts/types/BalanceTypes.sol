@@ -70,7 +70,8 @@ enum IncreaseBalanceReason {
 	FEE,
 	PREMIUM,
 	REALIZED_PNL,
-	LIQUIDATION
+	LIQUIDATION,
+	INVALID_WITHDRAWAL
 }
 
 enum DecreaseBalanceReason {
@@ -81,5 +82,6 @@ enum DecreaseBalanceReason {
 	PREMIUM,
 	REALIZED_PNL,
 	CONFISCATE,
-	LIQUIDATION
+	LIQUIDATION,
+	EXTERNAL_TRANSFER
 }
