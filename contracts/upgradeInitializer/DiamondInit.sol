@@ -11,7 +11,7 @@ pragma solidity >=0.8.19;
 import { LibDiamond } from "../libraries/core/LibDiamond.sol";
 
 import { IDiamondCut } from "../facets/DiamondCut/IDiamondCut.sol";
-import { IDiamondLoupe } from "../facets/DiamondLoup/IDiamondLoupe.sol";
+import { IDiamondLoupe } from "../facets/DiamondLoupe/IDiamondLoupe.sol";
 
 import { IERC165 } from "../interfaces/IERC165.sol";
 

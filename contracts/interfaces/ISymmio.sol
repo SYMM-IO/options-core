@@ -9,7 +9,7 @@ import "../facets/View/IViewFacet.sol";
 import "../facets/Account/IAccountFacet.sol";
 import "../facets/Control/IControlFacet.sol";
 import "../facets/DiamondCut/IDiamondCut.sol";
-import "../facets/DiamondLoup/IDiamondLoupe.sol";
+import "../facets/DiamondLoupe/IDiamondLoupe.sol";
 import "../facets/PartyAOpen/IPartyAOpenFacet.sol";
 import "../facets/PartyBOpen/IPartyBOpenFacet.sol";
 import "../facets/PartyAClose/IPartyACloseFacet.sol";
