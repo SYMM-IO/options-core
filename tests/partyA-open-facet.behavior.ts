@@ -71,7 +71,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.symbolId(1)
 				.build()
 
-			await context.controlFacet.setSymbolValidationState(1, false)
+			await context.controlFacet.setSymbolsValidationState([1], [false])
 
 			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "InvalidSymbol")
 		})
@@ -311,7 +311,6 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				isActive: false,
 				lossCoverage: 0,
 				oracleId: 1,
-				symbolType: 0,
 			})
 			const latestBlock = await getLatestBlockTime()
 			const request = openIntentRequestBuilder()
@@ -377,8 +376,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			const latestBlock = await getLatestBlockTime()
 			const request = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB1.getSigner])
-				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.affiliate(context.signers.affiliate1.address)
+				.feeToken(await context.collateral.getAddress())
 				.expirationTimestamp(latestBlock + 120)
 				.deadline(latestBlock + 100)
 				.symbolId(1)
@@ -418,6 +417,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 		})
 
 		it("Should fail when not in appropriate state", async function () {
+			await context.controlFacet.setPartyBSupportedSymbolTypes(partyB1.getSigner.address, [0], [true])
+
 			await expect(partyB1.lockOpenIntent(1)).not.to.be.reverted
 			await expect(partyB1.fillOpenIntent(1, e(100), 6)).not.to.reverted
 			await expect(partyA1.sendCancelOpenIntent(["1"])).to.be.revertedWithCustomError(context.partyAOpenFacet, "InvalidState")
@@ -594,8 +595,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.tradeSide(TradeSide.BUY)
 				.build()
 
-			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, 1, e(20))
-			await context.controlFacet.setSymbolTradingFee(1, e(10))
+			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [e(20)])
+			await context.controlFacet.setSymbolsTradingFees([1], [e(10)])
 
 			await expect(partyA1.sendOpenIntent(request)).not.to.reverted
 
@@ -638,8 +639,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.marginType(MarginType.ISOLATED)
 				.build()
 
-			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, 1, e(50))
-			await context.controlFacet.setSymbolTradingFee(1, e(100))
+			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [e(50)])
+			await context.controlFacet.setSymbolsTradingFees([1], [e(100)])
 
 			expect(await partyA1.sendOpenIntent(request)).not.to.reverted
 			const intent = await context.viewFacet.getOpenIntent(1)
@@ -687,8 +688,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.marginType(MarginType.CROSS)
 				.build()
 
-			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, 1, e(50))
-			await context.controlFacet.setSymbolTradingFee(1, e(100))
+			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [e(50)])
+			await context.controlFacet.setSymbolsTradingFees([1], [e(100)])
 
 			expect(await partyA1.sendOpenIntent(request)).not.to.reverted
 			const intent = await context.viewFacet.getOpenIntent(1)

@@ -22,7 +22,6 @@ export function shouldBehaveLikeAccountFacet(): void {
 			isActive: true,
 			lossCoverage: 0,
 			oracleId: 1,
-			symbolType: 0,
 		})
 
 		await context.controlFacet.setUnbindingCooldown(120)
@@ -362,7 +361,6 @@ export function shouldBehaveLikeAccountFacet(): void {
 				isActive: true,
 				lossCoverage: 0,
 				oracleId: 1,
-				symbolType: 0,
 			})
 			await context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(partyB1.address)
 		})
@@ -411,7 +409,6 @@ export function shouldBehaveLikeAccountFacet(): void {
 				isActive: true,
 				lossCoverage: 0,
 				oracleId: 1,
-				symbolType: 0,
 			})
 
 			await expect(
@@ -448,7 +445,6 @@ export function shouldBehaveLikeAccountFacet(): void {
 				isActive: true,
 				lossCoverage: 0,
 				oracleId: 1,
-				symbolType: 0,
 			})
 
 			await expect(
@@ -499,7 +495,6 @@ export function shouldBehaveLikeAccountFacet(): void {
 				isActive: true,
 				lossCoverage: 0,
 				oracleId: 1,
-				symbolType: 0,
 			})
 		})
 
@@ -541,7 +536,6 @@ export function shouldBehaveLikeAccountFacet(): void {
 				isActive: true,
 				lossCoverage: 0,
 				oracleId: 1,
-				symbolType: 0,
 			})
 			await expect(context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB2)).to.be.revertedWithCustomError(
 				context.counterPartyRelation,
@@ -562,7 +556,6 @@ export function shouldBehaveLikeAccountFacet(): void {
 				isActive: true,
 				lossCoverage: 0,
 				oracleId: 1,
-				symbolType: 0,
 			})
 		})
 
@@ -683,7 +676,6 @@ export function shouldBehaveLikeAccountFacet(): void {
 				isActive: true,
 				lossCoverage: 0,
 				oracleId: 1,
-				symbolType: 0,
 			})
 
 			await context.controlFacet.setUnbindingCooldown(120)

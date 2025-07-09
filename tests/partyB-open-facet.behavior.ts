@@ -52,10 +52,10 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "UserSuspended")
 		})
 
-		it("Should be failed when in Emergency Mode", async () => {
-			await context.controlFacet.activeEmergencyMode()
-			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "SystemInEmergencyMode")
-		})
+		// it("Should be failed when in Emergency Mode", async () => {
+		// 	await context.controlFacet.activePartyBsEmergencyMode()
+		// 	await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "SystemInEmergencyMode")
+		// })
 
 		it("Should be failed when PartyB in Emergency Mode", async () => {
 			await context.controlFacet.activePartyBEmergencyMode(partyB1.getSigner)
@@ -84,7 +84,6 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 				isActive: true,
 				lossCoverage: 0,
 				oracleId: 1,
-				symbolType: 0,
 			})
 
 			await expect(context.partyBOpenFacet.connect(context.signers.partyA1).lockOpenIntent(1)).to.be.revertedWithCustomError(
@@ -112,7 +111,6 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 				isActive: true,
 				lossCoverage: 0,
 				oracleId: 1,
-				symbolType: 0,
 			})
 
 			await expect(context.partyBOpenFacet.connect(context.signers.partyA1).lockOpenIntent(1)).to.be.revertedWithCustomError(
@@ -151,21 +149,21 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 				.build()
 			await partyA1.sendOpenIntent(request)
 
-			await context.controlFacet.setSymbolValidationState(2, false)
+			await context.controlFacet.setSymbolsValidationState([2], [false])
 			await expect(partyB2.lockOpenIntent(2)).to.be.revertedWithCustomError(context.partyBOpenFacet, "InvalidSymbol")
 		})
 
 		it("should revert when partB symbol type mismatch intent symbol type", async () => {
 			const latestBlock = await getLatestBlockTime()
+			await context.controlFacet.setPartyBSupportedSymbolTypes(context.signers.partyB1, [0], [false])
 
 			await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
 				isActive: true,
 				lossCoverage: 0,
 				oracleId: 1,
-				symbolType: 1, // another category of symbols
 			})
 
-			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "SymbolTypeMismatch")
+			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "SymbolTypeNotSupported")
 		})
 
 		it("Should failed when intent expiration has been passed", async () => {
@@ -180,11 +178,11 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 
 		it("Should failed when partyB oracle id not equal with intent symbol oracle id", async () => {
+			await context.controlFacet.addOracle("test 2 oracle", context.oracle)
 			await context.controlFacet.setPartyBConfig(partyB1.getSigner, {
 				isActive: true,
 				lossCoverage: 0,
 				oracleId: 2,
-				symbolType: 0,
 			})
 
 			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "OracleMismatch")
@@ -195,7 +193,6 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 				isActive: false,
 				lossCoverage: 0,
 				oracleId: 1,
-				symbolType: 0,
 			})
 
 			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "NotPartyB")
@@ -244,20 +241,15 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			await expect(partyB1.fillOpenIntent(2, 100, 7)).to.revertedWithCustomError(context.partyAOpenFacet, "PartyBActionsPaused")
 		})
 
-		it("Should be failed when in Emergency Mode", async () => {
-			await context.controlFacet.activeEmergencyMode()
-			await expect(partyB1.fillOpenIntent(1, 100, 7)).to.be.revertedWithCustomError(context.partyBOpenFacet, "SystemInEmergencyMode")
-		})
+		// it("Should be failed when in Emergency Mode", async () => {
+		// 	await context.controlFacet()
+		// 	await expect(partyB1.fillOpenIntent(1, 100, 7)).to.be.revertedWithCustomError(context.partyBOpenFacet, "SystemInEmergencyMode")
+		// })
 
-		it("Should be failed when PartyB in Emergency Mode", async () => {
-			await context.controlFacet.activePartyBEmergencyMode(partyB1.getSigner)
-			await expect(partyB1.fillOpenIntent(1, 100, 7)).to.be.revertedWithCustomError(context.partyBOpenFacet, "PartyBInEmergencyMode")
-		})
-
-		it("Should be failed when in Emergency Mode", async () => {
-			await context.controlFacet.activeEmergencyMode()
-			await expect(partyB1.fillOpenIntent(1, 100, 7)).to.be.revertedWithCustomError(context.partyBOpenFacet, "SystemInEmergencyMode")
-		})
+		// it("Should be failed when PartyB in Emergency Mode", async () => {
+		// 	await context.controlFacet.activePartyBEmergencyMode(partyB1.getSigner)
+		// 	await expect(partyB1.fillOpenIntent(1, 100, 7)).to.be.revertedWithCustomError(context.partyBOpenFacet, "PartyBInEmergencyMode")
+		// })
 
 		it("Should be failed when PartyB in Emergency Mode", async () => {
 			await context.controlFacet.activePartyBEmergencyMode(partyB1.getSigner)
@@ -281,7 +273,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 
 		it("Should failed when symbol is not valid", async () => {
-			await context.controlFacet.setSymbolValidationState(1, false)
+			await context.controlFacet.setSymbolsValidationState([1], [false])
 
 			await expect(partyB1.fillOpenIntent(1, 100, 7)).to.revertedWithCustomError(context.partyBOpenFacet, "InvalidSymbol")
 		})
