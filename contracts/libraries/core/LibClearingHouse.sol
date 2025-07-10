@@ -226,7 +226,7 @@ library LibClearingHouse {
 
 	function allocateFromReserveToCross(address party, address counterParty, address collateral, uint256 amount) internal {
 		ScheduledReleaseBalance storage balance = party.balanceOf(collateral);
-		if (balance.reserveBalance < amount) revert();
+		if (balance.reserveBalance < amount) revert BalanceErrors.InsufficientBalance(party, collateral, amount, balance.reserveBalance);
 		balance.reserveBalance -= amount;
 		balance.scheduledAdd(counterParty, amount, MarginType.CROSS, IncreaseBalanceReason.ALLOCATE_FROM_RESERVE);
 	}

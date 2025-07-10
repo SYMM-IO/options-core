@@ -1550,6 +1550,43 @@
             {
                 "indexed": false,
                 "internalType": "address",
+                "name": "operator",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "party",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "counterParty",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "collateral",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            }
+        ],
+        "name": "AllocateFromReserveToCross",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "address",
                 "name": "user",
                 "type": "address"
             },
@@ -1750,6 +1787,12 @@
             },
             {
                 "indexed": false,
+                "internalType": "uint256",
+                "name": "liquidationId",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
                 "internalType": "uint256[]",
                 "name": "tradeIds",
                 "type": "uint256[]"
@@ -1827,6 +1870,12 @@
         "inputs": [
             {
                 "indexed": false,
+                "internalType": "address",
+                "name": "operator",
+                "type": "address"
+            },
+            {
+                "indexed": false,
                 "internalType": "uint256",
                 "name": "liquidationId",
                 "type": "uint256"
@@ -1844,6 +1893,12 @@
     {
         "anonymous": false,
         "inputs": [
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "operator",
+                "type": "address"
+            },
             {
                 "indexed": false,
                 "internalType": "uint256",

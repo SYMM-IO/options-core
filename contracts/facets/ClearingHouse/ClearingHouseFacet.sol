@@ -66,12 +66,12 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 		uint256 amount
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
 		LibClearingHouse.confiscatePartyA(liquidationId, amount);
-		emit ConfiscatePartyA(liquidationId, amount);
+		emit ConfiscatePartyA(msg.sender, liquidationId, amount);
 	}
 
 	function confiscatePartyBWithdrawal(uint256 withdrawId) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
 		LibClearingHouse.confiscatePartyBWithdrawal(withdrawId);
-		emit ConfiscatePartyBWithdrawal(withdrawId);
+		emit ConfiscatePartyBWithdrawal(msg.sender, withdrawId);
 	}
 
 	function distributeCollateral(
@@ -153,7 +153,7 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 		uint256[] memory prices
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
 		LibClearingHouse.closeTrades(liquidationId, tradeIds, prices);
-		emit CloseTradesForLiquidation(msg.sender, tradeIds, prices);
+		emit CloseTradesForLiquidation(msg.sender, liquidationId, tradeIds, prices);
 	}
 
 	function allocateFromReserveToCross(
@@ -163,6 +163,7 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 		uint256 amount
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
 		LibClearingHouse.allocateFromReserveToCross(party, counterParty, collateral, amount);
+		emit AllocateFromReserveToCross(msg.sender, party, counterParty, collateral, amount);
 	}
 
 	function cancelOpenIntents(uint256[] calldata intentIds) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
