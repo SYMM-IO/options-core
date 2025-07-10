@@ -54,7 +54,7 @@ library LibPartyBOpen {
 
 		if (!symbol.isValid) revert ValidationErrors.InvalidSymbol(intent.tradeAgreements.symbolId);
 
-		if (block.timestamp > intent.tradeAgreements.expirationTimestamp)
+		if (block.timestamp >= intent.tradeAgreements.expirationTimestamp)
 			revert IntentErrors.ExpirationTimestampPassed(block.timestamp, intent.tradeAgreements.expirationTimestamp);
 
 		if (appLayout.partyBConfigs[sender].oracleId != symbol.oracleId)
@@ -149,7 +149,7 @@ library LibPartyBOpen {
 			intent.partyA.requireSolvent(intent.partyB, symbol.collateral, intent.tradeAgreements.marginType);
 		intent.partyB.requireSolvent(intent.partyA, symbol.collateral, intent.tradeAgreements.marginType);
 		if (block.timestamp > intent.deadline) revert IntentErrors.IntentExpired(intentId, block.timestamp, intent.deadline);
-		if (block.timestamp > intent.tradeAgreements.expirationTimestamp)
+		if (block.timestamp >= intent.tradeAgreements.expirationTimestamp)
 			revert IntentErrors.ExpirationTimestampPassed(block.timestamp, intent.tradeAgreements.expirationTimestamp);
 		if (quantity == 0) revert ValidationErrors.ZeroAmount();
 		if (intent.tradeAgreements.quantity < quantity) revert IntentErrors.InvalidFillAmount(quantity, intent.tradeAgreements.quantity);

@@ -7,7 +7,7 @@ pragma solidity >=0.8.19;
 import { OpenIntent } from "../types/IntentTypes.sol";
 
 library OpenIntentStorage {
-	bytes32 internal constant SYMBOL_STORAGE_SLOT = keccak256("diamond.standard.storage.openIntent");
+	bytes32 internal constant OPEN_INTENT_STORAGE_SLOT = keccak256("diamond.standard.storage.openIntent");
 
 	struct Layout {
 		mapping(uint256 => OpenIntent) openIntents;
@@ -19,7 +19,7 @@ library OpenIntentStorage {
 	}
 
 	function layout() internal pure returns (Layout storage l) {
-		bytes32 slot = SYMBOL_STORAGE_SLOT;
+		bytes32 slot = OPEN_INTENT_STORAGE_SLOT;
 		assembly {
 			l.slot := slot
 		}

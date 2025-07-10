@@ -7,6 +7,7 @@ pragma solidity >=0.8.19;
 
 import { LibParty } from "./LibParty.sol";
 
+import { TradeStorage } from "../../storages/TradeStorage.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 
 import { MarginType } from "../../types/BaseTypes.sol";
@@ -18,8 +19,8 @@ import {
 	CrossEntry
 } from "../../types/BalanceTypes.sol";
 
-import { ValidationErrors } from "../../errors/ValidationErrors.sol";
 import { BalanceErrors } from "../../errors/BalanceErrors.sol";
+import { ValidationErrors } from "../../errors/ValidationErrors.sol";
 
 /// @title ScheduledReleaseBalanceOps
 /// @notice Collection of helper functions to operate on {@link ScheduledReleaseBalance}.
@@ -111,7 +112,7 @@ library ScheduledReleaseBalanceOps {
 		if (!accountLayout.manualSync[self.user]) addCounterParty(self, counterParty);
 
 		// keep schedule up‑to‑date first
-		_sync(self, counterParty, false);
+		_sync(self, counterParty);
 
 		// zero interval ⇒ treat as instant add
 		if (counterParty.getReleaseInterval() == 0) {
@@ -264,10 +265,10 @@ library ScheduledReleaseBalanceOps {
 
 	/**
 	 * @notice Public entry point that realizes matured buckets for `counterParty`.
-	 * @dev     Thin wrapper around `_sync` with `removeCounterPartyOnEmpty = true`.
+	 * @dev     Thin wrapper around `_sync` with `tryRemoveCounterPartyOnEmpty = true`.
 	 */
 	function sync(ScheduledReleaseBalance storage self, address counterParty) internal {
-		return _sync(self, counterParty, true);
+		return _sync(self, counterParty);
 	}
 
 	/**
@@ -281,15 +282,14 @@ library ScheduledReleaseBalanceOps {
 			unchecked {
 				--len;
 			}
-			_sync(self, list[len], true);
+			_sync(self, list[len]);
 		}
 	}
 
 	/**
 	 * @notice Core sync routine. Moves funds through the two‑bus pipeline.
-	 * @param removeCounterPartyOnEmpty If true, remove `counterParty` when no balance remains in buses.
 	 */
-	function _sync(ScheduledReleaseBalance storage self, address counterParty, bool removeCounterPartyOnEmpty) internal {
+	function _sync(ScheduledReleaseBalance storage self, address counterParty) internal {
 		// insolvent counter‑party ⇒ keep everything locked
 		if (!counterParty.isSolvent(self.user, self.collateral, MarginType.ISOLATED)) {
 			// OK as no effect when counter party is A in ISOLATED Margin type
@@ -350,10 +350,7 @@ library ScheduledReleaseBalanceOps {
 		// align timestamp to current interval start
 		entry.lastTransitionTimestamp = (block.timestamp / entry.releaseInterval) * entry.releaseInterval;
 
-		// optionally prune if nothing left
-		if (!AccountStorage.layout().manualSync[self.user] && removeCounterPartyOnEmpty && entry.transitioning == 0 && entry.scheduled == 0) {
-			removeCounterParty(self, counterParty);
-		}
+		tryRemoveCounterParty(self, counterParty);
 
 		emit SyncBalance(self.user, counterParty, self.collateral);
 	}
@@ -368,9 +365,11 @@ library ScheduledReleaseBalanceOps {
 	function addCounterParty(ScheduledReleaseBalance storage self, address counterParty) internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
-		if (self.counterPartyIndexes[counterParty] != 0) return; // already present
+		if (self.counterPartyIndexes[counterParty] != 0 || AccountStorage.layout().manualSync[self.user]) return; // already present or manual sync is enabled
 		if (self.counterPartyAddresses.length >= accountLayout.maxConnectedCounterParties) {
-			revert BalanceErrors.MaxCounterPartyConnectionsReached(self.counterPartyAddresses.length, accountLayout.maxConnectedCounterParties);
+			syncAll(self); // sync all to remove any counterparty that has no balance left
+			if (self.counterPartyAddresses.length >= accountLayout.maxConnectedCounterParties)
+				revert BalanceErrors.MaxCounterPartyConnectionsReached(self.counterPartyAddresses.length, accountLayout.maxConnectedCounterParties);
 		}
 
 		ScheduledReleaseEntry storage entry = self.counterPartySchedules[counterParty];
@@ -388,8 +387,16 @@ library ScheduledReleaseBalanceOps {
 	/**
 	 * @notice Remove `counterParty` from tracking once balances are zero.
 	 */
-	function removeCounterParty(ScheduledReleaseBalance storage self, address counterParty) internal {
+	function tryRemoveCounterParty(ScheduledReleaseBalance storage self, address counterParty) internal {
 		if (counterParty == address(0)) revert ValidationErrors.ZeroAddress("counterParty");
+
+		ScheduledReleaseEntry storage entry = self.counterPartySchedules[counterParty];
+
+		if (
+			entry.transitioning != 0 ||
+			entry.scheduled != 0 ||
+			TradeStorage.layout().activeTradesOfPartyAWithPartyBCount[self.user][self.collateral][counterParty] != 0
+		) return;
 
 		uint256 balance = inTransitionBalance(self, counterParty); // if any window open
 		if (balance != 0) revert BalanceErrors.NonZeroBalanceCounterParty(counterParty, balance);

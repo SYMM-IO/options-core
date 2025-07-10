@@ -36,7 +36,7 @@ import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
  * @notice Interface for MultiAccount contract interactions.
  */
 interface IMultiAccount {
-	function _call(address account, bytes[] memory _callDatas) external;
+	function _call(address account, bytes[] calldata _callDatas) external;
 }
 
 /**
@@ -434,7 +434,7 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	 * @return Modified call data with inserted results.
 	 */
 	function _insertResults(
-		bytes memory callData,
+		bytes calldata callData,
 		uint256[] memory insertionPoints,
 		uint256[] memory sourceIndices,
 		bytes[] memory results

@@ -7,11 +7,12 @@ pragma solidity >=0.8.19;
 import { Trade } from "../types/TradeTypes.sol";
 
 library TradeStorage {
-	bytes32 internal constant SYMBOL_STORAGE_SLOT = keccak256("diamond.standard.storage.trade");
+	bytes32 internal constant TRADE_STORAGE_SLOT = keccak256("diamond.standard.storage.trade");
 
 	struct Layout {
 		mapping(uint256 => Trade) trades;
 		mapping(address => uint256[]) activeTradesOfPartyA;
+		mapping(address => mapping(address => mapping(address => uint256))) activeTradesOfPartyAWithPartyBCount; // partyAAddress => collateral => counterParty => active trades Count
 		mapping(address => mapping(address => uint256[])) activeTradesOfPartyB; // partyBAddress => collateral => trades
 		mapping(uint256 => uint256) partyATradesIndex;
 		mapping(uint256 => uint256) partyBTradesIndex;
@@ -19,7 +20,7 @@ library TradeStorage {
 	}
 
 	function layout() internal pure returns (Layout storage l) {
-		bytes32 slot = SYMBOL_STORAGE_SLOT;
+		bytes32 slot = TRADE_STORAGE_SLOT;
 		assembly {
 			l.slot := slot
 		}

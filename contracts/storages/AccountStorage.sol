@@ -8,7 +8,7 @@ import { Withdraw, ExpressWithdrawProviderConfig } from "../types/WithdrawTypes.
 import { ScheduledReleaseBalance } from "../types/BalanceTypes.sol";
 
 library AccountStorage {
-	bytes32 internal constant STORAGE_SLOT = keccak256("diamond.standard.storage.account");
+	bytes32 internal constant ACCOUNT_STORAGE_SLOT = keccak256("diamond.standard.storage.account");
 
 	struct Layout {
 		mapping(address => mapping(address => ScheduledReleaseBalance)) balances; // user => collateral => balance
@@ -28,7 +28,7 @@ library AccountStorage {
 	}
 
 	function layout() internal pure returns (Layout storage l) {
-		bytes32 slot = STORAGE_SLOT;
+		bytes32 slot = ACCOUNT_STORAGE_SLOT;
 		assembly {
 			l.slot := slot
 		}

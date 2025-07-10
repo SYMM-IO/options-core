@@ -72,6 +72,7 @@ library LibTradeOps {
 		tradeLayout.partyATradesIndex[self.id] = tradeLayout.activeTradesOfPartyA[self.partyA].length - 1;
 		tradeLayout.partyBTradesIndex[self.id] = tradeLayout.activeTradesOfPartyB[self.partyB][symbol.collateral].length - 1;
 
+		tradeLayout.activeTradesOfPartyAWithPartyBCount[self.partyA][symbol.collateral][self.partyB]++;
 		self.partyA.balanceOf(symbol.collateral).addCounterParty(self.partyB);
 	}
 
@@ -95,6 +96,9 @@ library LibTradeOps {
 
 		tradeLayout.partyATradesIndex[self.id] = 0;
 		tradeLayout.partyBTradesIndex[self.id] = 0;
+
+		tradeLayout.activeTradesOfPartyAWithPartyBCount[self.partyA][symbol.collateral][self.partyB]--;
+		self.partyA.balanceOf(symbol.collateral).tryRemoveCounterParty(self.partyB);
 	}
 
 	function close(Trade storage self, TradeStatus tradeStatus, CloseIntentStatus intentStatus) internal {

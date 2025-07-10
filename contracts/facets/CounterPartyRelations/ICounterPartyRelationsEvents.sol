@@ -5,9 +5,9 @@
 pragma solidity >=0.8.19;
 
 interface ICounterPartyRelationsEvents {
-	event ActivateInstantActionMode(address user, uint256 timestamp);
-	event ProposeToDeactivateInstantActionMode(address user, uint256 timestamp);
-	event DeactivateInstantActionMode(address user, uint256 timestamp);
+	event ActivateInstantActionMode(address indexed user, uint256 timestamp);
+	event ProposeToDeactivateInstantActionMode(address indexed user, uint256 timestamp);
+	event DeactivateInstantActionMode(address indexed user, uint256 timestamp);
 	event BindToPartyB(address indexed partyA, address indexed partyB);
 	event InitiateUnbindingFromPartyB(address indexed partyA, address indexed partyB, uint256 initiationTime);
 	event CompleteUnbindingFromPartyB(address indexed partyA, address indexed partyB);

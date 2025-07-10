@@ -15,6 +15,7 @@ import { UpnlSig } from "../../types/WithdrawTypes.sol";
 
 import { Pausable } from "../../utils/Pausable.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
+import { ReentrancyGuard } from "../../utils/ReentrancyGuard.sol";
 
 import { IAccountFacet } from "./IAccountFacet.sol";
 
@@ -23,7 +24,7 @@ import { IAccountFacet } from "./IAccountFacet.sol";
  * @notice Manages account operations including deposits, withdrawals
  * @dev Implements the IAccountFacet interface with access control and pausability
  */
-contract AccountFacet is Accessibility, Pausable, IAccountFacet {
+contract AccountFacet is Accessibility, Pausable, IAccountFacet, ReentrancyGuard {
 	using LibParty for address;
 
 	/**
@@ -35,7 +36,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	function deposit(
 		address collateral,
 		uint256 amount
-	) external whenDepositingNotPaused whenNotSuspended(msg.sender) whenPartyNotPaused(msg.sender) {
+	) external nonReentrant whenDepositingNotPaused whenNotSuspended(msg.sender) whenPartyNotPaused(msg.sender) {
 		LibBalanceOperations.deposit(collateral, msg.sender, amount);
 		emit Deposit(msg.sender, msg.sender, collateral, amount, msg.sender.balanceOf(collateral).isolatedBalance);
 	}
@@ -67,7 +68,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		address collateral,
 		address user,
 		uint256 amount
-	) external whenDepositingNotPaused whenNotSuspended(msg.sender) whenNotSuspended(user) whenPartyNotPaused(msg.sender) whenPartyNotPaused(user) {
+	) external nonReentrant whenDepositingNotPaused whenNotSuspended(msg.sender) whenNotSuspended(user) whenPartyNotPaused(msg.sender) whenPartyNotPaused(user) {
 		LibBalanceOperations.deposit(collateral, user, amount);
 		emit Deposit(msg.sender, user, collateral, amount, user.balanceOf(collateral).isolatedBalance);
 	}
@@ -117,7 +118,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		address user,
 		uint256 amount,
 		address target
-	) external whenNotExternalTransferPaused whenNotSuspended(msg.sender) whenInstantModeIsNotActive(msg.sender) whenPartyNotPaused(msg.sender) {
+	) external nonReentrant whenNotExternalTransferPaused whenNotSuspended(msg.sender) whenInstantModeIsNotActive(msg.sender) whenPartyNotPaused(msg.sender) {
 		LibBalanceOperations.externalTransfer(collateral, msg.sender, user, amount, target);
 		emit ExternalTransfer(msg.sender, user, collateral, amount, target);
 	}
@@ -162,6 +163,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 		bytes memory userData
 	)
 		external
+		nonReentrant
 		whenWithdrawingNotPaused
 		whenNotExpressWithdrawPaused
 		whenNotSuspended(msg.sender)
@@ -199,7 +201,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet {
 	 * @dev Transfers the collateral to the destination address specified in the withdrawal request
 	 * @param id The unique identifier of the withdrawal request to complete
 	 */
-	function completeWithdraw(uint256 id) external whenWithdrawingNotPaused whenWithdrawalNotSuspended(id) whenPartyNotPaused(msg.sender) {
+	function completeWithdraw(uint256 id) external nonReentrant whenWithdrawingNotPaused whenWithdrawalNotSuspended(id) whenPartyNotPaused(msg.sender) {
 		LibBalanceOperations.completeWithdraw(id);
 		emit CompleteWithdraw(id);
 	}

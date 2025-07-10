@@ -14,6 +14,7 @@ library TradeErrors {
 	// Trade transfer
 	error ReceiverIsPartyB(address receiver, address partyB);
 	error CrossTradeTransferNotAllowed(uint256 tradeId);
+	error NFTMintingNotAllowedForCrossMarginTrade(uint256 tradeId);
 
 	// Settlement
 	error MismatchedSymbolId(uint256 providedSymbolId, uint256 tradeSymbolId);

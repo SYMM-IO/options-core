@@ -204,7 +204,7 @@ library LibClearingHouse {
 	//                       🔄  Shared 🔄
 	// =============================================================
 
-	function closeTrades(uint256 liquidationId, uint256[] memory tradeIds, uint256[] memory prices) internal {
+	function closeTrades(uint256 liquidationId, uint256[] calldata tradeIds, uint256[] calldata prices) internal {
 		if (tradeIds.length != prices.length) revert LiquidationErrors.MismatchedArrayLengths(tradeIds.length, prices.length);
 
 		LiquidationDetail storage detail = LiquidationStorage.layout().liquidationDetails[liquidationId];
@@ -226,7 +226,7 @@ library LibClearingHouse {
 
 	function allocateFromReserveToCross(address party, address counterParty, address collateral, uint256 amount) internal {
 		ScheduledReleaseBalance storage balance = party.balanceOf(collateral);
-		if (balance.reserveBalance < amount) revert();
+		if (balance.reserveBalance < amount) revert BalanceErrors.InsufficientBalance(party, collateral, amount, balance.reserveBalance);
 		balance.reserveBalance -= amount;
 		balance.scheduledAdd(counterParty, amount, MarginType.CROSS, IncreaseBalanceReason.ALLOCATE_FROM_RESERVE);
 	}
@@ -243,7 +243,6 @@ library LibClearingHouse {
 		_requireStatus(detail, LiquidationStatus.IN_PROGRESS);
 
 		balance.subForCounterParty(detail.partyB, amount, MarginType.CROSS, DecreaseBalanceReason.CONFISCATE);
-		// detail.collectedCollateral += amount;
 	}
 
 	function confiscatePartyBWithdrawal(uint256 withdrawId) internal {
@@ -257,8 +256,8 @@ library LibClearingHouse {
 		address partyB,
 		address collateral,
 		MarginType marginType,
-		address[] memory partyAs,
-		uint256[] memory amounts
+		address[] calldata partyAs,
+		uint256[] calldata amounts
 	) internal {
 		if (partyAs.length != amounts.length) revert LiquidationErrors.MismatchedArrayLengths(partyAs.length, amounts.length);
 
@@ -282,7 +281,7 @@ library LibClearingHouse {
 		}
 	}
 
-	function cancelOpenIntents(uint256[] memory intentIds) internal {
+	function cancelOpenIntents(uint256[] calldata intentIds) internal {
 		OpenIntentStorage.Layout storage openIntentLayout = OpenIntentStorage.layout();
 
 		for (uint256 i = 0; i < intentIds.length; i++) {
@@ -314,7 +313,7 @@ library LibClearingHouse {
 		}
 	}
 
-	function cancelCloseIntents(uint256[] memory intentIds) internal {
+	function cancelCloseIntents(uint256[] calldata intentIds) internal {
 		CloseIntentStorage.Layout storage closeIntentLayout = CloseIntentStorage.layout();
 		TradeStorage.Layout storage tradeLayout = TradeStorage.layout();
 

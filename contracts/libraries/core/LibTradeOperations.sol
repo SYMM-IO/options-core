@@ -24,7 +24,6 @@ import { TradeErrors } from "../../errors/TradeErrors.sol";
 import { ValidationErrors } from "../../errors/ValidationErrors.sol";
 
 import { ITradeNFT } from "../../interfaces/ITradeNFT.sol";
-import { IMultiAccount } from "../../interfaces/IMultiAccount.sol";
 
 library LibTradeOperations {
 	using LibTradeOps for Trade;
@@ -63,8 +62,8 @@ library LibTradeOperations {
 	}
 
 	function executeTrades(
-		uint256[] memory tradeIds,
-		SettlementPriceSig memory sig
+		uint256[] calldata tradeIds,
+		SettlementPriceSig calldata sig
 	) internal returns (bool[] memory exercised, bool[] memory expired) {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		AppStorage.Layout storage appLayout = AppStorage.layout();
@@ -186,6 +185,7 @@ library LibTradeOperations {
 
 	function mintNFTForTrade(uint256 tradeId) internal {
 		Trade storage trade = TradeStorage.layout().trades[tradeId];
+		if (trade.tradeAgreements.marginType == MarginType.CROSS) revert TradeErrors.NFTMintingNotAllowedForCrossMarginTrade(tradeId);
 		ITradeNFT(AppStorage.layout().tradeNftAddress).mintNFTForTrade(trade.partyA, tradeId);
 	}
 }

@@ -8,6 +8,7 @@ import { LibTradeOperations } from "../../libraries/core/LibTradeOperations.sol"
 
 import { Pausable } from "../../utils/Pausable.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
+import { ReentrancyGuard } from "../../utils/ReentrancyGuard.sol";
 
 import { ITradeFacet } from "./ITradeFacet.sol";
 import { SettlementPriceSig } from "../../types/TradeTypes.sol";
@@ -17,7 +18,7 @@ import { SettlementPriceSig } from "../../types/TradeTypes.sol";
  * @notice Manages trade transactions through trade operations
  * @dev Implements the ITradeFacet interface with access control and pausability mechanisms
  */
-contract TradeFacet is Accessibility, Pausable, ITradeFacet {
+contract TradeFacet is Accessibility, Pausable, ITradeFacet, ReentrancyGuard {
 	/**
 	 * @notice Transfers ownership of a trade to another address
 	 * @dev Only the current PartyA owner of the trade can initiate this transfer
@@ -28,7 +29,7 @@ contract TradeFacet is Accessibility, Pausable, ITradeFacet {
 	function transferTrade(
 		address receiver,
 		uint256 tradeId
-	) external whenPartyNotPaused(msg.sender) onlyPartyAOfTrade(tradeId) whenNotSuspended(msg.sender) whenNotSuspended(receiver) {
+	) external nonReentrant whenPartyNotPaused(msg.sender) onlyPartyAOfTrade(tradeId) whenNotSuspended(msg.sender) whenNotSuspended(receiver) {
 		LibTradeOperations.transferTrade(receiver, tradeId);
 		emit TransferTradeByPartyA(msg.sender, receiver, tradeId);
 	}
@@ -57,7 +58,7 @@ contract TradeFacet is Accessibility, Pausable, ITradeFacet {
 	 * @param settlementPriceSig Cryptographically signed data from Muon oracle containing
 	 *                          the verified settlement price of the symbol at expiration time
 	 */
-	function executeTrades(uint256[] memory tradeIds, SettlementPriceSig memory settlementPriceSig) external whenNotThirdPartyActionsPaused {
+	function executeTrades(uint256[] calldata tradeIds, SettlementPriceSig calldata settlementPriceSig) external whenNotThirdPartyActionsPaused {
 		(bool[] memory exercised, bool[] memory expired) = LibTradeOperations.executeTrades(tradeIds, settlementPriceSig);
 		emit ExecuteTrades(msg.sender, tradeIds, exercised, expired, settlementPriceSig.settlementPrice, settlementPriceSig.collateralPrice);
 	}
@@ -67,7 +68,7 @@ contract TradeFacet is Accessibility, Pausable, ITradeFacet {
 	 * @dev Only PartyA can call this function
 	 * @param tradeId The unique identifier of the trade to mint an NFT for
 	 */
-	function mintNFTForTrade(uint256 tradeId) external onlyPartyAOfTrade(tradeId) {
+	function mintNFTForTrade(uint256 tradeId) external nonReentrant onlyPartyAOfTrade(tradeId) {
 		LibTradeOperations.mintNFTForTrade(tradeId);
 	}
 }

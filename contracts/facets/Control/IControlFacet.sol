@@ -138,7 +138,7 @@ interface IControlFacet is IControlEvents {
 		uint256 _tradingFee,
 		uint256 _symbolType
 	) external;
-	function addSymbols(Symbol[] memory symbols) external;
+	function addSymbols(Symbol[] calldata symbols) external;
 	function setSymbolsTradingFees(uint256[] calldata _symbolIds, uint256[] calldata _fees) external;
 	function setSymbolsValidationState(uint256[] calldata _symbolIds, bool[] calldata _states) external;
 	function setSymbolsNames(uint256[] calldata _symbolIds, string[] calldata _names) external;
