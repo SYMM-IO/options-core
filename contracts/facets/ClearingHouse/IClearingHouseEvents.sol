@@ -5,18 +5,32 @@
 pragma solidity >=0.8.19;
 
 interface IClearingHouseEvents {
-	event FlagIsolatedPartyBLiquidation(address operator, address partyB, address collateral);
-	event UnflagIsolatedPartyBLiquidation(address operator, address partyB, address collateral);
-	event LiquidateIsolatedPartyB(address operator, address partyB, address collateral, uint256 balance, int256 upnl, uint256 collateralPrice);
-	event ConfiscatePartyA(address operator, uint256 liquidationId, uint256 amount);
-	event ConfiscatePartyBWithdrawal(address operator, uint256 withdrawId);
-	event DistributeCollateral(address operator, address partyB, address collateral, address[] partyAs, uint256[] amounts);
-	event FullyLiquidated(address partyB, uint256 liquidationId);
-	event FlagCrossPartyBLiquidation(address operator, address partyB, address partyA, address collateral);
-	event UnflagCrossPartyBLiquidation(address operator, address partyB, address partyA, address collateral);
-	event LiquidateCrossPartyB(address operator, address partyB, address partyA, address collateral, int256 upnl, uint256 collateralPrice);
-	event FlagPartyALiquidation(address operator, address partyA, address partyB, address collateral);
-	event UnflagPartyALiquidation(address operator, address partyA, address partyB, address collateral);
+	event FlagIsolatedPartyBLiquidation(address indexed operator, address indexed partyB, address indexed collateral);
+	event UnflagIsolatedPartyBLiquidation(address indexed operator, address indexed partyB, address indexed collateral);
+	event LiquidateIsolatedPartyB(
+		address indexed operator,
+		address indexed partyB,
+		address indexed collateral,
+		uint256 balance,
+		int256 upnl,
+		uint256 collateralPrice
+	);
+	event ConfiscatePartyA(address indexed operator, uint256 liquidationId, uint256 amount);
+	event ConfiscatePartyBWithdrawal(address indexed operator, uint256 withdrawId);
+	event DistributeCollateral(address indexed operator, address indexed partyB, address indexed collateral, address[] partyAs, uint256[] amounts);
+	event FullyLiquidated(address indexed partyB, uint256 liquidationId);
+	event FlagCrossPartyBLiquidation(address operator, address indexed partyB, address indexed partyA, address indexed collateral);
+	event UnflagCrossPartyBLiquidation(address operator, address indexed partyB, address indexed partyA, address indexed collateral);
+	event LiquidateCrossPartyB(
+		address operator,
+		address indexed partyB,
+		address indexed partyA,
+		address indexed collateral,
+		int256 upnl,
+		uint256 collateralPrice
+	);
+	event FlagPartyALiquidation(address operator, address indexed partyA, address indexed partyB, address indexed collateral);
+	event UnflagPartyALiquidation(address operator, address indexed partyA, address indexed partyB, address indexed collateral);
 	event LiquidateCrossPartyA(
 		address operator,
 		uint256 liquidationId,

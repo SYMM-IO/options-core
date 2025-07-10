@@ -8,7 +8,7 @@ import { OpenIntentStatus } from "../types/IntentTypes.sol";
 
 interface IPartiesEvents {
 	event SendOpenIntent(
-		address partyA,
+		address indexed partyA,
 		uint256 intentId,
 		address[] partyBsWhiteList,
 		bytes requestedParams // encodePacked (symbolId, price, quantity, strikePrice, expirationTimestamp, mm, tradeSide, marginType, exerciseFee.rate, exerciseFee.cap, deadline)

@@ -5,6 +5,6 @@
 pragma solidity >=0.8.19;
 
 interface ITradeEvents {
-	event TransferTradeByPartyA(address sender, address receiver, uint256 tradeId);
+	event TransferTradeByPartyA(address indexed sender, address indexed receiver, uint256 tradeId);
 	event ExecuteTrades(address operator, uint256[] tradeIds, bool[] exercised, bool[] expired, uint256 settlementPrice, uint256 collateralPrice);
 }
