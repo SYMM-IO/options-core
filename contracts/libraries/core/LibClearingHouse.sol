@@ -243,7 +243,6 @@ library LibClearingHouse {
 		_requireStatus(detail, LiquidationStatus.IN_PROGRESS);
 
 		balance.subForCounterParty(detail.partyB, amount, MarginType.CROSS, DecreaseBalanceReason.CONFISCATE);
-		// detail.collectedCollateral += amount;
 	}
 
 	function confiscatePartyBWithdrawal(uint256 withdrawId) internal {

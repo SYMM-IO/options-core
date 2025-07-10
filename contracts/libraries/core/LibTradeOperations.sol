@@ -185,6 +185,7 @@ library LibTradeOperations {
 
 	function mintNFTForTrade(uint256 tradeId) internal {
 		Trade storage trade = TradeStorage.layout().trades[tradeId];
+		if (trade.tradeAgreements.marginType == MarginType.CROSS) revert TradeErrors.NFTMintingNotAllowedForCrossMarginTrade(tradeId);
 		ITradeNFT(AppStorage.layout().tradeNftAddress).mintNFTForTrade(trade.partyA, tradeId);
 	}
 }
