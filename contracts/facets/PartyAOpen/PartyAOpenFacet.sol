@@ -55,11 +55,11 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 		uint256 mm,
 		TradeSide tradeSide,
 		MarginType marginType,
-		ExerciseFee memory exerciseFee,
+		ExerciseFee calldata exerciseFee,
 		uint256 deadline,
 		address feeToken,
 		address affiliate,
-		bytes memory userData
+		bytes calldata userData
 	) external whenPartyNotPaused(msg.sender) whenInstantModeIsNotActive(msg.sender) returns (uint256 intentId) {
 		intentId = LibPartyAOpen.sendOpenIntent(
 			msg.sender,
@@ -106,7 +106,7 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 	 * @dev This function transitions intents to EXPIRED state and can be called by anyone when PartyA actions are not paused
 	 * @param expiredIntentIds Array of intent IDs to be marked as expired
 	 */
-	function expireOpenIntent(uint256[] memory expiredIntentIds) external whenPartyNotPaused(msg.sender) {
+	function expireOpenIntent(uint256[] calldata expiredIntentIds) external whenPartyNotPaused(msg.sender) {
 		OpenIntentStorage.Layout storage intentLayout = OpenIntentStorage.layout();
 
 		for (uint256 i; i < expiredIntentIds.length; i++) {
@@ -123,7 +123,7 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 	 *      - For opened positions: Cancellation not possible
 	 * @param intentIds Array of intent IDs to be canceled
 	 */
-	function cancelOpenIntent(uint256[] memory intentIds) external whenPartyNotPaused(msg.sender) whenInstantModeIsNotActive(msg.sender) {
+	function cancelOpenIntent(uint256[] calldata intentIds) external whenPartyNotPaused(msg.sender) whenInstantModeIsNotActive(msg.sender) {
 		for (uint256 i; i < intentIds.length; i++) {
 			OpenIntentStatus result = LibPartyAOpen.cancelOpenIntent(msg.sender, intentIds[i]);
 

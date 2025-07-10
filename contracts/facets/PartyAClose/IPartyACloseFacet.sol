@@ -7,9 +7,9 @@ pragma solidity >=0.8.19;
 import { IPartyACloseEvents } from "./IPartyACloseEvents.sol";
 
 interface IPartyACloseFacet is IPartyACloseEvents {
-	function expireCloseIntent(uint256[] memory expiredIntentIds) external;
+	function expireCloseIntent(uint256[] calldata expiredIntentIds) external;
 
-	function cancelCloseIntent(uint256[] memory intentIds) external;
+	function cancelCloseIntent(uint256[] calldata intentIds) external;
 
 	function sendCloseIntent(uint256 tradeId, uint256 price, uint256 quantity, uint256 deadline) external returns (uint256 intentId);
 }

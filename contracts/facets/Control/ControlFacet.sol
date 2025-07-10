@@ -774,7 +774,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	 * @notice Adds multiple symbols
 	 * @param symbols Array of symbols
 	 */
-	function addSymbols(Symbol[] memory symbols) external onlyRole(LibAccessibility.SYMBOL_MANAGER_ROLE) {
+	function addSymbols(Symbol[] calldata symbols) external onlyRole(LibAccessibility.SYMBOL_MANAGER_ROLE) {
 		for (uint8 i = 0; i < symbols.length; i++) {
 			Symbol memory s = symbols[i];
 			addSymbol(s.name, s.optionType, s.oracleId, s.collateral, s.tradingFee, s.symbolType);

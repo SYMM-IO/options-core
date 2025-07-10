@@ -227,7 +227,7 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 	 * @dev Access is restricted to account owners or InstantLayer when enabled.
 	 *      All calls must succeed for the transaction to complete.
 	 */
-	function _call(address account, bytes[] memory _callDatas) external whenNotPaused {
+	function _call(address account, bytes[] calldata _callDatas) external whenNotPaused {
 		if (msg.sender != owners[account] && !ISymmio(symmioAddress).isCallFromInstantLayer())
 			revert UnauthorizedAccess(account, msg.sender, bytes4(0));
 		for (uint8 i; i < _callDatas.length; i++) innerCall(account, _callDatas[i]);

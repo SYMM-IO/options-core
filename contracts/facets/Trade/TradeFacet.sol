@@ -57,7 +57,7 @@ contract TradeFacet is Accessibility, Pausable, ITradeFacet {
 	 * @param settlementPriceSig Cryptographically signed data from Muon oracle containing
 	 *                          the verified settlement price of the symbol at expiration time
 	 */
-	function executeTrades(uint256[] memory tradeIds, SettlementPriceSig memory settlementPriceSig) external whenNotThirdPartyActionsPaused {
+	function executeTrades(uint256[] calldata tradeIds, SettlementPriceSig calldata settlementPriceSig) external whenNotThirdPartyActionsPaused {
 		(bool[] memory exercised, bool[] memory expired) = LibTradeOperations.executeTrades(tradeIds, settlementPriceSig);
 		emit ExecuteTrades(msg.sender, tradeIds, exercised, expired, settlementPriceSig.settlementPrice, settlementPriceSig.collateralPrice);
 	}

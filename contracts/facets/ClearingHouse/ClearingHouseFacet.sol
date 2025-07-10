@@ -78,8 +78,8 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 		address partyB,
 		address collateral,
 		MarginType marginType,
-		address[] memory partyAs,
-		uint256[] memory amounts
+		address[] calldata partyAs,
+		uint256[] calldata amounts
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
 		LibClearingHouse.distributeCollateral(partyB, collateral, marginType, partyAs, amounts);
 		emit DistributeCollateral(msg.sender, partyB, collateral, partyAs, amounts);
@@ -149,8 +149,8 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 
 	function closeTrades(
 		uint256 liquidationId,
-		uint256[] memory tradeIds,
-		uint256[] memory prices
+		uint256[] calldata tradeIds,
+		uint256[] calldata prices
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
 		LibClearingHouse.closeTrades(liquidationId, tradeIds, prices);
 		emit CloseTradesForLiquidation(msg.sender, liquidationId, tradeIds, prices);

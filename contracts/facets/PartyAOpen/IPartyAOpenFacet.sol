@@ -26,7 +26,7 @@ interface IPartyAOpenFacet is IPartyAOpenEvents {
 		bytes memory userData
 	) external returns (uint256);
 
-	function expireOpenIntent(uint256[] memory expiredIntentIds) external;
+	function expireOpenIntent(uint256[] calldata expiredIntentIds) external;
 
-	function cancelOpenIntent(uint256[] memory intentIds) external;
+	function cancelOpenIntent(uint256[] calldata intentIds) external;
 }

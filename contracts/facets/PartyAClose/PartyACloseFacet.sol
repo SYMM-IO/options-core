@@ -50,7 +50,7 @@ contract PartyACloseFacet is Accessibility, Pausable, IPartyACloseFacet {
 	 * @dev This function can be called by anyone, and transitions intents to EXPIRED state
 	 * @param expiredIntentIds Array of close intent IDs to be marked as expired
 	 */
-	function expireCloseIntent(uint256[] memory expiredIntentIds) external whenPartyNotPaused(msg.sender) {
+	function expireCloseIntent(uint256[] calldata expiredIntentIds) external whenPartyNotPaused(msg.sender) {
 		CloseIntentStorage.Layout storage intentLayout = CloseIntentStorage.layout();
 
 		for (uint256 i; i < expiredIntentIds.length; i++) {
@@ -66,7 +66,7 @@ contract PartyACloseFacet is Accessibility, Pausable, IPartyACloseFacet {
 	 *      - Or CANCEL_PENDING state if awaiting PartyB's acceptance
 	 * @param intentIds Array of close intent IDs to be canceled
 	 */
-	function cancelCloseIntent(uint256[] memory intentIds) external whenPartyNotPaused(msg.sender) whenInstantModeIsNotActive(msg.sender) {
+	function cancelCloseIntent(uint256[] calldata intentIds) external whenPartyNotPaused(msg.sender) whenInstantModeIsNotActive(msg.sender) {
 		for (uint256 i; i < intentIds.length; i++) {
 			CloseIntentStatus result = LibPartyAClose.cancelCloseIntent(msg.sender, intentIds[i]);
 			if (result == CloseIntentStatus.EXPIRED) {

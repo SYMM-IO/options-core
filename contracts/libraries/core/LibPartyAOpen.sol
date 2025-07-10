@@ -34,13 +34,13 @@ library LibPartyAOpen {
 
 	function sendOpenIntent(
 		address sender,
-		address[] memory partyBsWhiteList,
+		address[] calldata partyBsWhiteList,
 		TradeAgreements memory tradeAgreements,
 		uint256 price,
 		uint256 deadline,
 		address feeToken,
 		address affiliate,
-		bytes memory userData
+		bytes calldata userData
 	) internal returns (uint256 intentId) {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		FeeManagementStorage.Layout storage feeLayout = FeeManagementStorage.layout();
