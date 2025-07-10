@@ -5,7 +5,7 @@
 pragma solidity >=0.8.19;
 
 library FeeManagementStorage {
-	bytes32 internal constant STORAGE_SLOT = keccak256("diamond.standard.storage.feeManagement");
+	bytes32 internal constant FEE_MANAGEMENT_STORAGE_SLOT = keccak256("diamond.standard.storage.feeManagement");
 
 	struct Layout {
 		address defaultFeeCollector;
@@ -15,7 +15,7 @@ library FeeManagementStorage {
 	}
 
 	function layout() internal pure returns (Layout storage l) {
-		bytes32 slot = STORAGE_SLOT;
+		bytes32 slot = FEE_MANAGEMENT_STORAGE_SLOT;
 		assembly {
 			l.slot := slot
 		}

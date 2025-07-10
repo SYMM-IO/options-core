@@ -7,7 +7,7 @@ pragma solidity >=0.8.19;
 import { Trade } from "../types/TradeTypes.sol";
 
 library TradeStorage {
-	bytes32 internal constant SYMBOL_STORAGE_SLOT = keccak256("diamond.standard.storage.trade");
+	bytes32 internal constant TRADE_STORAGE_SLOT = keccak256("diamond.standard.storage.trade");
 
 	struct Layout {
 		mapping(uint256 => Trade) trades;
@@ -20,7 +20,7 @@ library TradeStorage {
 	}
 
 	function layout() internal pure returns (Layout storage l) {
-		bytes32 slot = SYMBOL_STORAGE_SLOT;
+		bytes32 slot = TRADE_STORAGE_SLOT;
 		assembly {
 			l.slot := slot
 		}

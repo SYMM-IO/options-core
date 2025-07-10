@@ -5,7 +5,7 @@
 pragma solidity >=0.8.19;
 
 library CounterPartyRelationsStorage {
-	bytes32 internal constant STORAGE_SLOT = keccak256("diamond.standard.storage.counterPartyRelations");
+	bytes32 internal constant COUNTER_PARTY_RELATIONS_STORAGE_SLOT = keccak256("diamond.standard.storage.counterPartyRelations");
 
 	struct Layout {
 		mapping(address => address) boundPartyB; // partyA => Address of partyB
@@ -18,7 +18,7 @@ library CounterPartyRelationsStorage {
 	}
 
 	function layout() internal pure returns (Layout storage l) {
-		bytes32 slot = STORAGE_SLOT;
+		bytes32 slot = COUNTER_PARTY_RELATIONS_STORAGE_SLOT;
 		assembly {
 			l.slot := slot
 		}

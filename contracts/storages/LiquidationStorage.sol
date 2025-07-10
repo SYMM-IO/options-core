@@ -7,7 +7,7 @@ pragma solidity >=0.8.19;
 import { LiquidationDetail } from "../types/LiquidationTypes.sol";
 
 library LiquidationStorage {
-	bytes32 internal constant SYMBOL_STORAGE_SLOT = keccak256("diamond.standard.storage.liquidation");
+	bytes32 internal constant LIQUIDATION_STORAGE_SLOT = keccak256("diamond.standard.storage.liquidation");
 
 	struct Layout {
 		mapping(address => mapping(address => mapping(address => uint256))) inProgressLiquidationIds; // partyAAddress => partyBAddress => collateral => liquidationId
@@ -16,7 +16,7 @@ library LiquidationStorage {
 	}
 
 	function layout() internal pure returns (Layout storage l) {
-		bytes32 slot = SYMBOL_STORAGE_SLOT;
+		bytes32 slot = LIQUIDATION_STORAGE_SLOT;
 		assembly {
 			l.slot := slot
 		}
