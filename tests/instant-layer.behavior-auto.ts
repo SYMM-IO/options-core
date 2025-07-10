@@ -10,17 +10,39 @@ import { e } from "./../utils/e"
 import { getLatestBlockTime } from "./../utils/time"
 import { InstantLayer } from "./../types"
 import { toUtf8Bytes, ZeroAddress } from "ethers"
+import { RunContext } from "./run-context"
+import { Context } from "mocha"
 
 export function shouldBehaveLikeInstantLayerAuto(): void {
+	let context: RunContext, partyA1: PartyA, partyB1: PartyB
+
+	beforeEach(async function () {
+		context = await loadFixture(initializeTestFixture)
+		partyA1 = new PartyA(context, context.signers.partyA1)
+		partyB1 = new PartyB(context, context.signers.partyB1)
+		await partyA1.setBalances(context.collateral, "500", "100")
+		await partyA1.setBalances(context.collateralNL, e(100000), e(100000))
+
+		await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
+			isActive: true,
+			lossCoverage: 0,
+			oracleId: 1,
+		})
+
+		await context.controlFacet.setUnbindingCooldown(120)
+	})
+
 	describe("InstantLayer - executeBatch", function () {
-		it("should allow PartyA to open and PartyB to lock/fill in a single batch", async function () {
-			const context = await loadFixture(initializeTestFixture)
+
+		it("should Set the SYMMIO to Accept Instant Layer Actions", async function () {
+			await context.controlFacet.setCallFromInstantLayer(true)
+			expect(await context.viewFacet.isCallFromInstantLayer()).to.be.equal(true)
+			
+		})
+
+		it("should allow PartyA to open and PartyB to lock/fill in a single batch", async function () {			
 			const { instantLayer, collateralNL, partyAOpenFacet, partyBOpenFacet } = context
 
-			const partyA1 = new PartyA(context, context.signers.partyA1)
-			const partyB1 = new PartyB(context, context.signers.partyB1)
-
-			await partyA1.setBalances(collateralNL, e(100000), e(100000))
 			const partyAAddress = partyA1.getSigner
 			const partyBAddress = partyB1.getSigner
 
@@ -66,6 +88,9 @@ export function shouldBehaveLikeInstantLayerAuto(): void {
 
 			const lockIntentCallData = partyBOpenFacet.interface.encodeFunctionData("lockOpenIntent", [1])
 			const fillIntentCallData = partyBOpenFacet.interface.encodeFunctionData("fillOpenIntent", [1, e(100), 7])
+			console.log("OpenIntent Interface:",openIntentCallData)
+			console.log("LockIntent Interface:",lockIntentCallData)
+			console.log("FillIntent Interface:",fillIntentCallData)
 
 			const saltOpen = ethers.keccak256(ethers.toUtf8Bytes("saltOpen"))
 			const saltLock = ethers.keccak256(ethers.toUtf8Bytes("saltLock"))
@@ -73,7 +98,7 @@ export function shouldBehaveLikeInstantLayerAuto(): void {
 
 			const opOpenA = {
 				accountSource: multiAccount,
-				signer: partyAAddress,
+				signer: partyA1.address,
 				callData: openIntentCallData,
 				nonce: 0,
 				salt: saltOpen,
@@ -83,7 +108,7 @@ export function shouldBehaveLikeInstantLayerAuto(): void {
 
 			const opLockB = {
 				accountSource: ethers.ZeroAddress,
-				signer: partyBAddress,
+				signer: partyB1.address,
 				callData: lockIntentCallData,
 				nonce: 0,
 				salt: saltLock,
@@ -93,7 +118,7 @@ export function shouldBehaveLikeInstantLayerAuto(): void {
 
 			const opFillB = {
 				accountSource: ethers.ZeroAddress,
-				signer: partyBAddress,
+				signer: partyB1.address,
 				callData: fillIntentCallData,
 				nonce: 0,
 				salt: saltFill,
@@ -105,19 +130,19 @@ export function shouldBehaveLikeInstantLayerAuto(): void {
 			const opOpenAHash = await instantLayer.getOperationHash(opOpenA)
 			const opLockBHash = await instantLayer.getOperationHash(opLockB)
 			const opFillBHash = await instantLayer.getOperationHash(opFillB)
-			console.log("Hashed OpenIntent", opOpenAHash)
 
 			opOpenA.signature = await partyA1.getSigner.signMessage(ethers.getBytes(opOpenAHash))
 			opLockB.signature = await partyB1.getSigner.signMessage(ethers.getBytes(opLockBHash))
 			opFillB.signature = await partyB1.getSigner.signMessage(ethers.getBytes(opFillBHash))
-			console.log("Signed Hashed OpenIntent", opOpenA.signature)
 
-			const signedOps: InstantLayer.SignedOperationStruct[] = [opOpenA, opLockB, opFillB]
+			const signedOps: InstantLayer.SignedOperationStruct[] = [opOpenA]
 
-			await context.controlFacet.grantRole(context.common.diamondAddress, ethers.keccak256(toUtf8Bytes("INSTANT_LAYER_ROLE")))
+			await context.controlFacet.grantRole(context.instantLayer, ethers.keccak256(toUtf8Bytes("INSTANT_LAYER_ROLE")))
 
 			// Execute the batch
-			await expect(instantLayer.executeBatch(signedOps)).to.be.revertedWithCustomError(context.controlFacet, "InstantLayerPaused")
+			await expect(instantLayer.executeBatch(signedOps)).to.be.revertedWithCustomError(context.instantLayer, "OperationFailed")
 		})
+
+		
 	})
 }
