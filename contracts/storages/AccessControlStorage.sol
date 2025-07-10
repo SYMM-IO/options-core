@@ -12,6 +12,7 @@ library AccessControlStorage {
 	struct Layout {
 		mapping(address => mapping(bytes32 => bool)) hasRole;
 		mapping(bytes32 => EnumerableSet.AddressSet) roleMembers;
+		uint8 reentrancyGuardStatus;
 	}
 
 	function layout() internal pure returns (Layout storage l) {

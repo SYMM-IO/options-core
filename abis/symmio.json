@@ -1152,6 +1152,11 @@
         "type": "error"
     },
     {
+        "inputs": [],
+        "name": "ReentrantCall",
+        "type": "error"
+    },
+    {
         "inputs": [
             {
                 "internalType": "address",
