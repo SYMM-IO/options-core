@@ -17,6 +17,8 @@ library AppStorage {
 		// System version
 		uint16 version;
 		/////////////////////////////////////////////////////////
+		bool callFromInstantLayer;
+		/////////////////////////////////////////////////////////
 		mapping(address => uint256) balanceLimitPerUser; // collateral => limit
 		uint256 maxCloseOrdersLength;
 		uint256 maxTradePerPartyA;
@@ -37,8 +39,6 @@ library AppStorage {
 		/////////////////////////////////////////////////////////
 		mapping(address => PartyBConfig) partyBConfigs;
 		mapping(address => mapping(uint256 => bool)) partyBSupportedSymbolTypes;
-		/////////////////////////////////////////////////////////
-		bool callFromInstantLayer;
 	}
 
 	function layout() internal pure returns (Layout storage l) {

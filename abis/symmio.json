@@ -4310,29 +4310,9 @@
                         "type": "uint256"
                     },
                     {
-                        "internalType": "bool",
-                        "name": "isValid",
-                        "type": "bool"
-                    },
-                    {
-                        "internalType": "string",
-                        "name": "name",
-                        "type": "string"
-                    },
-                    {
-                        "internalType": "enum OptionType",
-                        "name": "optionType",
-                        "type": "uint8"
-                    },
-                    {
                         "internalType": "uint256",
                         "name": "oracleId",
                         "type": "uint256"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "collateral",
-                        "type": "address"
                     },
                     {
                         "internalType": "uint256",
@@ -4343,6 +4323,26 @@
                         "internalType": "uint256",
                         "name": "symbolType",
                         "type": "uint256"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "collateral",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "name",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "bool",
+                        "name": "isValid",
+                        "type": "bool"
+                    },
+                    {
+                        "internalType": "enum OptionType",
+                        "name": "optionType",
+                        "type": "uint8"
                     }
                 ],
                 "internalType": "struct Symbol[]",
@@ -4640,11 +4640,6 @@
                         "type": "bytes"
                     },
                     {
-                        "internalType": "uint256",
-                        "name": "timestamp",
-                        "type": "uint256"
-                    },
-                    {
                         "internalType": "int256",
                         "name": "partyUpnl",
                         "type": "int256"
@@ -4657,6 +4652,11 @@
                     {
                         "internalType": "uint256",
                         "name": "collateralPrice",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "timestamp",
                         "type": "uint256"
                     },
                     {
@@ -5270,16 +5270,6 @@
                                 "type": "uint256"
                             },
                             {
-                                "internalType": "enum TradeSide",
-                                "name": "tradeSide",
-                                "type": "uint8"
-                            },
-                            {
-                                "internalType": "enum MarginType",
-                                "name": "marginType",
-                                "type": "uint8"
-                            },
-                            {
                                 "components": [
                                     {
                                         "internalType": "uint256",
@@ -5295,6 +5285,16 @@
                                 "internalType": "struct ExerciseFee",
                                 "name": "exerciseFee",
                                 "type": "tuple"
+                            },
+                            {
+                                "internalType": "enum TradeSide",
+                                "name": "tradeSide",
+                                "type": "uint8"
+                            },
+                            {
+                                "internalType": "enum MarginType",
+                                "name": "marginType",
+                                "type": "uint8"
                             }
                         ],
                         "internalType": "struct TradeAgreements",
@@ -5307,24 +5307,9 @@
                         "type": "uint256"
                     },
                     {
-                        "internalType": "address",
-                        "name": "partyA",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "partyB",
-                        "type": "address"
-                    },
-                    {
                         "internalType": "address[]",
                         "name": "partyBsWhiteList",
                         "type": "address[]"
-                    },
-                    {
-                        "internalType": "enum OpenIntentStatus",
-                        "name": "status",
-                        "type": "uint8"
                     },
                     {
                         "internalType": "uint256",
@@ -5375,6 +5360,16 @@
                     },
                     {
                         "internalType": "address",
+                        "name": "partyA",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "partyB",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
                         "name": "affiliate",
                         "type": "address"
                     },
@@ -5382,6 +5377,11 @@
                         "internalType": "bytes",
                         "name": "userData",
                         "type": "bytes"
+                    },
+                    {
+                        "internalType": "enum OpenIntentStatus",
+                        "name": "status",
+                        "type": "uint8"
                     }
                 ],
                 "internalType": "struct OpenIntent[]",
@@ -5514,16 +5514,6 @@
                                 "type": "uint256"
                             },
                             {
-                                "internalType": "enum TradeSide",
-                                "name": "tradeSide",
-                                "type": "uint8"
-                            },
-                            {
-                                "internalType": "enum MarginType",
-                                "name": "marginType",
-                                "type": "uint8"
-                            },
-                            {
                                 "components": [
                                     {
                                         "internalType": "uint256",
@@ -5539,21 +5529,21 @@
                                 "internalType": "struct ExerciseFee",
                                 "name": "exerciseFee",
                                 "type": "tuple"
+                            },
+                            {
+                                "internalType": "enum TradeSide",
+                                "name": "tradeSide",
+                                "type": "uint8"
+                            },
+                            {
+                                "internalType": "enum MarginType",
+                                "name": "marginType",
+                                "type": "uint8"
                             }
                         ],
                         "internalType": "struct TradeAgreements",
                         "name": "tradeAgreements",
                         "type": "tuple"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "partyA",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "partyB",
-                        "type": "address"
                     },
                     {
                         "internalType": "uint256[]",
@@ -5586,11 +5576,6 @@
                         "type": "uint256"
                     },
                     {
-                        "internalType": "enum TradeStatus",
-                        "name": "status",
-                        "type": "uint8"
-                    },
-                    {
                         "internalType": "uint256",
                         "name": "createTimestamp",
                         "type": "uint256"
@@ -5599,6 +5584,21 @@
                         "internalType": "uint256",
                         "name": "statusModifyTimestamp",
                         "type": "uint256"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "partyA",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "partyB",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "enum TradeStatus",
+                        "name": "status",
+                        "type": "uint8"
                     }
                 ],
                 "internalType": "struct Trade[]",
@@ -5796,11 +5796,6 @@
                         "type": "uint256"
                     },
                     {
-                        "internalType": "enum CloseIntentStatus",
-                        "name": "status",
-                        "type": "uint8"
-                    },
-                    {
                         "internalType": "uint256",
                         "name": "createTimestamp",
                         "type": "uint256"
@@ -5814,6 +5809,11 @@
                         "internalType": "uint256",
                         "name": "deadline",
                         "type": "uint256"
+                    },
+                    {
+                        "internalType": "enum CloseIntentStatus",
+                        "name": "status",
+                        "type": "uint8"
                     }
                 ],
                 "internalType": "struct CloseIntent",
@@ -5891,11 +5891,6 @@
                         "type": "uint256"
                     },
                     {
-                        "internalType": "enum CloseIntentStatus",
-                        "name": "status",
-                        "type": "uint8"
-                    },
-                    {
                         "internalType": "uint256",
                         "name": "createTimestamp",
                         "type": "uint256"
@@ -5909,6 +5904,11 @@
                         "internalType": "uint256",
                         "name": "deadline",
                         "type": "uint256"
+                    },
+                    {
+                        "internalType": "enum CloseIntentStatus",
+                        "name": "status",
+                        "type": "uint8"
                     }
                 ],
                 "internalType": "struct CloseIntent[]",
@@ -6303,11 +6303,6 @@
             {
                 "components": [
                     {
-                        "internalType": "enum LiquidationStatus",
-                        "name": "status",
-                        "type": "uint8"
-                    },
-                    {
                         "internalType": "int256",
                         "name": "upnl",
                         "type": "int256"
@@ -6323,6 +6318,11 @@
                         "type": "uint256"
                     },
                     {
+                        "internalType": "uint256",
+                        "name": "collateralPrice",
+                        "type": "uint256"
+                    },
+                    {
                         "internalType": "address",
                         "name": "flagger",
                         "type": "address"
@@ -6331,11 +6331,6 @@
                         "internalType": "address",
                         "name": "collateral",
                         "type": "address"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "collateralPrice",
-                        "type": "uint256"
                     },
                     {
                         "internalType": "address",
@@ -6350,6 +6345,11 @@
                     {
                         "internalType": "enum LiquidationSide",
                         "name": "side",
+                        "type": "uint8"
+                    },
+                    {
+                        "internalType": "enum LiquidationStatus",
+                        "name": "status",
                         "type": "uint8"
                     }
                 ],
@@ -6474,16 +6474,6 @@
                                 "type": "uint256"
                             },
                             {
-                                "internalType": "enum TradeSide",
-                                "name": "tradeSide",
-                                "type": "uint8"
-                            },
-                            {
-                                "internalType": "enum MarginType",
-                                "name": "marginType",
-                                "type": "uint8"
-                            },
-                            {
                                 "components": [
                                     {
                                         "internalType": "uint256",
@@ -6499,6 +6489,16 @@
                                 "internalType": "struct ExerciseFee",
                                 "name": "exerciseFee",
                                 "type": "tuple"
+                            },
+                            {
+                                "internalType": "enum TradeSide",
+                                "name": "tradeSide",
+                                "type": "uint8"
+                            },
+                            {
+                                "internalType": "enum MarginType",
+                                "name": "marginType",
+                                "type": "uint8"
                             }
                         ],
                         "internalType": "struct TradeAgreements",
@@ -6511,24 +6511,9 @@
                         "type": "uint256"
                     },
                     {
-                        "internalType": "address",
-                        "name": "partyA",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "partyB",
-                        "type": "address"
-                    },
-                    {
                         "internalType": "address[]",
                         "name": "partyBsWhiteList",
                         "type": "address[]"
-                    },
-                    {
-                        "internalType": "enum OpenIntentStatus",
-                        "name": "status",
-                        "type": "uint8"
                     },
                     {
                         "internalType": "uint256",
@@ -6579,6 +6564,16 @@
                     },
                     {
                         "internalType": "address",
+                        "name": "partyA",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "partyB",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
                         "name": "affiliate",
                         "type": "address"
                     },
@@ -6586,6 +6581,11 @@
                         "internalType": "bytes",
                         "name": "userData",
                         "type": "bytes"
+                    },
+                    {
+                        "internalType": "enum OpenIntentStatus",
+                        "name": "status",
+                        "type": "uint8"
                     }
                 ],
                 "internalType": "struct OpenIntent",
@@ -6671,14 +6671,14 @@
                         "type": "uint256"
                     },
                     {
-                        "internalType": "string",
-                        "name": "name",
-                        "type": "string"
-                    },
-                    {
                         "internalType": "address",
                         "name": "contractAddress",
                         "type": "address"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "name",
+                        "type": "string"
                     }
                 ],
                 "internalType": "struct Oracle",
@@ -7053,29 +7053,9 @@
                         "type": "uint256"
                     },
                     {
-                        "internalType": "bool",
-                        "name": "isValid",
-                        "type": "bool"
-                    },
-                    {
-                        "internalType": "string",
-                        "name": "name",
-                        "type": "string"
-                    },
-                    {
-                        "internalType": "enum OptionType",
-                        "name": "optionType",
-                        "type": "uint8"
-                    },
-                    {
                         "internalType": "uint256",
                         "name": "oracleId",
                         "type": "uint256"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "collateral",
-                        "type": "address"
                     },
                     {
                         "internalType": "uint256",
@@ -7086,6 +7066,26 @@
                         "internalType": "uint256",
                         "name": "symbolType",
                         "type": "uint256"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "collateral",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "name",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "bool",
+                        "name": "isValid",
+                        "type": "bool"
+                    },
+                    {
+                        "internalType": "enum OptionType",
+                        "name": "optionType",
+                        "type": "uint8"
                     }
                 ],
                 "internalType": "struct Symbol",
@@ -7119,29 +7119,9 @@
                         "type": "uint256"
                     },
                     {
-                        "internalType": "bool",
-                        "name": "isValid",
-                        "type": "bool"
-                    },
-                    {
-                        "internalType": "string",
-                        "name": "name",
-                        "type": "string"
-                    },
-                    {
-                        "internalType": "enum OptionType",
-                        "name": "optionType",
-                        "type": "uint8"
-                    },
-                    {
                         "internalType": "uint256",
                         "name": "oracleId",
                         "type": "uint256"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "collateral",
-                        "type": "address"
                     },
                     {
                         "internalType": "uint256",
@@ -7152,6 +7132,26 @@
                         "internalType": "uint256",
                         "name": "symbolType",
                         "type": "uint256"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "collateral",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "name",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "bool",
+                        "name": "isValid",
+                        "type": "bool"
+                    },
+                    {
+                        "internalType": "enum OptionType",
+                        "name": "optionType",
+                        "type": "uint8"
                     }
                 ],
                 "internalType": "struct Symbol[]",
@@ -7212,16 +7212,6 @@
                                 "type": "uint256"
                             },
                             {
-                                "internalType": "enum TradeSide",
-                                "name": "tradeSide",
-                                "type": "uint8"
-                            },
-                            {
-                                "internalType": "enum MarginType",
-                                "name": "marginType",
-                                "type": "uint8"
-                            },
-                            {
                                 "components": [
                                     {
                                         "internalType": "uint256",
@@ -7237,21 +7227,21 @@
                                 "internalType": "struct ExerciseFee",
                                 "name": "exerciseFee",
                                 "type": "tuple"
+                            },
+                            {
+                                "internalType": "enum TradeSide",
+                                "name": "tradeSide",
+                                "type": "uint8"
+                            },
+                            {
+                                "internalType": "enum MarginType",
+                                "name": "marginType",
+                                "type": "uint8"
                             }
                         ],
                         "internalType": "struct TradeAgreements",
                         "name": "tradeAgreements",
                         "type": "tuple"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "partyA",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "partyB",
-                        "type": "address"
                     },
                     {
                         "internalType": "uint256[]",
@@ -7284,11 +7274,6 @@
                         "type": "uint256"
                     },
                     {
-                        "internalType": "enum TradeStatus",
-                        "name": "status",
-                        "type": "uint8"
-                    },
-                    {
                         "internalType": "uint256",
                         "name": "createTimestamp",
                         "type": "uint256"
@@ -7297,6 +7282,21 @@
                         "internalType": "uint256",
                         "name": "statusModifyTimestamp",
                         "type": "uint256"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "partyA",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "partyB",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "enum TradeStatus",
+                        "name": "status",
+                        "type": "uint8"
                     }
                 ],
                 "internalType": "struct Trade",
@@ -7540,6 +7540,11 @@
                         "type": "uint256"
                     },
                     {
+                        "internalType": "uint256",
+                        "name": "timestamp",
+                        "type": "uint256"
+                    },
+                    {
                         "internalType": "address",
                         "name": "collateral",
                         "type": "address"
@@ -7563,11 +7568,6 @@
                         "internalType": "bytes",
                         "name": "userData",
                         "type": "bytes"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "timestamp",
-                        "type": "uint256"
                     },
                     {
                         "internalType": "enum WithdrawStatus",
@@ -8623,11 +8623,6 @@
                         "type": "uint256"
                     },
                     {
-                        "internalType": "enum CloseIntentStatus",
-                        "name": "status",
-                        "type": "uint8"
-                    },
-                    {
                         "internalType": "uint256",
                         "name": "createTimestamp",
                         "type": "uint256"
@@ -8641,6 +8636,11 @@
                         "internalType": "uint256",
                         "name": "deadline",
                         "type": "uint256"
+                    },
+                    {
+                        "internalType": "enum CloseIntentStatus",
+                        "name": "status",
+                        "type": "uint8"
                     }
                 ],
                 "internalType": "struct CloseIntent",
@@ -9154,16 +9154,6 @@
                                 "type": "uint256"
                             },
                             {
-                                "internalType": "enum TradeSide",
-                                "name": "tradeSide",
-                                "type": "uint8"
-                            },
-                            {
-                                "internalType": "enum MarginType",
-                                "name": "marginType",
-                                "type": "uint8"
-                            },
-                            {
                                 "components": [
                                     {
                                         "internalType": "uint256",
@@ -9179,21 +9169,21 @@
                                 "internalType": "struct ExerciseFee",
                                 "name": "exerciseFee",
                                 "type": "tuple"
+                            },
+                            {
+                                "internalType": "enum TradeSide",
+                                "name": "tradeSide",
+                                "type": "uint8"
+                            },
+                            {
+                                "internalType": "enum MarginType",
+                                "name": "marginType",
+                                "type": "uint8"
                             }
                         ],
                         "internalType": "struct TradeAgreements",
                         "name": "tradeAgreements",
                         "type": "tuple"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "partyA",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "partyB",
-                        "type": "address"
                     },
                     {
                         "internalType": "uint256[]",
@@ -9226,11 +9216,6 @@
                         "type": "uint256"
                     },
                     {
-                        "internalType": "enum TradeStatus",
-                        "name": "status",
-                        "type": "uint8"
-                    },
-                    {
                         "internalType": "uint256",
                         "name": "createTimestamp",
                         "type": "uint256"
@@ -9239,6 +9224,21 @@
                         "internalType": "uint256",
                         "name": "statusModifyTimestamp",
                         "type": "uint256"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "partyA",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "partyB",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "enum TradeStatus",
+                        "name": "status",
+                        "type": "uint8"
                     }
                 ],
                 "internalType": "struct Trade",
@@ -9429,11 +9429,6 @@
                         "type": "uint256"
                     },
                     {
-                        "internalType": "enum CloseIntentStatus",
-                        "name": "status",
-                        "type": "uint8"
-                    },
-                    {
                         "internalType": "uint256",
                         "name": "createTimestamp",
                         "type": "uint256"
@@ -9447,6 +9442,11 @@
                         "internalType": "uint256",
                         "name": "deadline",
                         "type": "uint256"
+                    },
+                    {
+                        "internalType": "enum CloseIntentStatus",
+                        "name": "status",
+                        "type": "uint8"
                     }
                 ],
                 "internalType": "struct CloseIntent",

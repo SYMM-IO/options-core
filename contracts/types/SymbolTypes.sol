@@ -11,17 +11,17 @@ enum OptionType {
 
 struct Oracle {
 	uint256 id;
-	string name;
 	address contractAddress;
+	string name;
 }
 
 struct Symbol {
 	uint256 symbolId;
-	bool isValid;
-	string name;
-	OptionType optionType;
 	uint256 oracleId;
-	address collateral;
 	uint256 tradingFee;
 	uint256 symbolType;
+	address collateral;
+	string name;
+	bool isValid;
+	OptionType optionType;
 }

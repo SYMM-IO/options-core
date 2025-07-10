@@ -16,14 +16,14 @@ enum LiquidationSide {
 }
 
 struct LiquidationDetail {
-	LiquidationStatus status;
 	int256 upnl;
 	uint256 flagTimestamp;
 	uint256 liquidationTimestamp;
+	uint256 collateralPrice;
 	address flagger;
 	address collateral;
-	uint256 collateralPrice;
 	address partyA;
 	address partyB;
 	LiquidationSide side;
+	LiquidationStatus status;
 }
