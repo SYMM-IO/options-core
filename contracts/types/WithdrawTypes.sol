@@ -9,21 +9,21 @@ import { SchnorrSign } from "./MuonTypes.sol";
 struct Withdraw {
 	uint256 id;
 	uint256 amount;
+	uint256 timestamp;
 	address collateral;
 	address user;
 	address to;
 	address provider;
 	bytes userData;
-	uint256 timestamp;
 	WithdrawStatus status;
 }
 
 struct UpnlSig {
 	bytes reqId; // Unique identifier for the liquidation request
-	uint256 timestamp; // Timestamp when the liquidation signature was created
 	int256 partyUpnl; // Party's unrealized profit and loss at the time
 	int256 counterPartyUpnl; // CounterParty's unrealized profit and loss at the time
 	uint256 collateralPrice; // The price of collateral
+	uint256 timestamp; // Timestamp when the liquidation signature was created
 	bytes gatewaySignature; // Signature from the gateway for verification
 	SchnorrSign sigs; // Schnorr signature for additional verification
 }

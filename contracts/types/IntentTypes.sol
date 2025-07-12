@@ -28,17 +28,17 @@ struct OpenIntent {
 	uint256 tradeId;
 	TradeAgreements tradeAgreements;
 	uint256 price;
-	address partyA;
-	address partyB;
 	address[] partyBsWhiteList;
-	OpenIntentStatus status;
 	uint256 parentId;
 	uint256 createTimestamp;
 	uint256 statusModifyTimestamp;
 	uint256 deadline;
 	TradingFee tradingFee;
+	address partyA;
+	address partyB;
 	address affiliate;
 	bytes userData;
+	OpenIntentStatus status;
 }
 
 struct CloseIntent {
@@ -47,8 +47,8 @@ struct CloseIntent {
 	uint256 price;
 	uint256 quantity;
 	uint256 filledAmount;
-	CloseIntentStatus status;
 	uint256 createTimestamp;
 	uint256 statusModifyTimestamp;
 	uint256 deadline;
+	CloseIntentStatus status;
 }

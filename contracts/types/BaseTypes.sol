@@ -32,7 +32,7 @@ struct TradeAgreements {
 	uint256 strikePrice;
 	uint256 expirationTimestamp;
 	uint256 mm; 
+	ExerciseFee exerciseFee;
 	TradeSide tradeSide;
 	MarginType marginType;
-	ExerciseFee exerciseFee;
 }
