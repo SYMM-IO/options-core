@@ -1,5 +1,5 @@
 import { Builder } from "builder-pattern"
-import { TradeStruct } from "../../../types/contracts/facets/ViewFacet/VeiwFacet.sol/ViewFacet"
+import { TradeStruct } from "../../../types/contracts/interfaces/ISymmio"
 
 const defaultTrade: TradeStruct = {
 	id: 0,
@@ -26,7 +26,6 @@ const defaultTrade: TradeStruct = {
 	closePendingAmount: 0,
 	avgClosedPriceBeforeExpiration: 0,
 	status: 0,
-	partyBMarginType: 0,
 	createTimestamp: 0,
 	statusModifyTimestamp: 0,
 }
