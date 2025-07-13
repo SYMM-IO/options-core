@@ -40,3 +40,5 @@ docs
 .venv
 .cursorignore
 /scripts/config/setup.json
+.envrc
+.DS_Store
