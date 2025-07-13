@@ -29,6 +29,7 @@ import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessCo
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 /* ────────────────────────── External Interfaces ────────────────────────── */
 
@@ -177,7 +178,7 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	error UnregisteredPartyB(address partyB); // PartyB not registered
 	error OperationAlreadyExecuted(bytes32 hash); // operation already executed
 	error EmptyBatch(); // batch is empty
-	
+
 	/* ─────────────────────────── Initialization ─────────────────────────── */
 
 	/**
@@ -391,8 +392,7 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 		if (usedOperationHashes[hash]) revert OperationAlreadyExecuted(hash);
 		usedOperationHashes[hash] = true;
 
-		// Verify signature using OpenZeppelin's SignatureChecker
-		if (!SignatureChecker.isValidSignatureNow(signedOp.signer, hash, signedOp.signature)) revert InvalidSignature(signedOp.signer);
+		if (!isValidSignature(signedOp.signer, hash, signedOp.signature)) revert InvalidSignature(signedOp.signer);
 
 		// Check nonce only if it's not 0 (0 means no nonce protection, relies on salt)
 		if (signedOp.nonce != 0) {
@@ -536,7 +536,7 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	 * @param signature Signature bytes.
 	 * @return Whether the signature is valid.
 	 */
-	function verifySignature(address signer, bytes32 hash, bytes calldata signature) external view returns (bool) {
-		return SignatureChecker.isValidSignatureNow(signer, hash, signature);
+	function isValidSignature(address signer, bytes32 hash, bytes calldata signature) public view returns (bool) {
+		return SignatureChecker.isValidSignatureNow(signer, ECDSA.toEthSignedMessageHash(hash), signature);
 	}
 }
