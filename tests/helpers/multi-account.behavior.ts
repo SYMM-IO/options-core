@@ -4,24 +4,16 @@ import { initializeTestFixture } from "../initialize-test.fixture"
 import { PartyA } from "../models/partyA.model"
 import { RunContext } from "../run-context"
 import { IntentStatus, TradeSide } from "../option-enums"
-import { openIntentRequestBuilder } from "../models/builders/send-open-intent.builder"
+import { OpenIntent, openIntentRequestBuilder } from "../models/builders/send-open-intent.builder"
 import { PartyB } from "../models/partyB.model"
 import { ethers, network } from "hardhat"
 import { e } from "../../utils/e"
 import { AbiCoder, encodeBytes32String, InterfaceAbi, ZeroAddress, AddressLike, toUtf8Bytes } from "ethers"
-import { bigint, int } from "hardhat/internal/core/params/argumentTypes"
-import { config } from "dotenv"
-import { OpenIntentStruct, OpenIntentStructOutput, SymbolStruct } from "../../types/contracts/interfaces/ISymmio"
 
 import { MarginType } from "../option-enums"
 import { getLatestBlockTime } from "../../utils/time"
 import { InstantLayer, MultiAccount } from "../../types"
-
-import * as diamond from "../../artifacts/contracts/Diamond.sol/Diamond.json"
-// import * as partyAOpenIntent from "../artifacts/contracts/facets/PartyAOpen/PartyAOpenFacet.sol/PartyAOpenFacet.json"
-// import * as partyBOpenIntent from "../artifacts/contracts/facets/PartyBOpen/PartyBOpenFacet.sol/PartyBOpenFacet.json"
-import { trace } from "console"
-import { hexZeroPad, zeroPad } from "@ethersproject/bytes"
+import { OpenIntentStruct } from "../../types/contracts/interfaces/ISymmio"
 
 export function shouldBehaveLikeMultiAccount(): void {
 	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyB1: PartyB, partyB2: PartyB
@@ -33,6 +25,8 @@ export function shouldBehaveLikeMultiAccount(): void {
 	let signedOps: InstantLayer.SignedOperationStruct[]
 	let ABI: InterfaceAbi
 
+	let request:OpenIntent
+
 	beforeEach(async function () {
 		context = await loadFixture(initializeTestFixture)
 		partyA1 = new PartyA(context, context.signers.partyA1)
@@ -40,8 +34,8 @@ export function shouldBehaveLikeMultiAccount(): void {
 		partyB1 = new PartyB(context, context.signers.partyB1)
 		partyB2 = new PartyB(context, context.signers.partyB2)
 
-		await partyA1.setBalances(context.collateral, e(100000), e(100000))
-		await partyA1.setBalances(context.collateralNL, e(100000), e(100000)) // as Fee token
+		await partyA1.setBalances(context.collateral, e(10000), e(4000))
+		await partyA1.setBalances(context.collateralNL, e(100000), e(4000)) // as Fee token
 		await partyA2.setBalances(context.collateral, e(100000), e(100000))
 		const { instantLayer, collateralNL, partyAOpenFacet, partyBOpenFacet } = context
 
@@ -60,7 +54,7 @@ export function shouldBehaveLikeMultiAccount(): void {
 		const latestBlock = await getLatestBlockTime()
 		const deadline = latestBlock + 300
 
-		const request = openIntentRequestBuilder()
+		request = openIntentRequestBuilder()
 			.partyBsWhiteList([partyB1.address])
 			.affiliate(context.signers.affiliate1.address)
 			.feeToken(await collateralNL.getAddress())
@@ -68,11 +62,12 @@ export function shouldBehaveLikeMultiAccount(): void {
 			.deadline(deadline)
 			.expirationTimestamp(deadline)
 			.exerciseFee({ cap: e(1), rate: "0" })
+			.price(1)
+			.quantity(e(2))
 			.marginType(MarginType.ISOLATED)
 			.tradeSide(TradeSide.BUY)
 			.strikePrice(e(1))
 			.build()
-
 
 		openIntentCallData = partyAOpenFacet.interface.encodeFunctionData("sendOpenIntent", [
 			request.partyBsWhiteList,
@@ -108,14 +103,53 @@ export function shouldBehaveLikeMultiAccount(): void {
 	})
 
 	describe("_call Function", async function () {
-		let accounts: MultiAccount.AccountStruct[]
 		beforeEach(async function () {
-			await expect(context.multiAccount.connect(partyA1.getSigner).addAccount("testAccount")).not.to.reverted
-			accounts = await context.multiAccount.getAccounts(partyA1.address, 0, 100)
+			await expect(context.collateral.connect(partyA1.getSigner).approve(context.common.diamondAddress, ethers.MaxUint256)).not.reverted
+			await expect(context.collateral.connect(partyA1.getSigner).mint(accounts[0].account, e(30))).to.not.reverted
+			await expect(context.collateralNL.connect(partyA1.getSigner).mint(accounts[0].account, e(30))).to.not.reverted
+			await context.accountFacet.connect(partyA1.getSigner).depositFor(await context.collateral.getAddress(), accounts[0].account, e(20))		
+			await context.accountFacet.connect(partyA1.getSigner).depositFor(await context.collateralNL.getAddress(), accounts[0].account, e(20))		
 		})
 
-		it("should fail when not Expected msg sender", async () => {			
-			await expect(context.multiAccount._call(accounts[0].account,["0x"])).to.revertedWithCustomError(context.multiAccount,"UnauthorizedAccess")
+		it("should fail when not Expected msg sender", async () => {
+			// admin as signer not partyA1
+			await expect(context.multiAccount._call(accounts[0].account, ["0x"])).to.revertedWithCustomError(context.multiAccount, "UnauthorizedAccess")
 		})
+
+		it("should PASS", async () => {						
+			console.log("User Collateral Balance:", await context.collateral.balanceOf(partyA1.address))
+			console.log("User Collateral Balance:", await context.collateral.balanceOf(partyA1.address))
+			console.log("PartyA Collateral Balance:", await context.collateral.balanceOf(accounts[0].account))
+			console.log("User Collateral Balance in Symmio:", await context.viewFacet.getIsolatedBalance(partyA1.address, context.collateral))
+			console.log("PartyA Collateral Balance in Symmio:", await context.viewFacet.getIsolatedBalance(accounts[0].account, context.collateral))
+
+			await expect(context.multiAccount.connect(partyA1.getSigner)._call(accounts[0].account, [openIntentCallData])).not.to.reverted
+			// try{
+			// 	await context.multiAccount.connect(partyA1.getSigner)._call(accounts[0].account, [openIntentCallData])
+			// } catch (error: any) {
+			// 	if (error.data) {
+			// 		try {
+			// 			const decodedError = context.partyAOpenFacet.interface.parseError(error.data)!
+			// 			// Join the error arguments for a clean log message
+			// 			const errorArgs = decodedError.args.join(", ")
+			// 			console.error(`Custom error: ${decodedError.name}(${errorArgs})`)
+			// 		} catch (parseError) {
+			// 			console.error("Error parsing error data:", parseError)
+			// 			console.error("Original error data:", error)
+			// 		}
+			// 	} else {
+			// 		console.error("Unknown error:", error)
+			// 	}
+			// }			
+		})
+
+		it("CallData should Have the expected Effect", async () => {	
+			await expect(context.multiAccount.connect(partyA1.getSigner)._call(accounts[0].account, [openIntentCallData])).not.to.reverted
+			
+			let intent:OpenIntentStruct = await context.viewFacet.getOpenIntent(1)
+			expect(intent.price).to.be.equal(request.price)
+			expect(intent.tradeAgreements.quantity).to.be.equal(request.quantity)
+		})
+
 	})
 }
