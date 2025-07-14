@@ -396,7 +396,7 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 
 		// Check nonce only if it's not 0 (0 means no nonce protection, relies on salt)
 		if (signedOp.nonce != 0) {
-			uint256 expectedNonce = nonces[signedOp.signer];
+			uint256 expectedNonce = nonces[signedOp.signer] + 1;
 			if (signedOp.nonce != expectedNonce) {
 				revert InvalidNonce(signedOp.signer, expectedNonce, signedOp.nonce);
 			}
