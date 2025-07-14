@@ -333,22 +333,31 @@ export function shouldBehaveLikeInstantLayer(): void {
 		})
 
 		it("Should be failed when Sender not have Operator Role ", async () => {
-			await expect(context.instantLayer.connect(partyA1.getSigner).executeBatch([])).to.be.reverted
+			await expect(context.instantLayer.connect(partyA1.getSigner).executeBatch([])).to.be.reverted // with "AccessControl" Error
 		})
 
 		it("Should be failed when input Ops have zero length ", async () => {
-			// await expect(context.instantLayer.executeBatch([])).to.be.reverted
-			//TODO
+			await expect(context.instantLayer.executeBatch([])).to.be.revertedWithCustomError(context.instantLayer, "EmptyBatch")
 		})
 
 		it("Should be failed when input Ops have passed the Deadline ", async () => {
-			const newBlock = (await getLatestBlockTime()) + 120 + 12
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
+			const deadline = await getLatestBlockTime()
+			await network.provider.send("evm_setNextBlockTimestamp", [deadline + 24])
 			await network.provider.send("evm_mine")
 
-			await context.instantLayer.registerPartyB(partyB1.getSigner)
-			// await expect(context.instantLayer.executeBatch(signedOps)).to.be.revertedWithCustomError(context.instantLayer,"DeadlineExpired")
-			//TODO
+			let saltStr: string = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+			const opOpenALocal: InstantLayer.SignedOperationStruct = {
+				accountSource: ZeroAddress,
+				signer: ZeroAddress,
+				callData: "0x", // no matter
+				nonce: 100, // no matter
+				salt: saltStr, // no matter
+				deadline: deadline,
+				signature: "0x",
+			}
+
+			await context.controlFacet.grantRole(context.instantLayer, ethers.keccak256(toUtf8Bytes("INSTANT_LAYER_ROLE")))
+			await expect(context.instantLayer.executeBatch([opOpenALocal])).to.be.revertedWithCustomError(context.instantLayer, "DeadlineExpired")
 		})
 
 		it("Should be able to set CallFromInstantLayer state with the right role", async () => {
@@ -443,10 +452,7 @@ export function shouldBehaveLikeInstantLayer(): void {
 			opOpenALocal.signature = await partyA1.sign(ethers.getBytes(hash))
 			await context.controlFacet.grantRole(context.instantLayer, ethers.keccak256(toUtf8Bytes("INSTANT_LAYER_ROLE")))
 
-			await expect(context.instantLayer.executeBatch([opOpenALocal])).to.be.revertedWithCustomError(
-				context.instantLayer,
-				"InvalidNonce",
-			)
+			await expect(context.instantLayer.executeBatch([opOpenALocal])).to.be.revertedWithCustomError(context.instantLayer, "InvalidNonce")
 		})
 
 		it("should Update Nonce on Signature verification with Valid nonce", async function () {
@@ -470,14 +476,14 @@ export function shouldBehaveLikeInstantLayer(): void {
 				deadline: deadline,
 				signature: "0x",
 			}
-			
+
 			const hash = await context.instantLayer.getOperationHash(opOpenALocal)
 			opOpenALocal.signature = await partyA1.sign(ethers.getBytes(hash))
 			await context.controlFacet.grantRole(context.instantLayer, ethers.keccak256(toUtf8Bytes("INSTANT_LAYER_ROLE")))
 			await expect(context.instantLayer.executeBatch([opOpenALocal])).not.to.be.reverted
-			
+
 			let newNonce = await context.instantLayer.nonces(opOpenALocal.signer)
-			console.log("New Nonce:",newNonce)
+			console.log("New Nonce:", newNonce)
 			expect(newNonce).to.be.equal(opOpenALocal.nonce)
 		})
 
