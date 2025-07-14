@@ -270,12 +270,16 @@ export function shouldBehaveLikeInstantLayer(): void {
 	})
 
 	describe("execute Batch", async function () {
-		let opOpenA1: InstantLayer.SignedOperationStruct, opOpenA2: InstantLayer.SignedOperationStruct 
+		let opOpenA1: InstantLayer.SignedOperationStruct, opOpenA2: InstantLayer.SignedOperationStruct
 		let opLockB1: InstantLayer.SignedOperationStruct, opFillB1: InstantLayer.SignedOperationStruct
 		let accounts: MultiAccount.AccountStruct[]
 		beforeEach(async function () {
 			const latestBlock = await getLatestBlockTime()
 			const deadline = latestBlock + 300
+
+			// Register roles
+			await context.instantLayer.registerPartyB(partyB1.address)
+			await context.instantLayer.registerMultiAccount(context.multiAccount)
 
 			accounts = await context.multiAccount.getAccounts(partyA1.address, 0, 100)
 			await expect(context.multiAccount.connect(partyA1.getSigner).addAccount("testAccount")).not.to.reverted
@@ -362,83 +366,9 @@ export function shouldBehaveLikeInstantLayer(): void {
 			expect(await context.viewFacet.isCallFromInstantLayer()).to.be.equal(true)
 		})
 
-		it("should Fail Signature verification with Invalid Nonce", async function () {
-			const latestBlock = await getLatestBlockTime()
-			const deadline = latestBlock + 300
-
-			const saltHex = "0xabc123"
-			const salt = hexZeroPad(saltHex, 32)
-			let saltStr: string = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
-
-			if (!/^0x[0-9a-fA-F]{64}$/.test(salt) || !/^0x[0-9a-fA-F]{64}$/.test(saltStr)) {
-				throw new Error("Invalid bytes32 format")
-			}
-
-			const opOpenALocal: InstantLayer.SignedOperationStruct = {
-				accountSource: ZeroAddress,
-				signer: partyA1.address,
-				callData: "0x1234",
-				nonce: 1,
-				salt: saltStr,
-				deadline: 0,
-				signature: "0x",
-			}
-
-			const hash = await context.instantLayer.getOperationHash(opOpenALocal)
-			opOpenALocal.signature = await partyA1.sign(ethers.getBytes(hash))
-
-			// await expect(context.instantLayer.executeBatch([opOpenA])).to.be.revertedWithCustomError(
-			// 	context.instantLayer,
-			// 	"InvalidNonce",
-			// )
-			//TODO NONCE update properly
-		})
-
-		it("should Update Nonce on Signature verification with Valid nonce", async function () {
-			const latestBlock = await getLatestBlockTime()
-			const deadline = latestBlock + 300
-
-			const saltHex = "0xabc123"
-			const salt = hexZeroPad(saltHex, 32)
-			let saltStr: string = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
-
-			if (!/^0x[0-9a-fA-F]{64}$/.test(salt) || !/^0x[0-9a-fA-F]{64}$/.test(saltStr)) {
-				throw new Error("Invalid bytes32 format")
-			}
-
-			const opOpenALocal: InstantLayer.SignedOperationStruct = {
-				accountSource: ZeroAddress,
-				signer: partyA1.address,
-				callData: "0x1234",
-				nonce: 1,
-				salt: saltStr,
-				deadline: 0,
-				signature: "0x",
-			}
-
-			const hash = await context.instantLayer.getOperationHash(opOpenALocal)
-			opOpenALocal.signature = await partyA1.sign(ethers.getBytes(hash))
-
-			// await expect(context.instantLayer.executeBatch([opOpenA])).not.to.be.reverted
-			// let newNonce = await context.instantLayer.nonces(opOpenA.signer)
-
-			// expect(newNonce).to.be.equal(BigInt(opOpenA.nonce) + 1n)
-			//TODO NONCE update properly
-		})
-
-		it("should allow PartyA to open and PartyB to lock/fill in a single batch", async function () {
+		it("should allow Solver to open and lock/fill in a single batch", async function () {
 			const { instantLayer, collateralNL, partyAOpenFacet, partyBOpenFacet } = context
-
-			const partyAAddress = partyA1.getSigner
-			const partyBAddress = partyB1.getSigner
-
 			const multiAccount = context.multiAccount
-
-			// Register roles
-			await instantLayer.registerPartyB(partyBAddress)
-			await instantLayer.registerMultiAccount(multiAccount)
-
-			await multiAccount.connect(partyA1.getSigner).addAccount("testAccount")
 
 			//Sign using getOperationHash
 			const opOpenAHash1 = await instantLayer.getOperationHash(opOpenA1)
@@ -482,9 +412,73 @@ export function shouldBehaveLikeInstantLayer(): void {
 			// Accompanying with a lock and fill signed from PartyB and Finally submitted to Instant Layer
 			const signedOps: InstantLayer.SignedOperationStruct[] = [opOpenA1, opLockB1, opFillB1]
 			await expect(instantLayer.executeBatch(signedOps)).not.to.be.reverted
-			let intent:OpenIntentStruct = await context.viewFacet.getOpenIntent(1)
+			let intent: OpenIntentStruct = await context.viewFacet.getOpenIntent(1)
 			expect(intent.price).to.be.equal(request.price).to.be.equal(5)
 			expect(intent.tradeAgreements.quantity).to.be.equal(request.quantity).to.equal(e(1))
+		})
+
+		it("should Fail Signature verification with Invalid Nonce", async function () {
+			const latestBlock = await getLatestBlockTime()
+			const deadline = latestBlock + 300
+
+			const saltHex = "0xabc123"
+			const salt = hexZeroPad(saltHex, 32)
+			let saltStr: string = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+
+			if (!/^0x[0-9a-fA-F]{64}$/.test(salt) || !/^0x[0-9a-fA-F]{64}$/.test(saltStr)) {
+				throw new Error("Invalid bytes32 format")
+			}
+
+			const opOpenALocal: InstantLayer.SignedOperationStruct = {
+				accountSource: await context.multiAccount.getAddress(),
+				signer: accounts[0].account,
+				callData: openIntentCallData,
+				nonce: 2,
+				salt: saltStr,
+				deadline: deadline,
+				signature: "0x",
+			}
+
+			const hash = await context.instantLayer.getOperationHash(opOpenALocal)
+			opOpenALocal.signature = await partyA1.sign(ethers.getBytes(hash))
+			await context.controlFacet.grantRole(context.instantLayer, ethers.keccak256(toUtf8Bytes("INSTANT_LAYER_ROLE")))
+
+			await expect(context.instantLayer.executeBatch([opOpenALocal])).to.be.revertedWithCustomError(
+				context.instantLayer,
+				"InvalidNonce",
+			)
+		})
+
+		it("should Update Nonce on Signature verification with Valid nonce", async function () {
+			const latestBlock = await getLatestBlockTime()
+			const deadline = latestBlock + 300
+
+			const saltHex = "0xabc123"
+			const salt = hexZeroPad(saltHex, 32)
+			let saltStr: string = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+
+			if (!/^0x[0-9a-fA-F]{64}$/.test(salt) || !/^0x[0-9a-fA-F]{64}$/.test(saltStr)) {
+				throw new Error("Invalid bytes32 format")
+			}
+
+			const opOpenALocal: InstantLayer.SignedOperationStruct = {
+				accountSource: await context.multiAccount.getAddress(),
+				signer: accounts[0].account,
+				callData: openIntentCallData,
+				nonce: 1,
+				salt: saltStr,
+				deadline: deadline,
+				signature: "0x",
+			}
+			
+			const hash = await context.instantLayer.getOperationHash(opOpenALocal)
+			opOpenALocal.signature = await partyA1.sign(ethers.getBytes(hash))
+			await context.controlFacet.grantRole(context.instantLayer, ethers.keccak256(toUtf8Bytes("INSTANT_LAYER_ROLE")))
+			await expect(context.instantLayer.executeBatch([opOpenALocal])).not.to.be.reverted
+			
+			let newNonce = await context.instantLayer.nonces(opOpenALocal.signer)
+			console.log("New Nonce:",newNonce)
+			expect(newNonce).to.be.equal(opOpenALocal.nonce)
 		})
 
 		it("Should be failed when ", async () => {
