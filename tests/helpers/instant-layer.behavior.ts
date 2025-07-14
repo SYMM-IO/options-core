@@ -4,7 +4,7 @@ import { initializeTestFixture } from "../initialize-test.fixture"
 import { PartyA } from "../models/partyA.model"
 import { RunContext } from "../run-context"
 import { IntentStatus, TradeSide } from "../option-enums"
-import { openIntentRequestBuilder } from "../models/builders/send-open-intent.builder"
+import { OpenIntent, openIntentRequestBuilder } from "../models/builders/send-open-intent.builder"
 import { PartyB } from "../models/partyB.model"
 import { ethers, network } from "hardhat"
 import { e } from "../../utils/e"
@@ -15,22 +15,25 @@ import { OpenIntentStruct, OpenIntentStructOutput, SymbolStruct } from "../../ty
 
 import { MarginType } from "../option-enums"
 import { getLatestBlockTime } from "../../utils/time"
-import { InstantLayer } from "../../types"
+import { InstantLayer, MultiAccount } from "../../types"
 
 import * as diamond from "../../artifacts/contracts/Diamond.sol/Diamond.json"
 // import * as partyAOpenIntent from "../artifacts/contracts/facets/PartyAOpen/PartyAOpenFacet.sol/PartyAOpenFacet.json"
 // import * as partyBOpenIntent from "../artifacts/contracts/facets/PartyBOpen/PartyBOpenFacet.sol/PartyBOpenFacet.json"
 import { trace } from "console"
 import { hexZeroPad, zeroPad } from "@ethersproject/bytes"
+import { Context } from "mocha"
 
 export function shouldBehaveLikeInstantLayer(): void {
 	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyB1: PartyB, partyB2: PartyB
 	let openIntentCallData: string, lockIntentCallData: string, fillIntentCallData: string
-	let saltOpen: string, saltLock: string, saltFill: string
+	let saltOpen1: string, saltOpen2: string, saltLock: string, saltFill: string
 
 	let ops: InstantLayer.OperationStruct[]
 	let signedOps: InstantLayer.SignedOperationStruct[]
 	let ABI: InterfaceAbi
+
+	let request: OpenIntent
 
 	beforeEach(async function () {
 		context = await loadFixture(initializeTestFixture)
@@ -39,9 +42,9 @@ export function shouldBehaveLikeInstantLayer(): void {
 		partyB1 = new PartyB(context, context.signers.partyB1)
 		partyB2 = new PartyB(context, context.signers.partyB2)
 
-		await partyA1.setBalances(context.collateral, e(100000), e(100000))
-		await partyA1.setBalances(context.collateralNL, e(100000), e(100000)) // as Fee token
-		await partyA2.setBalances(context.collateral, e(100000), e(100000))
+		await partyA1.setBalances(context.collateral, e(100000), e(5000))
+		await partyA1.setBalances(context.collateralNL, e(100000), e(5000)) // as Fee token
+		await partyA2.setBalances(context.collateral, e(100000), e(5000))
 		const { instantLayer, collateralNL, partyAOpenFacet, partyBOpenFacet } = context
 
 		await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
@@ -52,14 +55,15 @@ export function shouldBehaveLikeInstantLayer(): void {
 
 		await context.controlFacet.setUnbindingCooldown(120)
 
-		saltOpen = ethers.keccak256(ethers.toUtf8Bytes("saltOpen"))
+		saltOpen1 = ethers.keccak256(ethers.toUtf8Bytes("saltOpen1"))
+		saltOpen2 = ethers.keccak256(ethers.toUtf8Bytes("saltOpen2"))
 		saltLock = ethers.keccak256(ethers.toUtf8Bytes("saltLock"))
 		saltFill = ethers.keccak256(ethers.toUtf8Bytes("saltFill"))
 
 		const latestBlock = await getLatestBlockTime()
 		const deadline = latestBlock + 300
 
-		const request = openIntentRequestBuilder()
+		request = openIntentRequestBuilder()
 			.partyBsWhiteList([partyB1.address])
 			.affiliate(context.signers.affiliate1.address)
 			.feeToken(await collateralNL.getAddress())
@@ -70,26 +74,9 @@ export function shouldBehaveLikeInstantLayer(): void {
 			.marginType(MarginType.ISOLATED)
 			.tradeSide(TradeSide.BUY)
 			.strikePrice(e(1))
+			.price(5)
+			.quantity(e(1))
 			.build()
-
-		// let partyBOpenABI = new ethers.Interface(partyBOpenIntent.abi)
-		// let partyAOpenABI = new ethers.Interface(partyAOpenIntent.abi)
-		// const openIntentCallData = partyAOpenABI.encodeFunctionData("sendOpenIntent", [
-		// 	[partyB1.getSigner.address],
-		// 	request.symbolId,
-		// 	request.price,
-		// 	request.quantity,
-		// 	request.strikePrice,
-		// 	request.expirationTimestamp,
-		// 	request.mm,
-		// 	request.tradeSide,
-		// 	request.marginType,
-		// 	request.exerciseFee,
-		// 	request.deadline,
-		// 	await context.collateralNL.getAddress(),
-		// 	await context.signers.affiliate1.getAddress(),
-		// 	request.userData,
-		// ])
 
 		openIntentCallData = partyAOpenFacet.interface.encodeFunctionData("sendOpenIntent", [
 			request.partyBsWhiteList,
@@ -283,22 +270,44 @@ export function shouldBehaveLikeInstantLayer(): void {
 	})
 
 	describe("execute Batch", async function () {
-		let opOpenA: InstantLayer.SignedOperationStruct, opLockB: InstantLayer.SignedOperationStruct, opFillB: InstantLayer.SignedOperationStruct
+		let opOpenA1: InstantLayer.SignedOperationStruct, opOpenA2: InstantLayer.SignedOperationStruct 
+		let opLockB1: InstantLayer.SignedOperationStruct, opFillB1: InstantLayer.SignedOperationStruct
+		let accounts: MultiAccount.AccountStruct[]
 		beforeEach(async function () {
 			const latestBlock = await getLatestBlockTime()
 			const deadline = latestBlock + 300
 
-			 opOpenA = {
+			accounts = await context.multiAccount.getAccounts(partyA1.address, 0, 100)
+			await expect(context.multiAccount.connect(partyA1.getSigner).addAccount("testAccount")).not.to.reverted
+			accounts = await context.multiAccount.getAccounts(partyA1.address, 0, 100)
+
+			await expect(context.collateral.connect(partyA1.getSigner).approve(context.common.diamondAddress, ethers.MaxUint256)).not.reverted
+			await expect(context.collateral.connect(partyA1.getSigner).mint(accounts[0].account, e(30))).to.not.reverted
+			await expect(context.collateralNL.connect(partyA1.getSigner).mint(accounts[0].account, e(30))).to.not.reverted
+			await context.accountFacet.connect(partyA1.getSigner).depositFor(await context.collateral.getAddress(), accounts[0].account, e(20))
+			await context.accountFacet.connect(partyA1.getSigner).depositFor(await context.collateralNL.getAddress(), accounts[0].account, e(20))
+
+			opOpenA1 = {
 				accountSource: await context.multiAccount.getAddress(),
-				signer: partyA1.address,
+				signer: accounts[0].account,
 				callData: openIntentCallData,
 				nonce: 0,
-				salt: saltOpen,
+				salt: saltOpen1,
 				deadline: deadline,
 				signature: new Uint8Array([0x1, 0x2]),
 			}
 
-			opLockB = {
+			opOpenA2 = {
+				accountSource: await context.multiAccount.getAddress(),
+				signer: accounts[0].account,
+				callData: openIntentCallData,
+				nonce: 0,
+				salt: saltOpen2,
+				deadline: deadline,
+				signature: new Uint8Array([0x1, 0x2]),
+			}
+
+			opLockB1 = {
 				accountSource: ethers.ZeroAddress,
 				signer: partyB1.address,
 				callData: lockIntentCallData,
@@ -308,7 +317,7 @@ export function shouldBehaveLikeInstantLayer(): void {
 				signature: "0x",
 			}
 
-			opFillB = {
+			opFillB1 = {
 				accountSource: ethers.ZeroAddress,
 				signer: partyB1.address,
 				callData: fillIntentCallData,
@@ -432,33 +441,36 @@ export function shouldBehaveLikeInstantLayer(): void {
 			await multiAccount.connect(partyA1.getSigner).addAccount("testAccount")
 
 			//Sign using getOperationHash
-			const opOpenAHash = await instantLayer.getOperationHash(opOpenA)
-			const opLockBHash = await instantLayer.getOperationHash(opLockB)
-			const opFillBHash = await instantLayer.getOperationHash(opFillB)
+			const opOpenAHash1 = await instantLayer.getOperationHash(opOpenA1)
+			const opOpenAHash2 = await instantLayer.getOperationHash(opOpenA2)
+			const opLockBHash = await instantLayer.getOperationHash(opLockB1)
+			const opFillBHash = await instantLayer.getOperationHash(opFillB1)
 
-			opOpenA.signature = await partyA1.sign(ethers.getBytes(opOpenAHash))
-			opLockB.signature = await partyB1.sign(ethers.getBytes(opLockBHash))
-			opFillB.signature = await partyB1.sign(ethers.getBytes(opFillBHash))
+			opOpenA1.signature = await partyA1.sign(ethers.getBytes(opOpenAHash1))
+			opOpenA2.signature = await partyA1.sign(ethers.getBytes(opOpenAHash2))
+			opLockB1.signature = await partyB1.sign(ethers.getBytes(opLockBHash))
+			opFillB1.signature = await partyB1.sign(ethers.getBytes(opFillBHash))
 			console.log("OpenIntent Interface:", openIntentCallData)
 			console.log("LockIntent Interface:", lockIntentCallData)
 			console.log("FillIntent Interface:", fillIntentCallData)
-			console.log("PartyA address:", opOpenA.signer)
+			console.log("PartyA address:", partyA1.address)
+			console.log("PartyA Account address:", accounts[0].account)
 			console.log("PartyB address:", partyB1.address)
 			console.log("MultiAccount address:", await multiAccount.getAddress())
-			console.log("Signature and length PartyA Open:", opOpenA.signature.length, opOpenA.signature)
-			console.log("Signature and length PartyB Lock:", opLockB.signature.length, opLockB.signature)
-			console.log("Signature and length PartyB Fill:", opFillB.signature.length, opFillB.signature)
+			console.log("Signature and length PartyA Open:", opOpenA1.signature.length, opOpenA1.signature)
+			console.log("Signature and length PartyB Lock:", opLockB1.signature.length, opLockB1.signature)
+			console.log("Signature and length PartyB Fill:", opFillB1.signature.length, opFillB1.signature)
 
 			try {
-				let recoveredAddress = ethers.verifyMessage(ethers.getBytes(opOpenAHash), opOpenA.signature)
-				console.log("Party A Verifyed:", recoveredAddress === opOpenA.signer)
-				console.log("signer vs Recovered", opOpenA.signer, " vs ", recoveredAddress)
-				recoveredAddress = ethers.verifyMessage(ethers.getBytes(opLockBHash), opLockB.signature)
-				console.log("Party B Verifyed:", recoveredAddress === opLockB.signer)
-				console.log("signer vs Recovered", opLockB.signer, " vs ", recoveredAddress)
-				recoveredAddress = ethers.verifyMessage(ethers.getBytes(opFillBHash), opFillB.signature)
-				console.log("Party B Fill Verifyed:", recoveredAddress === opFillB.signer)
-				console.log("signer vs Recovered", opFillB.signer, " vs ", recoveredAddress)
+				let recoveredAddress = ethers.verifyMessage(ethers.getBytes(opOpenAHash1), opOpenA1.signature)
+				console.log("Party A Verifyed:", recoveredAddress === partyA1.address)
+				console.log("signer vs Recovered", opOpenA1.signer, " vs ", recoveredAddress)
+				recoveredAddress = ethers.verifyMessage(ethers.getBytes(opLockBHash), opLockB1.signature)
+				console.log("Party B Verifyed:", recoveredAddress === opLockB1.signer)
+				console.log("signer vs Recovered", opLockB1.signer, " vs ", recoveredAddress)
+				recoveredAddress = ethers.verifyMessage(ethers.getBytes(opFillBHash), opFillB1.signature)
+				console.log("Party B Fill Verifyed:", recoveredAddress === opFillB1.signer)
+				console.log("signer vs Recovered", opFillB1.signer, " vs ", recoveredAddress)
 			} catch (error) {
 				console.error("Verification failed:", error)
 				return false
@@ -466,9 +478,13 @@ export function shouldBehaveLikeInstantLayer(): void {
 
 			await context.controlFacet.grantRole(context.instantLayer, ethers.keccak256(toUtf8Bytes("INSTANT_LAYER_ROLE")))
 
-			// Execute the batch
-			const signedOps: InstantLayer.SignedOperationStruct[] = [opOpenA]
-			await expect(instantLayer.executeBatch(signedOps)).to.be.revertedWithCustomError(context.instantLayer, "OperationFailed")
+			// Execute the batch using 1 open Intent signed from the PartyA submitted to PartyB API
+			// Accompanying with a lock and fill signed from PartyB and Finally submitted to Instant Layer
+			const signedOps: InstantLayer.SignedOperationStruct[] = [opOpenA1, opLockB1, opFillB1]
+			await expect(instantLayer.executeBatch(signedOps)).not.to.be.reverted
+			let intent:OpenIntentStruct = await context.viewFacet.getOpenIntent(1)
+			expect(intent.price).to.be.equal(request.price).to.be.equal(5)
+			expect(intent.tradeAgreements.quantity).to.be.equal(request.quantity).to.equal(e(1))
 		})
 
 		it("Should be failed when ", async () => {

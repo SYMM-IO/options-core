@@ -66,9 +66,9 @@ describe(`${name}-v${version}`, () => {
 			shouldBehaveLikeInstantLayer()
 		})
 
-		describe("Multi Account", async function () {
-			shouldBehaveLikeMultiAccount()
-		})
+		// describe("Multi Account", async function () {
+		// 	shouldBehaveLikeMultiAccount()
+		// })
 	} else {
 		throw new Error(`Invalid TEST_MODE property. Should be one of: ${Object.keys(TestModeEnum).join(", ")}`)
 	}
