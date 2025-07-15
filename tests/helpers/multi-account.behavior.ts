@@ -80,6 +80,7 @@ export function shouldBehaveLikeMultiAccount(): void {
 			request.tradeSide,
 			request.marginType,
 			request.exerciseFee,
+			request.solverFee,
 			request.deadline,
 			request.feeToken,
 			request.affiliate,
