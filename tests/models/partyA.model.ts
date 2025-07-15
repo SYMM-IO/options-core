@@ -25,6 +25,7 @@ export class PartyA extends PartyEntity {
 					request.tradeSide,
 					request.marginType,
 					request.exerciseFee,
+					request.solverFee,
 					request.deadline,
 					request.feeToken,
 					request.affiliate,

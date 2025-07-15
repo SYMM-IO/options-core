@@ -9,11 +9,11 @@ import { ethers, network } from "hardhat"
 import { e } from "../utils/e"
 import { ZeroAddress } from "ethers"
 import { IntentStatus, MarginType, TradeSide } from "./option-enums"
-import { OpenIntentStruct, SymbolStruct } from "../types/contracts/interfaces/ISymmio"
+import { CrossEntryStruct, OpenIntentStruct, SymbolStruct } from "../types/contracts/interfaces/ISymmio"
 import { BigNumber } from "@ethersproject/bignumber"
 import { bigint, int } from "hardhat/internal/core/params/argumentTypes"
 import { partyAOpen } from "../types/contracts/facets"
-import { CrossEntryStruct } from "../types/contracts/facets/ViewFacet/VeiwFacet.sol/ViewFacet"
+
 import { getLatestBlockTime } from "../utils/time"
 
 export function shouldBehaveLikePartyAOpenFacet(): void {
@@ -35,8 +35,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 	describe("sendOpenIntent", async function () {
 		beforeEach(async () => {
-			await context.controlFacet.addOracle("test orancel", context.signers.others[0])
-			await context.controlFacet.addSymbol("BTC", 0, 1, context.collateral.getAddress(), 0, 0)
+			// await context.controlFacet.addOracle("test orancel", context.signers.others[0])
+			// await context.controlFacet.addSymbol("BTC", 0, 1, context.collateral.getAddress(), { openFee: 10, closeFee: 20 }, 0)
 		})
 
 		it("Should fail when partyA actions paused", async function () {
@@ -44,7 +44,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			const request = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB1.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.build()
 			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "PartyAActionsPaused")
 		})
@@ -595,8 +595,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.tradeSide(TradeSide.BUY)
 				.build()
 
-			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [e(20)])
-			await context.controlFacet.setSymbolsTradingFees([1], [e(10)])
+			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: 10, closeFee: 20 }])
+			await context.controlFacet.setSymbolsTradingFees([1], [{ openFee: 10, closeFee: 20 }])
 
 			await expect(partyA1.sendOpenIntent(request)).not.to.reverted
 
@@ -639,8 +639,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.marginType(MarginType.ISOLATED)
 				.build()
 
-			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [e(50)])
-			await context.controlFacet.setSymbolsTradingFees([1], [e(100)])
+			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: 50, closeFee: 20 }])
+			await context.controlFacet.setSymbolsTradingFees([1], [{ openFee: 100, closeFee: 20 }])
 
 			expect(await partyA1.sendOpenIntent(request)).not.to.reverted
 			const intent = await context.viewFacet.getOpenIntent(1)
@@ -662,7 +662,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			console.log("Affiliate Fee From View:", affiliateFeeFromView)
 			console.log("Premium Fee From View:", premiumFromView)
 
-			expect(intent.tradingFee.platformFee).to.equal(symbol.tradingFee)
+			expect(intent.feeStructure.platformFee).to.deep.equal(symbol.tradingFee)
 			expect(isolatedBalance - isolatedBalance2).to.be.equal(tradingFeeFromView + affiliateFeeFromView)
 		})
 
@@ -688,8 +688,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.marginType(MarginType.CROSS)
 				.build()
 
-			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [e(50)])
-			await context.controlFacet.setSymbolsTradingFees([1], [e(100)])
+			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: 50, closeFee: 20 }])
+			await context.controlFacet.setSymbolsTradingFees([1], [{ openFee: 100, closeFee: 20 }])
 
 			expect(await partyA1.sendOpenIntent(request)).not.to.reverted
 			const intent = await context.viewFacet.getOpenIntent(1)

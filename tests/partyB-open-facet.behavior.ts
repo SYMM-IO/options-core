@@ -105,7 +105,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 				.quantity(e(10))
 				.price(1)
 				.build()
-			await partyA1.sendOpenIntent(request)
+			await expect(partyA1.sendOpenIntent(request)).to.not.reverted
 
 			await context.controlFacet.setPartyBConfig(partyA1.getSigner, {
 				isActive: true,
@@ -585,8 +585,8 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			const premiumFromView = await context.viewFacet.getOpenIntentPremium(2)
 			const affiliateFeeFromView = await context.viewFacet.getAffiliateFee(openIntents[1].affiliate, symbol.symbolId)
 
-			let partyAFeesPaid = BigInt(openIntents.length) * (tradingFeeFromView + affiliateFeeFromView)
-			let partyAPremiumPaid = BigInt(openIntents.length) * premiumFromView
+			// let partyAFeesPaid = BigInt(openIntents.length) * (tradingFeeFromView + affiliateFeeFromView)
+			// let partyAPremiumPaid = BigInt(openIntents.length) * premiumFromView
 			//OI == open intent
 			let send_OI_IsolatedBalancePartyA = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, await context.collateral.getAddress())
 
