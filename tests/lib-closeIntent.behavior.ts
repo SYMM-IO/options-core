@@ -46,6 +46,7 @@ export function shouldBehaveLikeLibCloseIntent(): void {
 
 				expect(storedTrade.activeCloseIntentIds.map(id => id.toString())).to.include(closeIntent.id.toString())
 				expect(storedTrade.closePendingAmount).to.equal(closeIntent.quantity)
+				//TODO must be adopted to recent changes to FEE structure
 			})
 		})
 

@@ -1,7 +1,6 @@
 import { Builder } from "builder-pattern"
-import { AddressLike, BigNumberish, BytesLike, toUtf8Bytes } from "ethers"
-import { ethers } from "hardhat"
-import { SettlementPriceSigStruct } from "../../../types/contracts/facets/TradeSettlement/ITradeSettlementFacet"
+import { SettlementPriceSigStruct } from "../../../types/contracts/interfaces/ISymmio"
+
 
 const settlementSig: SettlementPriceSigStruct = {
 	reqId: "0x",
