@@ -3,6 +3,7 @@ pragma solidity >=0.8.19;
 
 import { PartyBConfig } from "../../storages/AppStorage.sol";
 
+import { Fee } from "../../types/BaseTypes.sol";
 import { Symbol } from "../../types/SymbolTypes.sol";
 import { OptionType } from "../../types/SymbolTypes.sol";
 import { ExpressWithdrawProviderConfig } from "../../types/WithdrawTypes.sol";
@@ -84,7 +85,7 @@ interface IControlFacet is IControlEvents {
 	function setDefaultFeeCollector(address _collector) external;
 	function setAffiliateStatus(address _affiliate, bool _status) external;
 	function setAffiliateFeesCollector(address _affiliate, address _collector) external;
-	function setAffiliateFees(address _affiliate, uint256[] calldata _symbolIds, uint256[] calldata _fees) external;
+	function setAffiliateFees(address _affiliate, uint256[] calldata _symbolIds, Fee[] calldata _fees) external;
 
 	// Party B Configuration
 	function setPartyBConfig(address _partyB, PartyBConfig calldata _config) external;
@@ -135,11 +136,11 @@ interface IControlFacet is IControlEvents {
 		OptionType _optionType,
 		uint256 _oracleId,
 		address _collateral,
-		uint256 _tradingFee,
+		Fee calldata _tradingFee,
 		uint256 _symbolType
 	) external;
 	function addSymbols(Symbol[] calldata symbols) external;
-	function setSymbolsTradingFees(uint256[] calldata _symbolIds, uint256[] calldata _fees) external;
+	function setSymbolsTradingFees(uint256[] calldata _symbolIds, Fee[] calldata _fees) external;
 	function setSymbolsValidationState(uint256[] calldata _symbolIds, bool[] calldata _states) external;
 	function setSymbolsNames(uint256[] calldata _symbolIds, string[] calldata _names) external;
 

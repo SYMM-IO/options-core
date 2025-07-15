@@ -5,8 +5,9 @@
 pragma solidity >=0.8.19;
 
 import { LibParty } from "../../libraries/models/LibParty.sol";
-import { LibOpenIntentOps } from "../../libraries/models/LibOpenIntent.sol";
 import { LibTradeOps } from "../../libraries/models/LibTrade.sol";
+import { LibOpenIntentOps } from "../../libraries/models/LibOpenIntent.sol";
+import { LibCloseIntentOps } from "../../libraries/models/LibCloseIntent.sol";
 
 import { TradeStorage } from "../../storages/TradeStorage.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
@@ -20,11 +21,12 @@ import { FeeManagementStorage } from "../../storages/FeeManagementStorage.sol";
 import { SymbolStorage, Symbol, Oracle } from "../../storages/SymbolStorage.sol";
 import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelationsStorage.sol";
 
+import { Fee } from "../../types/BaseTypes.sol";
 import { Trade } from "../../types/TradeTypes.sol";
-import { Withdraw, ExpressWithdrawProviderConfig } from "../../types/WithdrawTypes.sol";
-import { OpenIntent, CloseIntent } from "../../types/IntentTypes.sol";
 import { LiquidationDetail } from "../../types/LiquidationTypes.sol";
+import { OpenIntent, CloseIntent } from "../../types/IntentTypes.sol";
 import { ScheduledReleaseEntry, CrossEntry } from "../../types/BalanceTypes.sol";
+import { Withdraw, ExpressWithdrawProviderConfig } from "../../types/WithdrawTypes.sol";
 
 import { IViewFacet } from "./IViewFacet.sol";
 
@@ -39,6 +41,7 @@ contract ViewFacet is IViewFacet {
 	using EnumerableSet for EnumerableSet.AddressSet;
 	using LibParty for address;
 	using LibOpenIntentOps for OpenIntent;
+	using LibCloseIntentOps for CloseIntent;
 	using LibTradeOps for Trade;
 
 	// ════════════════════════════════════════════════════════════════════════════
@@ -509,7 +512,7 @@ contract ViewFacet is IViewFacet {
 	 * @param symbolId The symbol ID
 	 * @return The affiliate fee amount
 	 */
-	function getAffiliateFee(address affiliate, uint256 symbolId) external view returns (uint256) {
+	function getAffiliateFee(address affiliate, uint256 symbolId) external view returns (Fee memory) {
 		return FeeManagementStorage.layout().affiliateFees[affiliate][symbolId];
 	}
 
@@ -1009,7 +1012,8 @@ contract ViewFacet is IViewFacet {
 	 * @return The trading fee
 	 */
 	function getOpenIntentTradingFee(uint256 intentId) external view returns (uint256) {
-		return OpenIntentStorage.layout().openIntents[intentId].getTradingFee();
+		OpenIntent memory intent = OpenIntentStorage.layout().openIntents[intentId];
+		return intent.calculateFeeAmount(intent.feeStructure.platformFee.openFee);
 	}
 
 	/**
@@ -1018,7 +1022,8 @@ contract ViewFacet is IViewFacet {
 	 * @return The affiliate fee
 	 */
 	function getOpenIntentAffiliateFee(uint256 intentId) external view returns (uint256) {
-		return OpenIntentStorage.layout().openIntents[intentId].getAffiliateFee();
+		OpenIntent memory intent = OpenIntentStorage.layout().openIntents[intentId];
+		return intent.calculateFeeAmount(intent.feeStructure.affiliateFee.openFee);
 	}
 
 	/**
@@ -1027,7 +1032,40 @@ contract ViewFacet is IViewFacet {
 	 * @return The premium
 	 */
 	function getOpenIntentPremium(uint256 intentId) external view returns (uint256) {
-		return OpenIntentStorage.layout().openIntents[intentId].getPremium();
+		return OpenIntentStorage.layout().openIntents[intentId].calculatePremiumAmount();
+	}
+
+	// ════════════════════════════════════════════════════════════════════════════
+	//                          CLOSE INTENT VIEWS
+	// ════════════════════════════════════════════════════════════════════════════
+
+	/**
+	 * @notice Gets the trading fee for a close intent
+	 * @param intentId The intent ID
+	 * @return The trading fee
+	 */
+	function getCloseIntentTradingFee(uint256 intentId) external view returns (uint256) {
+		CloseIntent memory intent = CloseIntentStorage.layout().closeIntents[intentId];
+		return intent.calculateFeeAmount(intent.feeStructure.platformFee.closeFee);
+	}
+
+	/**
+	 * @notice Gets the affiliate fee for a close intent
+	 * @param intentId The intent ID
+	 * @return The affiliate fee
+	 */
+	function getCloseIntentAffiliateFee(uint256 intentId) external view returns (uint256) {
+		CloseIntent memory intent = CloseIntentStorage.layout().closeIntents[intentId];
+		return intent.calculateFeeAmount(intent.feeStructure.affiliateFee.closeFee);
+	}
+
+	/**
+	 * @notice Gets the premium for a close intent
+	 * @param intentId The intent ID
+	 * @return The premium
+	 */
+	function getCloseIntentPremium(uint256 intentId) external view returns (uint256) {
+		return CloseIntentStorage.layout().closeIntents[intentId].calculatePremiumAmount();
 	}
 
 	// ════════════════════════════════════════════════════════════════════════════

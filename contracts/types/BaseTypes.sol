@@ -19,11 +19,22 @@ struct ExerciseFee {
 	uint256 cap;
 }
 
-struct TradingFee {
+struct Fee {
+	uint256 openFee;
+	uint256 closeFee;
+}
+
+enum FeeOp {
+	Subtract,
+	Add
+}
+
+struct FeeStructure {
 	address feeToken;
 	uint256 tokenPriceInCollateral;
-	uint256 platformFee;
-	uint256 affiliateFee;
+	Fee platformFee;
+	Fee affiliateFee;
+	Fee solverFee;
 }
 
 struct TradeAgreements {
@@ -31,7 +42,7 @@ struct TradeAgreements {
 	uint256 quantity;
 	uint256 strikePrice;
 	uint256 expirationTimestamp;
-	uint256 mm; 
+	uint256 mm;
 	ExerciseFee exerciseFee;
 	TradeSide tradeSide;
 	MarginType marginType;

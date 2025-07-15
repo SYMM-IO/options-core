@@ -51,7 +51,8 @@ library LibPartyAClose {
 			status: CloseIntentStatus.PENDING,
 			createTimestamp: block.timestamp,
 			statusModifyTimestamp: block.timestamp,
-			deadline: deadline
+			deadline: deadline,
+			feeStructure: trade.feeStructure
 		});
 
 		intent.save();

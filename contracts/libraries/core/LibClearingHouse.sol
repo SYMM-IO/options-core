@@ -306,7 +306,9 @@ library LibClearingHouse {
 				intent.expire();
 			} else {
 				intent.status = OpenIntentStatus.CANCELED;
-				intent.handleFeesAndPremium(false);
+				intent.returnFeesToUser();
+				intent.unlockPremium();
+				intent.unlockMaintenanceMargin();
 				intent.remove(false);
 			}
 			intent.statusModifyTimestamp = block.timestamp;

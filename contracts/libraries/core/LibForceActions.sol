@@ -34,7 +34,9 @@ library LibForceActions {
 
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = OpenIntentStatus.CANCELED;
-		intent.handleFeesAndPremium(false);
+		intent.returnFeesToUser();
+		intent.unlockPremium();
+		intent.unlockMaintenanceMargin();
 		intent.remove(false);
 	}
 

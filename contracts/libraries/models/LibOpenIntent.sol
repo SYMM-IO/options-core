@@ -10,7 +10,7 @@ import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance
 import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
 import { Symbol, SymbolStorage } from "../../storages/SymbolStorage.sol";
 
-import { TradeSide, MarginType } from "../../types/BaseTypes.sol";
+import { TradeSide, MarginType, FeeStructure, FeeOp } from "../../types/BaseTypes.sol";
 import { OpenIntent, OpenIntentStatus } from "../../types/IntentTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 
@@ -21,15 +21,11 @@ library LibOpenIntentOps {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibParty for address;
 
-	function getTradingFee(OpenIntent memory self) internal pure returns (uint256) {
-		return (self.tradeAgreements.quantity * self.price * self.tradingFee.platformFee) / (self.tradingFee.tokenPriceInCollateral * 1e18);
+	function calculateFeeAmount(OpenIntent memory self, uint256 rate) internal pure returns (uint256) {
+		return (self.tradeAgreements.quantity * self.price * rate) / (self.feeStructure.tokenPriceInCollateral * 1e18);
 	}
 
-	function getAffiliateFee(OpenIntent memory self) internal pure returns (uint256) {
-		return (self.tradeAgreements.quantity * self.price * self.tradingFee.affiliateFee) / (self.tradingFee.tokenPriceInCollateral * 1e18);
-	}
-
-	function getPremium(OpenIntent memory self) internal pure returns (uint256) {
+	function calculatePremiumAmount(OpenIntent memory self) internal pure returns (uint256) {
 		return (self.tradeAgreements.quantity * self.price) / 1e18;
 	}
 
@@ -90,66 +86,103 @@ library LibOpenIntentOps {
 		self.status = OpenIntentStatus.EXPIRED;
 		self.statusModifyTimestamp = block.timestamp;
 
-		handleFeesAndPremium(self, false);
+		returnFeesToUser(self);
+		unlockPremium(self);
+		unlockMaintenanceMargin(self);
 		remove(self, false);
 	}
 
-	function handleFeesAndPremium(OpenIntent memory self, bool isUserPaying) internal {
+	function _handleFees(OpenIntent memory self, FeeOp op) internal {
+		FeeStructure memory s = self.feeStructure;
+		bool isolated = self.tradeAgreements.marginType == MarginType.ISOLATED;
+		bool singlePartyB = self.partyBsWhiteList.length == 1;
+		address partyB = self.partyBsWhiteList[0];
+
+		ScheduledReleaseBalance storage bal = self.partyA.balanceOf(s.feeToken);
+
+		uint256[3] memory fees = [
+			calculateFeeAmount(self, s.platformFee.openFee),
+			calculateFeeAmount(self, s.affiliateFee.openFee),
+			calculateFeeAmount(self, s.solverFee.openFee)
+		];
+
+		DecreaseBalanceReason[3] memory decReasons = [
+			DecreaseBalanceReason.PLATFORM_FEE,
+			DecreaseBalanceReason.AFFILIATE_FEE,
+			DecreaseBalanceReason.SOLVER_FEE
+		];
+		IncreaseBalanceReason[3] memory incReasons = [
+			IncreaseBalanceReason.PLATFORM_FEE,
+			IncreaseBalanceReason.AFFILIATE_FEE,
+			IncreaseBalanceReason.SOLVER_FEE
+		];
+
+		for (uint8 i; i < 3; ++i) {
+			if (op == FeeOp.Subtract) {
+				if (isolated && !singlePartyB) {
+					bal.isolatedSub(fees[i], decReasons[i]);
+				} else {
+					bal.subForCounterParty(partyB, fees[i], self.tradeAgreements.marginType, decReasons[i]);
+				}
+			} else {
+				if (isolated && !singlePartyB) {
+					bal.instantIsolatedAdd(fees[i], incReasons[i]);
+				} else {
+					bal.scheduledAdd(partyB, fees[i], self.tradeAgreements.marginType, incReasons[i]);
+				}
+			}
+		}
+	}
+
+	function getFeesFromUser(OpenIntent memory self) internal {
+		_handleFees(self, FeeOp.Subtract);
+	}
+
+	function returnFeesToUser(OpenIntent memory self) internal {
+		_handleFees(self, FeeOp.Add);
+	}
+
+	function lockPremium(OpenIntent memory self) internal {
 		Symbol memory symbol = SymbolStorage.layout().symbols[self.tradeAgreements.symbolId];
 		ScheduledReleaseBalance storage partyABalance = self.partyA.balanceOf(symbol.collateral);
-		ScheduledReleaseBalance storage partyAFeeBalance = self.partyA.balanceOf(self.tradingFee.feeToken);
 
-		uint256 tradingFee = getTradingFee(self);
-		uint256 affiliateFee = getAffiliateFee(self);
-		uint256 premium = getPremium(self);
-
-		if (self.tradeAgreements.marginType == MarginType.ISOLATED) {
-			if (isUserPaying) {
-				if (self.partyBsWhiteList.length == 1) {
-					partyAFeeBalance.subForCounterParty(
-						self.partyBsWhiteList[0],
-						tradingFee + affiliateFee,
-						self.tradeAgreements.marginType,
-						DecreaseBalanceReason.FEE
-					);
-				} else {
-					partyAFeeBalance.isolatedSub(tradingFee + affiliateFee, DecreaseBalanceReason.FEE);
-				}
-				partyABalance.isolatedLock(premium);
+		if (self.tradeAgreements.tradeSide == TradeSide.BUY) {
+			if (self.tradeAgreements.marginType == MarginType.ISOLATED) {
+				partyABalance.isolatedLock(self.tradeAgreements.mm);
 			} else {
-				if (self.partyBsWhiteList.length == 1) {
-					partyAFeeBalance.scheduledAdd(
-						self.partyBsWhiteList[0],
-						tradingFee + affiliateFee,
-						self.tradeAgreements.marginType,
-						IncreaseBalanceReason.FEE
-					);
-				} else {
-					partyAFeeBalance.instantIsolatedAdd(tradingFee + affiliateFee, IncreaseBalanceReason.FEE);
-				}
+				partyABalance.crossLock(self.partyBsWhiteList[0], self.tradeAgreements.mm);
+			}
+		}
+	}
 
-				partyABalance.isolatedUnlock(premium);
-			}
-		} else {
-			if (isUserPaying) {
-				partyAFeeBalance.subForCounterParty(
-					self.partyBsWhiteList[0],
-					tradingFee + affiliateFee,
-					self.tradeAgreements.marginType,
-					DecreaseBalanceReason.FEE
-				);
-				if (self.tradeAgreements.tradeSide == TradeSide.BUY) partyABalance.crossLock(self.partyBsWhiteList[0], premium);
-				else partyABalance.crossLock(self.partyBsWhiteList[0], self.tradeAgreements.mm);
+	function unlockPremium(OpenIntent memory self) internal {
+		Symbol memory symbol = SymbolStorage.layout().symbols[self.tradeAgreements.symbolId];
+		ScheduledReleaseBalance storage partyABalance = self.partyA.balanceOf(symbol.collateral);
+
+		if (self.tradeAgreements.tradeSide == TradeSide.BUY) {
+			if (self.tradeAgreements.marginType == MarginType.ISOLATED) {
+				partyABalance.isolatedUnlock(self.tradeAgreements.mm);
 			} else {
-				partyAFeeBalance.scheduledAdd(
-					self.partyBsWhiteList[0],
-					tradingFee + affiliateFee,
-					self.tradeAgreements.marginType,
-					IncreaseBalanceReason.FEE
-				);
-				if (self.tradeAgreements.tradeSide == TradeSide.BUY) partyABalance.crossUnlock(self.partyBsWhiteList[0], premium);
-				else partyABalance.crossUnlock(self.partyBsWhiteList[0], self.tradeAgreements.mm);
+				partyABalance.crossUnlock(self.partyBsWhiteList[0], self.tradeAgreements.mm);
 			}
+		}
+	}
+
+	function lockMaintenanceMargin(OpenIntent memory self) internal {
+		ScheduledReleaseBalance storage partyABalance = self.partyA.balanceOf(
+			SymbolStorage.layout().symbols[self.tradeAgreements.symbolId].collateral
+		);
+		if (self.tradeAgreements.tradeSide == TradeSide.SELL) {
+			partyABalance.crossLock(self.partyBsWhiteList[0], self.tradeAgreements.mm);
+		}
+	}
+
+	function unlockMaintenanceMargin(OpenIntent memory self) internal {
+		ScheduledReleaseBalance storage partyABalance = self.partyA.balanceOf(
+			SymbolStorage.layout().symbols[self.tradeAgreements.symbolId].collateral
+		);
+		if (self.tradeAgreements.tradeSide == TradeSide.SELL) {
+			partyABalance.crossUnlock(self.partyBsWhiteList[0], self.tradeAgreements.mm);
 		}
 	}
 }

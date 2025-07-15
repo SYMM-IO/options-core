@@ -19,6 +19,7 @@ import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelatio
 import { ScheduledReleaseBalance } from "../../types/BalanceTypes.sol";
 import { Symbol, Oracle, OptionType } from "../../types/SymbolTypes.sol";
 import { ExpressWithdrawProviderConfig } from "../../types/WithdrawTypes.sol";
+import { Fee } from "../../types/BaseTypes.sol";
 
 import { SystemErrors } from "../../errors/SystemErrors.sol";
 import { ValidationErrors } from "../../errors/ValidationErrors.sol";
@@ -351,12 +352,12 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	 * @notice Sets the affiliate fees for multiple symbols
 	 * @param _affiliate The affiliate address
 	 * @param _symbolIds Array of symbol IDs
-	 * @param _fees Array of fee amounts
+	 * @param _fees Array of fee structures
 	 */
 	function setAffiliateFees(
 		address _affiliate,
 		uint256[] calldata _symbolIds,
-		uint256[] calldata _fees
+		Fee[] calldata _fees
 	) external onlyRole(LibAccessibility.SETTER_ROLE) {
 		if (_affiliate == address(0)) revert ValidationErrors.ZeroAddress("affiliate");
 		if (_affiliate != msg.sender && !LibAccessibility.hasRole(msg.sender, LibAccessibility.AFFILIATE_FEE_MANAGER_ROLE))
@@ -747,7 +748,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		OptionType _optionType,
 		uint256 _oracleId,
 		address _collateral,
-		uint256 _tradingFee,
+		Fee memory _tradingFee,
 		uint256 _symbolType
 	) public onlyRole(LibAccessibility.SYMBOL_MANAGER_ROLE) {
 		if (_collateral == address(0)) revert ValidationErrors.ZeroAddress("collateral");
@@ -786,13 +787,13 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	 * @param _symbolIds Array of symbol IDs
 	 * @param _fees Array of trading fees
 	 */
-	function setSymbolsTradingFees(uint256[] calldata _symbolIds, uint256[] calldata _fees) external onlyRole(LibAccessibility.SYMBOL_MANAGER_ROLE) {
+	function setSymbolsTradingFees(uint256[] calldata _symbolIds, Fee[] calldata _fees) external onlyRole(LibAccessibility.SYMBOL_MANAGER_ROLE) {
 		if (_symbolIds.length != _fees.length) revert ValidationErrors.MismatchedLengths();
 
 		SymbolStorage.Layout storage s = SymbolStorage.layout();
 		for (uint256 i = 0; i < _symbolIds.length; i++) {
 			if (s.lastSymbolId < _symbolIds[i]) revert ValidationErrors.InvalidSymbol(_symbolIds[i]);
-			uint256 oldFee = s.symbols[_symbolIds[i]].tradingFee;
+			Fee memory oldFee = s.symbols[_symbolIds[i]].tradingFee;
 			s.symbols[_symbolIds[i]].tradingFee = _fees[i];
 			emit SymbolTradingFeeUpdated(_symbolIds[i], oldFee, _fees[i]);
 		}

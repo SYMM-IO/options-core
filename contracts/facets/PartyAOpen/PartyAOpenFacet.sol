@@ -10,13 +10,12 @@ import { LibPartyAOpen } from "../../libraries/core/LibPartyAOpen.sol";
 import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
 
 import { OpenIntent, OpenIntentStatus } from "../../types/IntentTypes.sol";
-import { ExerciseFee, TradeSide, TradeAgreements, MarginType } from "../../types/BaseTypes.sol";
+import { ExerciseFee, TradeSide, TradeAgreements, MarginType, Fee } from "../../types/BaseTypes.sol";
 
 import { Pausable } from "../../utils/Pausable.sol";
 import { Accessibility } from "../../utils/Accessibility.sol";
 
 import { IPartyAOpenFacet } from "./IPartyAOpenFacet.sol";
-
 
 /**
  * @title PartyAOpenFacet
@@ -39,6 +38,7 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 	 * @param tradeSide Direction of the trade (BUY or SELL)
 	 * @param marginType Type of margin used for the trade (e.g., ISOLATED, CROSS)
 	 * @param exerciseFee The fee structure applied during option exercise
+	 * @param solverFee The fee structure of partyA to partyB for this trade
 	 * @param deadline Timestamp after which the intent expires if no PartyB takes action
 	 * @param feeToken The token used for paying fees related to this trade
 	 * @param affiliate The affiliate address for this trade, if any
@@ -56,6 +56,7 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 		TradeSide tradeSide,
 		MarginType marginType,
 		ExerciseFee calldata exerciseFee,
+		Fee calldata solverFee,
 		uint256 deadline,
 		address feeToken,
 		address affiliate,
@@ -76,6 +77,7 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 			}),
 			price,
 			deadline,
+			solverFee,
 			feeToken,
 			affiliate,
 			userData
@@ -96,6 +98,8 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 				marginType,
 				exerciseFee.rate,
 				exerciseFee.cap,
+				solverFee.openFee,
+				solverFee.closeFee,
 				deadline
 			)
 		);

@@ -82,6 +82,7 @@ library LibPartyBClose {
 		ScheduledReleaseBalance storage partyABalance = trade.partyA.balanceOf(symbol.collateral);
 		ScheduledReleaseBalance storage partyBBalance = trade.partyB.balanceOf(symbol.collateral);
 
+
 		uint256 pnl = (quantity * price) / 1e18;
 		if (trade.tradeAgreements.tradeSide == TradeSide.BUY) {
 			if (trade.tradeAgreements.marginType == MarginType.ISOLATED) {
@@ -109,6 +110,8 @@ library LibPartyBClose {
 			(trade.closedAmountBeforeExpiration + quantity);
 		trade.closedAmountBeforeExpiration += quantity;
 		intent.filledAmount += quantity;
+
+		intent.getFeesFromUser();
 
 		if (trade.tradeAgreements.marginType == MarginType.CROSS) {
 			accountLayout.nonces[trade.partyA][trade.partyB] += 1;

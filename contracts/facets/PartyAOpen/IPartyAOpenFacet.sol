@@ -4,7 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { TradeSide, ExerciseFee, MarginType } from "../../types/BaseTypes.sol";
+import { TradeSide, ExerciseFee, MarginType, Fee } from "../../types/BaseTypes.sol";
 
 import { IPartyAOpenEvents } from "./IPartyAOpenEvents.sol";
 
@@ -20,6 +20,7 @@ interface IPartyAOpenFacet is IPartyAOpenEvents {
 		TradeSide tradeSide,
 		MarginType marginType,
 		ExerciseFee memory exerciseFee,
+		Fee memory solverFee,
 		uint256 deadline,
 		address feeToken,
 		address affiliate,

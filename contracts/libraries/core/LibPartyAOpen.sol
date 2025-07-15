@@ -18,7 +18,7 @@ import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelatio
 
 import { OpenIntent, OpenIntentStatus } from "../../types/IntentTypes.sol";
 import { ScheduledReleaseBalance } from "../../types/BalanceTypes.sol";
-import { ExerciseFee, TradingFee, TradeSide, TradeAgreements, MarginType } from "../../types/BaseTypes.sol";
+import { ExerciseFee, TradeSide, TradeAgreements, MarginType, FeeStructure, Fee } from "../../types/BaseTypes.sol";
 
 import { ValidationErrors } from "../../errors/ValidationErrors.sol";
 import { IntentErrors } from "../../errors/IntentErrors.sol";
@@ -38,6 +38,7 @@ library LibPartyAOpen {
 		TradeAgreements memory tradeAgreements,
 		uint256 price,
 		uint256 deadline,
+		Fee memory solverFee,
 		address feeToken,
 		address affiliate,
 		bytes calldata userData
@@ -95,21 +96,24 @@ library LibPartyAOpen {
 			createTimestamp: block.timestamp,
 			statusModifyTimestamp: block.timestamp,
 			deadline: deadline,
-			tradingFee: TradingFee({
+			feeStructure: FeeStructure({
 				feeToken: feeToken,
 				tokenPriceInCollateral: IPriceOracle(appLayout.priceOracleAddress).getPrice(
 					feeToken,
 					SymbolStorage.layout().symbols[tradeAgreements.symbolId].collateral
 				),
 				platformFee: symbol.tradingFee,
-				affiliateFee: feeLayout.affiliateFees[affiliate][tradeAgreements.symbolId]
+				affiliateFee: feeLayout.affiliateFees[affiliate][tradeAgreements.symbolId],
+				solverFee: solverFee
 			}),
 			affiliate: affiliate,
 			userData: LibUserData.addCounter(userData, 0)
 		});
 
 		intent.save();
-		intent.handleFeesAndPremium(true);
+		intent.getFeesFromUser();
+		intent.lockPremium();
+		intent.lockMaintenanceMargin();
 	}
 
 	function cancelOpenIntent(address sender, uint256 intentId) internal returns (OpenIntentStatus finalStatus) {
@@ -128,7 +132,9 @@ library LibPartyAOpen {
 			intent.expire();
 		} else if (intent.status == OpenIntentStatus.PENDING) {
 			intent.status = OpenIntentStatus.CANCELED;
-			intent.handleFeesAndPremium(false);
+			intent.returnFeesToUser();
+			intent.unlockPremium();
+			intent.unlockMaintenanceMargin();
 			intent.remove(false);
 		} else {
 			// LOCKED

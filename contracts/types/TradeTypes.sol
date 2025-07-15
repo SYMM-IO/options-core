@@ -4,7 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { TradeAgreements } from "./BaseTypes.sol";
+import { TradeAgreements, FeeStructure } from "./BaseTypes.sol";
 import { SchnorrSign } from "./MuonTypes.sol";
 
 enum TradeStatus {
@@ -30,6 +30,7 @@ struct Trade {
 	address partyA;
 	address partyB;
 	TradeStatus status;
+	FeeStructure feeStructure;
 }
 
 struct SettlementState {
