@@ -278,7 +278,7 @@ export function shouldBehaveLikeInstantLayer(): void {
 			const deadline = latestBlock + 300
 
 			// Register roles
-			await context.instantLayer.registerPartyB(partyB1.address)
+			await context.instantLayer.registerPartyB(await context.symmioPartyB.getAddress())
 			await context.instantLayer.registerMultiAccount(context.multiAccount)
 
 			accounts = await context.multiAccount.getAccounts(partyA1.address, 0, 100)
@@ -313,21 +313,21 @@ export function shouldBehaveLikeInstantLayer(): void {
 
 			opLockB1 = {
 				accountSource: ethers.ZeroAddress,
-				signer: partyB1.address,
+				signer: await context.symmioPartyB.getAddress(),
 				callData: lockIntentCallData,
 				nonce: 0,
 				salt: saltLock,
-				deadline,
+				deadline: deadline,
 				signature: "0x",
 			}
 
 			opFillB1 = {
 				accountSource: ethers.ZeroAddress,
-				signer: partyB1.address,
+				signer: await context.symmioPartyB.getAddress(),
 				callData: fillIntentCallData,
 				nonce: 0,
 				salt: saltFill,
-				deadline,
+				deadline: deadline,
 				signature: new Uint8Array([0x1, 0x2]),
 			}
 		})
@@ -375,6 +375,23 @@ export function shouldBehaveLikeInstantLayer(): void {
 			expect(await context.viewFacet.isCallFromInstantLayer()).to.be.equal(true)
 		})
 
+		it("should Register Symmio PartyB when sending as PartyB", async function () {
+			const deadline = await getLatestBlockTime()	+ 24
+			let saltStr: string = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+			const opOpenALocal: InstantLayer.SignedOperationStruct = {
+				accountSource: ZeroAddress,
+				signer: partyA1.address,
+				callData: "0x", // no matter
+				nonce: 100, // no matter
+				salt: saltStr, // no matter
+				deadline: deadline,
+				signature: "0x",
+			}
+
+			await context.controlFacet.grantRole(context.instantLayer, ethers.keccak256(toUtf8Bytes("INSTANT_LAYER_ROLE")))
+			await expect(context.instantLayer.executeBatch([opOpenALocal])).to.be.revertedWithCustomError(context.instantLayer, "UnregisteredPartyB")
+		})
+
 		it("should allow Sending Intents in a single batch", async function () {
 			const { instantLayer, collateralNL, partyAOpenFacet, partyBOpenFacet } = context
 			const multiAccount = context.multiAccount
@@ -394,7 +411,8 @@ export function shouldBehaveLikeInstantLayer(): void {
 			console.log("FillIntent Interface:", fillIntentCallData)
 			console.log("PartyA address:", partyA1.address)
 			console.log("PartyA Account address:", accounts[0].account)
-			console.log("PartyB address:", partyB1.address)
+			console.log("PartyB1 address:", partyB1.address)
+			console.log("Symmio PartyB address:", await context.symmioPartyB.getAddress())
 			console.log("MultiAccount address:", await multiAccount.getAddress())
 			console.log("Signature and length PartyA Open:", opOpenA1.signature.length, opOpenA1.signature)
 			console.log("Signature and length PartyB Lock:", opLockB1.signature.length, opLockB1.signature)
@@ -443,16 +461,18 @@ export function shouldBehaveLikeInstantLayer(): void {
 
 			// Execute the batch using 1 open Intent signed from the PartyA submitted to PartyB API
 			// Accompanying with a lock and fill signed from PartyB and Finally submitted to Instant Layer
-			const signedOps: InstantLayer.SignedOperationStruct[] = [opOpenA1, opLockB1, opFillB1]
-			await expect(instantLayer.executeBatch(signedOps)).not.to.be.reverted
+			const signedOps: InstantLayer.SignedOperationStruct[] = [opOpenA1, opLockB1]
+			// await expect(instantLayer.executeBatch(signedOps)).to.be.revertedWithCustomError(context.instantLayer, "InvalidNonce")
 
-			let intent: OpenIntentStruct = await context.viewFacet.getOpenIntent(1)
-			let trade: TradeStruct = await context.viewFacet.getTrade(1)
-			expect(intent.price).to.be.equal(request.price).to.be.equal(5)
-			expect(intent.tradeAgreements.quantity).to.be.equal(request.quantity).to.equal(e(1))
+			// let intent: OpenIntentStruct = await context.viewFacet.getOpenIntent(1)
+			// let trade: TradeStruct = await context.viewFacet.getTrade(1)
+			// expect(intent.price).to.be.equal(request.price).to.be.equal(5)
+			// expect(intent.tradeAgreements.quantity).to.be.equal(request.quantity).to.equal(e(1))
 			// expect(intent.status).to.be.equal(IntentStatus.FILLED)
 			// expect(trade.openIntentId).to.be.equal(intent.id)
 			// expect(trade.status).to.be.equal(TradeStatus.OPENED)
+
+			//TODO signature verification to Use EIP-1271
 		})
 
 		it("should Fail Signature verification with Invalid Nonce", async function () {

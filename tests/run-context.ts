@@ -1,4 +1,4 @@
-import { ethers } from "hardhat"
+import { ethers, run } from "hardhat"
 
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers"
 import {
@@ -19,8 +19,10 @@ import {
 	PartyBCloseFacet,
 	PartyBOpenFacet,
 	SignatureVerifier,
+	SymmioPartyB,
 	ViewFacet,
 } from "../types"
+import { ZeroAddress } from "ethers"
 
 export class RunContext {
 	accountFacet!: AccountFacet
@@ -37,6 +39,7 @@ export class RunContext {
 	counterPartyRelation!: CounterPartyRelationsFacet
 	instantLayer!: InstantLayer
 	multiAccount!: MultiAccount
+	symmioPartyB!: SymmioPartyB
 
 	signers!: {
 		admin: SignerWithAddress
@@ -118,6 +121,23 @@ export async function createRunContext(
 		chainId: Number((await ethers.provider.getNetwork()).chainId),
 		diamondAddress: diamond,
 	}
+
+	const instantLayer: InstantLayer = await run("deploy:InstantLayer", {
+		symmioaddress: context.common.diamondAddress,
+		admin: context.signers.admin.address,
+	})
+	const multiAccount: MultiAccount = await run("deploy:multiAccount", {
+		symmioaddress: context.common.diamondAddress,
+		admin: context.signers.admin.address,
+		tradeNFTAddress: ZeroAddress,
+	})
+	const symmioPartyB: SymmioPartyB = await run("deploy:symmioPartyB", {
+		symmioaddress: context.common.diamondAddress,
+		admin: context.signers.admin.address,
+	})
+	context.multiAccount = multiAccount
+	context.instantLayer = instantLayer
+	context.symmioPartyB = symmioPartyB
 
 	return context
 }
