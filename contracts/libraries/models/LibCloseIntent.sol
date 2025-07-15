@@ -4,16 +4,32 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
+import { LibParty } from "../models/LibParty.sol";
+import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance.sol";
+
 import { TradeStorage } from "../../storages/TradeStorage.sol";
 import { CloseIntentStorage } from "../../storages/CloseIntentStorage.sol";
 
 import { Trade } from "../../types/TradeTypes.sol";
 import { CloseIntent, CloseIntentStatus } from "../../types/IntentTypes.sol";
+import { FeeStructure } from "../../types/BaseTypes.sol";
+import { ScheduledReleaseBalance, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 
 import { ValidationErrors } from "../../errors/ValidationErrors.sol";
 import { IntentErrors } from "../../errors/IntentErrors.sol";
 
 library LibCloseIntentOps {
+	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
+	using LibParty for address;
+
+	function calculateFeeAmount(CloseIntent memory self, uint256 rate) internal pure returns (uint256) {
+		return (self.quantity * self.price * rate) / (self.feeStructure.tokenPriceInCollateral * 1e18);
+	}
+
+	function calculatePremiumAmount(CloseIntent memory self) internal pure returns (uint256) {
+		return (self.quantity * self.price) / 1e18;
+	}
+
 	/**
 	 * @notice Gets the index of an item in an array.
 	 * @param array_ The array in which to search for the item.
@@ -66,5 +82,25 @@ library LibCloseIntentOps {
 		self.statusModifyTimestamp = block.timestamp;
 		self.status = CloseIntentStatus.EXPIRED;
 		remove(self);
+	}
+
+	function getFeesFromUser(CloseIntent memory self) internal {
+		Trade storage trade = TradeStorage.layout().trades[self.tradeId];
+		FeeStructure memory s = self.feeStructure;
+		ScheduledReleaseBalance storage bal = trade.partyA.balanceOf(s.feeToken);
+
+		uint256[3] memory fees = [
+			calculateFeeAmount(self, s.platformFee.closeFee),
+			calculateFeeAmount(self, s.affiliateFee.closeFee),
+			calculateFeeAmount(self, s.solverFee.closeFee)
+		];
+
+		DecreaseBalanceReason[3] memory decReasons = [
+			DecreaseBalanceReason.PLATFORM_FEE,
+			DecreaseBalanceReason.AFFILIATE_FEE,
+			DecreaseBalanceReason.SOLVER_FEE
+		];
+
+		for (uint8 i; i < 3; ++i) bal.subForCounterParty(trade.partyB, fees[i], trade.tradeAgreements.marginType, decReasons[i]);
 	}
 }

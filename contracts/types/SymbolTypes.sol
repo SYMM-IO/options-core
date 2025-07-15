@@ -4,6 +4,8 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
+import { Fee } from "./BaseTypes.sol";
+
 enum OptionType {
 	PUT,
 	CALL
@@ -18,8 +20,8 @@ struct Oracle {
 struct Symbol {
 	uint256 symbolId;
 	uint256 oracleId;
-	uint256 tradingFee;
 	uint256 symbolType;
+	Fee tradingFee;
 	address collateral;
 	string name;
 	bool isValid;

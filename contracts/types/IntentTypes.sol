@@ -4,7 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { TradeAgreements, TradingFee } from "./BaseTypes.sol";
+import { TradeAgreements, FeeStructure } from "./BaseTypes.sol";
 
 enum OpenIntentStatus {
 	PENDING,
@@ -33,7 +33,7 @@ struct OpenIntent {
 	uint256 createTimestamp;
 	uint256 statusModifyTimestamp;
 	uint256 deadline;
-	TradingFee tradingFee;
+	FeeStructure feeStructure;
 	address partyA;
 	address partyB;
 	address affiliate;
@@ -50,5 +50,6 @@ struct CloseIntent {
 	uint256 createTimestamp;
 	uint256 statusModifyTimestamp;
 	uint256 deadline;
+	FeeStructure feeStructure;
 	CloseIntentStatus status;
 }

@@ -8,6 +8,7 @@ import { PartyBConfig } from "../../storages/AppStorage.sol";
 
 import { OptionType } from "../../types/SymbolTypes.sol";
 import { ExpressWithdrawProviderConfig } from "../../types/WithdrawTypes.sol";
+import { Fee } from "../../types/BaseTypes.sol";
 
 interface IControlEvents {
 	event CollateralWhitelisted(address indexed collateral);
@@ -42,7 +43,7 @@ interface IControlEvents {
 	event PartyBEmergencyModeDeactivated(address indexed partyB);
 	event AffiliateStatusUpdated(address indexed affiliate, bool status);
 	event AffiliateFeesCollectorUpdated(address indexed affiliate, address indexed feeCollector);
-	event AffiliateFeesUpdated(address indexed affiliate, uint256 indexed symbolId, uint256 fee);
+	event AffiliateFeesUpdated(address indexed affiliate, uint256 indexed symbolId, Fee fee);
 	event RoleUpdated(address indexed account, bytes32 indexed role, bool granted);
 	event PartyBConfigUpdated(address indexed partyB, PartyBConfig config);
 	event PartyBSupportedSymbolTypesUpdated(address indexed partyB, uint256 indexed symbolType, bool status);
@@ -66,13 +67,13 @@ interface IControlEvents {
 		OptionType optionType,
 		uint256 oracleId,
 		address collateral,
-		uint256 tradingFee,
+		Fee tradingFee,
 		uint256 symbolType
 	);
 	event SymbolStateUpdated(uint256 indexed symbolId, bool status);
 	event SymbolNameUpdated(uint256 indexed symbolId, string name);
 	event SymbolTypeUpdated(uint256 indexed symbolId, uint256 symbolType);
-	event SymbolTradingFeeUpdated(uint256 indexed _symbolId, uint256 _oldFee, uint256 _fee);
+	event SymbolTradingFeeUpdated(uint256 indexed _symbolId, Fee _oldFee, Fee _newFee);
 	event PriceOracleAddressUpdated(address indexed oracle);
 	event SetManualSync(address user, bool isManual);
 	event SignatureVerifierUpdated(address indexed verifier);

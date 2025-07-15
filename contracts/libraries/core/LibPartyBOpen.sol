@@ -115,7 +115,9 @@ library LibPartyBOpen {
 
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = OpenIntentStatus.CANCELED;
-		intent.handleFeesAndPremium(false);
+		intent.returnFeesToUser();
+		intent.unlockPremium();
+		intent.unlockMaintenanceMargin();
 		intent.remove(false);
 	}
 
@@ -182,7 +184,8 @@ library LibPartyBOpen {
 			avgClosedPriceBeforeExpiration: 0,
 			status: TradeStatus.OPENED,
 			createTimestamp: block.timestamp,
-			statusModifyTimestamp: block.timestamp
+			statusModifyTimestamp: block.timestamp,
+			feeStructure: intent.feeStructure
 		});
 
 		// partially fill
@@ -217,7 +220,7 @@ library LibPartyBOpen {
 				createTimestamp: block.timestamp,
 				statusModifyTimestamp: block.timestamp,
 				deadline: intent.deadline,
-				tradingFee: intent.tradingFee,
+				feeStructure: intent.feeStructure,
 				affiliate: intent.affiliate,
 				userData: LibUserData.incrementCounter(intent.userData)
 			});
@@ -225,7 +228,9 @@ library LibPartyBOpen {
 			newIntent.save();
 
 			if (newStatus == OpenIntentStatus.CANCELED) {
-				newIntent.handleFeesAndPremium(false);
+				newIntent.returnFeesToUser();
+				newIntent.unlockPremium();
+				newIntent.unlockMaintenanceMargin();
 			}
 
 			intent.tradeAgreements.quantity = quantity;
@@ -235,21 +240,29 @@ library LibPartyBOpen {
 			address affiliateFeeCollector = feeLayout.affiliateFeeCollector[intent.affiliate] == address(0)
 				? feeLayout.defaultFeeCollector
 				: feeLayout.affiliateFeeCollector[intent.affiliate];
-			address feeToken = intent.tradingFee.feeToken;
+			address feeToken = intent.feeStructure.feeToken;
 
 			ScheduledReleaseBalance storage defaultFeeCollectorBalance = feeLayout.defaultFeeCollector.balanceOf(feeToken);
 			defaultFeeCollectorBalance.setup(feeLayout.defaultFeeCollector, feeToken);
-			defaultFeeCollectorBalance.instantIsolatedAdd(intent.getTradingFee(), IncreaseBalanceReason.FEE);
+			defaultFeeCollectorBalance.instantIsolatedAdd(
+				intent.calculateFeeAmount(intent.feeStructure.platformFee.openFee),
+				IncreaseBalanceReason.PLATFORM_FEE
+			);
 
 			ScheduledReleaseBalance storage affiliateFeeCollectorBalance = affiliateFeeCollector.balanceOf(feeToken);
 			affiliateFeeCollectorBalance.setup(affiliateFeeCollector, feeToken);
-			affiliateFeeCollectorBalance.instantIsolatedAdd(intent.getAffiliateFee(), IncreaseBalanceReason.FEE);
+			affiliateFeeCollectorBalance.instantIsolatedAdd(
+				intent.calculateFeeAmount(intent.feeStructure.affiliateFee.openFee),
+				IncreaseBalanceReason.AFFILIATE_FEE
+			);
 		}
 
 		intent.tradeId = tradeId;
 		intent.status = OpenIntentStatus.FILLED;
 		intent.statusModifyTimestamp = block.timestamp;
 
+		intent.unlockPremium();
+		intent.unlockMaintenanceMargin();
 		intent.remove(false);
 
 		trade.save();
@@ -260,14 +273,8 @@ library LibPartyBOpen {
 		partyBBalance.setup(trade.partyB, symbol.collateral);
 
 		if (intent.tradeAgreements.tradeSide == TradeSide.BUY) {
-			if (intent.tradeAgreements.marginType == MarginType.CROSS) {
-				partyABalance.crossUnlock(trade.partyB, intent.getPremium());
-			} else {
-				partyABalance.isolatedUnlock(intent.getPremium());
-			}
 			partyABalance.subForCounterParty(trade.partyB, trade.getPremium(), intent.tradeAgreements.marginType, DecreaseBalanceReason.PREMIUM);
 		} else {
-			partyABalance.crossUnlock(trade.partyB, trade.tradeAgreements.mm);
 			partyABalance.increaseMM(trade.partyB, trade.tradeAgreements.mm);
 			partyBBalance.subForCounterParty(trade.partyA, trade.getPremium(), trade.tradeAgreements.marginType, DecreaseBalanceReason.PREMIUM);
 			partyABalance.scheduledAdd(trade.partyB, trade.getPremium(), MarginType.CROSS, IncreaseBalanceReason.PREMIUM);
