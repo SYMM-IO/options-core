@@ -10,3 +10,9 @@ import "./deployment/deploy-signature-verifier.task"
 import "./verify/verify"
 
 import "./setup/setup.task"
+
+import "./helper/send_open_intent"
+import "./helper/lock_open_intent"
+import "./helper/fill_open_intent"
+import "./helper/send_close_intent"
+import "./helper/fill_close_intent"

@@ -212,8 +212,8 @@ async function main() {
 				`affiliateFeesCollector. affiliate: ${address}, collector: ${feesCollector}`,
 			)
 			await executeAndWait(
-				controlFacet.connect(owner).batchSetAffiliateFees(address, affiliateFees.symbolIds, affiliateFees.fees),
-				`batchAffiliateFees. affiliate: ${address}, symbolIds: ${affiliateFees.symbolIds}, fees: ${affiliateFees.fees}`,
+				controlFacet.connect(owner).setAffiliateFees(address, affiliateFees.symbolIds, affiliateFees.fees),
+				`setAffiliateFees. affiliate: ${address}, symbolIds: ${affiliateFees.symbolIds}, fees: ${affiliateFees.fees}`,
 			)
 		}
 	}
@@ -240,19 +240,19 @@ async function main() {
 		)
 	}
 
-	if (config.bridgeValidationState) {
-		await executeAndWait(
-			controlFacet.connect(owner).setBridgeValidationState(config.bridgeValidationState.bridgeAddress, config.bridgeValidationState.bridgeAddress),
-			`bridgeValidationState Release Interval. bridgeAddress: ${config.bridgeValidationState.state}, state: ${config.bridgeValidationState.state}`,
-		)
-	}
+	// if (config.bridgeValidationState) {
+	// 	await executeAndWait(
+	// 		controlFacet.connect(owner).setBridgeValidationState(config.bridgeValidationState.bridgeAddress, config.bridgeValidationState.bridgeAddress),
+	// 		`bridgeValidationState Release Interval. bridgeAddress: ${config.bridgeValidationState.state}, state: ${config.bridgeValidationState.state}`,
+	// 	)
+	// }
 
-	if (config.invalidBridgedAmountsPool) {
-		await executeAndWait(
-			controlFacet.connect(owner).setInvalidBridgedAmountsPool(config.invalidBridgedAmountsPool),
-			`invalidBridgedAmountsPool. Amount: ${config.invalidBridgedAmountsPool}`,
-		)
-	}
+	// if (config.invalidBridgedAmountsPool) {
+	// 	await executeAndWait(
+	// 		controlFacet.connect(owner).setInvalidBridgedAmountsPool(config.invalidBridgedAmountsPool),
+	// 		`invalidBridgedAmountsPool. Amount: ${config.invalidBridgedAmountsPool}`,
+	// 	)
+	// }
 
 	console.log("ControlFacet initialization process completed successfully.")
 }
