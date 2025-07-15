@@ -5,6 +5,7 @@ import { toUtf8Bytes, ZeroAddress } from "ethers"
 import { e } from "../utils/e"
 import { OptionType } from "./option-enums"
 import { MultiAccount } from "../types/contracts/helpers"
+import { grantingRoles } from "./granting-roles"
 
 export async function initializeTestFixture(): Promise<RunContext> {
 	const mocks: Map<string, string> = await run("deploy:mocks")
@@ -30,6 +31,8 @@ export async function initializeTestFixture(): Promise<RunContext> {
 		mocks,
 	)
 
+	context = await grantingRoles(context)
+
 	const instantLayer: InstantLayer = await run("deploy:InstantLayer", {
 		symmioaddress: context.common.diamondAddress,
 		admin: context.signers.admin.address,
@@ -41,51 +44,6 @@ export async function initializeTestFixture(): Promise<RunContext> {
 	})
 	context.multiAccount = await ethers.getContractAt("MultiAccount", await multiAccount.getAddress())
 	context.instantLayer = await ethers.getContractAt("InstantLayer", await instantLayer.getAddress())
-
-	await context.controlFacet.connect(context.signers.admin).setAdmin(context.signers.admin.getAddress())
-	await context.controlFacet
-		.connect(context.signers.admin)
-		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("PAUSER_ROLE")))
-
-	await context.controlFacet
-		.connect(context.signers.admin)
-		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("UNPAUSER_ROLE")))
-
-	await context.controlFacet
-		.connect(context.signers.admin)
-		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("SETTER_ROLE")))
-
-	await context.controlFacet
-		.connect(context.signers.admin)
-		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("SUSPENDER_ROLE")))
-
-	await context.controlFacet
-		.connect(context.signers.admin)
-		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("WINDOW_UPDATER_ROLE")))
-
-	await context.controlFacet
-		.connect(context.signers.admin)
-		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("PARTY_B_MANAGER_ROLE")))
-
-	await context.controlFacet
-		.connect(context.signers.admin)
-		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("AFFILIATE_MANAGER_ROLE")))
-
-	await context.controlFacet
-		.connect(context.signers.admin)
-		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("AFFILIATE_FEE_MANAGER_ROLE")))
-
-	await context.controlFacet
-		.connect(context.signers.admin)
-		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("ORACLE_MANAGER_ROLE")))
-
-	await context.controlFacet
-		.connect(context.signers.admin)
-		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("SYMBOL_MANAGER_ROLE")))
-
-	await context.controlFacet
-		.connect(context.signers.admin)
-		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("INSTANT_LAYER_ROLE")))
 
 	await context.controlFacet.connect(context.signers.admin).unpauseGlobal()
 

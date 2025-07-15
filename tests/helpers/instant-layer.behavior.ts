@@ -3,7 +3,7 @@ import { expect, use } from "chai"
 import { initializeTestFixture } from "../initialize-test.fixture"
 import { PartyA } from "../models/partyA.model"
 import { RunContext } from "../run-context"
-import { IntentStatus, TradeSide } from "../option-enums"
+import { IntentStatus, TradeSide, TradeStatus } from "../option-enums"
 import { OpenIntent, openIntentRequestBuilder } from "../models/builders/send-open-intent.builder"
 import { PartyB } from "../models/partyB.model"
 import { ethers, network } from "hardhat"
@@ -11,7 +11,7 @@ import { e } from "../../utils/e"
 import { AbiCoder, encodeBytes32String, InterfaceAbi, ZeroAddress, AddressLike, toUtf8Bytes } from "ethers"
 import { bigint, int } from "hardhat/internal/core/params/argumentTypes"
 import { config } from "dotenv"
-import { OpenIntentStruct, OpenIntentStructOutput, SymbolStruct } from "../../types/contracts/interfaces/ISymmio"
+import { OpenIntentStruct, OpenIntentStructOutput, SymbolStruct, TradeStruct } from "../../types/contracts/interfaces/ISymmio"
 
 import { MarginType } from "../option-enums"
 import { getLatestBlockTime } from "../../utils/time"
@@ -375,7 +375,7 @@ export function shouldBehaveLikeInstantLayer(): void {
 			expect(await context.viewFacet.isCallFromInstantLayer()).to.be.equal(true)
 		})
 
-		it("should allow Solver to open and lock/fill in a single batch", async function () {
+		it("should allow Sending Intents in a single batch", async function () {
 			const { instantLayer, collateralNL, partyAOpenFacet, partyBOpenFacet } = context
 			const multiAccount = context.multiAccount
 
@@ -419,22 +419,48 @@ export function shouldBehaveLikeInstantLayer(): void {
 
 			// Execute the batch using 1 open Intent signed from the PartyA submitted to PartyB API
 			// Accompanying with a lock and fill signed from PartyB and Finally submitted to Instant Layer
-			const signedOps: InstantLayer.SignedOperationStruct[] = [opOpenA1, opLockB1, opFillB1]
+			const signedOps: InstantLayer.SignedOperationStruct[] = [opOpenA1, opOpenA2]
 			await expect(instantLayer.executeBatch(signedOps)).not.to.be.reverted
 			let intent: OpenIntentStruct = await context.viewFacet.getOpenIntent(1)
 			expect(intent.price).to.be.equal(request.price).to.be.equal(5)
 			expect(intent.tradeAgreements.quantity).to.be.equal(request.quantity).to.equal(e(1))
 		})
 
+		it("should allow Sending Intent, Locking and Filling in a single batch", async function () {
+			const { instantLayer, collateralNL, partyAOpenFacet, partyBOpenFacet } = context
+			const multiAccount = context.multiAccount
+
+			//Sign using getOperationHash
+			const opOpenAHash1 = await instantLayer.getOperationHash(opOpenA1)
+			const opLockBHash = await instantLayer.getOperationHash(opLockB1)
+			const opFillBHash = await instantLayer.getOperationHash(opFillB1)
+
+			opOpenA1.signature = await partyA1.sign(ethers.getBytes(opOpenAHash1))
+			opLockB1.signature = await partyB1.sign(ethers.getBytes(opLockBHash))
+			opFillB1.signature = await partyB1.sign(ethers.getBytes(opFillBHash))
+
+			await context.controlFacet.grantRole(context.instantLayer, ethers.keccak256(toUtf8Bytes("INSTANT_LAYER_ROLE")))
+
+			// Execute the batch using 1 open Intent signed from the PartyA submitted to PartyB API
+			// Accompanying with a lock and fill signed from PartyB and Finally submitted to Instant Layer
+			const signedOps: InstantLayer.SignedOperationStruct[] = [opOpenA1, opLockB1, opFillB1]
+			await expect(instantLayer.executeBatch(signedOps)).not.to.be.reverted
+
+			let intent: OpenIntentStruct = await context.viewFacet.getOpenIntent(1)
+			let trade: TradeStruct = await context.viewFacet.getTrade(1)
+			expect(intent.price).to.be.equal(request.price).to.be.equal(5)
+			expect(intent.tradeAgreements.quantity).to.be.equal(request.quantity).to.equal(e(1))
+			// expect(intent.status).to.be.equal(IntentStatus.FILLED)
+			// expect(trade.openIntentId).to.be.equal(intent.id)
+			// expect(trade.status).to.be.equal(TradeStatus.OPENED)
+		})
+
 		it("should Fail Signature verification with Invalid Nonce", async function () {
 			const latestBlock = await getLatestBlockTime()
 			const deadline = latestBlock + 300
 
-			const saltHex = "0xabc123"
-			const salt = hexZeroPad(saltHex, 32)
 			let saltStr: string = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
-
-			if (!/^0x[0-9a-fA-F]{64}$/.test(salt) || !/^0x[0-9a-fA-F]{64}$/.test(saltStr)) {
+			if (!/^0x[0-9a-fA-F]{64}$/.test(saltStr)) {
 				throw new Error("Invalid bytes32 format")
 			}
 
@@ -461,9 +487,7 @@ export function shouldBehaveLikeInstantLayer(): void {
 
 			const saltHex = "0xabc123"
 			const salt = hexZeroPad(saltHex, 32)
-			let saltStr: string = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
-
-			if (!/^0x[0-9a-fA-F]{64}$/.test(salt) || !/^0x[0-9a-fA-F]{64}$/.test(saltStr)) {
+			if (!/^0x[0-9a-fA-F]{64}$/.test(salt)) {
 				throw new Error("Invalid bytes32 format")
 			}
 
@@ -472,7 +496,7 @@ export function shouldBehaveLikeInstantLayer(): void {
 				signer: accounts[0].account,
 				callData: openIntentCallData,
 				nonce: 1,
-				salt: saltStr,
+				salt: salt,
 				deadline: deadline,
 				signature: "0x",
 			}

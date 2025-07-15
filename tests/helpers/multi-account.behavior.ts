@@ -25,7 +25,7 @@ export function shouldBehaveLikeMultiAccount(): void {
 	let signedOps: InstantLayer.SignedOperationStruct[]
 	let ABI: InterfaceAbi
 
-	let request:OpenIntent
+	let request: OpenIntent
 
 	beforeEach(async function () {
 		context = await loadFixture(initializeTestFixture)
@@ -107,8 +107,8 @@ export function shouldBehaveLikeMultiAccount(): void {
 			await expect(context.collateral.connect(partyA1.getSigner).approve(context.common.diamondAddress, ethers.MaxUint256)).not.reverted
 			await expect(context.collateral.connect(partyA1.getSigner).mint(accounts[0].account, e(30))).to.not.reverted
 			await expect(context.collateralNL.connect(partyA1.getSigner).mint(accounts[0].account, e(30))).to.not.reverted
-			await context.accountFacet.connect(partyA1.getSigner).depositFor(await context.collateral.getAddress(), accounts[0].account, e(20))		
-			await context.accountFacet.connect(partyA1.getSigner).depositFor(await context.collateralNL.getAddress(), accounts[0].account, e(20))		
+			await context.accountFacet.connect(partyA1.getSigner).depositFor(await context.collateral.getAddress(), accounts[0].account, e(20))
+			await context.accountFacet.connect(partyA1.getSigner).depositFor(await context.collateralNL.getAddress(), accounts[0].account, e(20))
 		})
 
 		it("should fail when not Expected msg sender", async () => {
@@ -116,7 +116,7 @@ export function shouldBehaveLikeMultiAccount(): void {
 			await expect(context.multiAccount._call(accounts[0].account, ["0x"])).to.revertedWithCustomError(context.multiAccount, "UnauthorizedAccess")
 		})
 
-		it("should PASS", async () => {						
+		it("should PASS", async () => {
 			console.log("User Collateral Balance:", await context.collateral.balanceOf(partyA1.address))
 			console.log("User Collateral Balance:", await context.collateral.balanceOf(partyA1.address))
 			console.log("PartyA Collateral Balance:", await context.collateral.balanceOf(accounts[0].account))
@@ -140,16 +140,15 @@ export function shouldBehaveLikeMultiAccount(): void {
 			// 	} else {
 			// 		console.error("Unknown error:", error)
 			// 	}
-			// }			
+			// }
 		})
 
-		it("CallData should Have the expected Effect", async () => {	
+		it("CallData should Have the expected Effect", async () => {
 			await expect(context.multiAccount.connect(partyA1.getSigner)._call(accounts[0].account, [openIntentCallData])).not.to.reverted
-			
-			let intent:OpenIntentStruct = await context.viewFacet.getOpenIntent(1)
+
+			let intent: OpenIntentStruct = await context.viewFacet.getOpenIntent(1)
 			expect(intent.price).to.be.equal(request.price)
 			expect(intent.tradeAgreements.quantity).to.be.equal(request.quantity)
 		})
-
 	})
 }
