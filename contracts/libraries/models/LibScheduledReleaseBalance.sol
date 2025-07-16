@@ -11,13 +11,7 @@ import { TradeStorage } from "../../storages/TradeStorage.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 
 import { MarginType } from "../../types/BaseTypes.sol";
-import {
-	ScheduledReleaseBalance,
-	ScheduledReleaseEntry,
-	IncreaseBalanceReason,
-	DecreaseBalanceReason,
-	CrossEntry
-} from "../../types/BalanceTypes.sol";
+import { ScheduledReleaseBalance, ScheduledReleaseEntry, IncreaseBalanceReason, DecreaseBalanceReason, CrossEntry } from "../../types/BalanceTypes.sol";
 
 import { BalanceErrors } from "../../errors/BalanceErrors.sol";
 import { ValidationErrors } from "../../errors/ValidationErrors.sol";
@@ -241,7 +235,7 @@ library ScheduledReleaseBalanceOps {
 		if (counterParty == address(0)) revert ValidationErrors.ZeroAddress("counterParty");
 
 		if (self.isolatedBalance - self.isolatedLockedBalance < amount)
-			revert BalanceErrors.InsufficientIntBalance(self.user, self.collateral, amount, int256(self.isolatedBalance));
+			revert BalanceErrors.InsufficientBalance(self.user, self.collateral, amount, self.isolatedBalance);
 
 		self.isolatedBalance -= amount;
 		self.crossBalance[counterParty].balance += int256(amount);
@@ -419,7 +413,7 @@ library ScheduledReleaseBalanceOps {
 
 	function isolatedLock(ScheduledReleaseBalance storage self, uint256 amount) internal {
 		if (self.isolatedBalance < amount)
-			revert BalanceErrors.InsufficientIntBalance(self.user, self.collateral, amount, int256(self.isolatedBalance));
+			revert BalanceErrors.InsufficientBalance(self.user, self.collateral, amount, self.isolatedBalance);
 		self.isolatedLockedBalance += amount;
 	}
 
