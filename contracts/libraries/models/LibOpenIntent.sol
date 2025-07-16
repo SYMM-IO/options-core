@@ -96,7 +96,7 @@ library LibOpenIntentOps {
 		FeeStructure memory s = self.feeStructure;
 		bool isolated = self.tradeAgreements.marginType == MarginType.ISOLATED;
 		bool singlePartyB = self.partyBsWhiteList.length == 1;
-		address partyB = self.partyBsWhiteList[0];
+		address partyB = singlePartyB ? self.partyBsWhiteList[0] : address(0);
 
 		ScheduledReleaseBalance storage bal = self.partyA.balanceOf(s.feeToken);
 
@@ -148,9 +148,9 @@ library LibOpenIntentOps {
 
 		if (self.tradeAgreements.tradeSide == TradeSide.BUY) {
 			if (self.tradeAgreements.marginType == MarginType.ISOLATED) {
-				partyABalance.isolatedLock(self.tradeAgreements.mm);
+				partyABalance.isolatedLock(calculatePremiumAmount(self));
 			} else {
-				partyABalance.crossLock(self.partyBsWhiteList[0], self.tradeAgreements.mm);
+				partyABalance.crossLock(self.partyBsWhiteList[0], calculatePremiumAmount(self));
 			}
 		}
 	}
@@ -161,9 +161,9 @@ library LibOpenIntentOps {
 
 		if (self.tradeAgreements.tradeSide == TradeSide.BUY) {
 			if (self.tradeAgreements.marginType == MarginType.ISOLATED) {
-				partyABalance.isolatedUnlock(self.tradeAgreements.mm);
+				partyABalance.isolatedUnlock(calculatePremiumAmount(self));
 			} else {
-				partyABalance.crossUnlock(self.partyBsWhiteList[0], self.tradeAgreements.mm);
+				partyABalance.crossUnlock(self.partyBsWhiteList[0], calculatePremiumAmount(self));
 			}
 		}
 	}
