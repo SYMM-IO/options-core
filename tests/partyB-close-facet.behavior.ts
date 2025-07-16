@@ -60,8 +60,8 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 		await partyB1.lockOpenIntent(2)
 		await partyB1.fillOpenIntent(1, e(100), 7)
 		await partyB1.fillOpenIntent(2, e(100), 7)
-		await partyA1.sendCloseIntent(1, 7, e(100), (await getLatestBlockTime()) + 120)
-		await partyA1.sendCloseIntent(2, 7, e(100), (await getLatestBlockTime()) + 120)
+		await partyA1.sendCloseIntent(1, e(100), 7, (await getLatestBlockTime()) + 120)
+		await partyA1.sendCloseIntent(2, e(100), 7, (await getLatestBlockTime()) + 120)
 	})
 
 	describe("fillCloseIntent", async function () {
@@ -95,7 +95,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 		it("Should fail when Trade status not OPEN", async () => {
 			let timeToTime = (await getLatestBlockTime()) + 120
 			await expect(partyB1.fillCloseIntent(1, e(100), 7)).not.to.reverted
-			await expect(partyA1.sendCloseIntent(1, 7, e(1), timeToTime)).to.be.revertedWithCustomError(context.partyACloseFacet, "InvalidState")
+			await expect(partyA1.sendCloseIntent(1, e(1),7, timeToTime)).to.be.revertedWithCustomError(context.partyACloseFacet, "InvalidState")
 		})
 
 		it("Should failed when Close Intent is expired", async () => {
@@ -125,7 +125,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 
 			await partyB1.lockOpenIntent(3)
 			await partyB1.fillOpenIntent(3, 100, 7)
-			await partyA1.sendCloseIntent(3, 7, 100, newBlockTime + 180) // longer deadline than option expire
+			await partyA1.sendCloseIntent(3, 100, 7, newBlockTime + 180) // longer deadline than option expire
 
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTime])
 			await network.provider.send("evm_mine")

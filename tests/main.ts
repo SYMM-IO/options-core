@@ -15,57 +15,49 @@ import { shouldBehaveLikeSymmioPartyB } from "./helpers/symmio-partyb.behavior"
 
 describe(`${name}-v${version}`, () => {
 	if (process.env.TEST_MODE === TestModeEnum.UNIT_TEST) {
-		// describe("Facets_Accounts", async function () {
-		// 	shouldBehaveLikeAccountFacet()
-		// })
+		describe("Facets_Accounts", async function () {
+			shouldBehaveLikeAccountFacet()
+		})
 
-		// describe("Facets_PartyAOpenFacet", async function () {
-		// 	shouldBehaveLikePartyAOpenFacet()
-		// })
+		describe("Facets_PartyAOpenFacet", async function () {
+			shouldBehaveLikePartyAOpenFacet()
+		})
 
-		// describe("Facets_PartyBOpenFacet", async function () {
-		// 	shouldBehaveLikePartyBOpenFacet()
-		// })
+		describe("Facets_PartyBOpenFacet", async function () {
+			shouldBehaveLikePartyBOpenFacet()
+		})
 
-		// describe("Facets_PartyACloseFacet", async function () {
-		// 	shouldBehaveLikePartyACloseFacet()
-		// })
+		describe("Facets_PartyACloseFacet", async function () {
+			shouldBehaveLikePartyACloseFacet()
+		})
 
-		// describe("Libraries_LibCloseIntent", async function () {
-		// 	shouldBehaveLikeLibCloseIntent()
-		// })
+		describe("Libraries_LibCloseIntent", async function () {
+			shouldBehaveLikeLibCloseIntent()
+		})
 
-		// describe("Facets_PartyBCloseFacet", async function () {
-		// 	shouldBehaveLikePartyBCloseFacet()
-		// })
+		describe("Facets_PartyBCloseFacet", async function () {
+			shouldBehaveLikePartyBCloseFacet()
+		})
 
-		// describe("Libraries_LibCloseIntent", async function () {
-		// 	shouldBehaveLikeLibCloseIntent()
-		// })
+		describe("Facets_Settlement", async function () {
+			shouldBehaveLikeSettlementFacet()
+		})
 
-		// describe("Facets_PartyBCloseFacet", async function () {
-		// 	shouldBehaveLikePartyBCloseFacet()
-		// })
+		describe("Facets_ForceActions", async function () {
+			shouldBehaveLikeForceActionFacet()
+		})
 
-		// describe("Facets_Settlement", async function () {
-		// 	shouldBehaveLikeSettlementFacet()
-		// })
+		describe("Facet_BridgeFacet", async function () {
+			shouldBehaveLikeBridgeFacet()
+		})
 
-		// describe("Facets_ForceActions", async function () {
-		// 	shouldBehaveLikeForceActionFacet()
-		// })
+		describe("Instant Layer", async function () {
+			shouldBehaveLikeInstantLayer()
+		})
 
-		// describe("Facet_BridgeFacet", async function () {
-		// 	shouldBehaveLikeBridgeFacet()
-		// })
-
-		// describe("Instant Layer", async function () {
-		// 	shouldBehaveLikeInstantLayer()
-		// })
-
-		// describe("Multi Account", async function () {
-		// 	shouldBehaveLikeMultiAccount()
-		// })
+		describe("Multi Account", async function () {
+			shouldBehaveLikeMultiAccount()
+		})
 
 		describe("Symmio PartyB", async function () {
 			shouldBehaveLikeSymmioPartyB()
