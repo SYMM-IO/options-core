@@ -110,10 +110,10 @@ library LibPartyAOpen {
 			userData: LibUserData.addCounter(userData, 0)
 		});
 
-		intent.save();
+		intent.register();
 		intent.getFeesFromUser();
 		intent.lockPremium();
-		intent.lockMaintenanceMargin();
+		intent.lockMM();
 	}
 
 	function cancelOpenIntent(address sender, uint256 intentId) internal returns (OpenIntentStatus finalStatus) {
@@ -134,8 +134,8 @@ library LibPartyAOpen {
 			intent.status = OpenIntentStatus.CANCELED;
 			intent.returnFeesToUser();
 			intent.unlockPremium();
-			intent.unlockMaintenanceMargin();
-			intent.remove(false);
+			intent.unlockMM();
+			intent.unregister(false);
 		} else {
 			// LOCKED
 			intent.status = OpenIntentStatus.CANCEL_PENDING;

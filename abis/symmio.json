@@ -1489,10 +1489,22 @@
                 "type": "uint256"
             },
             {
+                "components": [
+                    {
+                        "internalType": "uint256",
+                        "name": "openFee",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "closeFee",
+                        "type": "uint256"
+                    }
+                ],
                 "indexed": false,
-                "internalType": "uint256",
+                "internalType": "struct Fee",
                 "name": "fee",
-                "type": "uint256"
+                "type": "tuple"
             }
         ],
         "name": "AffiliateFeesUpdated",
@@ -3610,10 +3622,22 @@
                 "type": "address"
             },
             {
+                "components": [
+                    {
+                        "internalType": "uint256",
+                        "name": "openFee",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "closeFee",
+                        "type": "uint256"
+                    }
+                ],
                 "indexed": false,
-                "internalType": "uint256",
+                "internalType": "struct Fee",
                 "name": "tradingFee",
-                "type": "uint256"
+                "type": "tuple"
             },
             {
                 "indexed": false,
@@ -3692,16 +3716,40 @@
                 "type": "uint256"
             },
             {
+                "components": [
+                    {
+                        "internalType": "uint256",
+                        "name": "openFee",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "closeFee",
+                        "type": "uint256"
+                    }
+                ],
                 "indexed": false,
-                "internalType": "uint256",
+                "internalType": "struct Fee",
                 "name": "_oldFee",
-                "type": "uint256"
+                "type": "tuple"
             },
             {
+                "components": [
+                    {
+                        "internalType": "uint256",
+                        "name": "openFee",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "closeFee",
+                        "type": "uint256"
+                    }
+                ],
                 "indexed": false,
-                "internalType": "uint256",
-                "name": "_fee",
-                "type": "uint256"
+                "internalType": "struct Fee",
+                "name": "_newFee",
+                "type": "tuple"
             }
         ],
         "name": "SymbolTradingFeeUpdated",
@@ -4285,9 +4333,21 @@
                 "type": "address"
             },
             {
-                "internalType": "uint256",
+                "components": [
+                    {
+                        "internalType": "uint256",
+                        "name": "openFee",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "closeFee",
+                        "type": "uint256"
+                    }
+                ],
+                "internalType": "struct Fee",
                 "name": "_tradingFee",
-                "type": "uint256"
+                "type": "tuple"
             },
             {
                 "internalType": "uint256",
@@ -4316,13 +4376,25 @@
                     },
                     {
                         "internalType": "uint256",
-                        "name": "tradingFee",
+                        "name": "symbolType",
                         "type": "uint256"
                     },
                     {
-                        "internalType": "uint256",
-                        "name": "symbolType",
-                        "type": "uint256"
+                        "components": [
+                            {
+                                "internalType": "uint256",
+                                "name": "openFee",
+                                "type": "uint256"
+                            },
+                            {
+                                "internalType": "uint256",
+                                "name": "closeFee",
+                                "type": "uint256"
+                            }
+                        ],
+                        "internalType": "struct Fee",
+                        "name": "tradingFee",
+                        "type": "tuple"
                     },
                     {
                         "internalType": "address",
@@ -5344,18 +5416,59 @@
                                 "type": "uint256"
                             },
                             {
-                                "internalType": "uint256",
+                                "components": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "openFee",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "closeFee",
+                                        "type": "uint256"
+                                    }
+                                ],
+                                "internalType": "struct Fee",
                                 "name": "platformFee",
-                                "type": "uint256"
+                                "type": "tuple"
                             },
                             {
-                                "internalType": "uint256",
+                                "components": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "openFee",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "closeFee",
+                                        "type": "uint256"
+                                    }
+                                ],
+                                "internalType": "struct Fee",
                                 "name": "affiliateFee",
-                                "type": "uint256"
+                                "type": "tuple"
+                            },
+                            {
+                                "components": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "openFee",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "closeFee",
+                                        "type": "uint256"
+                                    }
+                                ],
+                                "internalType": "struct Fee",
+                                "name": "solverFee",
+                                "type": "tuple"
                             }
                         ],
-                        "internalType": "struct TradingFee",
-                        "name": "tradingFee",
+                        "internalType": "struct FeeStructure",
+                        "name": "feeStructure",
                         "type": "tuple"
                     },
                     {
@@ -5596,9 +5709,82 @@
                         "type": "address"
                     },
                     {
+                        "internalType": "address",
+                        "name": "affiliate",
+                        "type": "address"
+                    },
+                    {
                         "internalType": "enum TradeStatus",
                         "name": "status",
                         "type": "uint8"
+                    },
+                    {
+                        "components": [
+                            {
+                                "internalType": "address",
+                                "name": "feeToken",
+                                "type": "address"
+                            },
+                            {
+                                "internalType": "uint256",
+                                "name": "tokenPriceInCollateral",
+                                "type": "uint256"
+                            },
+                            {
+                                "components": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "openFee",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "closeFee",
+                                        "type": "uint256"
+                                    }
+                                ],
+                                "internalType": "struct Fee",
+                                "name": "platformFee",
+                                "type": "tuple"
+                            },
+                            {
+                                "components": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "openFee",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "closeFee",
+                                        "type": "uint256"
+                                    }
+                                ],
+                                "internalType": "struct Fee",
+                                "name": "affiliateFee",
+                                "type": "tuple"
+                            },
+                            {
+                                "components": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "openFee",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "closeFee",
+                                        "type": "uint256"
+                                    }
+                                ],
+                                "internalType": "struct Fee",
+                                "name": "solverFee",
+                                "type": "tuple"
+                            }
+                        ],
+                        "internalType": "struct FeeStructure",
+                        "name": "feeStructure",
+                        "type": "tuple"
                     }
                 ],
                 "internalType": "struct Trade[]",
@@ -5625,9 +5811,21 @@
         "name": "getAffiliateFee",
         "outputs": [
             {
-                "internalType": "uint256",
+                "components": [
+                    {
+                        "internalType": "uint256",
+                        "name": "openFee",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "closeFee",
+                        "type": "uint256"
+                    }
+                ],
+                "internalType": "struct Fee",
                 "name": "",
-                "type": "uint256"
+                "type": "tuple"
             }
         ],
         "stateMutability": "view",
@@ -5811,6 +6009,74 @@
                         "type": "uint256"
                     },
                     {
+                        "components": [
+                            {
+                                "internalType": "address",
+                                "name": "feeToken",
+                                "type": "address"
+                            },
+                            {
+                                "internalType": "uint256",
+                                "name": "tokenPriceInCollateral",
+                                "type": "uint256"
+                            },
+                            {
+                                "components": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "openFee",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "closeFee",
+                                        "type": "uint256"
+                                    }
+                                ],
+                                "internalType": "struct Fee",
+                                "name": "platformFee",
+                                "type": "tuple"
+                            },
+                            {
+                                "components": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "openFee",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "closeFee",
+                                        "type": "uint256"
+                                    }
+                                ],
+                                "internalType": "struct Fee",
+                                "name": "affiliateFee",
+                                "type": "tuple"
+                            },
+                            {
+                                "components": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "openFee",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "closeFee",
+                                        "type": "uint256"
+                                    }
+                                ],
+                                "internalType": "struct Fee",
+                                "name": "solverFee",
+                                "type": "tuple"
+                            }
+                        ],
+                        "internalType": "struct FeeStructure",
+                        "name": "feeStructure",
+                        "type": "tuple"
+                    },
+                    {
                         "internalType": "enum CloseIntentStatus",
                         "name": "status",
                         "type": "uint8"
@@ -5819,6 +6085,25 @@
                 "internalType": "struct CloseIntent",
                 "name": "",
                 "type": "tuple"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "intentId",
+                "type": "uint256"
+            }
+        ],
+        "name": "getCloseIntentAffiliateFee",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
             }
         ],
         "stateMutability": "view",
@@ -5838,6 +6123,44 @@
                 "internalType": "uint256[]",
                 "name": "",
                 "type": "uint256[]"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "intentId",
+                "type": "uint256"
+            }
+        ],
+        "name": "getCloseIntentPremium",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "intentId",
+                "type": "uint256"
+            }
+        ],
+        "name": "getCloseIntentTradingFee",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
             }
         ],
         "stateMutability": "view",
@@ -5904,6 +6227,74 @@
                         "internalType": "uint256",
                         "name": "deadline",
                         "type": "uint256"
+                    },
+                    {
+                        "components": [
+                            {
+                                "internalType": "address",
+                                "name": "feeToken",
+                                "type": "address"
+                            },
+                            {
+                                "internalType": "uint256",
+                                "name": "tokenPriceInCollateral",
+                                "type": "uint256"
+                            },
+                            {
+                                "components": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "openFee",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "closeFee",
+                                        "type": "uint256"
+                                    }
+                                ],
+                                "internalType": "struct Fee",
+                                "name": "platformFee",
+                                "type": "tuple"
+                            },
+                            {
+                                "components": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "openFee",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "closeFee",
+                                        "type": "uint256"
+                                    }
+                                ],
+                                "internalType": "struct Fee",
+                                "name": "affiliateFee",
+                                "type": "tuple"
+                            },
+                            {
+                                "components": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "openFee",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "closeFee",
+                                        "type": "uint256"
+                                    }
+                                ],
+                                "internalType": "struct Fee",
+                                "name": "solverFee",
+                                "type": "tuple"
+                            }
+                        ],
+                        "internalType": "struct FeeStructure",
+                        "name": "feeStructure",
+                        "type": "tuple"
                     },
                     {
                         "internalType": "enum CloseIntentStatus",
@@ -6548,18 +6939,59 @@
                                 "type": "uint256"
                             },
                             {
-                                "internalType": "uint256",
+                                "components": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "openFee",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "closeFee",
+                                        "type": "uint256"
+                                    }
+                                ],
+                                "internalType": "struct Fee",
                                 "name": "platformFee",
-                                "type": "uint256"
+                                "type": "tuple"
                             },
                             {
-                                "internalType": "uint256",
+                                "components": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "openFee",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "closeFee",
+                                        "type": "uint256"
+                                    }
+                                ],
+                                "internalType": "struct Fee",
                                 "name": "affiliateFee",
-                                "type": "uint256"
+                                "type": "tuple"
+                            },
+                            {
+                                "components": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "openFee",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "closeFee",
+                                        "type": "uint256"
+                                    }
+                                ],
+                                "internalType": "struct Fee",
+                                "name": "solverFee",
+                                "type": "tuple"
                             }
                         ],
-                        "internalType": "struct TradingFee",
-                        "name": "tradingFee",
+                        "internalType": "struct FeeStructure",
+                        "name": "feeStructure",
                         "type": "tuple"
                     },
                     {
@@ -7059,13 +7491,25 @@
                     },
                     {
                         "internalType": "uint256",
-                        "name": "tradingFee",
+                        "name": "symbolType",
                         "type": "uint256"
                     },
                     {
-                        "internalType": "uint256",
-                        "name": "symbolType",
-                        "type": "uint256"
+                        "components": [
+                            {
+                                "internalType": "uint256",
+                                "name": "openFee",
+                                "type": "uint256"
+                            },
+                            {
+                                "internalType": "uint256",
+                                "name": "closeFee",
+                                "type": "uint256"
+                            }
+                        ],
+                        "internalType": "struct Fee",
+                        "name": "tradingFee",
+                        "type": "tuple"
                     },
                     {
                         "internalType": "address",
@@ -7125,13 +7569,25 @@
                     },
                     {
                         "internalType": "uint256",
-                        "name": "tradingFee",
+                        "name": "symbolType",
                         "type": "uint256"
                     },
                     {
-                        "internalType": "uint256",
-                        "name": "symbolType",
-                        "type": "uint256"
+                        "components": [
+                            {
+                                "internalType": "uint256",
+                                "name": "openFee",
+                                "type": "uint256"
+                            },
+                            {
+                                "internalType": "uint256",
+                                "name": "closeFee",
+                                "type": "uint256"
+                            }
+                        ],
+                        "internalType": "struct Fee",
+                        "name": "tradingFee",
+                        "type": "tuple"
                     },
                     {
                         "internalType": "address",
@@ -7294,9 +7750,82 @@
                         "type": "address"
                     },
                     {
+                        "internalType": "address",
+                        "name": "affiliate",
+                        "type": "address"
+                    },
+                    {
                         "internalType": "enum TradeStatus",
                         "name": "status",
                         "type": "uint8"
+                    },
+                    {
+                        "components": [
+                            {
+                                "internalType": "address",
+                                "name": "feeToken",
+                                "type": "address"
+                            },
+                            {
+                                "internalType": "uint256",
+                                "name": "tokenPriceInCollateral",
+                                "type": "uint256"
+                            },
+                            {
+                                "components": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "openFee",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "closeFee",
+                                        "type": "uint256"
+                                    }
+                                ],
+                                "internalType": "struct Fee",
+                                "name": "platformFee",
+                                "type": "tuple"
+                            },
+                            {
+                                "components": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "openFee",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "closeFee",
+                                        "type": "uint256"
+                                    }
+                                ],
+                                "internalType": "struct Fee",
+                                "name": "affiliateFee",
+                                "type": "tuple"
+                            },
+                            {
+                                "components": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "openFee",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "closeFee",
+                                        "type": "uint256"
+                                    }
+                                ],
+                                "internalType": "struct Fee",
+                                "name": "solverFee",
+                                "type": "tuple"
+                            }
+                        ],
+                        "internalType": "struct FeeStructure",
+                        "name": "feeStructure",
+                        "type": "tuple"
                     }
                 ],
                 "internalType": "struct Trade",
@@ -8454,6 +8983,23 @@
                 "type": "tuple"
             },
             {
+                "components": [
+                    {
+                        "internalType": "uint256",
+                        "name": "openFee",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "closeFee",
+                        "type": "uint256"
+                    }
+                ],
+                "internalType": "struct Fee",
+                "name": "solverFee",
+                "type": "tuple"
+            },
+            {
                 "internalType": "uint256",
                 "name": "deadline",
                 "type": "uint256"
@@ -8511,9 +9057,21 @@
                 "type": "uint256[]"
             },
             {
-                "internalType": "uint256[]",
+                "components": [
+                    {
+                        "internalType": "uint256",
+                        "name": "openFee",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "closeFee",
+                        "type": "uint256"
+                    }
+                ],
+                "internalType": "struct Fee[]",
                 "name": "_fees",
-                "type": "uint256[]"
+                "type": "tuple[]"
             }
         ],
         "name": "setAffiliateFees",
@@ -8636,6 +9194,74 @@
                         "internalType": "uint256",
                         "name": "deadline",
                         "type": "uint256"
+                    },
+                    {
+                        "components": [
+                            {
+                                "internalType": "address",
+                                "name": "feeToken",
+                                "type": "address"
+                            },
+                            {
+                                "internalType": "uint256",
+                                "name": "tokenPriceInCollateral",
+                                "type": "uint256"
+                            },
+                            {
+                                "components": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "openFee",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "closeFee",
+                                        "type": "uint256"
+                                    }
+                                ],
+                                "internalType": "struct Fee",
+                                "name": "platformFee",
+                                "type": "tuple"
+                            },
+                            {
+                                "components": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "openFee",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "closeFee",
+                                        "type": "uint256"
+                                    }
+                                ],
+                                "internalType": "struct Fee",
+                                "name": "affiliateFee",
+                                "type": "tuple"
+                            },
+                            {
+                                "components": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "openFee",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "closeFee",
+                                        "type": "uint256"
+                                    }
+                                ],
+                                "internalType": "struct Fee",
+                                "name": "solverFee",
+                                "type": "tuple"
+                            }
+                        ],
+                        "internalType": "struct FeeStructure",
+                        "name": "feeStructure",
+                        "type": "tuple"
                     },
                     {
                         "internalType": "enum CloseIntentStatus",
@@ -9008,9 +9634,21 @@
                 "type": "uint256[]"
             },
             {
-                "internalType": "uint256[]",
+                "components": [
+                    {
+                        "internalType": "uint256",
+                        "name": "openFee",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "closeFee",
+                        "type": "uint256"
+                    }
+                ],
+                "internalType": "struct Fee[]",
                 "name": "_fees",
-                "type": "uint256[]"
+                "type": "tuple[]"
             }
         ],
         "name": "setSymbolsTradingFees",
@@ -9236,9 +9874,82 @@
                         "type": "address"
                     },
                     {
+                        "internalType": "address",
+                        "name": "affiliate",
+                        "type": "address"
+                    },
+                    {
                         "internalType": "enum TradeStatus",
                         "name": "status",
                         "type": "uint8"
+                    },
+                    {
+                        "components": [
+                            {
+                                "internalType": "address",
+                                "name": "feeToken",
+                                "type": "address"
+                            },
+                            {
+                                "internalType": "uint256",
+                                "name": "tokenPriceInCollateral",
+                                "type": "uint256"
+                            },
+                            {
+                                "components": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "openFee",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "closeFee",
+                                        "type": "uint256"
+                                    }
+                                ],
+                                "internalType": "struct Fee",
+                                "name": "platformFee",
+                                "type": "tuple"
+                            },
+                            {
+                                "components": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "openFee",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "closeFee",
+                                        "type": "uint256"
+                                    }
+                                ],
+                                "internalType": "struct Fee",
+                                "name": "affiliateFee",
+                                "type": "tuple"
+                            },
+                            {
+                                "components": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "openFee",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "closeFee",
+                                        "type": "uint256"
+                                    }
+                                ],
+                                "internalType": "struct Fee",
+                                "name": "solverFee",
+                                "type": "tuple"
+                            }
+                        ],
+                        "internalType": "struct FeeStructure",
+                        "name": "feeStructure",
+                        "type": "tuple"
                     }
                 ],
                 "internalType": "struct Trade",
@@ -9442,6 +10153,74 @@
                         "internalType": "uint256",
                         "name": "deadline",
                         "type": "uint256"
+                    },
+                    {
+                        "components": [
+                            {
+                                "internalType": "address",
+                                "name": "feeToken",
+                                "type": "address"
+                            },
+                            {
+                                "internalType": "uint256",
+                                "name": "tokenPriceInCollateral",
+                                "type": "uint256"
+                            },
+                            {
+                                "components": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "openFee",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "closeFee",
+                                        "type": "uint256"
+                                    }
+                                ],
+                                "internalType": "struct Fee",
+                                "name": "platformFee",
+                                "type": "tuple"
+                            },
+                            {
+                                "components": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "openFee",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "closeFee",
+                                        "type": "uint256"
+                                    }
+                                ],
+                                "internalType": "struct Fee",
+                                "name": "affiliateFee",
+                                "type": "tuple"
+                            },
+                            {
+                                "components": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "openFee",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "closeFee",
+                                        "type": "uint256"
+                                    }
+                                ],
+                                "internalType": "struct Fee",
+                                "name": "solverFee",
+                                "type": "tuple"
+                            }
+                        ],
+                        "internalType": "struct FeeStructure",
+                        "name": "feeStructure",
+                        "type": "tuple"
                     },
                     {
                         "internalType": "enum CloseIntentStatus",

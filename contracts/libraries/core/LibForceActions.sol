@@ -36,8 +36,8 @@ library LibForceActions {
 		intent.status = OpenIntentStatus.CANCELED;
 		intent.returnFeesToUser();
 		intent.unlockPremium();
-		intent.unlockMaintenanceMargin();
-		intent.remove(false);
+		intent.unlockMM();
+		intent.unregister(false);
 	}
 
 	function forceCancelCloseIntent(uint256 intentId) internal {
@@ -54,6 +54,6 @@ library LibForceActions {
 
 		intent.statusModifyTimestamp = block.timestamp;
 		intent.status = CloseIntentStatus.CANCELED;
-		intent.remove();
+		intent.unregister();
 	}
 }

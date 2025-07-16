@@ -18,7 +18,7 @@ import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
 import { CloseIntentStorage } from "../../storages/CloseIntentStorage.sol";
 import { SymbolStorage } from "../../storages/SymbolStorage.sol";
 
-import { MarginType } from "../../types/BaseTypes.sol";
+import { MarginType, TradeSide } from "../../types/BaseTypes.sol";
 import { OpenIntentStatus, CloseIntentStatus, OpenIntent, CloseIntent } from "../../types/IntentTypes.sol";
 import { Trade, TradeStatus } from "../../types/TradeTypes.sol";
 import { Withdraw, WithdrawStatus } from "../../types/WithdrawTypes.sol";
@@ -55,7 +55,7 @@ library LibClearingHouse {
 		detail.partyA = partyA;
 		detail.partyB = partyB;
 		detail.side = side;
-		// upnl & collateralPrice start at 0 – identical to the old logic.
+		// upnl & collateralPrice start at 0
 	}
 
 	/**
@@ -219,6 +219,31 @@ library LibClearingHouse {
 				revert LiquidationErrors.TradeNotInLiquidation(liquidationId, trade.id);
 			}
 
+			if (trade.tradeAgreements.tradeSide == TradeSide.BUY) {
+				ScheduledReleaseBalance storage partyBBalance = trade.partyB.balanceOf(
+					SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId].collateral
+				);
+
+				if (trade.tradeAgreements.marginType == MarginType.ISOLATED) {
+					partyBBalance.instantIsolatedAdd(
+						(trade.calculatePremium() * trade.getOpenAmount()) / trade.tradeAgreements.quantity,
+						IncreaseBalanceReason.PREMIUM
+					);
+				} else {
+					partyBBalance.scheduledAdd(
+						trade.partyA,
+						(trade.calculatePremium() * trade.getOpenAmount()) / trade.tradeAgreements.quantity,
+						trade.tradeAgreements.marginType,
+						IncreaseBalanceReason.PREMIUM
+					);
+				}
+			} else {
+				trade.partyA.balanceOf(SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId].collateral).decreaseMM(
+					trade.partyB,
+					(trade.tradeAgreements.mm * trade.getOpenAmount()) / trade.tradeAgreements.quantity
+				);
+			}
+
 			trade.settledPrice = price;
 			trade.close(TradeStatus.LIQUIDATED, CloseIntentStatus.CANCELED);
 		}
@@ -308,8 +333,8 @@ library LibClearingHouse {
 				intent.status = OpenIntentStatus.CANCELED;
 				intent.returnFeesToUser();
 				intent.unlockPremium();
-				intent.unlockMaintenanceMargin();
-				intent.remove(false);
+				intent.unlockMM();
+				intent.unregister(false);
 			}
 			intent.statusModifyTimestamp = block.timestamp;
 		}
@@ -337,7 +362,7 @@ library LibClearingHouse {
 			} else {
 				intent.status = CloseIntentStatus.CANCELED;
 				intent.statusModifyTimestamp = block.timestamp;
-				intent.remove();
+				intent.unregister();
 			}
 		}
 	}
