@@ -47,6 +47,14 @@ library LibTradeOps {
 		return (self.tradeAgreements.quantity * self.openedPrice) / 1e18;
 	}
 
+	function calculateProportionalPremium(Trade memory self, uint256 amount) internal pure returns (uint256) {
+		return (calculatePremium(self) * amount) / self.tradeAgreements.quantity;
+	}
+
+	function calculateProportionalMM(Trade memory self, uint256 amount) internal pure returns (uint256) {
+		return (self.tradeAgreements.mm * amount) / self.tradeAgreements.quantity;
+	}
+
 	function calculateExerciseFee(Trade memory self, uint256 settlementPrice, uint256 pnl) internal pure returns (uint256) {
 		uint256 cap = (self.tradeAgreements.exerciseFee.cap * pnl) / 1e18;
 		uint256 fee = (self.tradeAgreements.exerciseFee.rate * settlementPrice * (getOpenAmount(self))) / 1e36;

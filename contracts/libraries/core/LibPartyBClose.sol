@@ -106,7 +106,7 @@ library LibPartyBClose {
 		uint256 closePremium = (quantity * price) / 1e18;
 
 		if (trade.tradeAgreements.tradeSide == TradeSide.BUY) {
-			uint256 openPremium = (trade.calculatePremium() * quantity) / trade.tradeAgreements.quantity;
+			uint256 openPremium = trade.calculateProportionalPremium(quantity);
 			if (marginType == MarginType.ISOLATED) {
 				partyBBalance.instantIsolatedAdd(openPremium, IncreaseBalanceReason.PREMIUM);
 			} else {
@@ -116,7 +116,7 @@ library LibPartyBClose {
 			partyBBalance.subForCounterParty(trade.partyA, closePremium, marginType, DecreaseBalanceReason.PREMIUM);
 			partyABalance.scheduledAdd(trade.partyB, closePremium, marginType, IncreaseBalanceReason.PREMIUM);
 		} else {
-			partyABalance.decreaseMM(trade.partyB, (trade.tradeAgreements.mm * quantity) / trade.tradeAgreements.quantity);
+			partyABalance.decreaseMM(trade.partyB, trade.calculateProportionalMM(quantity));
 			partyABalance.subForCounterParty(trade.partyB, closePremium, marginType, DecreaseBalanceReason.PREMIUM);
 			partyBBalance.scheduledAdd(trade.partyA, closePremium, marginType, IncreaseBalanceReason.PREMIUM);
 		}

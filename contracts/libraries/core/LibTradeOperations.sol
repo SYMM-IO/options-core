@@ -140,20 +140,17 @@ library LibTradeOperations {
 
 			if (trade.tradeAgreements.tradeSide == TradeSide.BUY) {
 				if (trade.tradeAgreements.marginType == MarginType.ISOLATED) {
-					partyBBalance.instantIsolatedAdd(
-						(trade.calculatePremium() * trade.getOpenAmount()) / trade.tradeAgreements.quantity,
-						IncreaseBalanceReason.PREMIUM
-					);
+					partyBBalance.instantIsolatedAdd(trade.calculateProportionalPremium(trade.getOpenAmount()), IncreaseBalanceReason.PREMIUM);
 				} else {
 					partyBBalance.scheduledAdd(
 						trade.partyA,
-						(trade.calculatePremium() * trade.getOpenAmount()) / trade.tradeAgreements.quantity,
+						trade.calculateProportionalPremium(trade.getOpenAmount()),
 						trade.tradeAgreements.marginType,
 						IncreaseBalanceReason.PREMIUM
 					);
 				}
 			} else {
-				partyABalance.decreaseMM(trade.partyB, (trade.tradeAgreements.mm * trade.getOpenAmount()) / trade.tradeAgreements.quantity);
+				partyABalance.decreaseMM(trade.partyB, trade.calculateProportionalMM(trade.getOpenAmount()));
 			}
 
 			if (exercised[i]) {
