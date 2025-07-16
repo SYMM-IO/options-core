@@ -55,7 +55,7 @@ library LibPartyAClose {
 			feeStructure: trade.feeStructure
 		});
 
-		intent.save();
+		intent.register();
 	}
 
 	function cancelCloseIntent(address sender, uint256 intentId) internal returns (CloseIntentStatus) {

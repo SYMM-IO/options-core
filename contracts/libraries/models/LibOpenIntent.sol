@@ -21,15 +21,15 @@ library LibOpenIntentOps {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibParty for address;
 
-	function calculateFeeAmount(OpenIntent memory self, uint256 rate) internal pure returns (uint256) {
+	function calculateFee(OpenIntent memory self, uint256 rate) internal pure returns (uint256) {
 		return (self.tradeAgreements.quantity * self.price * rate) / (self.feeStructure.tokenPriceInCollateral * 1e18);
 	}
 
-	function calculatePremiumAmount(OpenIntent memory self) internal pure returns (uint256) {
+	function calculatePremium(OpenIntent memory self) internal pure returns (uint256) {
 		return (self.tradeAgreements.quantity * self.price) / 1e18;
 	}
 
-	function save(OpenIntent memory self) internal {
+	function register(OpenIntent memory self) internal {
 		OpenIntentStorage.Layout storage openIntentLayout = OpenIntentStorage.layout();
 
 		openIntentLayout.openIntents[self.id] = self;
@@ -41,14 +41,14 @@ library LibOpenIntentOps {
 		}
 	}
 
-	function saveForPartyB(OpenIntent memory self) internal {
+	function registerForPartyB(OpenIntent memory self) internal {
 		OpenIntentStorage.Layout storage openIntentLayout = OpenIntentStorage.layout();
 
 		openIntentLayout.activeOpenIntentsOf[self.partyB].push(self.id);
 		openIntentLayout.partyBOpenIntentsIndex[self.id] = openIntentLayout.activeOpenIntentsOf[self.partyB].length - 1;
 	}
 
-	function remove(OpenIntent memory self, bool fromPartyBOnly) internal {
+	function unregister(OpenIntent memory self, bool fromPartyBOnly) internal {
 		OpenIntentStorage.Layout storage openIntentLayout = OpenIntentStorage.layout();
 
 		if (!fromPartyBOnly) {
@@ -88,8 +88,8 @@ library LibOpenIntentOps {
 
 		returnFeesToUser(self);
 		unlockPremium(self);
-		unlockMaintenanceMargin(self);
-		remove(self, false);
+		unlockMM(self);
+		unregister(self, false);
 	}
 
 	function _handleFees(OpenIntent memory self, FeeOp op) internal {
@@ -101,9 +101,9 @@ library LibOpenIntentOps {
 		ScheduledReleaseBalance storage bal = self.partyA.balanceOf(s.feeToken);
 
 		uint256[3] memory fees = [
-			calculateFeeAmount(self, s.platformFee.openFee),
-			calculateFeeAmount(self, s.affiliateFee.openFee),
-			calculateFeeAmount(self, s.solverFee.openFee)
+			calculateFee(self, s.platformFee.openFee),
+			calculateFee(self, s.affiliateFee.openFee),
+			calculateFee(self, s.solverFee.openFee)
 		];
 
 		DecreaseBalanceReason[3] memory decReasons = [
@@ -148,9 +148,9 @@ library LibOpenIntentOps {
 
 		if (self.tradeAgreements.tradeSide == TradeSide.BUY) {
 			if (self.tradeAgreements.marginType == MarginType.ISOLATED) {
-				partyABalance.isolatedLock(calculatePremiumAmount(self));
+				partyABalance.isolatedLock(calculatePremium(self));
 			} else {
-				partyABalance.crossLock(self.partyBsWhiteList[0], calculatePremiumAmount(self));
+				partyABalance.crossLock(self.partyBsWhiteList[0], calculatePremium(self));
 			}
 		}
 	}
@@ -161,14 +161,14 @@ library LibOpenIntentOps {
 
 		if (self.tradeAgreements.tradeSide == TradeSide.BUY) {
 			if (self.tradeAgreements.marginType == MarginType.ISOLATED) {
-				partyABalance.isolatedUnlock(calculatePremiumAmount(self));
+				partyABalance.isolatedUnlock(calculatePremium(self));
 			} else {
-				partyABalance.crossUnlock(self.partyBsWhiteList[0], calculatePremiumAmount(self));
+				partyABalance.crossUnlock(self.partyBsWhiteList[0], calculatePremium(self));
 			}
 		}
 	}
 
-	function lockMaintenanceMargin(OpenIntent memory self) internal {
+	function lockMM(OpenIntent memory self) internal {
 		ScheduledReleaseBalance storage partyABalance = self.partyA.balanceOf(
 			SymbolStorage.layout().symbols[self.tradeAgreements.symbolId].collateral
 		);
@@ -177,7 +177,7 @@ library LibOpenIntentOps {
 		}
 	}
 
-	function unlockMaintenanceMargin(OpenIntent memory self) internal {
+	function unlockMM(OpenIntent memory self) internal {
 		ScheduledReleaseBalance storage partyABalance = self.partyA.balanceOf(
 			SymbolStorage.layout().symbols[self.tradeAgreements.symbolId].collateral
 		);

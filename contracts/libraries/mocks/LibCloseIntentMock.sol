@@ -21,7 +21,7 @@ contract CloseIntentOpsMock {
 	// --- LIBRARY FUNCTION WRAPPERS ---
 
 	function testSave(CloseIntent memory intent) external {
-		intent.save(); // stores intent, mutates storage arrays
+		intent.register(); // stores intent, mutates storage arrays
 	}
 
 	function testExpire(uint256 intentId) external {

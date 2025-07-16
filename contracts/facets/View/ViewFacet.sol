@@ -1013,7 +1013,7 @@ contract ViewFacet is IViewFacet {
 	 */
 	function getOpenIntentTradingFee(uint256 intentId) external view returns (uint256) {
 		OpenIntent memory intent = OpenIntentStorage.layout().openIntents[intentId];
-		return intent.calculateFeeAmount(intent.feeStructure.platformFee.openFee);
+		return intent.calculateFee(intent.feeStructure.platformFee.openFee);
 	}
 
 	/**
@@ -1023,7 +1023,7 @@ contract ViewFacet is IViewFacet {
 	 */
 	function getOpenIntentAffiliateFee(uint256 intentId) external view returns (uint256) {
 		OpenIntent memory intent = OpenIntentStorage.layout().openIntents[intentId];
-		return intent.calculateFeeAmount(intent.feeStructure.affiliateFee.openFee);
+		return intent.calculateFee(intent.feeStructure.affiliateFee.openFee);
 	}
 
 	/**
@@ -1032,7 +1032,7 @@ contract ViewFacet is IViewFacet {
 	 * @return The premium
 	 */
 	function getOpenIntentPremium(uint256 intentId) external view returns (uint256) {
-		return OpenIntentStorage.layout().openIntents[intentId].calculatePremiumAmount();
+		return OpenIntentStorage.layout().openIntents[intentId].calculatePremium();
 	}
 
 	// ════════════════════════════════════════════════════════════════════════════
@@ -1046,7 +1046,7 @@ contract ViewFacet is IViewFacet {
 	 */
 	function getCloseIntentTradingFee(uint256 intentId) external view returns (uint256) {
 		CloseIntent memory intent = CloseIntentStorage.layout().closeIntents[intentId];
-		return intent.calculateFeeAmount(intent.feeStructure.platformFee.closeFee);
+		return intent.calculateFee(intent.feeStructure.platformFee.closeFee);
 	}
 
 	/**
@@ -1056,7 +1056,7 @@ contract ViewFacet is IViewFacet {
 	 */
 	function getCloseIntentAffiliateFee(uint256 intentId) external view returns (uint256) {
 		CloseIntent memory intent = CloseIntentStorage.layout().closeIntents[intentId];
-		return intent.calculateFeeAmount(intent.feeStructure.affiliateFee.closeFee);
+		return intent.calculateFee(intent.feeStructure.affiliateFee.closeFee);
 	}
 
 	/**
@@ -1065,7 +1065,7 @@ contract ViewFacet is IViewFacet {
 	 * @return The premium
 	 */
 	function getCloseIntentPremium(uint256 intentId) external view returns (uint256) {
-		return CloseIntentStorage.layout().closeIntents[intentId].calculatePremiumAmount();
+		return CloseIntentStorage.layout().closeIntents[intentId].calculatePremium();
 	}
 
 	// ════════════════════════════════════════════════════════════════════════════
@@ -1098,7 +1098,7 @@ contract ViewFacet is IViewFacet {
 	 * @return The PNL
 	 */
 	function getTradePnl(uint256 tradeId, uint256 currentPrice, uint256 filledAmount) external view returns (uint256) {
-		return TradeStorage.layout().trades[tradeId].getPnl(currentPrice, filledAmount);
+		return TradeStorage.layout().trades[tradeId].calculatePnl(currentPrice, filledAmount);
 	}
 
 	/**
@@ -1107,7 +1107,7 @@ contract ViewFacet is IViewFacet {
 	 * @return The premium
 	 */
 	function getTradePremium(uint256 tradeId) external view returns (uint256) {
-		return TradeStorage.layout().trades[tradeId].getPremium();
+		return TradeStorage.layout().trades[tradeId].calculatePremium();
 	}
 
 	/**
@@ -1118,6 +1118,6 @@ contract ViewFacet is IViewFacet {
 	 * @return The exercise fee
 	 */
 	function getTradeExerciseFee(uint256 tradeId, uint256 settlementPrice, uint256 pnl) external view returns (uint256) {
-		return TradeStorage.layout().trades[tradeId].getExerciseFee(settlementPrice, pnl);
+		return TradeStorage.layout().trades[tradeId].calculateExerciseFee(settlementPrice, pnl);
 	}
 }

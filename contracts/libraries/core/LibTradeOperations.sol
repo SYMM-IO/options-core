@@ -13,10 +13,11 @@ import { AppStorage } from "../../storages/AppStorage.sol";
 import { TradeStorage } from "../../storages/TradeStorage.sol";
 import { SymbolStorage } from "../../storages/SymbolStorage.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
+import { FeeManagementStorage } from "../../storages/FeeManagementStorage.sol";
 
 import { CloseIntentStatus } from "../../types/IntentTypes.sol";
 import { Symbol, OptionType } from "../../types/SymbolTypes.sol";
-import { TradeSide, MarginType } from "../../types/BaseTypes.sol";
+import { TradeSide, MarginType, FeeStructure } from "../../types/BaseTypes.sol";
 import { Trade, TradeStatus, SettlementPriceSig } from "../../types/TradeTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 
@@ -37,16 +38,31 @@ library LibTradeOperations {
 		Trade storage trade = TradeStorage.layout().trades[tradeId];
 		Symbol memory symbol = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId];
 
+		/* ---------------------------------------- CHECKS ---------------------------------------- */
+
+		// Only the partyA can transfer the trade
 		if (trade.partyA != sender) revert ValidationErrors.UnauthorizedSender(sender, trade.partyA);
+
+		// Receiver cannot be zero address
 		if (receiver == address(0)) revert ValidationErrors.ZeroAddress("receiver");
+
+		// Receiver cannot be Party B
 		if (receiver.isPartyB()) revert TradeErrors.ReceiverIsPartyB(receiver, trade.partyB);
+
+		// Trade must be OPENED
 		ValidationErrors.requireStatus("TradeStatus", uint8(trade.status), uint8(TradeStatus.OPENED));
+
+		// Cross-margin trades cannot be transferred
 		if (trade.tradeAgreements.marginType == MarginType.CROSS) revert TradeErrors.CrossTradeTransferNotAllowed(tradeId);
+
+		// Party B must be solvent
 		trade.partyB.requireSolvent(address(0), symbol.collateral, MarginType.ISOLATED);
 
-		trade.remove();
+		/* ---------------------------------------- UPDATE ---------------------------------------- */
+
+		trade.unregister();
 		trade.partyA = receiver;
-		trade.save();
+		trade.register();
 	}
 
 	function transferTrade(address receiver, uint256 tradeId) internal {
@@ -117,23 +133,27 @@ library LibTradeOperations {
 				}
 			}
 
+			/* ---------------------------------------- BALANCES ---------------------------------------- */
+
 			ScheduledReleaseBalance storage partyABalance = trade.partyA.balanceOf(symbol.collateral);
 			ScheduledReleaseBalance storage partyBBalance = trade.partyB.balanceOf(symbol.collateral);
 
 			if (trade.tradeAgreements.tradeSide == TradeSide.BUY) {
 				if (trade.tradeAgreements.marginType == MarginType.ISOLATED) {
 					partyBBalance.instantIsolatedAdd(
-						(trade.getPremium() * trade.getOpenAmount()) / trade.tradeAgreements.quantity,
+						(trade.calculatePremium() * trade.getOpenAmount()) / trade.tradeAgreements.quantity,
 						IncreaseBalanceReason.PREMIUM
 					);
 				} else {
 					partyBBalance.scheduledAdd(
 						trade.partyA,
-						(trade.getPremium() * trade.getOpenAmount()) / trade.tradeAgreements.quantity,
+						(trade.calculatePremium() * trade.getOpenAmount()) / trade.tradeAgreements.quantity,
 						trade.tradeAgreements.marginType,
 						IncreaseBalanceReason.PREMIUM
 					);
 				}
+			} else {
+				partyABalance.decreaseMM(trade.partyB, (trade.tradeAgreements.mm * trade.getOpenAmount()) / trade.tradeAgreements.quantity);
 			}
 
 			if (exercised[i]) {
@@ -145,9 +165,9 @@ library LibTradeOperations {
 						);
 				}
 
-				uint256 pnl = trade.getPnl(sig.settlementPrice, trade.getOpenAmount());
+				uint256 pnl = trade.calculatePnl(sig.settlementPrice, trade.getOpenAmount());
 
-				uint256 exerciseFee = trade.getExerciseFee(sig.settlementPrice, pnl);
+				uint256 exerciseFee = trade.calculateExerciseFee(sig.settlementPrice, pnl);
 				uint256 amountToTransfer = pnl - exerciseFee;
 
 				amountToTransfer = (amountToTransfer * 1e18) / sig.collateralPrice;
@@ -163,8 +183,6 @@ library LibTradeOperations {
 					);
 					partyABalance.scheduledAdd(trade.partyB, amountToTransfer, trade.tradeAgreements.marginType, IncreaseBalanceReason.REALIZED_PNL);
 				} else {
-					if (trade.tradeAgreements.marginType == MarginType.CROSS)
-						partyABalance.decreaseMM(trade.partyB, (trade.tradeAgreements.mm * trade.getOpenAmount()) / trade.tradeAgreements.quantity);
 					partyABalance.subForCounterParty(
 						trade.partyB,
 						amountToTransfer,
@@ -174,8 +192,44 @@ library LibTradeOperations {
 					partyBBalance.scheduledAdd(trade.partyB, amountToTransfer, trade.tradeAgreements.marginType, IncreaseBalanceReason.REALIZED_PNL);
 				}
 
+				{
+					FeeManagementStorage.Layout storage feeLayout = FeeManagementStorage.layout();
+					FeeStructure memory s = trade.feeStructure;
+
+					/* ---------------------------------------- GET FEES ---------------------------------------- */
+					uint256[2] memory fees = [
+						(amountToTransfer * s.platformFee.closeFee) / 1e18,
+						(amountToTransfer * s.affiliateFee.closeFee) / 1e18
+					];
+
+					DecreaseBalanceReason[2] memory decReasons = [DecreaseBalanceReason.PLATFORM_FEE, DecreaseBalanceReason.AFFILIATE_FEE];
+
+					for (uint8 j; j < 2; ++j)
+						partyABalance.subForCounterParty(trade.partyB, fees[j], trade.tradeAgreements.marginType, decReasons[j]);
+
+					/* ---------------------------------------- PAY FEES ---------------------------------------- */
+
+					// Determine affiliate fee collector (use default if none specified)
+					address affiliateFeeCollector = feeLayout.affiliateFeeCollector[trade.affiliate] == address(0)
+						? feeLayout.defaultFeeCollector
+						: feeLayout.affiliateFeeCollector[trade.affiliate];
+
+					// Pay affiliate fees
+					ScheduledReleaseBalance storage affiliateFeeCollectorBalance = affiliateFeeCollector.balanceOf(symbol.collateral);
+					affiliateFeeCollectorBalance.setup(affiliateFeeCollector, symbol.collateral);
+					affiliateFeeCollectorBalance.instantIsolatedAdd(fees[1], IncreaseBalanceReason.AFFILIATE_FEE);
+
+					// Pay platform fees
+					ScheduledReleaseBalance storage defaultFeeCollectorBalance = feeLayout.defaultFeeCollector.balanceOf(symbol.collateral);
+					defaultFeeCollectorBalance.setup(feeLayout.defaultFeeCollector, symbol.collateral);
+					defaultFeeCollectorBalance.instantIsolatedAdd(fees[0], IncreaseBalanceReason.PLATFORM_FEE);
+				}
+
 				trade.close(TradeStatus.EXERCISED, CloseIntentStatus.CANCELED);
 			}
+
+			/* ---------------------------------------- NONCE ---------------------------------------- */
+
 			if (trade.tradeAgreements.marginType == MarginType.CROSS) {
 				accountLayout.nonces[trade.partyA][trade.partyB] += 1;
 				accountLayout.nonces[trade.partyB][trade.partyA] += 1;

@@ -29,6 +29,7 @@ struct Trade {
 	uint256 statusModifyTimestamp;
 	address partyA;
 	address partyB;
+	address affiliate;
 	TradeStatus status;
 	FeeStructure feeStructure;
 }

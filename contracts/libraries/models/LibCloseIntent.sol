@@ -22,11 +22,11 @@ library LibCloseIntentOps {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibParty for address;
 
-	function calculateFeeAmount(CloseIntent memory self, uint256 rate) internal pure returns (uint256) {
+	function calculateFee(CloseIntent memory self, uint256 rate) internal pure returns (uint256) {
 		return (self.quantity * self.price * rate) / (self.feeStructure.tokenPriceInCollateral * 1e18);
 	}
 
-	function calculatePremiumAmount(CloseIntent memory self) internal pure returns (uint256) {
+	function calculatePremium(CloseIntent memory self) internal pure returns (uint256) {
 		return (self.quantity * self.price) / 1e18;
 	}
 
@@ -54,7 +54,7 @@ library LibCloseIntentOps {
 		array_.pop();
 	}
 
-	function save(CloseIntent memory self) internal {
+	function register(CloseIntent memory self) internal {
 		Trade storage trade = TradeStorage.layout().trades[self.tradeId];
 		CloseIntentStorage.Layout storage closeIntentLayout = CloseIntentStorage.layout();
 		closeIntentLayout.closeIntents[self.id] = self;
@@ -63,7 +63,7 @@ library LibCloseIntentOps {
 		trade.closePendingAmount += self.quantity;
 	}
 
-	function remove(CloseIntent memory self) internal {
+	function unregister(CloseIntent memory self) internal {
 		Trade storage trade = TradeStorage.layout().trades[self.tradeId];
 		removeFromArray(trade.activeCloseIntentIds, self.id);
 		trade.closePendingAmount -= self.quantity;
@@ -81,7 +81,7 @@ library LibCloseIntentOps {
 
 		self.statusModifyTimestamp = block.timestamp;
 		self.status = CloseIntentStatus.EXPIRED;
-		remove(self);
+		unregister(self);
 	}
 
 	function getFeesFromUser(CloseIntent memory self) internal {
@@ -90,9 +90,9 @@ library LibCloseIntentOps {
 		ScheduledReleaseBalance storage bal = trade.partyA.balanceOf(s.feeToken);
 
 		uint256[3] memory fees = [
-			calculateFeeAmount(self, s.platformFee.closeFee),
-			calculateFeeAmount(self, s.affiliateFee.closeFee),
-			calculateFeeAmount(self, s.solverFee.closeFee)
+			calculateFee(self, s.platformFee.closeFee),
+			calculateFee(self, s.affiliateFee.closeFee),
+			calculateFee(self, s.solverFee.closeFee)
 		];
 
 		DecreaseBalanceReason[3] memory decReasons = [

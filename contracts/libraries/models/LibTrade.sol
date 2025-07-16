@@ -33,7 +33,7 @@ library LibTradeOps {
 		return self.tradeAgreements.quantity - self.closedAmountBeforeExpiration - self.closePendingAmount;
 	}
 
-	function getPnl(Trade memory self, uint256 currentPrice, uint256 filledAmount) internal view returns (uint256 pnl) {
+	function calculatePnl(Trade memory self, uint256 currentPrice, uint256 filledAmount) internal view returns (uint256 pnl) {
 		Symbol storage symbol = SymbolStorage.layout().symbols[self.tradeAgreements.symbolId];
 
 		if (currentPrice > self.tradeAgreements.strikePrice && symbol.optionType == OptionType.CALL) {
@@ -43,17 +43,17 @@ library LibTradeOps {
 		}
 	}
 
-	function getPremium(Trade memory self) internal pure returns (uint256) {
+	function calculatePremium(Trade memory self) internal pure returns (uint256) {
 		return (self.tradeAgreements.quantity * self.openedPrice) / 1e18;
 	}
 
-	function getExerciseFee(Trade memory self, uint256 settlementPrice, uint256 pnl) internal pure returns (uint256) {
+	function calculateExerciseFee(Trade memory self, uint256 settlementPrice, uint256 pnl) internal pure returns (uint256) {
 		uint256 cap = (self.tradeAgreements.exerciseFee.cap * pnl) / 1e18;
 		uint256 fee = (self.tradeAgreements.exerciseFee.rate * settlementPrice * (getOpenAmount(self))) / 1e36;
 		return cap < fee ? cap : fee;
 	}
 
-	function save(Trade memory self) internal {
+	function register(Trade memory self) internal {
 		TradeStorage.Layout storage tradeLayout = TradeStorage.layout();
 
 		if (tradeLayout.activeTradesOfPartyA[self.partyA].length >= AppStorage.layout().maxTradePerPartyA)
@@ -76,7 +76,7 @@ library LibTradeOps {
 		self.partyA.balanceOf(symbol.collateral).addCounterParty(self.partyB);
 	}
 
-	function remove(Trade memory self) internal {
+	function unregister(Trade memory self) internal {
 		TradeStorage.Layout storage tradeLayout = TradeStorage.layout();
 		Symbol memory symbol = SymbolStorage.layout().symbols[self.tradeAgreements.symbolId];
 
@@ -107,10 +107,10 @@ library LibTradeOps {
 			CloseIntent storage intent = CloseIntentStorage.layout().closeIntents[self.activeCloseIntentIds[0]];
 			intent.statusModifyTimestamp = block.timestamp;
 			intent.status = intentStatus;
-			intent.remove();
+			intent.unregister();
 		}
 		self.status = tradeStatus;
 		self.statusModifyTimestamp = block.timestamp;
-		remove(self);
+		unregister(self);
 	}
 }
