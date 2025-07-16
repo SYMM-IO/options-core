@@ -282,6 +282,8 @@ export function shouldBehaveLikeInstantLayer(): void {
 			await context.instantLayer.registerPartyB(await context.symmioPartyB.getAddress())
 			await context.instantLayer.registerMultiAccount(context.multiAccount)
 
+			await context.symmioPartyB.setSigner(partyB1.getSigner)
+
 			accounts = await context.multiAccount.getAccounts(partyA1.address, 0, 100)
 			await expect(context.multiAccount.connect(partyA1.getSigner).addAccount("testAccount")).not.to.reverted
 			accounts = await context.multiAccount.getAccounts(partyA1.address, 0, 100)
@@ -473,7 +475,7 @@ export function shouldBehaveLikeInstantLayer(): void {
 			// expect(trade.openIntentId).to.be.equal(intent.id)
 			// expect(trade.status).to.be.equal(TradeStatus.OPENED)
 
-			//TODO signature verification to Use EIP-1271
+			//TODO developing tests for Symmio partyB
 		})
 
 		it("should Fail Signature verification with Invalid Nonce", async function () {
@@ -532,14 +534,14 @@ export function shouldBehaveLikeInstantLayer(): void {
 			expect(newNonce).to.be.equal(opOpenALocal.nonce)
 		})
 
-		it("Should be failed when ", async () => {
-			// await context.instantLayer.registerPartyB(partyB1.getSigner)
-			// for(let i =0; i< signedOps.length; i++){
-			// 	let hash = await context.instantLayer.getOperationHash(signedOps[i])
-			// 	console.log("Hash Of Operation " + i +":",hash)
-			// }
-			// await expect(context.instantLayer.executeBatch(signedOps)).not.to.be.reverted
-			//TODO
-		})
+		// it("Should be failed when ", async () => {
+		// 	// await context.instantLayer.registerPartyB(partyB1.getSigner)
+		// 	// for(let i =0; i< signedOps.length; i++){
+		// 	// 	let hash = await context.instantLayer.getOperationHash(signedOps[i])
+		// 	// 	console.log("Hash Of Operation " + i +":",hash)
+		// 	// }
+		// 	// await expect(context.instantLayer.executeBatch(signedOps)).not.to.be.reverted
+		// 	//TODO
+		// })
 	})
 }
