@@ -171,6 +171,7 @@ library LibPartyBOpen {
 
 		OpenIntent storage intent = intentLayout.openIntents[intentId];
 		Symbol memory symbol = SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId];
+		MarginType marginType = intent.tradeAgreements.marginType;
 
 		/* ---------------------------------------- CHECKS ---------------------------------------- */
 
@@ -365,22 +366,17 @@ library LibPartyBOpen {
 		// Handle premium and maintenance margin based on trade side
 		if (intent.tradeAgreements.tradeSide == TradeSide.BUY) {
 			// Party A is buying: Party A pays premium to Party B
-			partyABalance.subForCounterParty(
-				trade.partyB,
-				trade.calculatePremium(),
-				intent.tradeAgreements.marginType,
-				DecreaseBalanceReason.PREMIUM
-			);
+			partyABalance.subForCounterParty(trade.partyB, trade.calculatePremium(), marginType, DecreaseBalanceReason.PREMIUM);
 		} else {
 			// Party A is selling: Party B pays premium to Party A, Party A should have maintenance margin
 			partyABalance.increaseMM(trade.partyB, trade.tradeAgreements.mm);
-			partyBBalance.subForCounterParty(trade.partyA, trade.calculatePremium(), trade.tradeAgreements.marginType, DecreaseBalanceReason.PREMIUM);
-			partyABalance.scheduledAdd(trade.partyB, trade.calculatePremium(), MarginType.CROSS, IncreaseBalanceReason.PREMIUM);
+			partyBBalance.subForCounterParty(trade.partyA, trade.calculatePremium(), marginType, DecreaseBalanceReason.PREMIUM);
+			partyABalance.scheduledAdd(trade.partyB, trade.calculatePremium(), marginType, IncreaseBalanceReason.PREMIUM);
 		}
 
 		/* ---------------------------------------- NONCE ---------------------------------------- */
 
-		if (trade.tradeAgreements.marginType == MarginType.CROSS) {
+		if (marginType == MarginType.CROSS) {
 			accountLayout.nonces[trade.partyA][trade.partyB] += 1;
 			accountLayout.nonces[trade.partyB][trade.partyA] += 1;
 		}

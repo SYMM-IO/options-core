@@ -82,7 +82,6 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 			affiliate,
 			userData
 		);
-		OpenIntentStorage.layout().openIntents[intentId];
 		emit SendOpenIntent(
 			msg.sender,
 			intentId,

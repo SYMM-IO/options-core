@@ -41,7 +41,7 @@ contract PartyACloseFacet is Accessibility, Pausable, IPartyACloseFacet {
 		uint256 price,
 		uint256 deadline
 	) external whenPartyNotPaused(msg.sender) onlyPartyAOfTrade(tradeId) whenInstantModeIsNotActive(msg.sender) returns (uint256 intentId) {
-		intentId = LibPartyAClose.sendCloseIntent(msg.sender, tradeId, price, quantity, deadline);
+		intentId = LibPartyAClose.sendCloseIntent(msg.sender, tradeId, quantity, price, deadline);
 		emit SendCloseIntent(tradeId, intentId, price, quantity, deadline);
 	}
 

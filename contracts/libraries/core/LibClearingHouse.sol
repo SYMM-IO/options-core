@@ -226,13 +226,13 @@ library LibClearingHouse {
 
 				if (trade.tradeAgreements.marginType == MarginType.ISOLATED) {
 					partyBBalance.instantIsolatedAdd(
-						(trade.calculatePremium() * trade.getOpenAmount()) / trade.tradeAgreements.quantity,
+						trade.calculateProportionalPremium(trade.getOpenAmount()),
 						IncreaseBalanceReason.PREMIUM
 					);
 				} else {
 					partyBBalance.scheduledAdd(
 						trade.partyA,
-						(trade.calculatePremium() * trade.getOpenAmount()) / trade.tradeAgreements.quantity,
+						trade.calculateProportionalPremium(trade.getOpenAmount()),
 						trade.tradeAgreements.marginType,
 						IncreaseBalanceReason.PREMIUM
 					);
@@ -240,7 +240,7 @@ library LibClearingHouse {
 			} else {
 				trade.partyA.balanceOf(SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId].collateral).decreaseMM(
 					trade.partyB,
-					(trade.tradeAgreements.mm * trade.getOpenAmount()) / trade.tradeAgreements.quantity
+					trade.calculateProportionalMM(trade.getOpenAmount())
 				);
 			}
 
