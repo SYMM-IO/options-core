@@ -3944,6 +3944,12 @@
                 "internalType": "uint256",
                 "name": "intentId",
                 "type": "uint256"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "partyB",
+                "type": "address"
             }
         ],
         "name": "UnlockOpenIntent",
