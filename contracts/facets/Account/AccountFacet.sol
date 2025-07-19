@@ -43,18 +43,19 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet, ReentrancyGuard
 
 	/**
 	 * @notice Allows privileged roles to deposit collateral on behalf of another user
-	 * @dev Restricted to accounts with SECURED_DEPOSITOR_ROLE
+	 * @dev Restricted to accounts with VIRTUAL_DEPOSITOR_ROLE
 	 * @param collateral The address of the collateral token to deposit
 	 * @param user The recipient address who will receive the deposited collateral
 	 * @param amount The amount of collateral to be deposited, specified in collateral decimals
 	 */
-	function securedDepositFor(
+	function virtualDepositFor(
 		address collateral,
 		address user,
 		uint256 amount
-	) external whenDepositingNotPaused whenNotSuspended(user) onlyRole(LibAccessibility.SECURED_DEPOSITOR_ROLE) {
-		LibBalanceOperations.securedDepositFor(collateral, user, amount);
+	) external whenDepositingNotPaused whenNotSuspended(user) onlyRole(LibAccessibility.VIRTUAL_DEPOSITOR_ROLE) {
+		LibBalanceOperations.virtualDepositFor(collateral, user, amount);
 		emit Deposit(msg.sender, user, collateral, amount, user.balanceOf(collateral).isolatedBalance);
+		emit VirtualDeposit(msg.sender, user, collateral, amount, user.balanceOf(collateral).isolatedBalance);
 	}
 
 	/**

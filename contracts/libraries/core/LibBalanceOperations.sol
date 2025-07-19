@@ -33,7 +33,7 @@ library LibBalanceOperations {
 		_deposit(collateral, user, amount, true);
 	}
 
-	function securedDepositFor(address collateral, address user, uint256 amount) internal {
+	function virtualDepositFor(address collateral, address user, uint256 amount) internal {
 		_deposit(collateral, user, amount, false);
 	}
 

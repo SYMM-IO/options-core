@@ -6,6 +6,7 @@ pragma solidity >=0.8.19;
 
 interface IAccountEvents {
 	event Deposit(address indexed sender, address indexed user, address indexed collateral, uint256 amount, uint256 newBalance);
+	event VirtualDeposit(address indexed sender, address indexed user, address indexed collateral, uint256 amount, uint256 newBalance);
 	event InternalTransfer(
 		address indexed sender,
 		address indexed receiver,

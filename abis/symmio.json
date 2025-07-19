@@ -4055,6 +4055,43 @@
     },
     {
         "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "sender",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "collateral",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "newBalance",
+                "type": "uint256"
+            }
+        ],
+        "name": "VirtualDeposit",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
         "inputs": [],
         "name": "WithdrawPaused",
         "type": "event"
@@ -4229,19 +4266,6 @@
     },
     {
         "inputs": [],
-        "name": "SECURED_DEPOSITOR_ROLE",
-        "outputs": [
-            {
-                "internalType": "bytes32",
-                "name": "",
-                "type": "bytes32"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
         "name": "SETTER_ROLE",
         "outputs": [
             {
@@ -4282,6 +4306,19 @@
     {
         "inputs": [],
         "name": "UNPAUSER_ROLE",
+        "outputs": [
+            {
+                "internalType": "bytes32",
+                "name": "",
+                "type": "bytes32"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "VIRTUAL_DEPOSITOR_ROLE",
         "outputs": [
             {
                 "internalType": "bytes32",
@@ -8940,29 +8977,6 @@
     {
         "inputs": [
             {
-                "internalType": "address",
-                "name": "collateral",
-                "type": "address"
-            },
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            },
-            {
-                "internalType": "uint256",
-                "name": "amount",
-                "type": "uint256"
-            }
-        ],
-        "name": "securedDepositFor",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
                 "internalType": "uint256",
                 "name": "tradeId",
                 "type": "uint256"
@@ -10528,6 +10542,29 @@
             }
         ],
         "name": "updateOracle",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "collateral",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            }
+        ],
+        "name": "virtualDepositFor",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
