@@ -42,7 +42,7 @@ contract PartyBOpenFacet is Accessibility, Pausable, IPartyBOpenFacet {
 		if (finalStatus == OpenIntentStatus.EXPIRED) {
 			emit ExpireOpenIntent(intentId);
 		} else if (finalStatus == OpenIntentStatus.PENDING) {
-			emit UnlockOpenIntent(intentId);
+			emit UnlockOpenIntent(intentId, msg.sender);
 		}
 	}
 
