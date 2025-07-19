@@ -11,7 +11,7 @@ import { IAccountEvents } from "./IAccountEvents.sol";
 interface IAccountFacet is IAccountEvents {
 	function deposit(address collateral, uint256 amount) external;
 
-	function securedDepositFor(address collateral, address user, uint256 amount) external;
+	function virtualDepositFor(address collateral, address user, uint256 amount) external;
 
 	function depositFor(address collateral, address user, uint256 amount) external;
 
