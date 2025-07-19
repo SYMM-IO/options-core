@@ -30,7 +30,7 @@ const openIntentRequest: OpenIntent = {
 	quantity: e(1),
 	strikePrice: 1,
 	expirationTimestamp: 0,
-	mm: 0,
+	mm: e(1),
 	tradeSide: TradeSide.BUY,
 	marginType: MarginType.ISOLATED,
 	exerciseFee: {
