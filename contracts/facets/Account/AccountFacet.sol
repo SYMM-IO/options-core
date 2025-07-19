@@ -68,7 +68,15 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet, ReentrancyGuard
 		address collateral,
 		address user,
 		uint256 amount
-	) external nonReentrant whenDepositingNotPaused whenNotSuspended(msg.sender) whenNotSuspended(user) whenPartyNotPaused(msg.sender) whenPartyNotPaused(user) {
+	)
+		external
+		nonReentrant
+		whenDepositingNotPaused
+		whenNotSuspended(msg.sender)
+		whenNotSuspended(user)
+		whenPartyNotPaused(msg.sender)
+		whenPartyNotPaused(user)
+	{
 		LibBalanceOperations.deposit(collateral, user, amount);
 		emit Deposit(msg.sender, user, collateral, amount, user.balanceOf(collateral).isolatedBalance);
 	}
@@ -118,7 +126,14 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet, ReentrancyGuard
 		address user,
 		uint256 amount,
 		address target
-	) external nonReentrant whenNotExternalTransferPaused whenNotSuspended(msg.sender) whenInstantModeIsNotActive(msg.sender) whenPartyNotPaused(msg.sender) {
+	)
+		external
+		nonReentrant
+		whenNotExternalTransferPaused
+		whenNotSuspended(msg.sender)
+		whenInstantModeIsNotActive(msg.sender)
+		whenPartyNotPaused(msg.sender)
+	{
 		LibBalanceOperations.externalTransfer(collateral, msg.sender, user, amount, target);
 		emit ExternalTransfer(msg.sender, user, collateral, amount, target);
 	}
@@ -173,6 +188,7 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet, ReentrancyGuard
 	{
 		uint256 id = LibBalanceOperations.initiateWithdraw(msg.sender, collateral, amount, to, provider, userData);
 		emit InitiateWithdraw(id, msg.sender, to, collateral, amount, msg.sender.balanceOf(collateral).isolatedBalance);
+		emit InitiateExpressWithdraw(id, msg.sender, to, collateral, provider, userData, amount, msg.sender.balanceOf(collateral).isolatedBalance);
 	}
 
 	/**
@@ -201,7 +217,9 @@ contract AccountFacet is Accessibility, Pausable, IAccountFacet, ReentrancyGuard
 	 * @dev Transfers the collateral to the destination address specified in the withdrawal request
 	 * @param id The unique identifier of the withdrawal request to complete
 	 */
-	function completeWithdraw(uint256 id) external nonReentrant whenWithdrawingNotPaused whenWithdrawalNotSuspended(id) whenPartyNotPaused(msg.sender) {
+	function completeWithdraw(
+		uint256 id
+	) external nonReentrant whenWithdrawingNotPaused whenWithdrawalNotSuspended(id) whenPartyNotPaused(msg.sender) {
 		LibBalanceOperations.completeWithdraw(id);
 		emit CompleteWithdraw(id);
 	}

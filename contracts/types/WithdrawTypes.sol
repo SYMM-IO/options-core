@@ -16,6 +16,7 @@ struct Withdraw {
 	address provider;
 	bytes userData;
 	WithdrawStatus status;
+	bool isVirtual;
 }
 
 struct UpnlSig {
@@ -37,5 +38,6 @@ enum WithdrawStatus {
 
 struct ExpressWithdrawProviderConfig {
 	bool isActive;
+	bool isVirtual;
 	address receiver;
 }

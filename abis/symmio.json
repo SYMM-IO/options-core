@@ -2332,6 +2332,11 @@
                         "type": "bool"
                     },
                     {
+                        "internalType": "bool",
+                        "name": "isVirtual",
+                        "type": "bool"
+                    },
+                    {
                         "internalType": "address",
                         "name": "receiver",
                         "type": "address"
@@ -2699,6 +2704,61 @@
             }
         ],
         "name": "IncreaseBalance",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "id",
+                "type": "uint256"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "to",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "collateral",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "provider",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "bytes",
+                "name": "userData",
+                "type": "bytes"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "newBalance",
+                "type": "uint256"
+            }
+        ],
+        "name": "InitiateExpressWithdraw",
         "type": "event"
     },
     {
@@ -6448,6 +6508,11 @@
                         "type": "bool"
                     },
                     {
+                        "internalType": "bool",
+                        "name": "isVirtual",
+                        "type": "bool"
+                    },
+                    {
                         "internalType": "address",
                         "name": "receiver",
                         "type": "address"
@@ -8108,6 +8173,11 @@
                         "internalType": "enum WithdrawStatus",
                         "name": "status",
                         "type": "uint8"
+                    },
+                    {
+                        "internalType": "bool",
+                        "name": "isVirtual",
+                        "type": "bool"
                     }
                 ],
                 "internalType": "struct Withdraw",
@@ -9341,6 +9411,11 @@
                     {
                         "internalType": "bool",
                         "name": "isActive",
+                        "type": "bool"
+                    },
+                    {
+                        "internalType": "bool",
+                        "name": "isVirtual",
                         "type": "bool"
                     },
                     {
