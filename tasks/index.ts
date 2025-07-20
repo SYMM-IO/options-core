@@ -4,12 +4,11 @@ import "./deployment/oracle.task"
 import "./deployment/deploy.task"
 import "./deployment/multiAccount"
 import "./deployment/instantLayer"
+import "./deployment/partyB"
 import "./deployment/deploy-lib-mocks.task"
 import "./deployment/deploy-signature-verifier.task"
 
 import "./verify/verify"
-
-import "./setup/setup.task"
 
 import "./helper/send_open_intent"
 import "./helper/lock_open_intent"
