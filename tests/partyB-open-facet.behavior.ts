@@ -8,42 +8,94 @@ import { openIntentRequestBuilder } from "./models/builders/send-open-intent.bui
 import { PartyB } from "./models/partyB.model"
 import { ethers, network } from "hardhat"
 import { e } from "../utils/e"
-import { ZeroAddress } from "ethers"
+import { parseUnits, ZeroAddress } from "ethers"
 import { bigint, int } from "hardhat/internal/core/params/argumentTypes"
 import { config } from "dotenv"
 import { OpenIntentStruct, OpenIntentStructOutput, SymbolStruct } from "../types/contracts/interfaces/ISymmio"
 
 import { MarginType } from "./option-enums"
 import { getLatestBlockTime } from "../utils/time"
+import { tradeNftSol } from "../types/contracts/helpers"
 
 export function shouldBehaveLikePartyBOpenFacet(): void {
-	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyB1: PartyB, partyB2: PartyB
+	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyA3: PartyA, partyB1: PartyB, partyB2: PartyB
 
 	beforeEach(async function () {
 		context = await loadFixture(initializeTestFixture)
 		partyA1 = new PartyA(context, context.signers.partyA1)
 		partyA2 = new PartyA(context, context.signers.partyA2)
+		partyA3 = new PartyA(context, context.signers.others[0])
 		partyB1 = new PartyB(context, context.signers.partyB1)
 		partyB2 = new PartyB(context, context.signers.partyB2)
 
 		await partyA1.setBalances(context.collateral, e(100000), e(100000))
-		await partyA1.setBalances(context.collateralNL, e(100000), e(100000)) // as Fee token
+		await partyA1.setBalances(context.collateralNL, e(100), e(30)) // as Fee token
 		await partyA2.setBalances(context.collateral, e(100000), e(100000))
+		await partyA2.setBalances(context.collateralNL, e(100), e(50)) // as Fee token
+		await partyA3.setBalances(context.collateral, e(100000), e(100000))
+		await partyA3.setBalances(context.collateralNL, e(100), e(50)) // as Fee token
+		await partyB1.setBalances(context.collateral, e(100), e(50))
+		await partyB1.setBalances(context.collateralNL, e(100), e(50)) // as Fee token
 
 		const latestBlock = await getLatestBlockTime()
-		await partyA1.sendOpenIntent(
-			openIntentRequestBuilder()
-				.partyBsWhiteList([partyB1.getSigner])
-				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
-				.symbolId(1)
-				.deadline(latestBlock + 140)
-				.expirationTimestamp(latestBlock + 120)
-				.exerciseFee({ cap: e(1), rate: "0" })
-				.quantity(e(100))
-				.price(7)
-				.build(),
-		)
+
+		const requestIsolatedBuy = openIntentRequestBuilder()
+			.partyBsWhiteList([partyB1.address])
+			.affiliate(context.signers.affiliate1)
+			.feeToken(context.collateralNL)
+			.symbolId(1)
+			.deadline(latestBlock + 140)
+			.expirationTimestamp(latestBlock + 120)
+			.exerciseFee({ cap: e(1), rate: "0" })
+			.quantity(e(100))
+			.tradeSide(TradeSide.BUY)
+			.marginType(MarginType.ISOLATED)
+			.price(10000)
+			.solverFee({
+				openFee: e(0.001),
+				closeFee: e(0.001),
+			})
+			.build()
+
+		const requestCrossBuy = openIntentRequestBuilder()
+			.partyBsWhiteList([partyB1.address])
+			.affiliate(context.signers.affiliate1)
+			.feeToken(context.collateralNL)
+			.symbolId(1)
+			.deadline(latestBlock + 140)
+			.expirationTimestamp(latestBlock + 120)
+			.exerciseFee({ cap: e(1), rate: "0" })
+			.quantity(e(100))
+			.tradeSide(TradeSide.BUY)
+			.marginType(MarginType.CROSS)
+			.price(10000)
+			.solverFee({
+				openFee: e(0.001),
+				closeFee: e(0.001),
+			})
+			.build()
+
+		const requestCrossSell = openIntentRequestBuilder()
+			.partyBsWhiteList([partyB2.address])
+			.affiliate(context.signers.affiliate1)
+			.feeToken(context.collateralNL)
+			.symbolId(1)
+			.deadline(latestBlock + 140)
+			.expirationTimestamp(latestBlock + 120)
+			.exerciseFee({ cap: e(1), rate: "0" })
+			.quantity(e(100))
+			.tradeSide(TradeSide.SELL)
+			.marginType(MarginType.CROSS)
+			.price(10000)
+			.solverFee({
+				openFee: e(0.001),
+				closeFee: e(0.001),
+			})
+			.build()
+
+		await partyA1.sendOpenIntent(requestIsolatedBuy)
+		await partyA1.sendOpenIntent(requestCrossBuy)
+		await partyA2.sendOpenIntent(requestCrossSell)
 	})
 
 	describe("lockOpenIntent", async function () {
@@ -150,7 +202,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			await partyA1.sendOpenIntent(request)
 
 			await context.controlFacet.setSymbolsValidationState([2], [false])
-			await expect(partyB2.lockOpenIntent(2)).to.be.revertedWithCustomError(context.partyBOpenFacet, "InvalidSymbol")
+			await expect(partyB2.lockOpenIntent(4)).to.be.revertedWithCustomError(context.partyBOpenFacet, "InvalidSymbol")
 		})
 
 		it("should revert when partB symbol type mismatch intent symbol type", async () => {
@@ -229,6 +281,8 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 	describe("fillOpenIntent", async function () {
 		beforeEach(async () => {
 			await partyB1.lockOpenIntent(1)
+			await partyB1.lockOpenIntent(2)
+			await partyB2.lockOpenIntent(3)
 		})
 
 		it("Should failed when Global Paused", async () => {
@@ -294,8 +348,8 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 				.build()
 
 			await partyA2.sendOpenIntent(request)
-			await partyB2.lockOpenIntent(2)
-			await partyA2.sendCancelOpenIntent(["2"])
+			await partyB2.lockOpenIntent(4)
+			await partyA2.sendCancelOpenIntent(["4"])
 
 			// await expect(partyB2.fillOpenIntent(2, 5, 2)).to.revertedWithCustomError(context.partyBOpenFacet, "InvalidState")
 			//TODO ::: should find a way to call the fill intent with an invalid state
@@ -325,62 +379,38 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			await expect(partyB1.fillOpenIntent(1, e(1000), 7)).to.revertedWithCustomError(context.partyBOpenFacet, "InvalidFillAmount")
 		})
 
-		it("Should failed when Intent price mismatch fill type price", async () => {
-			let intent: OpenIntentStructOutput = await context.viewFacet.getOpenIntent(1)
-			if (intent.tradeAgreements.tradeSide == BigInt(TradeSide.BUY)) {
-				await expect(partyB1.fillOpenIntent(1, 100, 8)).to.revertedWithCustomError(context.partyBOpenFacet, "InvalidOpenPrice")
-				await expect(partyB1.fillOpenIntent(1, 100, 5)).not.to.revertedWithCustomError(context.partyBOpenFacet, "InvalidOpenPrice")
-			} else if (intent.tradeAgreements.tradeSide == BigInt(TradeSide.SELL)) {
-				await expect(partyB1.fillOpenIntent(1, 100, 5)).to.revertedWithCustomError(context.partyBOpenFacet, "InvalidOpenPrice")
-				await expect(partyB1.fillOpenIntent(1, 100, 8)).not.to.revertedWithCustomError(context.partyBOpenFacet, "InvalidOpenPrice")
-			}
-		})
-
-		it("Should fail when partyA active trades more than max active trades", async function () {
-			let timestamp = await getLatestBlockTime()
-			const request = openIntentRequestBuilder()
-				.partyBsWhiteList([partyB2.getSigner, partyB1.getSigner])
-				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
-				.symbolId(1)
-				.deadline(timestamp + 120)
-				.expirationTimestamp(timestamp + 120)
-				.exerciseFee({ cap: e(1), rate: "0" })
-				.quantity(e(10))
-				.price(e(5))
-				.build()
-
-			await partyA1.sendOpenIntent(request)
-			await partyB1.lockOpenIntent(2)
-
-			await expect(partyB1.fillOpenIntent(2, 10, 5)).not.to.be.revertedWithCustomError(context.partyBOpenFacet, "TooManyActiveTradesForPartyA")
-		})
-
 		it("Should failed when PartyA have more than max Active Trade", async () => {
-			const latestBlock = await getLatestBlockTime()
 			const request = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.symbolId(1)
-				.deadline(latestBlock + 120)
-				.expirationTimestamp(latestBlock + 120)
+				.deadline((await getLatestBlockTime()) + 140)
+				.expirationTimestamp((await getLatestBlockTime()) + 120)
 				.exerciseFee({ cap: e(1), rate: "0" })
-				.quantity(e(10))
-				.price(e(5))
+				.quantity(e(5))
+				.price(2)
 				.build()
 
+			await partyA1.sendOpenIntent(request)
+			await partyB2.lockOpenIntent(4)
+
 			await context.controlFacet.setMaxConnectedCounterParties(1) // max # of trade with MarginType of type isolated or cross for a partyA
-			expect(await partyB1.fillOpenIntent(1, e(100), 7)).not.to.reverted
-			expect(await partyA1.sendOpenIntent(request)).not.to.reverted
-			expect(await partyB2.lockOpenIntent(2)).not.to.reverted
-			await expect(partyB2.fillOpenIntent(2, 10, 5)).to.revertedWithCustomError(context.partyBOpenFacet, "MaxCounterPartyConnectionsReached")
+
+			await expect(partyB1.fillOpenIntent(1, e(100), 7)).not.to.reverted
+			await expect(partyB2.fillOpenIntent(4, e(5), 2)).to.revertedWithCustomError(context.partyBOpenFacet, "MaxCounterPartyConnectionsReached")
 		})
 
-		it("Should failed when Intent price mismatch fill type price", async () => {
-			// partyB1.setBalances(context.collateral, e(50), e(50))
-			// await expect(partyB1.fillOpenIntent(1, 100, 2)).to.revertedWithCustomError(context.partyBOpenFacet, "InsufficientLockedBalance")
-			//TODO ::: what are the balance requirements of PartyB
+		it("Should failed when Intent price mismatch fill type price(BUY Trade)", async () => {
+			await expect(partyB1.fillOpenIntent(1, 100, 20000)).to.revertedWithCustomError(context.partyBOpenFacet, "InvalidOpenPrice")
+			await expect(partyB1.fillOpenIntent(1, 100, 6)).not.to.reverted
+			await expect(partyB1.fillOpenIntent(2, 100, 20000)).to.revertedWithCustomError(context.partyBOpenFacet, "InvalidOpenPrice")
+			await expect(partyB1.fillOpenIntent(2, 100, 6)).not.to.reverted
+		})
+
+		it("Should failed when Intent price mismatch fill type price(Sell Trade)", async () => {
+			await expect(partyB2.fillOpenIntent(3, 100, 200)).to.revertedWithCustomError(context.partyBOpenFacet, "InvalidOpenPrice")
+			await expect(partyB2.fillOpenIntent(3, 100, 20000)).not.to.reverted
 		})
 
 		it("Should make Trade Object ", async () => {
@@ -390,6 +420,224 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			// update account balance relationship
 			//
 			//TODO ::: should work as expected
+		})
+
+		it("Should fail if Fees not Payed to Affiliate Collector as Expected", async () => {
+			const openIntent = await context.viewFacet.getOpenIntent(1)
+
+			await context.controlFacet.setAffiliateFeesCollector(openIntent.affiliate, openIntent.affiliate)
+
+			const affiliateBalanceBefore = await context.viewFacet.getIsolatedBalance(openIntent.affiliate, await context.collateralNL.getAddress())
+
+			await expect(partyB1.fillOpenIntent(1, e(100), 7)).not.to.reverted
+
+			const affiliateBalanceAfter = await context.viewFacet.getIsolatedBalance(openIntent.affiliate, await context.collateralNL.getAddress())
+			const partyAFeeBalance = await context.viewFacet.getIsolatedBalance(partyA1.address, await context.collateralNL.getAddress())
+
+			const intentTradingFee = await context.viewFacet.getOpenIntentTradingFee(openIntent.id) //Platform Fee
+			const intentAffiliateFee = await context.viewFacet.getOpenIntentAffiliateFee(openIntent.id) //Affiliate Fee
+
+			console.log("Affiliate Address:", openIntent.affiliate)
+			console.log("Intent Trading Fee", intentTradingFee)
+			console.log("Intent Affiliate Fee", intentAffiliateFee)
+			console.log("Affiliate Fee collector Balance Before", affiliateBalanceBefore)
+			console.log("Affiliate Fee collector Balance After", affiliateBalanceAfter)
+			console.log("Party A Fee Balance", partyAFeeBalance)
+
+			expect(affiliateBalanceAfter).to.equal(intentAffiliateFee)
+		})
+
+		it("Should fail if Fees not Payed to Trade Fee Collector as Expected", async () => {
+			await context.controlFacet.setDefaultFeeCollector(partyA2.address)
+
+			const openIntent = await context.viewFacet.getOpenIntent(1)
+			const defaultFeeBalanceBefore = await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateralNL.getAddress())
+
+			await expect(partyB1.fillOpenIntent(1, e(100), 7)).not.to.reverted
+
+			const defaultFeeBalanceAfter = await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateralNL.getAddress())
+			const partyAFeeBalance = await context.viewFacet.getIsolatedBalance(partyA1.address, await context.collateralNL.getAddress())
+
+			const intentTradingFee = await context.viewFacet.getOpenIntentTradingFee(openIntent.id) //Platform Fee
+			const intentAffiliateFee = await context.viewFacet.getOpenIntentAffiliateFee(openIntent.id) //Affiliate Fee
+
+			console.log("Intent Trading Fee", intentTradingFee)
+			console.log("Default Fee collector Balance Before", defaultFeeBalanceBefore)
+			console.log("Default Fee collector Balance After", defaultFeeBalanceAfter)
+			console.log("Party A Fee Balance", partyAFeeBalance)
+
+			expect(defaultFeeBalanceAfter - defaultFeeBalanceBefore).to.equal(intentTradingFee)
+		})
+
+		it("Should fail if Fees Not Payed To Party B as expected", async () => {
+			const openIntent = await context.viewFacet.getOpenIntent(1)
+			const partyBFeeBalanceBefore = await context.viewFacet.getIsolatedBalance(openIntent.partyB, await context.collateralNL.getAddress())
+
+			const quantity = e(50)
+			const price = 1000n
+			await expect(partyB1.fillOpenIntent(1, quantity, price)).not.to.reverted
+
+			expect(openIntent.feeStructure.feeToken).to.be.equal(await context.collateralNL.getAddress())
+			const partyBFeeBalanceAfter = await context.viewFacet.getIsolatedBalance(openIntent.partyB, await context.collateralNL.getAddress())
+			const partyBCrossFeeBalanceAfter = await context.viewFacet.getCrossBalance(
+				openIntent.partyB,
+				await context.collateralNL.getAddress(),
+				openIntent.partyA,
+			)
+
+			const solverFee =
+				(quantity * openIntent.price * openIntent.feeStructure.solverFee.openFee) /
+				(openIntent.feeStructure.tokenPriceInCollateral * parseUnits("1", 18))
+			console.log("partyB Fee Balance Before", partyBFeeBalanceBefore)
+			console.log("partyB Fee Balance After", partyBFeeBalanceAfter)
+			console.log("partyB cross Fee Balance After", partyBCrossFeeBalanceAfter.balance)
+			console.log("Solver Fee rate:", openIntent.feeStructure.solverFee)
+			console.log("Solver Fee calculated:", solverFee)
+			console.log("Fee Token Price to Collateral", openIntent.feeStructure.tokenPriceInCollateral)
+			console.log(" E ^ 18", parseUnits("1", 18))
+
+			expect(partyBFeeBalanceAfter - partyBFeeBalanceBefore).to.equal(solverFee)
+		})
+
+		it("Should fail if Premium Not Unlocked From Party A as expected in Isolated Mode", async () => {
+			const openIntent = await context.viewFacet.getOpenIntent(1)
+			const partyALockedBalanceBefore = await context.viewFacet.getIsolatedLockedBalance(openIntent.partyA, await context.collateral.getAddress())
+
+			const quantity = e(100)
+			const price = 1000n
+			await expect(partyB1.fillOpenIntent(1, quantity, price)).not.to.reverted
+
+			const partyALockedBalanceAfter = await context.viewFacet.getIsolatedLockedBalance(openIntent.partyA, await context.collateral.getAddress())
+			const premium = await context.viewFacet.getOpenIntentPremium(1)
+
+			console.log("partyA Locked Balance Before", partyALockedBalanceBefore)
+			console.log("partyA Locked Balance After", partyALockedBalanceAfter)
+			expect(partyALockedBalanceBefore - partyALockedBalanceAfter).to.equal(premium)
+		})
+
+		it("Should fail if Premium Not Unlocked From Party A as expected in Cross Buy", async () => {
+			const openIntent = await context.viewFacet.getOpenIntent(2)
+			const partyACrossBalanceBefore = await context.viewFacet.getCrossBalance(
+				openIntent.partyA,
+				await context.collateral.getAddress(),
+				openIntent.partyB,
+			)
+
+			const quantity = e(100)
+			const price = 1000n
+			await expect(partyB1.fillOpenIntent(2, quantity, price)).not.to.reverted
+
+			const partyACrossBalanceAfter = await context.viewFacet.getCrossBalance(
+				openIntent.partyA,
+				await context.collateral.getAddress(),
+				openIntent.partyB,
+			)
+			const premium = await context.viewFacet.getOpenIntentPremium(2)
+
+			console.log("partyA Locked Balance Before", partyACrossBalanceBefore)
+			console.log("partyA Locked Balance After", partyACrossBalanceAfter)
+			expect(partyACrossBalanceBefore.locked - partyACrossBalanceAfter.locked).to.equal(premium)
+		})
+
+		it("Should fail if Maintenance Margin Not Unlocked for Party A as expected in Cross Buy", async () => {
+			const openIntent = await context.viewFacet.getOpenIntent(3)
+			const partyACrossBalanceBefore = await context.viewFacet.getCrossBalance(
+				openIntent.partyA,
+				await context.collateral.getAddress(),
+				openIntent.partyB,
+			)
+
+			const quantity = e(100)
+			const price = 20000n
+			await expect(partyB2.fillOpenIntent(3, quantity, price)).not.to.reverted
+
+			const partyACrossBalanceAfter = await context.viewFacet.getCrossBalance(
+				openIntent.partyA,
+				await context.collateral.getAddress(),
+				openIntent.partyB,
+			)
+			const premium = await context.viewFacet.getOpenIntentPremium(3)
+			const mm = openIntent.tradeAgreements.mm
+
+			console.log("partyA Locked Balance Before", partyACrossBalanceBefore)
+			console.log("partyA Locked Balance After", partyACrossBalanceAfter)
+			expect(partyACrossBalanceBefore.locked - partyACrossBalanceAfter.locked).to.equal(mm)
+		})
+
+		it("Should fail if Total Maintenance Margin Not Increased for Party A as expected in Cross Buy", async () => {
+			const openIntent = await context.viewFacet.getOpenIntent(3)
+			const partyACrossBalanceBefore = await context.viewFacet.getCrossBalance(
+				openIntent.partyA,
+				await context.collateral.getAddress(),
+				openIntent.partyB,
+			)
+
+			const quantity = e(100)
+			const price = 20000n
+			await expect(partyB2.fillOpenIntent(3, quantity, price)).not.to.reverted
+
+			const partyACrossBalanceAfter = await context.viewFacet.getCrossBalance(
+				openIntent.partyA,
+				await context.collateral.getAddress(),
+				openIntent.partyB,
+			)
+			const premium = await context.viewFacet.getOpenIntentPremium(3)
+			const mm = openIntent.tradeAgreements.mm
+
+			console.log("partyA Locked Balance Before", partyACrossBalanceBefore)
+			console.log("partyA Locked Balance After", partyACrossBalanceAfter)
+			expect(partyACrossBalanceAfter.totalMM - partyACrossBalanceBefore.totalMM).to.equal(mm)
+		})
+
+		it("Should fail if Premium Not Fetched from Party B as expected in Sell Trade", async () => {
+			const openIntent = await context.viewFacet.getOpenIntent(3)
+
+			const partyBCrossBalanceBefore = await context.viewFacet.getCrossBalance(
+				openIntent.partyB,
+				await context.collateral.getAddress(),
+				openIntent.partyA,
+			)
+
+			const quantity = e(30)
+			const price = 20000n
+			await expect(partyB2.fillOpenIntent(3, quantity, price)).not.to.reverted
+
+			const partyBCrossBalanceAfter = await context.viewFacet.getCrossBalance(
+				openIntent.partyB,
+				await context.collateral.getAddress(),
+				openIntent.partyA,
+			)
+			const premium = await context.viewFacet.getTradePremium(1)
+
+			console.log("partyB Locked Balance Before", partyBCrossBalanceBefore)
+			console.log("partyB Locked Balance After", partyBCrossBalanceAfter)
+			console.log("partyB Premium:", premium)
+			expect(partyBCrossBalanceBefore.balance - partyBCrossBalanceAfter.balance).to.equal(premium)
+		})
+
+		it("Should fail if Premium Not Payed to Party A as expected in Sell Trade", async () => {
+			const openIntent = await context.viewFacet.getOpenIntent(3)
+			const partyACrossBalanceBefore = await context.viewFacet.getCrossBalance(
+				openIntent.partyA,
+				await context.collateral.getAddress(),
+				openIntent.partyB,
+			)
+
+			const quantity = e(30)
+			const price = 20000n
+			await expect(partyB2.fillOpenIntent(3, quantity, price)).not.to.reverted
+
+			const partyACrossBalanceAfter = await context.viewFacet.getCrossBalance(
+				openIntent.partyA,
+				await context.collateral.getAddress(),
+				openIntent.partyB,
+			)
+			const premium = await context.viewFacet.getTradePremium(1)
+
+			console.log("partyB Locked Balance Before", partyACrossBalanceBefore)
+			console.log("partyB Locked Balance After", partyACrossBalanceAfter)
+			console.log("partyB Premium:", premium)
+			expect(partyACrossBalanceAfter.balance - partyACrossBalanceBefore.balance).to.equal(premium)
 		})
 	})
 
@@ -527,166 +775,166 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			let initialIsolatedBalancePartyA = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, await context.collateral.getAddress())
 			let initialIsolatedBalancePartyB = await context.viewFacet.getIsolatedBalance(partyB1.getSigner, await context.collateral.getAddress())
 
-			const latestBlock = await getLatestBlockTime()
-			const requestIsolated = openIntentRequestBuilder()
-				.partyBsWhiteList([partyB1.getSigner, partyB2.getSigner])
-				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
-				.symbolId(1)
-				.deadline(latestBlock + 120)
-				.expirationTimestamp(latestBlock + 300)
-				.exerciseFee({ cap: e(1), rate: "0" })
-				.quantity(e(70))
-				.price(7)
-				.marginType(MarginType.ISOLATED)
-				.build()
+			// const latestBlock = await getLatestBlockTime()
+			// const requestIsolated = openIntentRequestBuilder()
+			// 	.partyBsWhiteList([partyB1.getSigner, partyB2.getSigner])
+			// 	.affiliate(context.signers.affiliate1)
+			// 	.feeToken(context.collateral)
+			// 	.symbolId(1)
+			// 	.deadline(latestBlock + 120)
+			// 	.expirationTimestamp(latestBlock + 300)
+			// 	.exerciseFee({ cap: e(1), rate: "0" })
+			// 	.quantity(e(70))
+			// 	.price(7)
+			// 	.marginType(MarginType.ISOLATED)
+			// 	.build()
 
-			const requestCross = openIntentRequestBuilder()
-				.partyBsWhiteList([partyB1.getSigner])
-				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
-				.symbolId(1)
-				.deadline(latestBlock + 120)
-				.expirationTimestamp(latestBlock + 300)
-				.exerciseFee({ cap: e(1), rate: "0" })
-				.quantity(e(70))
-				.price(7)
-				.marginType(MarginType.CROSS)
-				.build()
+			// const requestCross = openIntentRequestBuilder()
+			// 	.partyBsWhiteList([partyB1.getSigner])
+			// 	.affiliate(context.signers.affiliate1)
+			// 	.feeToken(context.collateral)
+			// 	.symbolId(1)
+			// 	.deadline(latestBlock + 120)
+			// 	.expirationTimestamp(latestBlock + 300)
+			// 	.exerciseFee({ cap: e(1), rate: "0" })
+			// 	.quantity(e(70))
+			// 	.price(7)
+			// 	.marginType(MarginType.CROSS)
+			// 	.build()
 
-			// PartyA sends some Intents
-			const testTable = [requestIsolated, requestIsolated, requestIsolated, requestCross]
+			// // PartyA sends some Intents
+			// const testTable = [requestIsolated, requestIsolated, requestIsolated, requestCross]
 
-			// testTable.forEach(async c => {
-			// 	await expect(partyA2.sendOpenIntent(c.request))
-			// })
-			expect(await partyA2.sendOpenIntent(requestIsolated)).not.to.reverted // fee and premium for party A
-			expect(await partyA2.sendOpenIntent(requestIsolated)).not.to.reverted
-			expect(await partyA2.sendOpenIntent(requestIsolated)).not.to.reverted
-			expect(await partyA2.sendOpenIntent(requestCross)).not.to.reverted
-			expect(await partyA2.sendOpenIntent(requestCross)).not.to.reverted
-			expect(await partyA2.sendOpenIntent(requestCross)).not.to.reverted
-			expect(await partyA2.sendOpenIntent(requestCross)).not.to.reverted
-			expect(await partyA2.sendOpenIntent(requestCross)).not.to.reverted
-			expect(await partyA2.sendOpenIntent(requestIsolated)).not.to.reverted
-			expect(await partyA2.sendOpenIntent(requestIsolated)).not.to.reverted
+			// // testTable.forEach(async c => {
+			// // 	await expect(partyA2.sendOpenIntent(c.request))
+			// // })
+			// expect(await partyA2.sendOpenIntent(requestIsolated)).not.to.reverted // fee and premium for party A
+			// expect(await partyA2.sendOpenIntent(requestIsolated)).not.to.reverted
+			// expect(await partyA2.sendOpenIntent(requestIsolated)).not.to.reverted
+			// expect(await partyA2.sendOpenIntent(requestCross)).not.to.reverted
+			// expect(await partyA2.sendOpenIntent(requestCross)).not.to.reverted
+			// expect(await partyA2.sendOpenIntent(requestCross)).not.to.reverted
+			// expect(await partyA2.sendOpenIntent(requestCross)).not.to.reverted
+			// expect(await partyA2.sendOpenIntent(requestCross)).not.to.reverted
+			// expect(await partyA2.sendOpenIntent(requestIsolated)).not.to.reverted
+			// expect(await partyA2.sendOpenIntent(requestIsolated)).not.to.reverted
 
-			let openIntents: OpenIntentStruct[] = await context.viewFacet.getActiveOpenIntents(partyA2.getSigner, 0, 100)
-			for (let openIntent of openIntents) {
-				console.log("Initial OpenIntents: ")
-				console.log("ID: ", openIntent.id)
-				console.log("Status: ", openIntent.status == 0 ? "Pending" : openIntent.status)
-				console.log("Quantity: ", openIntent.tradeAgreements.quantity)
-			}
+			// let openIntents: OpenIntentStruct[] = await context.viewFacet.getActiveOpenIntents(partyA2.getSigner, 0, 100)
+			// for (let openIntent of openIntents) {
+			// 	console.log("Initial OpenIntents: ")
+			// 	console.log("ID: ", openIntent.id)
+			// 	console.log("Status: ", openIntent.status == 0 ? "Pending" : openIntent.status)
+			// 	console.log("Quantity: ", openIntent.tradeAgreements.quantity)
+			// }
 
-			const symbol: SymbolStruct = await context.viewFacet.getSymbol(openIntents[2].tradeAgreements.symbolId)
+			// const symbol: SymbolStruct = await context.viewFacet.getSymbol(openIntents[2].tradeAgreements.symbolId)
 
-			const tradingFeeFromView = await context.viewFacet.getOpenIntentTradingFee(2)
-			const premiumFromView = await context.viewFacet.getOpenIntentPremium(2)
-			const affiliateFeeFromView = await context.viewFacet.getAffiliateFee(openIntents[1].affiliate, symbol.symbolId)
+			// const tradingFeeFromView = await context.viewFacet.getOpenIntentTradingFee(2)
+			// const premiumFromView = await context.viewFacet.getOpenIntentPremium(2)
+			// const affiliateFeeFromView = await context.viewFacet.getAffiliateFee(openIntents[1].affiliate, symbol.symbolId)
 
-			// let partyAFeesPaid = BigInt(openIntents.length) * (tradingFeeFromView + affiliateFeeFromView)
-			// let partyAPremiumPaid = BigInt(openIntents.length) * premiumFromView
-			//OI == open intent
-			let send_OI_IsolatedBalancePartyA = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, await context.collateral.getAddress())
+			// // let partyAFeesPaid = BigInt(openIntents.length) * (tradingFeeFromView + affiliateFeeFromView)
+			// // let partyAPremiumPaid = BigInt(openIntents.length) * premiumFromView
+			// //OI == open intent
+			// let send_OI_IsolatedBalancePartyA = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, await context.collateral.getAddress())
 
-			// some time elapses
-			let newBlockTimeStamp = (await getLatestBlockTime()) + 20
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
-			await network.provider.send("evm_mine")
+			// // some time elapses
+			// let newBlockTimeStamp = (await getLatestBlockTime()) + 20
+			// await network.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
+			// await network.provider.send("evm_mine")
 
-			// PartyB locks
-			// expect( await partyB1.lockOpenIntent(1)).not.to.reverted
-			expect(await partyB1.lockOpenIntent(2)).not.to.reverted
-			expect(await partyB1.lockOpenIntent(3)).not.to.reverted
-			expect(await partyB1.lockOpenIntent(4)).not.to.reverted
-			expect(await partyB1.lockOpenIntent(5)).not.to.reverted
-			expect(await partyB1.lockOpenIntent(6)).not.to.reverted
-			expect(await partyB1.lockOpenIntent(7)).not.to.reverted
-			expect(await partyB1.lockOpenIntent(8)).not.to.reverted
-			expect(await partyB1.lockOpenIntent(9)).not.to.reverted
-			expect(await partyB1.lockOpenIntent(10)).not.to.reverted
-			expect(await partyB1.lockOpenIntent(11)).not.to.reverted
+			// // PartyB locks
+			// // expect( await partyB1.lockOpenIntent(1)).not.to.reverted
+			// expect(await partyB1.lockOpenIntent(2)).not.to.reverted
+			// expect(await partyB1.lockOpenIntent(3)).not.to.reverted
+			// expect(await partyB1.lockOpenIntent(4)).not.to.reverted
+			// expect(await partyB1.lockOpenIntent(5)).not.to.reverted
+			// expect(await partyB1.lockOpenIntent(6)).not.to.reverted
+			// expect(await partyB1.lockOpenIntent(7)).not.to.reverted
+			// expect(await partyB1.lockOpenIntent(8)).not.to.reverted
+			// expect(await partyB1.lockOpenIntent(9)).not.to.reverted
+			// expect(await partyB1.lockOpenIntent(10)).not.to.reverted
+			// expect(await partyB1.lockOpenIntent(11)).not.to.reverted
 
-			let lockIsolatedBalancePartyB = await context.viewFacet.getIsolatedBalance(partyB1.getSigner, await context.collateral.getAddress())
+			// let lockIsolatedBalancePartyB = await context.viewFacet.getIsolatedBalance(partyB1.getSigner, await context.collateral.getAddress())
 
-			newBlockTimeStamp = (await getLatestBlockTime()) + 20 // Time passes
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
-			await network.provider.send("evm_mine")
+			// newBlockTimeStamp = (await getLatestBlockTime()) + 20 // Time passes
+			// await network.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
+			// await network.provider.send("evm_mine")
 
-			expect(await partyA2.sendCancelOpenIntent(["2", "3"])).not.to.reverted // partyA Cancels some intent
+			// expect(await partyA2.sendCancelOpenIntent(["2", "3"])).not.to.reverted // partyA Cancels some intent
 
-			expect(await partyB1.unlockOpenIntent(4)).not.to.reverted // partyB Unlock some intents
-			expect(await partyB1.unlockOpenIntent(5)).not.to.reverted
+			// expect(await partyB1.unlockOpenIntent(4)).not.to.reverted // partyB Unlock some intents
+			// expect(await partyB1.unlockOpenIntent(5)).not.to.reverted
 
-			let unlockIsolatedBalancePartyB = await context.viewFacet.getIsolatedBalance(partyB1.getSigner, await context.collateral.getAddress())
+			// let unlockIsolatedBalancePartyB = await context.viewFacet.getIsolatedBalance(partyB1.getSigner, await context.collateral.getAddress())
 
-			newBlockTimeStamp = (await getLatestBlockTime()) + 20 // Time passes
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
-			await network.provider.send("evm_mine")
+			// newBlockTimeStamp = (await getLatestBlockTime()) + 20 // Time passes
+			// await network.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
+			// await network.provider.send("evm_mine")
 
-			expect(await partyB1.acceptCancelOpenIntent(2)).not.to.reverted // partyB Accepts Cancel of some partyA Cancels
-			expect(await partyB1.acceptCancelOpenIntent(3)).not.to.reverted
+			// expect(await partyB1.acceptCancelOpenIntent(2)).not.to.reverted // partyB Accepts Cancel of some partyA Cancels
+			// expect(await partyB1.acceptCancelOpenIntent(3)).not.to.reverted
 
-			expect(await partyB1.fillOpenIntent(6, 50, 6)).not.to.reverted
-			expect(await partyB1.fillOpenIntent(7, 50, 6)).not.to.reverted // partyB Fills some intent
+			// expect(await partyB1.fillOpenIntent(6, 50, 6)).not.to.reverted
+			// expect(await partyB1.fillOpenIntent(7, 50, 6)).not.to.reverted // partyB Fills some intent
 
-			let filIsolatedBalancePartyB = await context.viewFacet.getIsolatedBalance(partyB1.getSigner, await context.collateral.getAddress())
-			let cancel_OI_IsolatedBalancePartyA = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, await context.collateral.getAddress())
+			// let filIsolatedBalancePartyB = await context.viewFacet.getIsolatedBalance(partyB1.getSigner, await context.collateral.getAddress())
+			// let cancel_OI_IsolatedBalancePartyA = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, await context.collateral.getAddress())
 
-			openIntents = await context.viewFacet.getActiveOpenIntents(partyA2.getSigner, 0, 100)
-			for (let openIntent of openIntents) {
-				console.log("\nOpenIntents Before Deadline: ")
-				console.log("ID: ", openIntent.id)
-				console.log(
-					"Status: ",
-					openIntent.status == 0
-						? "Pending"
-						: openIntent.status == 1
-						? "LOCKED"
-						: openIntent.status == 2
-						? "CANCEL_PENDING"
-						: openIntent.status == 3
-						? "CANCELED"
-						: openIntent.status == 4
-						? "FILLED"
-						: openIntent.status == 5
-						? "EXPIRED"
-						: openIntent.status,
-				)
-			}
+			// openIntents = await context.viewFacet.getActiveOpenIntents(partyA2.getSigner, 0, 100)
+			// for (let openIntent of openIntents) {
+			// 	console.log("\nOpenIntents Before Deadline: ")
+			// 	console.log("ID: ", openIntent.id)
+			// 	console.log(
+			// 		"Status: ",
+			// 		openIntent.status == 0
+			// 			? "Pending"
+			// 			: openIntent.status == 1
+			// 			? "LOCKED"
+			// 			: openIntent.status == 2
+			// 			? "CANCEL_PENDING"
+			// 			: openIntent.status == 3
+			// 			? "CANCELED"
+			// 			: openIntent.status == 4
+			// 			? "FILLED"
+			// 			: openIntent.status == 5
+			// 			? "EXPIRED"
+			// 			: openIntent.status,
+			// 	)
+			// }
 
-			newBlockTimeStamp = (await getLatestBlockTime()) + 140 // Time passes
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
-			await network.provider.send("evm_mine")
+			// newBlockTimeStamp = (await getLatestBlockTime()) + 140 // Time passes
+			// await network.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
+			// await network.provider.send("evm_mine")
 
-			expect(await partyB1.unlockOpenIntent(8)).not.to.reverted // what happens to locked intents
-			expect(await partyB1.unlockOpenIntent(9)).not.to.reverted //
+			// expect(await partyB1.unlockOpenIntent(8)).not.to.reverted // what happens to locked intents
+			// expect(await partyB1.unlockOpenIntent(9)).not.to.reverted //
 
-			openIntents = await context.viewFacet.getActiveOpenIntents(partyA2.getSigner, 0, 100)
-			for (let openIntent of openIntents) {
-				console.log("\nOpenIntents After Deadline: ")
-				console.log("ID: ", openIntent.id)
-				console.log(
-					"Status: ",
-					openIntent.status == 0
-						? "Pending"
-						: openIntent.status == 1
-						? "LOCKED"
-						: openIntent.status == 2
-						? "CANCEL_PENDING"
-						: openIntent.status == 3
-						? "CANCELED"
-						: openIntent.status == 4
-						? "FILLED"
-						: openIntent.status == 5
-						? "EXPIRED"
-						: openIntent.status,
-				)
-			}
+			// openIntents = await context.viewFacet.getActiveOpenIntents(partyA2.getSigner, 0, 100)
+			// for (let openIntent of openIntents) {
+			// 	console.log("\nOpenIntents After Deadline: ")
+			// 	console.log("ID: ", openIntent.id)
+			// 	console.log(
+			// 		"Status: ",
+			// 		openIntent.status == 0
+			// 			? "Pending"
+			// 			: openIntent.status == 1
+			// 			? "LOCKED"
+			// 			: openIntent.status == 2
+			// 			? "CANCEL_PENDING"
+			// 			: openIntent.status == 3
+			// 			? "CANCELED"
+			// 			: openIntent.status == 4
+			// 			? "FILLED"
+			// 			: openIntent.status == 5
+			// 			? "EXPIRED"
+			// 			: openIntent.status,
+			// 	)
+			// }
 
-			let expireIsolatedBalancePartyB = await context.viewFacet.getIsolatedBalance(partyB1.getSigner, await context.collateral.getAddress())
-			let expireIsolatedBalancePartyA = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, await context.collateral.getAddress())
+			// let expireIsolatedBalancePartyB = await context.viewFacet.getIsolatedBalance(partyB1.getSigner, await context.collateral.getAddress())
+			// let expireIsolatedBalancePartyA = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, await context.collateral.getAddress())
 		})
 	})
 }

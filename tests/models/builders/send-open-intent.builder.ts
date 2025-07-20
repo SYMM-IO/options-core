@@ -26,7 +26,7 @@ export interface OpenIntent {
 const openIntentRequest: OpenIntent = {
 	partyBsWhiteList: [ZeroAddress],
 	symbolId: 1,
-	price: 1,
+	price: 1000,
 	quantity: e(1),
 	strikePrice: 1,
 	expirationTimestamp: 0,
@@ -38,8 +38,8 @@ const openIntentRequest: OpenIntent = {
 		rate: 0,
 	},
 	solverFee: {
-		openFee: 1,
-		closeFee: 1,
+		openFee: e(.01),
+		closeFee: e(0.01),
 	},
 	deadline: 0,
 	feeToken: ZeroAddress,

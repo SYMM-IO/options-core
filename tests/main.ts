@@ -35,7 +35,7 @@ describe(`${name}-v${version}`, () => {
 			shouldBehaveLikeLibCloseIntent()
 		})
 
-		describe.only("Facets_PartyBCloseFacet", async function () {
+		describe("Facets_PartyBCloseFacet", async function () {
 			shouldBehaveLikePartyBCloseFacet()
 		})
 

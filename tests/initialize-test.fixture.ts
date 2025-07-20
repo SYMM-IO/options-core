@@ -48,10 +48,10 @@ export async function initializeTestFixture(): Promise<RunContext> {
 		lossCoverage: 0,
 		oracleId: 1,
 	})
-	await context.controlFacet.addSymbol("BTC_PUT", OptionType.PUT, 1, context.collateral.getAddress(), { openFee: 10, closeFee: 20 }, 0)
-	await context.controlFacet.addSymbol("BTC_CALL", OptionType.CALL, 1, context.collateral.getAddress(), { openFee: 10, closeFee: 20 }, 0)
-	await context.controlFacet.addSymbol("USDT", OptionType.PUT, 1, context.collateralNL.getAddress(), { openFee: 10, closeFee: 20 }, 0)
-	await context.controlFacet.addSymbol("USDT", OptionType.CALL, 1, context.collateralNL.getAddress(), { openFee: 10, closeFee: 20 }, 0)
+	await context.controlFacet.addSymbol("BTC_PUT", OptionType.PUT, 1, context.collateral.getAddress(), { openFee: e(1), closeFee: e(1) }, 0)
+	await context.controlFacet.addSymbol("BTC_CALL", OptionType.CALL, 1, context.collateral.getAddress(), { openFee: e(1), closeFee: e(1) }, 0)
+	await context.controlFacet.addSymbol("USDT", OptionType.PUT, 1, context.collateralNL.getAddress(), { openFee: e(1), closeFee: e(1) }, 0)
+	await context.controlFacet.addSymbol("USDT", OptionType.CALL, 1, context.collateralNL.getAddress(), { openFee: e(1), closeFee: e(1) }, 0)
 
 	await context.controlFacet.setPartyBSupportedSymbolTypes(context.signers.partyB1, [0], [true])
 	await context.controlFacet.setPartyBSupportedSymbolTypes(context.signers.partyB2, [0], [true])
@@ -60,14 +60,15 @@ export async function initializeTestFixture(): Promise<RunContext> {
 	await context.controlFacet.connect(context.signers.admin).whiteListCollateral(await context.collateralNL.getAddress())
 
 	await context.controlFacet.setAffiliateStatus(context.signers.affiliate1, true)
-	await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: 10, closeFee: 20 }])
+	await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: e(0.01), closeFee: e(0.02) }])
+	
 	await context.controlFacet.setSymbolsTradingFees(
 		[1, 2, 3, 4],
 		[
-			{ openFee: 10, closeFee: 20 },
-			{ openFee: 10, closeFee: 20 },
-			{ openFee: 10, closeFee: 20 },
-			{ openFee: 10, closeFee: 20 },
+			{ openFee: e(0.01), closeFee: e(0.02) },
+			{ openFee: e(0.01), closeFee: e(0.02) },
+			{ openFee: e(0.01), closeFee: e(0.02) },
+			{ openFee: e(0.01), closeFee: e(0.02) },
 		],
 	)
 
