@@ -7,7 +7,7 @@ import { openIntentRequestBuilder } from "./models/builders/send-open-intent.bui
 import { PartyB } from "./models/partyB.model"
 import { ethers, network } from "hardhat"
 import { e } from "../utils/e"
-import { ZeroAddress } from "ethers"
+import { parseUnits, ZeroAddress } from "ethers"
 import { IntentStatus, MarginType, TradeSide } from "./option-enums"
 import { CrossEntryStruct, OpenIntentStruct, SymbolStruct } from "../types/contracts/interfaces/ISymmio"
 import { BigNumber } from "@ethersproject/bignumber"
@@ -330,7 +330,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "InsufficientBalance")
 		})
 
-		it("Should fail when partyB whiteListed and available balance be insufficient", async function () {
+		it("Should Pass open Intent ", async function () {
 			const latestBlock = await getLatestBlockTime()
 			const request = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB1.getSigner])
@@ -590,13 +590,13 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.expirationTimestamp(latestBlock + 120)
 				.exerciseFee({ cap: e(1), rate: "0" })
 				.quantity(e(100))
-				.price(7)
+				.price(7000)
 				.marginType(MarginType.ISOLATED)
 				.tradeSide(TradeSide.BUY)
 				.build()
 
-			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: 10, closeFee: 20 }])
-			await context.controlFacet.setSymbolsTradingFees([1], [{ openFee: 10, closeFee: 20 }])
+			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: e(0.01), closeFee: e(0.01) }])
+			await context.controlFacet.setSymbolsTradingFees([1], [{ openFee: e(0.01), closeFee: e(0.01) }])
 
 			await expect(partyA1.sendOpenIntent(request)).not.to.reverted
 
@@ -604,7 +604,12 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			const symbol: SymbolStruct = await context.viewFacet.getSymbol(intent.tradeAgreements.symbolId)
 			const premiumFromView = await context.viewFacet.getOpenIntentPremium(1)
 			const affiliateFeeFromView = await context.viewFacet.getOpenIntentAffiliateFee(intent.id)
-			const tradingFeeFromView = await context.viewFacet.getOpenIntentTradingFee(1)
+			const platformFeeFromView = await context.viewFacet.getOpenIntentTradingFee(1)
+			const solverFee = request.solverFee.openFee
+
+			const solverFeePaid =
+				(intent.price * intent.tradeAgreements.quantity * intent.feeStructure.solverFee.openFee) /
+				(intent.feeStructure.tokenPriceInCollateral * parseUnits("1", 18))
 
 			// partyA pays the fees in so:
 			// we are in isolated margin
@@ -612,13 +617,14 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 			console.log("PartyA isolated balance:", isolatedBalance)
 			console.log("PartyA isolated balance after sending Intent:", isolatedBalance2)
-			console.log("affiliateFee:", affiliateFeeFromView)
-			console.log("tradingFee:", tradingFeeFromView)
-			console.log("tradingFee + affiliateFee:", tradingFeeFromView + affiliateFeeFromView)
+			console.log("Affiliate Fee paid:", affiliateFeeFromView)
+			console.log("Platform Fee paid:", platformFeeFromView)
+			console.log("Solver Fee:", solverFee)
+			console.log("Trading Fee + Affiliate Fee + Solver Fee:", platformFeeFromView + affiliateFeeFromView + BigInt(solverFeePaid))
 			console.log("Quantity: ", intent.tradeAgreements.quantity)
 			console.log("price: ", intent.price)
 
-			expect(isolatedBalance - isolatedBalance2).to.be.equal(affiliateFeeFromView + tradingFeeFromView)
+			expect(isolatedBalance - isolatedBalance2).to.be.equal(affiliateFeeFromView + platformFeeFromView + BigInt(solverFeePaid))
 		})
 
 		it("should fail on Fee not paid accordingly when more than one partyB whitelisted ", async function () {
@@ -639,8 +645,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.marginType(MarginType.ISOLATED)
 				.build()
 
-			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: 50, closeFee: 20 }])
-			await context.controlFacet.setSymbolsTradingFees([1], [{ openFee: 100, closeFee: 20 }])
+			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: e(0.01), closeFee: e(0.01) }])
+			await context.controlFacet.setSymbolsTradingFees([1], [{ openFee: e(0.01), closeFee: e(0.01) }])
 
 			expect(await partyA1.sendOpenIntent(request)).not.to.reverted
 			const intent = await context.viewFacet.getOpenIntent(1)
@@ -654,16 +660,21 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			const premiumFromView = await context.viewFacet.getOpenIntentPremium(1)
 			const affiliateFeeFromView = await context.viewFacet.getOpenIntentAffiliateFee(intent.id)
 
+			const solverFeePaid =
+				(intent.price * intent.tradeAgreements.quantity * intent.feeStructure.solverFee.openFee) /
+				(intent.feeStructure.tokenPriceInCollateral * parseUnits("1", 18))
+
 			console.log("PartyA isolated balance:", isolatedBalance)
 			console.log("PartyA isolated balance After sending Intent:", isolatedBalance2)
-			console.log("tradingFee + affiliateFee:", tradingFeeFromView + affiliateFeeFromView)
+			console.log("tradingFee + affiliateFee + Solver Fee Paid:", tradingFeeFromView + affiliateFeeFromView + solverFeePaid)
 			console.log("Fee Token Price:", feeTokenPriceInCollateral)
 			console.log("Trading Fee From View:", tradingFeeFromView)
 			console.log("Affiliate Fee From View:", affiliateFeeFromView)
+			console.log("Solver Fee Paid:", solverFeePaid)
 			console.log("Premium Fee From View:", premiumFromView)
 
 			expect(intent.feeStructure.platformFee).to.deep.equal(symbol.tradingFee)
-			expect(isolatedBalance - isolatedBalance2).to.be.equal(tradingFeeFromView + affiliateFeeFromView)
+			expect(isolatedBalance - isolatedBalance2).to.be.equal(tradingFeeFromView + affiliateFeeFromView + solverFeePaid)
 		})
 
 		it("should fail on Fee not paid accordingly when in Cross mode", async function () {
@@ -684,12 +695,12 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.expirationTimestamp(latestBlock + 120)
 				.exerciseFee({ cap: e(1), rate: "0" })
 				.quantity(e(100))
-				.price(7)
+				.price(7000)
 				.marginType(MarginType.CROSS)
 				.build()
 
-			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: 50, closeFee: 20 }])
-			await context.controlFacet.setSymbolsTradingFees([1], [{ openFee: 100, closeFee: 20 }])
+			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: e(0.01), closeFee: e(0.01) }])
+			await context.controlFacet.setSymbolsTradingFees([1], [{ openFee: e(0.01), closeFee: e(0.01) }])
 
 			expect(await partyA1.sendOpenIntent(request)).not.to.reverted
 			const intent = await context.viewFacet.getOpenIntent(1)
@@ -706,15 +717,19 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				partyB1.getSigner,
 			)
 
+			const solverFeePaid =
+				(intent.price * intent.tradeAgreements.quantity * intent.feeStructure.solverFee.openFee) /
+				(intent.feeStructure.tokenPriceInCollateral * parseUnits("1", 18))
+
 			console.log("PartyA cross balance:", crossBalance.balance)
 			console.log("PartyA cross balance after sending Intent:", crossBalance2.balance)
 			console.log("affiliateFee:", affiliateFeeFromView)
 			console.log("tradingFee:", tradingFeeFromView)
-			console.log("tradingFee + affiliateFee:", tradingFeeFromView + affiliateFeeFromView)
+			console.log("tradingFee + affiliateFee + Solver Fee Paid:", tradingFeeFromView + affiliateFeeFromView + solverFeePaid)
 			console.log("Quantity: ", intent.tradeAgreements.quantity)
 			console.log("price: ", intent.price)
 
-			expect(BigInt(crossBalance2.balance) - BigInt(crossBalance.balance)).to.be.equal(-affiliateFeeFromView - tradingFeeFromView)
+			expect(BigInt(crossBalance2.balance) - BigInt(crossBalance.balance)).to.be.equal(-affiliateFeeFromView - tradingFeeFromView - solverFeePaid)
 		})
 	})
 }
