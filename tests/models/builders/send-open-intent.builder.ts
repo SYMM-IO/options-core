@@ -38,7 +38,7 @@ const openIntentRequest: OpenIntent = {
 		rate: 0,
 	},
 	solverFee: {
-		openFee: e(.01),
+		openFee: e(0.01),
 		closeFee: e(0.01),
 	},
 	deadline: 0,

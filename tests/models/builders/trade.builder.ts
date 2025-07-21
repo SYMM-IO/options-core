@@ -45,7 +45,7 @@ const defaultTrade: TradeStruct = {
 			closeFee: 1,
 		},
 	},
-	affiliate:ZeroAddress,	
+	affiliate: ZeroAddress,
 }
 
 export const tradeBuilder = () => Builder<TradeStruct>(defaultTrade)

@@ -174,11 +174,11 @@ export function shouldBehaveLikeSymmioPartyB(): void {
 		it("should fail when Symmio address not set", async function () {
 			await context.symmioPartyB.setSymmioAddress(ZeroAddress)
 			await expect(context.symmioPartyB._call([lockIntentCallData])).to.be.revertedWithCustomError(context.symmioPartyB, "InvalidAddress")
-		})	
+		})
 
-		it("should fail when Call Data not set", async function () {			
+		it("should fail when Call Data not set", async function () {
 			await expect(context.symmioPartyB._call(["0x"])).to.be.revertedWithCustomError(context.symmioPartyB, "InvalidCallData")
-		})	
+		})
 
 		it("Should be failed when input Ops have passed the Deadline ", async () => {
 			const deadline = await getLatestBlockTime()

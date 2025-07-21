@@ -12,22 +12,22 @@ const defaultCloseIntent: CloseIntentStruct = {
 	statusModifyTimestamp: 0,
 	deadline: 0,
 	status: 0,
-	feeStructure:{
-		feeToken:ZeroAddress,
-		tokenPriceInCollateral:1,
-		affiliateFee:{
-			openFee:1,
-			closeFee:1
+	feeStructure: {
+		feeToken: ZeroAddress,
+		tokenPriceInCollateral: 1,
+		affiliateFee: {
+			openFee: 1,
+			closeFee: 1,
 		},
-		solverFee:{
-			openFee:1,
-			closeFee:1
+		solverFee: {
+			openFee: 1,
+			closeFee: 1,
 		},
-		platformFee:{
-			openFee:1,
-			closeFee:1
+		platformFee: {
+			openFee: 1,
+			closeFee: 1,
 		},
-	}
+	},
 }
 
 export const closeIntentBuilder = () => Builder<CloseIntentStruct>(defaultCloseIntent)

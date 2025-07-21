@@ -1,7 +1,6 @@
 import { Builder } from "builder-pattern"
 import { SettlementPriceSigStruct } from "../../../types/contracts/interfaces/ISymmio"
 
-
 const settlementSig: SettlementPriceSigStruct = {
 	reqId: "0x",
 	timestamp: 23,

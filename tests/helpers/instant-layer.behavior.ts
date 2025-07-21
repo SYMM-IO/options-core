@@ -379,7 +379,7 @@ export function shouldBehaveLikeInstantLayer(): void {
 		})
 
 		it("should Register Symmio PartyB when sending as PartyB", async function () {
-			const deadline = await getLatestBlockTime()	+ 24
+			const deadline = (await getLatestBlockTime()) + 24
 			let saltStr: string = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 			const opOpenALocal: InstantLayer.SignedOperationStruct = {
 				accountSource: ZeroAddress,

@@ -135,7 +135,7 @@ export function shouldBehaveLikePartyACloseFacet(): void {
 
 			await network.provider.send("evm_setNextBlockTimestamp", [latestBlockTime + 160])
 			await network.provider.send("evm_mine")
-			
+
 			await expect(partyA1.sendCloseIntent(1, e(100), 7, latestBlockTime + 200)).to.be.revertedWithCustomError(
 				context.partyACloseFacet,
 				"InvalidQuantity",
