@@ -73,11 +73,10 @@ async function main() {
 		}
 	}
 
-	if (config.collateral) {
-		await executeAndWait(
-			controlFacet.connect(owner).whiteListCollateral(config.collateral),
-			`Collateral token setting. Address: ${config.collateral}`,
-		)
+	if (config.collaterals) {
+		for (const { address } of config.collaterals) {
+			await executeAndWait(controlFacet.connect(owner).whiteListCollateral(address), `Collateral token setting. Address: ${address}`)
+		}
 	}
 
 	if (config.maxCloseOrdersLength) {
@@ -219,16 +218,19 @@ async function main() {
 	}
 
 	if (config.partyB) {
-		for (const { partyB, isActive, lossCoverage, oracleId, symbolType } of config.partyB) {
+		for (const { partyB, isActive, lossCoverage, oracleId, symbolType, statuses } of config.partyB) {
 			const partyBConfig = {
 				isActive: isActive,
 				lossCoverage: lossCoverage,
 				oracleId: oracleId,
-				symbolType: symbolType,
 			}
 			await executeAndWait(
 				controlFacet.connect(owner).setPartyBConfig(partyB, partyBConfig),
 				`PartyB Config. partyB: ${partyB}, isActive: ${isActive}, lossCoverage: ${lossCoverage}, oracleId: ${oracleId}, symbolType: ${symbolType}`,
+			)
+			await executeAndWait(
+				controlFacet.connect(owner).setPartyBSupportedSymbolTypes(partyB, symbolType, statuses),
+				`PartyBSupportedSymbolTypes. partyB: ${partyB}, symbolType: ${symbolType}, statuses: ${statuses}`,
 			)
 		}
 	}
@@ -240,19 +242,38 @@ async function main() {
 		)
 	}
 
-	// if (config.bridgeValidationState) {
-	// 	await executeAndWait(
-	// 		controlFacet.connect(owner).setBridgeValidationState(config.bridgeValidationState.bridgeAddress, config.bridgeValidationState.bridgeAddress),
-	// 		`bridgeValidationState Release Interval. bridgeAddress: ${config.bridgeValidationState.state}, state: ${config.bridgeValidationState.state}`,
-	// 	)
-	// }
+	if (config.expressWithdrawProviderConfig) {
+		await executeAndWait(
+			controlFacet
+				.connect(owner)
+				.setExpressWithdrawProviderConfig(
+					config.expressWithdrawProviderConfig.provider,
+					config.expressWithdrawProviderConfig.collateral,
+					config.expressWithdrawProviderConfig.config,
+				),
+			`ExpressWithdrawProviderConfig. provider: ${config.expressWithdrawProviderConfig.provider} collateral: ${config.expressWithdrawProviderConfig.collateral}`,
+		)
+	}
 
-	// if (config.invalidBridgedAmountsPool) {
-	// 	await executeAndWait(
-	// 		controlFacet.connect(owner).setInvalidBridgedAmountsPool(config.invalidBridgedAmountsPool),
-	// 		`invalidBridgedAmountsPool. Amount: ${config.invalidBridgedAmountsPool}`,
-	// 	)
-	// }
+	if (config.invalidWithdrawalsAmountsPool) {
+		await executeAndWait(
+			controlFacet.connect(owner).setInvalidWithdrawalsAmountsPool(config.invalidWithdrawalsAmountsPool),
+			`InvalidWithdrawalsAmountsPool. Amount: ${config.invalidWithdrawalsAmountsPool}`,
+		)
+	}
+
+	if (config.externalTransferTargetValidationStatus) {
+		await executeAndWait(
+			controlFacet
+				.connect(owner)
+				.setExternalTransferTargetValidationStatus(
+					config.externalTransferTargetValidationStatus.target,
+					config.externalTransferTargetValidationStatus.collateral,
+					config.externalTransferTargetValidationStatus.status,
+				),
+			`ExternalTransferTargetValidationStatus. target: ${config.externalTransferTargetValidationStatus.target} collateral: ${config.externalTransferTargetValidationStatus.collateral} status: ${config.externalTransferTargetValidationStatus.status}`,
+		)
+	}
 
 	console.log("ControlFacet initialization process completed successfully.")
 }

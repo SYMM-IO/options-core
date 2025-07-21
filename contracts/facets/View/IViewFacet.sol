@@ -264,21 +264,21 @@ interface IViewFacet {
 	//                          OPEN INTENT VIEWS
 	// ════════════════════════════════════════════════════════════════════════════
 
-	function getOpenIntentTradingFee(uint256 intentId) external view returns (uint256);
+	function getOpenIntentPlatformFee(uint256 intentId) external view returns (uint256);
 
 	function getOpenIntentAffiliateFee(uint256 intentId) external view returns (uint256);
 
 	function getOpenIntentPremium(uint256 intentId) external view returns (uint256);
 
+	function getOpenIntentPremiumProportional(uint256 intentId, uint256 price) external view returns (uint256);
+
 	// ════════════════════════════════════════════════════════════════════════════
 	//                          CLOSE INTENT VIEWS
 	// ════════════════════════════════════════════════════════════════════════════
 
-	function getCloseIntentTradingFee(uint256 intentId) external view returns (uint256);
+	function getCloseIntentPlatformFee(uint256 intentId, uint256 quantity, uint256 price) external view returns (uint256);
 
-	function getCloseIntentAffiliateFee(uint256 intentId) external view returns (uint256);
-
-	function getCloseIntentPremium(uint256 intentId) external view returns (uint256);
+	function getCloseIntentAffiliateFee(uint256 intentId, uint256 quantity, uint256 price) external view returns (uint256);
 
 	// ════════════════════════════════════════════════════════════════════════════
 	//                          Trade VIEWS

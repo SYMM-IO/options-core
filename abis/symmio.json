@@ -3079,6 +3079,37 @@
         "anonymous": false,
         "inputs": [
             {
+                "indexed": true,
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "collateral",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "enum MarginType",
+                "name": "marginType",
+                "type": "uint8"
+            }
+        ],
+        "name": "LockBalance",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
                 "indexed": false,
                 "internalType": "uint256",
                 "name": "intentId",
@@ -3696,7 +3727,7 @@
                 ],
                 "indexed": false,
                 "internalType": "struct Fee",
-                "name": "tradingFee",
+                "name": "platformFee",
                 "type": "tuple"
             },
             {
@@ -3726,44 +3757,6 @@
             }
         ],
         "name": "SymbolNameUpdated",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            {
-                "indexed": true,
-                "internalType": "address",
-                "name": "partyB",
-                "type": "address"
-            },
-            {
-                "indexed": true,
-                "internalType": "uint256",
-                "name": "symbolId",
-                "type": "uint256"
-            }
-        ],
-        "name": "SymbolPriceUpdated",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            {
-                "indexed": true,
-                "internalType": "uint256",
-                "name": "symbolId",
-                "type": "uint256"
-            },
-            {
-                "indexed": false,
-                "internalType": "bool",
-                "name": "status",
-                "type": "bool"
-            }
-        ],
-        "name": "SymbolStateUpdated",
         "type": "event"
     },
     {
@@ -3812,7 +3805,45 @@
                 "type": "tuple"
             }
         ],
-        "name": "SymbolTradingFeeUpdated",
+        "name": "SymbolPlatformFeeUpdated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "partyB",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "symbolId",
+                "type": "uint256"
+            }
+        ],
+        "name": "SymbolPriceUpdated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "symbolId",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "bool",
+                "name": "status",
+                "type": "bool"
+            }
+        ],
+        "name": "SymbolStateUpdated",
         "type": "event"
     },
     {
@@ -3994,6 +4025,37 @@
             }
         ],
         "name": "UnflagPartyALiquidation",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "collateral",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "enum MarginType",
+                "name": "marginType",
+                "type": "uint8"
+            }
+        ],
+        "name": "UnlockBalance",
         "type": "event"
     },
     {
@@ -4449,7 +4511,7 @@
                     }
                 ],
                 "internalType": "struct Fee",
-                "name": "_tradingFee",
+                "name": "_platformFee",
                 "type": "tuple"
             },
             {
@@ -4496,7 +4558,7 @@
                             }
                         ],
                         "internalType": "struct Fee",
-                        "name": "tradingFee",
+                        "name": "platformFee",
                         "type": "tuple"
                     },
                     {
@@ -6199,6 +6261,16 @@
                 "internalType": "uint256",
                 "name": "intentId",
                 "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "quantity",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "price",
+                "type": "uint256"
             }
         ],
         "name": "getCloseIntentAffiliateFee",
@@ -6237,28 +6309,19 @@
                 "internalType": "uint256",
                 "name": "intentId",
                 "type": "uint256"
-            }
-        ],
-        "name": "getCloseIntentPremium",
-        "outputs": [
+            },
             {
                 "internalType": "uint256",
-                "name": "",
+                "name": "quantity",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "price",
                 "type": "uint256"
             }
         ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "intentId",
-                "type": "uint256"
-            }
-        ],
-        "name": "getCloseIntentTradingFee",
+        "name": "getCloseIntentPlatformFee",
         "outputs": [
             {
                 "internalType": "uint256",
@@ -7163,7 +7226,7 @@
                 "type": "uint256"
             }
         ],
-        "name": "getOpenIntentPremium",
+        "name": "getOpenIntentPlatformFee",
         "outputs": [
             {
                 "internalType": "uint256",
@@ -7182,7 +7245,31 @@
                 "type": "uint256"
             }
         ],
-        "name": "getOpenIntentTradingFee",
+        "name": "getOpenIntentPremium",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "intentId",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "price",
+                "type": "uint256"
+            }
+        ],
+        "name": "getOpenIntentPremiumProportional",
         "outputs": [
             {
                 "internalType": "uint256",
@@ -7616,7 +7703,7 @@
                             }
                         ],
                         "internalType": "struct Fee",
-                        "name": "tradingFee",
+                        "name": "platformFee",
                         "type": "tuple"
                     },
                     {
@@ -7694,7 +7781,7 @@
                             }
                         ],
                         "internalType": "struct Fee",
-                        "name": "tradingFee",
+                        "name": "platformFee",
                         "type": "tuple"
                     },
                     {
@@ -9746,7 +9833,7 @@
                 "type": "tuple[]"
             }
         ],
-        "name": "setSymbolsTradingFees",
+        "name": "setSymbolsPlatformFees",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"

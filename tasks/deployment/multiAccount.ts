@@ -4,9 +4,9 @@ import { task, types } from "hardhat/config"
 task("deploy:multiAccount", "Deploys the MultiAccount")
 	.addParam("symmioaddress", "The address of the Symmio contract")
 	.addParam("admin", "The admin address")
-	.addParam("tradeNFTAddress", "The trade NFT address")
+	.addParam("tradenftaddress", "The trade NFT address")
 	.addOptionalParam("logData", "Write the deployed addresses to a data file", true, types.boolean)
-	.setAction(async ({ symmioaddress, admin, tradeNFTAddress, logData }, { ethers, upgrades, run }) => {
+	.setAction(async ({ symmioaddress, admin, tradenftaddress, logData }, { ethers, upgrades, run }) => {
 		console.log("Running deploy:MultiAccount")
 
 		const [deployer] = await ethers.getSigners()
@@ -15,8 +15,8 @@ task("deploy:multiAccount", "Deploys the MultiAccount")
 		const SymmioPartyA = await ethers.getContractFactory("SymmioPartyA")
 
 		// Deploy MultiAccount as upgradeable
-		const SymmioMultiAccountFactory = await ethers.getContractFactory("MultiAccount")
-		const symmioMultiAccount = await upgrades.deployProxy(SymmioMultiAccountFactory, [admin, symmioaddress, SymmioPartyA.bytecode, tradeNFTAddress], {
+		const symmioMultiAccountFactory = await ethers.getContractFactory("MultiAccount")
+		const symmioMultiAccount = await upgrades.deployProxy(symmioMultiAccountFactory, [admin, symmioaddress, SymmioPartyA.bytecode, tradenftaddress], {
 			initializer: "initialize",
 		})
 		await symmioMultiAccount.waitForDeployment()

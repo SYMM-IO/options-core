@@ -21,7 +21,7 @@ struct Symbol {
 	uint256 symbolId;
 	uint256 oracleId;
 	uint256 symbolType;
-	Fee tradingFee;
+	Fee platformFee;
 	address collateral;
 	string name;
 	bool isValid;

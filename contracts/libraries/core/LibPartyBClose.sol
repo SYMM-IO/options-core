@@ -122,7 +122,7 @@ library LibPartyBClose {
 		}
 
 		// Collect close-fees from Party A
-		intent.getFeesFromUser();
+		uint256[3] memory fees = intent.getFeesFromUser(quantity, price);
 
 		{
 			address feeToken = intent.feeStructure.feeToken;
@@ -132,37 +132,23 @@ library LibPartyBClose {
 				? feeLayout.defaultFeeCollector
 				: feeLayout.affiliateFeeCollector[trade.affiliate];
 
-			// Pay affiliate fees
-			ScheduledReleaseBalance storage affiliateFeeCollectorBalance = affiliateFeeCollector.balanceOf(feeToken);
-			affiliateFeeCollectorBalance.setup(affiliateFeeCollector, feeToken);
-			affiliateFeeCollectorBalance.instantIsolatedAdd(
-				intent.calculateFee(intent.feeStructure.affiliateFee.closeFee),
-				IncreaseBalanceReason.AFFILIATE_FEE
-			);
-
 			// Pay platform fees
 			ScheduledReleaseBalance storage defaultFeeCollectorBalance = feeLayout.defaultFeeCollector.balanceOf(feeToken);
 			defaultFeeCollectorBalance.setup(feeLayout.defaultFeeCollector, feeToken);
-			defaultFeeCollectorBalance.instantIsolatedAdd(
-				intent.calculateFee(intent.feeStructure.platformFee.closeFee),
-				IncreaseBalanceReason.PLATFORM_FEE
-			);
+			defaultFeeCollectorBalance.instantIsolatedAdd(fees[0], IncreaseBalanceReason.PLATFORM_FEE);
+
+			// Pay affiliate fees
+			ScheduledReleaseBalance storage affiliateFeeCollectorBalance = affiliateFeeCollector.balanceOf(feeToken);
+			affiliateFeeCollectorBalance.setup(affiliateFeeCollector, feeToken);
+			affiliateFeeCollectorBalance.instantIsolatedAdd(fees[1], IncreaseBalanceReason.AFFILIATE_FEE);
 
 			// Pay solver fees
 			ScheduledReleaseBalance storage solverFeeCollectorBalance = trade.partyB.balanceOf(feeToken);
 			solverFeeCollectorBalance.setup(trade.partyB, feeToken);
 			if (marginType == MarginType.ISOLATED) {
-				solverFeeCollectorBalance.instantIsolatedAdd(
-					intent.calculateFee(intent.feeStructure.solverFee.closeFee),
-					IncreaseBalanceReason.SOLVER_FEE
-				);
+				solverFeeCollectorBalance.instantIsolatedAdd(fees[2], IncreaseBalanceReason.SOLVER_FEE);
 			} else {
-				solverFeeCollectorBalance.scheduledAdd(
-					trade.partyA,
-					intent.calculateFee(intent.feeStructure.solverFee.closeFee),
-					MarginType.CROSS,
-					IncreaseBalanceReason.SOLVER_FEE
-				);
+				solverFeeCollectorBalance.scheduledAdd(trade.partyA, fees[2], MarginType.CROSS, IncreaseBalanceReason.SOLVER_FEE);
 			}
 		}
 

@@ -48,6 +48,10 @@ library ScheduledReleaseBalanceOps {
 
 	event SyncBalance(address indexed user, address indexed counterParty, address indexed collateral);
 
+	event LockBalance(address indexed user, address indexed collateral, uint256 amount, MarginType marginType);
+
+	event UnlockBalance(address indexed user, address indexed collateral, uint256 amount, MarginType marginType);
+
 	// ─── modifiers ────────────────────────────────────────────────────────────
 
 	/// @dev Reverts unless the balance slot has been initialized via `setup`.
@@ -412,25 +416,29 @@ library ScheduledReleaseBalanceOps {
 	}
 
 	function isolatedLock(ScheduledReleaseBalance storage self, uint256 amount) internal {
-		if (self.isolatedBalance < amount)
-			revert BalanceErrors.InsufficientBalance(self.user, self.collateral, amount, self.isolatedBalance);
+		if (self.isolatedBalance - self.isolatedLockedBalance < amount)
+			revert BalanceErrors.InsufficientBalance(self.user, self.collateral, amount, self.isolatedBalance - self.isolatedLockedBalance);
 		self.isolatedLockedBalance += amount;
+		emit LockBalance(self.user, self.collateral, amount, MarginType.ISOLATED);
 	}
 
 	function isolatedUnlock(ScheduledReleaseBalance storage self, uint256 amount) internal {
 		if (self.isolatedLockedBalance < amount) revert BalanceErrors.InsufficientLockedBalance(self.collateral, amount, self.isolatedLockedBalance);
 		self.isolatedLockedBalance -= amount;
+		emit UnlockBalance(self.user, self.collateral, amount, MarginType.ISOLATED);
 	}
 
 	function crossLock(ScheduledReleaseBalance storage self, address counterParty, uint256 amount) internal {
 		CrossEntry storage entry = self.crossBalance[counterParty];
 		entry.locked += amount;
+		emit LockBalance(self.user, self.collateral, amount, MarginType.CROSS);
 	}
 
 	function crossUnlock(ScheduledReleaseBalance storage self, address counterParty, uint256 amount) internal {
 		CrossEntry storage entry = self.crossBalance[counterParty];
 		if (entry.locked < amount) revert BalanceErrors.InsufficientLockedBalance(self.collateral, amount, entry.locked);
 		entry.locked -= amount;
+		emit UnlockBalance(self.user, self.collateral, amount, MarginType.CROSS);
 	}
 
 	function increaseMM(ScheduledReleaseBalance storage self, address counterParty, uint256 amount) internal {
