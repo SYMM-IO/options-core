@@ -11,14 +11,16 @@ import { e } from "../utils/e"
 import { CloseIntentStruct, SymbolStruct, TradeStruct } from "../types/contracts/interfaces/ISymmio"
 import { getLatestBlockTime } from "../utils/time"
 import { parseEther, parseUnits } from "ethers"
+import { closeIntentBuilder } from "./models/builders/close-intent.builder"
 
 export function shouldBehaveLikePartyBCloseFacet(): void {
-	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyB1: PartyB, partyB2: PartyB
+	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyA3: PartyA, partyB1: PartyB, partyB2: PartyB
 
 	beforeEach(async function () {
 		context = await loadFixture(initializeTestFixture)
 		partyA1 = new PartyA(context, context.signers.partyA1)
 		partyA2 = new PartyA(context, context.signers.partyA1)
+		partyA3 = new PartyA(context, context.signers.others[0])
 		partyB1 = new PartyB(context, context.signers.partyB1)
 		partyB2 = new PartyB(context, context.signers.partyB2)
 
@@ -27,6 +29,8 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 		await partyA1.setBalances(context.collateralNL, e(100000), e(100000))
 		await partyA2.setBalances(context.collateral, e(100000), e(100000))
 		await partyA2.setBalances(context.collateralNL, e(100000), e(100000))
+		await partyA3.setBalances(context.collateral, e(100000), e(100000))
+		await partyA3.setBalances(context.collateralNL, e(100000), e(100000))
 
 		const request = openIntentRequestBuilder()
 			.partyBsWhiteList([partyB1.getSigner])
@@ -37,7 +41,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			.expirationTimestamp((await getLatestBlockTime()) + 150)
 			.exerciseFee({ cap: e(1), rate: "0" })
 			.quantity(e(100))
-			.price(7)
+			.price(7000)
 			.tradeSide(TradeSide.BUY)
 			.marginType(MarginType.ISOLATED)
 			.build()
@@ -51,7 +55,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			.expirationTimestamp((await getLatestBlockTime()) + 150)
 			.exerciseFee({ cap: e(1), rate: "0" })
 			.quantity(e(100))
-			.price(7)
+			.price(7000)
 			.tradeSide(TradeSide.BUY)
 			.marginType(MarginType.CROSS)
 			.build()
@@ -65,7 +69,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			.expirationTimestamp((await getLatestBlockTime()) + 150)
 			.exerciseFee({ cap: e(.5), rate: "0" })
 			.quantity(e(100))
-			.price(7)
+			.price(7000)
 			.tradeSide(TradeSide.SELL)
 			.marginType(MarginType.CROSS)
 			.build()
@@ -78,13 +82,13 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 		await partyB1.lockOpenIntent(2)
 		await partyB2.lockOpenIntent(3)
 		
-		await partyB1.fillOpenIntent(1, e(100), 7)
-		await partyB1.fillOpenIntent(2, e(100), 7)
-		await partyB2.fillOpenIntent(3, e(100), 7)
+		await partyB1.fillOpenIntent(1, e(100), request.price)
+		await partyB1.fillOpenIntent(2, e(100), request.price)
+		await partyB2.fillOpenIntent(3, e(100), request.price)
 		
-		await partyA1.sendCloseIntent(1, e(100), 7, (await getLatestBlockTime()) + 120)
-		await partyA1.sendCloseIntent(2, e(100), 7, (await getLatestBlockTime()) + 120)
-		await partyA2.sendCloseIntent(3, e(100), 7, (await getLatestBlockTime()) + 120)		
+		await partyA1.sendCloseIntent(1, e(100), request.price, (await getLatestBlockTime()) + 120)
+		await partyA1.sendCloseIntent(2, e(100), request.price, (await getLatestBlockTime()) + 120)
+		await partyA2.sendCloseIntent(3, e(100), request.price, (await getLatestBlockTime()) + 120)		
 	})
 
 	describe("fillCloseIntent", async function () {
@@ -103,12 +107,12 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			console.log("Close Intent Quantity: ", closeIntent.quantity)
 			console.log("Close Intent Filled Amount: ", closeIntent.filledAmount)
 
-			await expect(partyB1.fillCloseIntent(1, e(101), 7)).to.revertedWithCustomError(context.partyBCloseFacet, "InvalidFillAmount")
-			await expect(partyB1.fillCloseIntent(1, e(100), 7)).not.to.reverted
+			await expect(partyB1.fillCloseIntent(closeIntent.id, e(101), closeIntent.price)).to.revertedWithCustomError(context.partyBCloseFacet, "InvalidFillAmount")
+			await expect(partyB1.fillCloseIntent(closeIntent.id, e(100), closeIntent.price)).not.to.reverted
 		})
 
 		it("Should set the Trade as Closed when close Quantity match trade quantity", async () => {
-			await expect(partyB1.fillCloseIntent(1, e(100), 7)).not.to.reverted
+			await expect(partyB1.fillCloseIntent(1, e(100), 7000)).not.to.reverted
 			let trade = await context.viewFacet.getTrade(1)
 
 			console.log("Trade Status: ", trade.status == BigInt(TradeStatus.CLOSED) ? "Closed" : trade.status)
@@ -117,8 +121,8 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 
 		it("Should fail when Trade status not OPEN", async () => {
 			let timeToTime = (await getLatestBlockTime()) + 120
-			await expect(partyB1.fillCloseIntent(1, e(100), 7)).not.to.reverted
-			await expect(partyA1.sendCloseIntent(1, e(1), 7, timeToTime)).to.be.revertedWithCustomError(context.partyACloseFacet, "InvalidState")
+			await expect(partyB1.fillCloseIntent(1, e(100), 7000)).not.to.reverted
+			await expect(partyA1.sendCloseIntent(1, e(1), 7000, timeToTime)).to.be.revertedWithCustomError(context.partyACloseFacet, "InvalidState")
 		})
 
 		it("Should failed when Close Intent is expired", async () => {
@@ -158,14 +162,14 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 
 		it("Should failed when Fill Close Intent price not in range For BUY Trades", async () => {
 			await expect(partyB1.fillCloseIntent(1, e(96), 5)).to.revertedWithCustomError(context.partyBCloseFacet, "InvalidClosePrice")
-			await expect(partyB1.fillCloseIntent(1, 96, 10)).not.to.revertedWithCustomError(context.partyBCloseFacet, "InvalidClosePrice")
+			await expect(partyB1.fillCloseIntent(1, 96, 7010)).not.to.revertedWithCustomError(context.partyBCloseFacet, "InvalidClosePrice")
 
 			await expect(partyB1.fillCloseIntent(2, e(96), 5)).to.revertedWithCustomError(context.partyBCloseFacet, "InvalidClosePrice")
-			await expect(partyB1.fillCloseIntent(2, 96, 10)).not.to.revertedWithCustomError(context.partyBCloseFacet, "InvalidClosePrice")
+			await expect(partyB1.fillCloseIntent(2, 96, 7010)).not.to.revertedWithCustomError(context.partyBCloseFacet, "InvalidClosePrice")
 		})
 
 		it("Should failed when Fill Close Intent price not in range For SELL Trades", async () => {
-			await expect(partyB2.fillCloseIntent(3, 96, 10)).to.revertedWithCustomError(context.partyBCloseFacet, "InvalidClosePrice")
+			await expect(partyB2.fillCloseIntent(3, 96, 7010)).to.revertedWithCustomError(context.partyBCloseFacet, "InvalidClosePrice")
 			await expect(partyB2.fillCloseIntent(3, 96, 5)).not.to.revertedWithCustomError(context.partyBCloseFacet, "InvalidClosePrice")
 		})
 
@@ -180,7 +184,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			const partyABalanceBefore = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral)
 
 			const halfQuantity = BigInt(closeIntent.quantity) / 2n
-			const price = 8 // party B says I can buy higher
+			const price = BigInt(closeIntent.price) + 1000n // party B says I can buy higher
 			await expect(partyB1.fillCloseIntent(closeIntentID, halfQuantity, price)).to.not.be.reverted
 
 			// more than 2 intervals pass for schedules
@@ -197,7 +201,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			let partyABalanceAfter = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral)
 			let scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA1.getSigner, context.collateral, partyB1.getSigner)
 
-			const partyAProfit = (BigInt(price) * BigInt(2n * halfQuantity)) / BigInt(1000000000000000000)
+			const partyAProfit = (BigInt(price) * BigInt(2n * halfQuantity)) / parseUnits("1",18)
 			const finalPremium = (premium * 2n * halfQuantity) / BigInt(trade.tradeAgreements.quantity)
 
 			console.log("PartyB balance before fill to close intent:", partyBBalanceBefore)
@@ -256,7 +260,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			const partyABalanceBefore = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral)
 
 			const halfQuantity = BigInt(closeIntent.quantity) / 2n
-			const price = 8n // party B says I can buy higher
+			const price = BigInt(closeIntent.price) + 1000n // party B says I can buy higher
 			await expect(partyB1.fillCloseIntent(closeIntentID, halfQuantity, price)).to.not.be.reverted
 
 			// more than 2 intervals pass for schedules
@@ -273,7 +277,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			let partyABalanceAfter = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral)
 			let scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA1.getSigner, context.collateral, partyB1.getSigner)
 
-			const partyAProfit = (price * 2n * halfQuantity) / parseUnits("1",18)
+			const partyAProfit = (BigInt(price) * 2n * halfQuantity) / parseUnits("1",18)
 			const finalPremium = (premium * 2n * halfQuantity) / BigInt(trade.tradeAgreements.quantity)
 
 			console.log("PartyB balance before fill to close intent:", partyBBalanceBefore)
@@ -304,7 +308,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			let partyBCrossBalanceBefore = await context.viewFacet.getCrossBalance(partyB1.address, context.collateral, partyA1.address)
 
 			const halfQuantity = BigInt(closeIntent.quantity) / 2n
-			const price = 8n // party B says I can buy higher
+			const price = BigInt(closeIntent.price) + 1000n // party B says I can buy higher
 			await expect(partyB1.fillCloseIntent(closeIntentID, halfQuantity, price)).to.not.be.reverted
 			await expect(partyB1.fillCloseIntent(closeIntentID, halfQuantity, price)).to.not.be.reverted
 
@@ -313,7 +317,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			let partyACrossBalanceAfter = await context.viewFacet.getCrossBalance(partyA1.getSigner, context.collateral, partyB1.address)
 			let partyBCrossBalanceAfter = await context.viewFacet.getCrossBalance(partyB1.address, context.collateral, partyA1.address)
 
-			const partyAProfit = (price * 2n * halfQuantity) / parseUnits("1", 18)
+			const partyAProfit = (BigInt(price) * 2n * halfQuantity) / parseUnits("1", 18)
 			const finalPremium = (premium * 2n * halfQuantity) / BigInt(trade.tradeAgreements.quantity)
 
 			console.log("PartyA Cross balance before fill to close intent:", partyACrossBalanceBefore)
@@ -338,7 +342,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			let partyBCrossBalanceBefore = await context.viewFacet.getCrossBalance(partyB1.address, context.collateral, partyA1.address)
 
 			const halfQuantity = BigInt(closeIntent.quantity) / 2n
-			const price = 8n // party B says I can buy higher
+			const price = BigInt(closeIntent.price) + 1000n // party B says I can buy higher
 			await expect(partyB1.fillCloseIntent(closeIntentID, halfQuantity, price)).to.not.be.reverted
 			await expect(partyB1.fillCloseIntent(closeIntentID, halfQuantity, price)).to.not.be.reverted
 
@@ -347,7 +351,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			let partyBCrossBalanceAfter = await context.viewFacet.getCrossBalance(partyB1.address, context.collateral, partyA1.address)
 
 			const SCALE = parseUnits("1", 18)
-			const partyAProfit = (price * halfQuantity * 2n) / SCALE
+			const partyAProfit = (BigInt(price) * halfQuantity * 2n) / SCALE
 			const finalPremium = (premium * 2n * halfQuantity) / BigInt(trade.tradeAgreements.quantity)
 			
 			console.log("PartyB Cross balance before fill to close intent:", partyBCrossBalanceBefore)
@@ -372,7 +376,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			let partyBCrossBalanceBefore = await context.viewFacet.getCrossBalance(partyB2.address, context.collateral, partyA2.address)
 
 			const halfQuantity = BigInt(closeIntent.quantity) / 2n
-			const price = 5n // party B says I can sell lower
+			const price = BigInt(closeIntent.price) - 1000n // party B says I can sell lower
 			await expect(partyB2.fillCloseIntent(closeIntentID, halfQuantity, price)).to.not.be.reverted
 			await expect(partyB2.fillCloseIntent(closeIntentID, halfQuantity, price)).to.not.be.reverted
 	
@@ -386,7 +390,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			// const scale = parseEther("1")
 			// const SCALE = 1_000_000_000_000_000_000n
 			const SCALE = parseUnits("1", 18)
-			const partyAProfit = (price * halfQuantity * 2n) / SCALE
+			const partyAProfit = (BigInt(price) * halfQuantity * 2n) / SCALE
 			const finalPremium = (premium * 2n * halfQuantity) / BigInt(trade.tradeAgreements.quantity)
 
 			console.log("PartyA Cross balance before fill to close intent:", partyACrossBalanceBefore)
@@ -411,7 +415,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			const partyACrossBalanceBefore = await context.viewFacet.getCrossBalance(partyA2.address, context.collateral,partyB2.address)
 
 			const halfQuantity = BigInt(closeIntent.quantity) / 2n
-			const price = 5n // party B says I can sell lower
+			const price = BigInt(closeIntent.price) - 1000n // party B says I can sell lower
 			await expect(partyB2.fillCloseIntent(closeIntentID, halfQuantity, price)).to.not.be.reverted
 			await expect(partyB2.fillCloseIntent(closeIntentID, halfQuantity, price)).to.not.be.reverted
 	
@@ -434,7 +438,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			const partyBCrossBalanceBefore = await context.viewFacet.getCrossBalance(partyB2.address, context.collateral, partyA2.address)
 
 			const halfQuantity = BigInt(closeIntent.quantity) / 2n
-			const price = 5n // party B says I can sell lower
+			const price = BigInt(closeIntent.price) - 1000n // party B says I can sell lower
 			await expect(partyB2.fillCloseIntent(closeIntentID, halfQuantity, price)).to.not.be.reverted
 			await expect(partyB2.fillCloseIntent(closeIntentID, halfQuantity, price)).to.not.be.reverted
 	
@@ -445,7 +449,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			const partyBCrossBalanceAfter = await context.viewFacet.getCrossBalance(partyB2.address, context.collateral, partyA2.address)
 
 			const SCALE = parseUnits("1", 18)
-			const partyBProfit = (price * halfQuantity * 2n) / SCALE
+			const partyBProfit = (BigInt(price) * halfQuantity * 2n) / SCALE
 			const finalPremium = (premium * 2n * halfQuantity) / BigInt(trade.tradeAgreements.quantity)
 
 			console.log("PartyA Cross balance before fill to close intent:", partyACrossBalanceBefore)
@@ -460,6 +464,98 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			console.log("Diff:", partyBProfit - finalPremium)
 			
 			expect(partyACrossBalanceAfter.balance ).to.be.equal(finalPremium - partyBProfit)
+		})
+
+		it.only("Should fail if Fees not Payed to Affiliate Collector as Expected", async () => {
+			const openTrade = await context.viewFacet.getTrade(1)
+			const closeIntent = await context.viewFacet.getCloseIntent(1)
+
+			await context.controlFacet.setAffiliateFeesCollector(openTrade.affiliate, openTrade.affiliate)
+
+			const affiliateBalanceBefore = await context.viewFacet.getIsolatedBalance(openTrade.affiliate, await context.collateralNL.getAddress())
+
+			const price = openTrade.openedPrice
+			const quantity = e(50)
+			await expect(partyB1.fillCloseIntent(1, quantity, price)).not.to.reverted
+
+			const affiliateBalanceAfter = await context.viewFacet.getIsolatedBalance(openTrade.affiliate, await context.collateralNL.getAddress())
+			const partyAFeeBalance = await context.viewFacet.getIsolatedBalance(partyA1.address, await context.collateralNL.getAddress())
+
+			const intentTradingFee = await context.viewFacet.getCloseIntentTradingFee(closeIntent.id) //Platform Fee
+			const intentAffiliateFee = await context.viewFacet.getCloseIntentAffiliateFee(closeIntent.id) //Affiliate Fee
+
+			const affiliateFeeCalculated =
+				(quantity * price * closeIntent.feeStructure.affiliateFee.closeFee) /
+				(openTrade.feeStructure.tokenPriceInCollateral * parseUnits("1", 18)) 
+
+			console.log("Affiliate Address:", openTrade.affiliate)
+			console.log("Intent Trading Fee", intentTradingFee)
+			console.log("Intent Affiliate Fee", intentAffiliateFee)
+			console.log("Calculated Intent Affiliate Fee", affiliateFeeCalculated)
+			console.log("Affiliate Fee collector Balance Before", affiliateBalanceBefore)
+			console.log("Affiliate Fee collector Balance After", affiliateBalanceAfter)
+			console.log("Party A Fee Balance", partyAFeeBalance)
+
+			expect(affiliateFeeCalculated).to.be.equal(intentAffiliateFee)
+
+			expect(affiliateBalanceAfter - affiliateBalanceBefore).to.equal(intentAffiliateFee)
+		})
+
+		it.only("Should fail if Fees not Payed to Trade Fee Collector as Expected", async () => {
+			await context.controlFacet.setDefaultFeeCollector(partyA3.address)
+			const defaultFeeBalanceBefore = await context.viewFacet.getIsolatedBalance(partyA3.address, await context.collateralNL.getAddress())
+			
+			const closeIntent = await context.viewFacet.getCloseIntent(1)
+			const openTrade = await context.viewFacet.getTrade(1)
+			const partyAFeeBalanceBefore = await context.viewFacet.getIsolatedBalance(openTrade.partyA, await context.collateralNL.getAddress())
+
+			const quantity = e(50)
+			const price = openTrade.openedPrice
+			await expect(partyB1.fillCloseIntent(1, quantity, price)).not.to.reverted
+
+			const defaultFeeBalanceAfter = await context.viewFacet.getIsolatedBalance(partyA3.address, await context.collateralNL.getAddress())
+			const partyAFeeBalanceAfter = await context.viewFacet.getIsolatedBalance(openTrade.partyA, await context.collateralNL.getAddress())
+
+			const intentPlatformFee = await context.viewFacet.getCloseIntentTradingFee(closeIntent.id) //Platform Fee
+			const intentAffiliateFee = await context.viewFacet.getOpenIntentAffiliateFee(closeIntent.id) //Affiliate Fee
+
+			const platformFeeCalculated =
+				(quantity * price * closeIntent.feeStructure.platformFee.closeFee) / (openTrade.feeStructure.tokenPriceInCollateral * parseUnits("1", 18)) 
+
+			console.log("Intent Platform Fee", intentPlatformFee)
+			console.log("Calculated Intent Platform Fee", platformFeeCalculated)
+			console.log("Default Fee collector Balance Before", defaultFeeBalanceBefore)
+			console.log("Default Fee collector Balance After", defaultFeeBalanceAfter)
+			console.log("Diff", defaultFeeBalanceAfter - defaultFeeBalanceBefore)
+			console.log("Party A Fee Balance Before", partyAFeeBalanceBefore)
+			console.log("Party A Fee Balance After", partyAFeeBalanceAfter)
+
+			expect(platformFeeCalculated).to.be.equal(intentPlatformFee)
+
+			expect(defaultFeeBalanceAfter - defaultFeeBalanceBefore).to.equal(intentPlatformFee)
+		})
+
+		it.only("Should fail if Fees Not Payed To Party B as expected", async () => {
+			const closeIntent = await context.viewFacet.getCloseIntent(1)
+			const openTrade = await context.viewFacet.getTrade(1)
+			const partyBFeeBalanceBefore = await context.viewFacet.getIsolatedBalance(openTrade.partyB, await context.collateralNL.getAddress())
+
+			const quantity = e(50)
+			const price = openTrade.openedPrice
+			await expect(partyB1.fillCloseIntent(1, quantity, price)).not.to.reverted
+
+			const partyBFeeBalanceAfter = await context.viewFacet.getIsolatedBalance(openTrade.partyB, await context.collateralNL.getAddress())
+
+			const solverFeePaid =
+				(quantity * price * closeIntent.feeStructure.solverFee.closeFee) /
+				(openTrade.feeStructure.tokenPriceInCollateral * parseUnits("1", 18))
+			console.log("partyB Fee Balance Before", partyBFeeBalanceBefore)
+			console.log("partyB Fee Balance After", partyBFeeBalanceAfter)
+			console.log("Solver Fee rate:",openTrade.feeStructure.solverFee)
+			console.log("Solver Fee calculated:", solverFeePaid)
+			console.log("Fee Token Price to Collateral", openTrade.feeStructure.tokenPriceInCollateral)
+
+			expect(partyBFeeBalanceAfter - partyBFeeBalanceBefore).to.equal(solverFeePaid)
 		})
 
 	})

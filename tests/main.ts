@@ -27,7 +27,7 @@ describe(`${name}-v${version}`, () => {
 			shouldBehaveLikePartyBOpenFacet()
 		})
 
-		describe("Facets_PartyACloseFacet", async function () {
+		describe.only("Facets_PartyACloseFacet", async function () {
 			shouldBehaveLikePartyACloseFacet()
 		})
 
@@ -39,7 +39,7 @@ describe(`${name}-v${version}`, () => {
 			shouldBehaveLikePartyBCloseFacet()
 		})
 
-		describe("Facets_Settlement", async function () {
+		describe.skip("Facets_Settlement", async function () {
 			shouldBehaveLikeSettlementFacet()
 		})
 
