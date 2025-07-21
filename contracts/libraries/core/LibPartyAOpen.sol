@@ -102,7 +102,7 @@ library LibPartyAOpen {
 					feeToken,
 					SymbolStorage.layout().symbols[tradeAgreements.symbolId].collateral
 				),
-				platformFee: symbol.tradingFee,
+				platformFee: symbol.platformFee,
 				affiliateFee: feeLayout.affiliateFees[affiliate][tradeAgreements.symbolId],
 				solverFee: solverFee
 			}),
@@ -111,9 +111,9 @@ library LibPartyAOpen {
 		});
 
 		intent.register();
-		intent.getFeesFromUser();
-		intent.lockPremium();
-		intent.lockMM();
+		intent.lockFees();
+		intent.lockPremiumIfBuy();
+		intent.lockMMIfSell();
 	}
 
 	function cancelOpenIntent(address sender, uint256 intentId) internal returns (OpenIntentStatus finalStatus) {
@@ -132,9 +132,9 @@ library LibPartyAOpen {
 			intent.expire();
 		} else if (intent.status == OpenIntentStatus.PENDING) {
 			intent.status = OpenIntentStatus.CANCELED;
-			intent.returnFeesToUser();
-			intent.unlockPremium();
-			intent.unlockMM();
+			intent.unlockFees();
+			intent.unlockPremiumIfBuy();
+			intent.unlockMMIfSell();
 			intent.unregister(false);
 		} else {
 			// LOCKED

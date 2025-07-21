@@ -195,8 +195,8 @@ library LibTradeOperations {
 
 					/* ---------------------------------------- GET FEES ---------------------------------------- */
 					uint256[2] memory fees = [
-						(amountToTransfer * s.platformFee.closeFee) / 1e18,
-						(amountToTransfer * s.affiliateFee.closeFee) / 1e18
+						(pnl * s.platformFee.closeFee) / 1e18,
+						(pnl * s.affiliateFee.closeFee) / 1e18
 					];
 
 					DecreaseBalanceReason[2] memory decReasons = [DecreaseBalanceReason.PLATFORM_FEE, DecreaseBalanceReason.AFFILIATE_FEE];

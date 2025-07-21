@@ -740,7 +740,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	 * @param _optionType The option type
 	 * @param _oracleId The oracle ID
 	 * @param _collateral The collateral address
-	 * @param _tradingFee The trading fee
+	 * @param _platformFee The platform fee
 	 * @param _symbolType The symbol type
 	 */
 	function addSymbol(
@@ -748,7 +748,7 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		OptionType _optionType,
 		uint256 _oracleId,
 		address _collateral,
-		Fee memory _tradingFee,
+		Fee memory _platformFee,
 		uint256 _symbolType
 	) public onlyRole(LibAccessibility.SYMBOL_MANAGER_ROLE) {
 		if (_collateral == address(0)) revert ValidationErrors.ZeroAddress("collateral");
@@ -765,10 +765,10 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 			optionType: _optionType,
 			oracleId: _oracleId,
 			collateral: _collateral,
-			tradingFee: _tradingFee,
+			platformFee: _platformFee,
 			symbolType: _symbolType
 		});
-		emit SymbolAdded(s.lastSymbolId, _name, _optionType, _oracleId, _collateral, _tradingFee, _symbolType);
+		emit SymbolAdded(s.lastSymbolId, _name, _optionType, _oracleId, _collateral, _platformFee, _symbolType);
 	}
 
 	/**
@@ -778,24 +778,24 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	function addSymbols(Symbol[] calldata symbols) external onlyRole(LibAccessibility.SYMBOL_MANAGER_ROLE) {
 		for (uint8 i = 0; i < symbols.length; i++) {
 			Symbol memory s = symbols[i];
-			addSymbol(s.name, s.optionType, s.oracleId, s.collateral, s.tradingFee, s.symbolType);
+			addSymbol(s.name, s.optionType, s.oracleId, s.collateral, s.platformFee, s.symbolType);
 		}
 	}
 
 	/**
-	 * @notice Sets the trading fees for symbols
+	 * @notice Sets the platform fees for symbols
 	 * @param _symbolIds Array of symbol IDs
-	 * @param _fees Array of trading fees
+	 * @param _fees Array of platform fees
 	 */
-	function setSymbolsTradingFees(uint256[] calldata _symbolIds, Fee[] calldata _fees) external onlyRole(LibAccessibility.SYMBOL_MANAGER_ROLE) {
+	function setSymbolsPlatformFees(uint256[] calldata _symbolIds, Fee[] calldata _fees) external onlyRole(LibAccessibility.SYMBOL_MANAGER_ROLE) {
 		if (_symbolIds.length != _fees.length) revert ValidationErrors.MismatchedLengths();
 
 		SymbolStorage.Layout storage s = SymbolStorage.layout();
 		for (uint256 i = 0; i < _symbolIds.length; i++) {
 			if (s.lastSymbolId < _symbolIds[i]) revert ValidationErrors.InvalidSymbol(_symbolIds[i]);
-			Fee memory oldFee = s.symbols[_symbolIds[i]].tradingFee;
-			s.symbols[_symbolIds[i]].tradingFee = _fees[i];
-			emit SymbolTradingFeeUpdated(_symbolIds[i], oldFee, _fees[i]);
+			Fee memory oldFee = s.symbols[_symbolIds[i]].platformFee;
+			s.symbols[_symbolIds[i]].platformFee = _fees[i];
+			emit SymbolPlatformFeeUpdated(_symbolIds[i], oldFee, _fees[i]);
 		}
 	}
 

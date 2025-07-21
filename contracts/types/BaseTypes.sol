@@ -26,7 +26,9 @@ struct Fee {
 
 enum FeeOp {
 	Subtract,
-	Add
+	Add,
+	Lock,
+	Unlock
 }
 
 struct FeeStructure {

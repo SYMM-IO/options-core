@@ -67,13 +67,13 @@ interface IControlEvents {
 		OptionType optionType,
 		uint256 oracleId,
 		address collateral,
-		Fee tradingFee,
+		Fee platformFee,
 		uint256 symbolType
 	);
 	event SymbolStateUpdated(uint256 indexed symbolId, bool status);
 	event SymbolNameUpdated(uint256 indexed symbolId, string name);
 	event SymbolTypeUpdated(uint256 indexed symbolId, uint256 symbolType);
-	event SymbolTradingFeeUpdated(uint256 indexed _symbolId, Fee _oldFee, Fee _newFee);
+	event SymbolPlatformFeeUpdated(uint256 indexed _symbolId, Fee _oldFee, Fee _newFee);
 	event PriceOracleAddressUpdated(address indexed oracle);
 	event SetManualSync(address user, bool isManual);
 	event SignatureVerifierUpdated(address indexed verifier);

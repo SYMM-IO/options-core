@@ -136,11 +136,11 @@ interface IControlFacet is IControlEvents {
 		OptionType _optionType,
 		uint256 _oracleId,
 		address _collateral,
-		Fee calldata _tradingFee,
+		Fee calldata _platformFee,
 		uint256 _symbolType
 	) external;
 	function addSymbols(Symbol[] calldata symbols) external;
-	function setSymbolsTradingFees(uint256[] calldata _symbolIds, Fee[] calldata _fees) external;
+	function setSymbolsPlatformFees(uint256[] calldata _symbolIds, Fee[] calldata _fees) external;
 	function setSymbolsValidationState(uint256[] calldata _symbolIds, bool[] calldata _states) external;
 	function setSymbolsNames(uint256[] calldata _symbolIds, string[] calldata _names) external;
 

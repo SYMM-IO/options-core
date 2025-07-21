@@ -70,7 +70,7 @@ export interface IConfig {
 		optionType: string
 		oracleId: string
 		isStableCoin: boolean
-		tradingFee: string
+		platformFee: string
 		symbolType: string
 	}>
 
