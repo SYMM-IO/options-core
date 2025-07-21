@@ -6,6 +6,7 @@ pragma solidity >=0.8.19;
 
 interface IAccountEvents {
 	event Deposit(address indexed sender, address indexed user, address indexed collateral, uint256 amount, uint256 newBalance);
+	event VirtualDeposit(address indexed sender, address indexed user, address indexed collateral, uint256 amount, uint256 newBalance);
 	event InternalTransfer(
 		address indexed sender,
 		address indexed receiver,
@@ -16,6 +17,16 @@ interface IAccountEvents {
 	);
 	event ExternalTransfer(address indexed sender, address indexed user, address indexed collateral, uint256 amount, address target);
 	event InitiateWithdraw(uint256 id, address indexed user, address indexed to, address indexed collateral, uint256 amount, uint256 newBalance);
+	event InitiateExpressWithdraw(
+		uint256 id,
+		address indexed user,
+		address indexed to,
+		address indexed collateral,
+		address provider,
+		bytes userData,
+		uint256 amount,
+		uint256 newBalance
+	);
 	event CompleteWithdraw(uint256 id);
 	event CancelWithdraw(uint256 id, address indexed user, address indexed collateral, uint256 amount, uint256 newBalance);
 	event SuspendWithdraw(uint256 id, address suspender);

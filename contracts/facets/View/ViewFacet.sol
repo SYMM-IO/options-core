@@ -1007,11 +1007,11 @@ contract ViewFacet is IViewFacet {
 	// ════════════════════════════════════════════════════════════════════════════
 
 	/**
-	 * @notice Gets the trading fee for an open intent
+	 * @notice Gets the platform fee for an open intent
 	 * @param intentId The intent ID
-	 * @return The trading fee
+	 * @return The platform fee
 	 */
-	function getOpenIntentTradingFee(uint256 intentId) external view returns (uint256) {
+	function getOpenIntentPlatformFee(uint256 intentId) external view returns (uint256) {
 		OpenIntent memory intent = OpenIntentStorage.layout().openIntents[intentId];
 		return intent.calculateFee(intent.feeStructure.platformFee.openFee);
 	}
@@ -1032,7 +1032,19 @@ contract ViewFacet is IViewFacet {
 	 * @return The premium
 	 */
 	function getOpenIntentPremium(uint256 intentId) external view returns (uint256) {
-		return OpenIntentStorage.layout().openIntents[intentId].calculatePremium();
+		OpenIntent memory intent = OpenIntentStorage.layout().openIntents[intentId];
+		return intent.calculatePremium(intent.price);
+	}
+
+	/**
+	 * @notice Gets the premium proportion for an open intent
+	 * @param intentId The intent ID
+	 * @param price The price
+	 * @return The premium proportion
+	 */
+	function getOpenIntentPremiumProportional(uint256 intentId, uint256 price) external view returns (uint256) {
+		OpenIntent memory intent = OpenIntentStorage.layout().openIntents[intentId];
+		return intent.calculatePremium(price);
 	}
 
 	// ════════════════════════════════════════════════════════════════════════════
@@ -1040,32 +1052,27 @@ contract ViewFacet is IViewFacet {
 	// ════════════════════════════════════════════════════════════════════════════
 
 	/**
-	 * @notice Gets the trading fee for a close intent
+	 * @notice Gets the platform fee for a close intent
 	 * @param intentId The intent ID
-	 * @return The trading fee
+	 * @param quantity The quantity
+	 * @param price The price
+	 * @return The platform fee
 	 */
-	function getCloseIntentTradingFee(uint256 intentId) external view returns (uint256) {
+	function getCloseIntentPlatformFee(uint256 intentId, uint256 quantity, uint256 price) external view returns (uint256) {
 		CloseIntent memory intent = CloseIntentStorage.layout().closeIntents[intentId];
-		return intent.calculateFee(intent.feeStructure.platformFee.closeFee);
+		return intent.calculateFee(intent.feeStructure.platformFee.closeFee, quantity, price);
 	}
 
 	/**
 	 * @notice Gets the affiliate fee for a close intent
 	 * @param intentId The intent ID
+	 * @param quantity The quantity
+	 * @param price The price
 	 * @return The affiliate fee
 	 */
-	function getCloseIntentAffiliateFee(uint256 intentId) external view returns (uint256) {
+	function getCloseIntentAffiliateFee(uint256 intentId, uint256 quantity, uint256 price) external view returns (uint256) {
 		CloseIntent memory intent = CloseIntentStorage.layout().closeIntents[intentId];
-		return intent.calculateFee(intent.feeStructure.affiliateFee.closeFee);
-	}
-
-	/**
-	 * @notice Gets the premium for a close intent
-	 * @param intentId The intent ID
-	 * @return The premium
-	 */
-	function getCloseIntentPremium(uint256 intentId) external view returns (uint256) {
-		return CloseIntentStorage.layout().closeIntents[intentId].calculatePremium();
+		return intent.calculateFee(intent.feeStructure.affiliateFee.closeFee, quantity, price);
 	}
 
 	// ════════════════════════════════════════════════════════════════════════════

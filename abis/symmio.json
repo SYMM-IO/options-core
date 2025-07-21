@@ -2332,6 +2332,11 @@
                         "type": "bool"
                     },
                     {
+                        "internalType": "bool",
+                        "name": "isVirtual",
+                        "type": "bool"
+                    },
+                    {
                         "internalType": "address",
                         "name": "receiver",
                         "type": "address"
@@ -2705,6 +2710,61 @@
         "anonymous": false,
         "inputs": [
             {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "id",
+                "type": "uint256"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "to",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "collateral",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "provider",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "bytes",
+                "name": "userData",
+                "type": "bytes"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "newBalance",
+                "type": "uint256"
+            }
+        ],
+        "name": "InitiateExpressWithdraw",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
                 "indexed": true,
                 "internalType": "address",
                 "name": "partyA",
@@ -3013,6 +3073,37 @@
             }
         ],
         "name": "LiquidationDetailUpdated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "collateral",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "enum MarginType",
+                "name": "marginType",
+                "type": "uint8"
+            }
+        ],
+        "name": "LockBalance",
         "type": "event"
     },
     {
@@ -3636,7 +3727,7 @@
                 ],
                 "indexed": false,
                 "internalType": "struct Fee",
-                "name": "tradingFee",
+                "name": "platformFee",
                 "type": "tuple"
             },
             {
@@ -3666,44 +3757,6 @@
             }
         ],
         "name": "SymbolNameUpdated",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            {
-                "indexed": true,
-                "internalType": "address",
-                "name": "partyB",
-                "type": "address"
-            },
-            {
-                "indexed": true,
-                "internalType": "uint256",
-                "name": "symbolId",
-                "type": "uint256"
-            }
-        ],
-        "name": "SymbolPriceUpdated",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            {
-                "indexed": true,
-                "internalType": "uint256",
-                "name": "symbolId",
-                "type": "uint256"
-            },
-            {
-                "indexed": false,
-                "internalType": "bool",
-                "name": "status",
-                "type": "bool"
-            }
-        ],
-        "name": "SymbolStateUpdated",
         "type": "event"
     },
     {
@@ -3752,7 +3805,45 @@
                 "type": "tuple"
             }
         ],
-        "name": "SymbolTradingFeeUpdated",
+        "name": "SymbolPlatformFeeUpdated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "partyB",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "symbolId",
+                "type": "uint256"
+            }
+        ],
+        "name": "SymbolPriceUpdated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "symbolId",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "bool",
+                "name": "status",
+                "type": "bool"
+            }
+        ],
+        "name": "SymbolStateUpdated",
         "type": "event"
     },
     {
@@ -3940,10 +4031,47 @@
         "anonymous": false,
         "inputs": [
             {
+                "indexed": true,
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "collateral",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "enum MarginType",
+                "name": "marginType",
+                "type": "uint8"
+            }
+        ],
+        "name": "UnlockBalance",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
                 "indexed": false,
                 "internalType": "uint256",
                 "name": "intentId",
                 "type": "uint256"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "partyB",
+                "type": "address"
             }
         ],
         "name": "UnlockOpenIntent",
@@ -3985,6 +4113,43 @@
             }
         ],
         "name": "UserWindowUpdated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "sender",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "collateral",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "newBalance",
+                "type": "uint256"
+            }
+        ],
+        "name": "VirtualDeposit",
         "type": "event"
     },
     {
@@ -4163,19 +4328,6 @@
     },
     {
         "inputs": [],
-        "name": "SECURED_DEPOSITOR_ROLE",
-        "outputs": [
-            {
-                "internalType": "bytes32",
-                "name": "",
-                "type": "bytes32"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
         "name": "SETTER_ROLE",
         "outputs": [
             {
@@ -4216,6 +4368,19 @@
     {
         "inputs": [],
         "name": "UNPAUSER_ROLE",
+        "outputs": [
+            {
+                "internalType": "bytes32",
+                "name": "",
+                "type": "bytes32"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "VIRTUAL_DEPOSITOR_ROLE",
         "outputs": [
             {
                 "internalType": "bytes32",
@@ -4346,7 +4511,7 @@
                     }
                 ],
                 "internalType": "struct Fee",
-                "name": "_tradingFee",
+                "name": "_platformFee",
                 "type": "tuple"
             },
             {
@@ -4393,7 +4558,7 @@
                             }
                         ],
                         "internalType": "struct Fee",
-                        "name": "tradingFee",
+                        "name": "platformFee",
                         "type": "tuple"
                     },
                     {
@@ -6096,6 +6261,16 @@
                 "internalType": "uint256",
                 "name": "intentId",
                 "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "quantity",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "price",
+                "type": "uint256"
             }
         ],
         "name": "getCloseIntentAffiliateFee",
@@ -6134,28 +6309,19 @@
                 "internalType": "uint256",
                 "name": "intentId",
                 "type": "uint256"
-            }
-        ],
-        "name": "getCloseIntentPremium",
-        "outputs": [
+            },
             {
                 "internalType": "uint256",
-                "name": "",
+                "name": "quantity",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "price",
                 "type": "uint256"
             }
         ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "intentId",
-                "type": "uint256"
-            }
-        ],
-        "name": "getCloseIntentTradingFee",
+        "name": "getCloseIntentPlatformFee",
         "outputs": [
             {
                 "internalType": "uint256",
@@ -6439,6 +6605,11 @@
                     {
                         "internalType": "bool",
                         "name": "isActive",
+                        "type": "bool"
+                    },
+                    {
+                        "internalType": "bool",
+                        "name": "isVirtual",
                         "type": "bool"
                     },
                     {
@@ -7055,7 +7226,7 @@
                 "type": "uint256"
             }
         ],
-        "name": "getOpenIntentPremium",
+        "name": "getOpenIntentPlatformFee",
         "outputs": [
             {
                 "internalType": "uint256",
@@ -7074,7 +7245,31 @@
                 "type": "uint256"
             }
         ],
-        "name": "getOpenIntentTradingFee",
+        "name": "getOpenIntentPremium",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "intentId",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "price",
+                "type": "uint256"
+            }
+        ],
+        "name": "getOpenIntentPremiumProportional",
         "outputs": [
             {
                 "internalType": "uint256",
@@ -7508,7 +7703,7 @@
                             }
                         ],
                         "internalType": "struct Fee",
-                        "name": "tradingFee",
+                        "name": "platformFee",
                         "type": "tuple"
                     },
                     {
@@ -7586,7 +7781,7 @@
                             }
                         ],
                         "internalType": "struct Fee",
-                        "name": "tradingFee",
+                        "name": "platformFee",
                         "type": "tuple"
                     },
                     {
@@ -8102,6 +8297,11 @@
                         "internalType": "enum WithdrawStatus",
                         "name": "status",
                         "type": "uint8"
+                    },
+                    {
+                        "internalType": "bool",
+                        "name": "isVirtual",
+                        "type": "bool"
                     }
                 ],
                 "internalType": "struct Withdraw",
@@ -8864,29 +9064,6 @@
     {
         "inputs": [
             {
-                "internalType": "address",
-                "name": "collateral",
-                "type": "address"
-            },
-            {
-                "internalType": "address",
-                "name": "user",
-                "type": "address"
-            },
-            {
-                "internalType": "uint256",
-                "name": "amount",
-                "type": "uint256"
-            }
-        ],
-        "name": "securedDepositFor",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
                 "internalType": "uint256",
                 "name": "tradeId",
                 "type": "uint256"
@@ -9338,6 +9515,11 @@
                         "type": "bool"
                     },
                     {
+                        "internalType": "bool",
+                        "name": "isVirtual",
+                        "type": "bool"
+                    },
+                    {
                         "internalType": "address",
                         "name": "receiver",
                         "type": "address"
@@ -9651,7 +9833,7 @@
                 "type": "tuple[]"
             }
         ],
-        "name": "setSymbolsTradingFees",
+        "name": "setSymbolsPlatformFees",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -10447,6 +10629,29 @@
             }
         ],
         "name": "updateOracle",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "collateral",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "user",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            }
+        ],
+        "name": "virtualDepositFor",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"

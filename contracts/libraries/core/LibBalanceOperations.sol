@@ -33,7 +33,7 @@ library LibBalanceOperations {
 		_deposit(collateral, user, amount, true);
 	}
 
-	function securedDepositFor(address collateral, address user, uint256 amount) internal {
+	function virtualDepositFor(address collateral, address user, uint256 amount) internal {
 		_deposit(collateral, user, amount, false);
 	}
 
@@ -122,10 +122,13 @@ library LibBalanceOperations {
 		if (available < amount) revert BalanceErrors.InsufficientBalance(sender, collateral, amount, available);
 		sender.requireSolvent(address(0), collateral, MarginType.ISOLATED);
 
+		bool isVirtual = false;
 		if (provider != address(0)) {
 			ExpressWithdrawProviderConfig storage providerConfig = accountLayout.expressWithdrawProviderConfigs[provider][collateral];
 			if (!providerConfig.isActive) revert BalanceErrors.ExpressWithdrawProviderNotActive(provider);
 			if (providerConfig.receiver == address(0)) revert ValidationErrors.ZeroAddress("receiver");
+
+			isVirtual = providerConfig.isVirtual;
 
 			(bool isValid, string memory reason) = IExpressWithdrawProvider(provider).validateWithdraw(sender, collateral, amount, to, userData);
 			if (!isValid) revert BalanceErrors.ExpressWithdrawRejectedByProvider(provider, reason);
@@ -143,7 +146,8 @@ library LibBalanceOperations {
 			provider: provider,
 			userData: userData,
 			timestamp: block.timestamp,
-			status: WithdrawStatus.INITIATED
+			status: WithdrawStatus.INITIATED,
+			isVirtual: isVirtual
 		});
 
 		accountLayout.withdrawals[currentId] = withdrawObject;
@@ -200,11 +204,13 @@ library LibBalanceOperations {
 
 		withdrawal.status = WithdrawStatus.COMPLETED;
 
-		uint256 amountInCollateralDecimals = LibDecimals.denormalizeAmount(withdrawal.collateral, withdrawal.amount);
-		address receiver = withdrawal.to;
-		if (withdrawal.provider != address(0))
-			receiver = accountLayout.expressWithdrawProviderConfigs[withdrawal.provider][withdrawal.collateral].receiver;
-		IERC20(withdrawal.collateral).safeTransfer(receiver, amountInCollateralDecimals);
+		if (!withdrawal.isVirtual) {
+			uint256 amountInCollateralDecimals = LibDecimals.denormalizeAmount(withdrawal.collateral, withdrawal.amount);
+			address receiver = withdrawal.to;
+			if (withdrawal.provider != address(0))
+				receiver = accountLayout.expressWithdrawProviderConfigs[withdrawal.provider][withdrawal.collateral].receiver;
+			IERC20(withdrawal.collateral).safeTransfer(receiver, amountInCollateralDecimals);
+		}
 	}
 
 	function cancelWithdraw(uint256 id) internal {

@@ -30,6 +30,15 @@ const config: HardhatUserConfig = {
 			url: "https://polygon-rpc.com",
 			accounts: [privateKey],
 		},
+		base: {
+			url: "https://mainnet.base.org",
+			accounts: [privateKey],
+		},
+	},
+	etherscan: {
+		apiKey: {
+			base: process.env.BASE_API_KEY || "",
+		},
 	},
 	paths: {
 		artifacts: "./artifacts",
