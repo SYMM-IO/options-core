@@ -163,10 +163,9 @@ library LibTradeOperations {
 				}
 
 				uint256 pnl = trade.calculatePnl(sig.settlementPrice, trade.getOpenAmount());
-
 				uint256 exerciseFee = trade.calculateExerciseFee(sig.settlementPrice, pnl);
-				uint256 amountToTransfer = pnl - exerciseFee;
 
+				uint256 amountToTransfer = pnl - exerciseFee;
 				amountToTransfer = (amountToTransfer * 1e18) / sig.collateralPrice;
 
 				trade.settledPrice = sig.settlementPrice;
@@ -194,10 +193,8 @@ library LibTradeOperations {
 					FeeStructure memory s = trade.feeStructure;
 
 					/* ---------------------------------------- GET FEES ---------------------------------------- */
-					uint256[2] memory fees = [
-						(pnl * s.platformFee.closeFee) / 1e18,
-						(pnl * s.affiliateFee.closeFee) / 1e18
-					];
+					uint256 pnlInCollateral = (pnl * 1e18) / sig.collateralPrice;
+					uint256[2] memory fees = [(pnlInCollateral * s.platformFee.closeFee) / 1e18, (pnlInCollateral * s.affiliateFee.closeFee) / 1e18];
 
 					DecreaseBalanceReason[2] memory decReasons = [DecreaseBalanceReason.PLATFORM_FEE, DecreaseBalanceReason.AFFILIATE_FEE];
 
