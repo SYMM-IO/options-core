@@ -96,8 +96,8 @@ library LibOpenIntentOps {
 		unregister(self, false);
 	}
 
-	function _lock(OpenIntent memory self, uint256 amount) internal {
-		ScheduledReleaseBalance storage partyABalance = self.partyA.balanceOf(getSymbol(self).collateral);
+	function _lock(OpenIntent memory self, address collateral, uint256 amount) internal {
+		ScheduledReleaseBalance storage partyABalance = self.partyA.balanceOf(collateral);
 		if (self.tradeAgreements.marginType == MarginType.ISOLATED) {
 			partyABalance.isolatedLock(amount);
 		} else {
@@ -105,8 +105,8 @@ library LibOpenIntentOps {
 		}
 	}
 
-	function _unlock(OpenIntent memory self, uint256 amount) internal {
-		ScheduledReleaseBalance storage partyABalance = self.partyA.balanceOf(getSymbol(self).collateral);
+	function _unlock(OpenIntent memory self, address collateral, uint256 amount) internal {
+		ScheduledReleaseBalance storage partyABalance = self.partyA.balanceOf(collateral);
 		if (self.tradeAgreements.marginType == MarginType.ISOLATED) {
 			partyABalance.isolatedUnlock(amount);
 		} else {
@@ -115,11 +115,11 @@ library LibOpenIntentOps {
 	}
 
 	function lockPremiumIfBuy(OpenIntent memory self) internal {
-		if (self.tradeAgreements.tradeSide == TradeSide.BUY) _lock(self, calculatePremium(self, self.price));
+		if (self.tradeAgreements.tradeSide == TradeSide.BUY) _lock(self, getSymbol(self).collateral, calculatePremium(self, self.price));
 	}
 
 	function unlockPremiumIfBuy(OpenIntent memory self) internal {
-		if (self.tradeAgreements.tradeSide == TradeSide.BUY) _unlock(self, calculatePremium(self, self.price));
+		if (self.tradeAgreements.tradeSide == TradeSide.BUY) _unlock(self, getSymbol(self).collateral, calculatePremium(self, self.price));
 	}
 
 	function lockMMIfSell(OpenIntent memory self) internal {
@@ -171,9 +171,9 @@ library LibOpenIntentOps {
 					bal.scheduledAdd(partyB, fees[i], self.tradeAgreements.marginType, incReasons[i]);
 				}
 			} else if (op == FeeOp.Lock) {
-				_lock(self, fees[i]);
+				_lock(self, self.feeStructure.feeToken, fees[i]);
 			} else if (op == FeeOp.Unlock) {
-				_unlock(self, fees[i]);
+				_unlock(self, self.feeStructure.feeToken, fees[i]);
 			}
 		}
 	}
