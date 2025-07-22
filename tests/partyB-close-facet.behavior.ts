@@ -5,7 +5,7 @@ import { PartyA } from "./models/partyA.model"
 import { RunContext } from "./run-context"
 import { openIntentRequestBuilder } from "./models/builders/send-open-intent.builder"
 import { PartyB } from "./models/partyB.model"
-import { MarginType, TradeSide, TradeStatus } from "./option-enums"
+import { CloseIntentStatus, MarginType, TradeSide, TradeStatus } from "./option-enums"
 import { ethers, network } from "hardhat"
 import { e } from "../utils/e"
 import { CloseIntentStruct, SymbolStruct, TradeStruct } from "../types/contracts/interfaces/ISymmio"
@@ -83,23 +83,80 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 		await partyB2.lockOpenIntent(3)
 
 		await partyB1.fillOpenIntent(1, e(100), request.price)
-		await partyB1.fillOpenIntent(2, e(100), request.price)
-		await partyB2.fillOpenIntent(3, e(100), request.price)
+		await partyB1.fillOpenIntent(2, e(100), requestCrossBuy.price)
+		await partyB2.fillOpenIntent(3, e(100), requestCrossSell.price)
 
 		await partyA1.sendCloseIntent(1, e(100), request.price, (await getLatestBlockTime()) + 120)
-		await partyA1.sendCloseIntent(2, e(100), request.price, (await getLatestBlockTime()) + 120)
-		await partyA2.sendCloseIntent(3, e(100), request.price, (await getLatestBlockTime()) + 120)
+		await partyA1.sendCloseIntent(2, e(100), requestCrossBuy.price, (await getLatestBlockTime()) + 120)
+		await partyA2.sendCloseIntent(3, e(100), requestCrossSell.price, (await getLatestBlockTime()) + 120)
 	})
 
-	describe("fillCloseIntent", async function () {
+	describe("Accept Cancel Open Intent", async function () {
+		beforeEach(async () => {
+			await expect(partyA1.sendCancelCloseIntent(["1"])).not.to.reverted
+		})
+
 		it("Should be failed when Globally Paused", async () => {
 			await context.controlFacet.pauseGlobal()
-			await expect(partyB1.fillCloseIntent(1, 100, 7)).to.be.revertedWithCustomError(context.partyBOpenFacet, "GlobalPaused")
+			await expect(partyB1.acceptCancelCloseIntent(1)).to.be.revertedWithCustomError(context.partyBCloseFacet, "GlobalPaused")
 		})
 
 		it("Should failed when PartyB action Paused", async () => {
 			await context.controlFacet.pausePartyBActions()
-			await expect(partyB1.fillCloseIntent(1, 100, 7)).to.be.revertedWithCustomError(context.partyBOpenFacet, "PartyBActionsPaused")
+			await expect(partyB1.acceptCancelCloseIntent(1)).to.be.revertedWithCustomError(context.partyBCloseFacet, "PartyBActionsPaused")
+		})
+
+		it("Should fail when Close Intent status as expected", async () => {
+			await expect(partyB1.acceptCancelCloseIntent(2)).to.be.revertedWithCustomError(context.partyACloseFacet, "InvalidState")
+		})
+
+		it("Should failed when not Authorized Owner", async () => {
+			const closeIntent = await context.viewFacet.getCloseIntent(1)
+
+			expect(closeIntent.status).to.be.equal(CloseIntentStatus.CANCEL_PENDING)
+			await expect(partyB2.acceptCancelCloseIntent(1)).to.be.revertedWithCustomError(context.partyBCloseFacet, "UnauthorizedSender")
+		})
+
+		it("Should Update State to 'CANCELED' on ACCEPT Cancel Close Intent", async function () {
+			await expect(partyB1.acceptCancelCloseIntent(1)).not.to.be.reverted
+
+			const closeIntent = await context.viewFacet.getCloseIntent(1)
+			expect(closeIntent.status).to.be.equal(CloseIntentStatus.CANCELED)
+			expect(partyB1.fillCloseIntent(1, closeIntent.quantity, closeIntent.price)).to.revertedWithCustomError(context.partyACloseFacet, "InvalidState")
+		})
+
+		it("Should Update Timestamp on Cancel Close Intent", async function () {
+			await expect(partyB1.acceptCancelCloseIntent(1)).not.to.be.reverted
+
+			const closeIntent = await context.viewFacet.getCloseIntent(1)
+			expect(closeIntent.statusModifyTimestamp).to.be.equal(await getLatestBlockTime())
+		})
+
+		it("Should Update Trade Close Pending Amount on Expire", async function () {
+			const tradeBefore = await context.viewFacet.getTrade(1)
+
+			await expect(partyB1.acceptCancelCloseIntent(1)).not.to.be.reverted
+
+			const closeIntent = await context.viewFacet.getCloseIntent(2)
+			const tradeAfter = await context.viewFacet.getTrade(1)
+			expect(tradeBefore.closePendingAmount - tradeAfter.closePendingAmount).to.be.equal(closeIntent.quantity)
+		})	
+
+		
+	})
+	describe("fillCloseIntent", async function () {
+		it("Should be failed when Globally Paused", async () => {
+			await context.controlFacet.pauseGlobal()
+			await expect(partyB1.fillCloseIntent(1, 100, 7)).to.be.revertedWithCustomError(context.partyBCloseFacet, "GlobalPaused")
+		})
+
+		it("Should failed when PartyB action Paused", async () => {
+			await context.controlFacet.pausePartyBActions()
+			await expect(partyB1.fillCloseIntent(1, 100, 7)).to.be.revertedWithCustomError(context.partyBCloseFacet, "PartyBActionsPaused")
+		})
+
+		it("Should failed when not Authorized Owner", async () => {
+			await expect(partyB2.fillCloseIntent(1, 100, 7)).to.be.revertedWithCustomError(context.partyBCloseFacet, "UnauthorizedSender")
 		})
 
 		it("Should failed when amount to fill not in range", async () => {
