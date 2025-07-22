@@ -30,6 +30,10 @@ import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgr
 
 import { SignatureVerifier } from "./SignatureVerifier.sol";
 
+interface ISymmio {
+	function isCallFromInstantLayer() external view returns (bool);
+}
+
 contract SymmioPartyB is
 	Initializable,
 	SignatureVerifier,
@@ -260,7 +264,7 @@ contract SymmioPartyB is
 			if (restrictedSelectors[functionSelector]) {
 				_checkRole(MANAGER_ROLE, msg.sender);
 			} else {
-				if (!hasRole(MANAGER_ROLE, msg.sender) && !hasRole(TRUSTED_ROLE, msg.sender))
+				if (!hasRole(MANAGER_ROLE, msg.sender) && !hasRole(TRUSTED_ROLE, msg.sender) && !ISymmio(symmioAddress).isCallFromInstantLayer())
 					revert InsufficientPermissions(msg.sender, functionSelector);
 			}
 		} else {
