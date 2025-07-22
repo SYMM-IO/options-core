@@ -434,7 +434,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			const affiliateBalanceAfter = await context.viewFacet.getIsolatedBalance(openIntent.affiliate, await context.collateralNL.getAddress())
 			const partyAFeeBalance = await context.viewFacet.getIsolatedBalance(partyA1.address, await context.collateralNL.getAddress())
 
-			const intentTradingFee = await context.viewFacet.getOpenIntentTradingFee(openIntent.id) //Platform Fee
+			const intentTradingFee = await context.viewFacet.getOpenIntentPlatformFee(openIntent.id) //Platform Fee
 			const intentAffiliateFee = await context.viewFacet.getOpenIntentAffiliateFee(openIntent.id) //Affiliate Fee
 
 			console.log("Affiliate Address:", openIntent.affiliate)
@@ -458,7 +458,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			const defaultFeeBalanceAfter = await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateralNL.getAddress())
 			const partyAFeeBalance = await context.viewFacet.getIsolatedBalance(partyA1.address, await context.collateralNL.getAddress())
 
-			const intentTradingFee = await context.viewFacet.getOpenIntentTradingFee(openIntent.id) //Platform Fee
+			const intentTradingFee = await context.viewFacet.getOpenIntentPlatformFee(openIntent.id) //Platform Fee
 			const intentAffiliateFee = await context.viewFacet.getOpenIntentAffiliateFee(openIntent.id) //Affiliate Fee
 
 			console.log("Intent Trading Fee", intentTradingFee)

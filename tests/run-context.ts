@@ -129,7 +129,7 @@ export async function createRunContext(
 	const multiAccount: MultiAccount = await run("deploy:multiAccount", {
 		symmioaddress: context.common.diamondAddress,
 		admin: context.signers.admin.address,
-		tradeNFTAddress: ZeroAddress,
+		tradenftaddress: ZeroAddress,
 	})
 	const symmioPartyB: SymmioPartyB = await run("deploy:symmioPartyB", {
 		symmioaddress: context.common.diamondAddress,

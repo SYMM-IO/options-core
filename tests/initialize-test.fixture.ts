@@ -62,7 +62,7 @@ export async function initializeTestFixture(): Promise<RunContext> {
 	await context.controlFacet.setAffiliateStatus(context.signers.affiliate1, true)
 	await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: e(0.01), closeFee: e(0.02) }])
 
-	await context.controlFacet.setSymbolsTradingFees(
+	await context.controlFacet.setSymbolsPlatformFees(
 		[1, 2, 3, 4],
 		[
 			{ openFee: e(0.01), closeFee: e(0.02) },

@@ -27,7 +27,7 @@ describe(`${name}-v${version}`, () => {
 			shouldBehaveLikePartyBOpenFacet()
 		})
 
-		describe.only("Facets_PartyACloseFacet", async function () {
+		describe("Facets_PartyACloseFacet", async function () {
 			shouldBehaveLikePartyACloseFacet()
 		})
 
