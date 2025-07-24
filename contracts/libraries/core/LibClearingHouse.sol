@@ -215,7 +215,7 @@ library LibClearingHouse {
 			uint256 price = prices[i];
 
 			ValidationErrors.requireStatus("TradeStatus", uint8(trade.status), uint8(TradeStatus.OPENED));
-			if (trade.partyA != detail.partyA || trade.partyB != detail.partyB) {
+			if ((detail.partyA != address(0) && trade.partyA != detail.partyA) || (detail.partyB != address(0) && trade.partyB != detail.partyB)) {
 				revert LiquidationErrors.TradeNotInLiquidation(liquidationId, trade.id);
 			}
 
@@ -225,10 +225,7 @@ library LibClearingHouse {
 				);
 
 				if (trade.tradeAgreements.marginType == MarginType.ISOLATED) {
-					partyBBalance.instantIsolatedAdd(
-						trade.calculateProportionalPremium(trade.getOpenAmount()),
-						IncreaseBalanceReason.PREMIUM
-					);
+					partyBBalance.instantIsolatedAdd(trade.calculateProportionalPremium(trade.getOpenAmount()), IncreaseBalanceReason.PREMIUM);
 				} else {
 					partyBBalance.scheduledAdd(
 						trade.partyA,
