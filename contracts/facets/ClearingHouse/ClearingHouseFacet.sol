@@ -76,17 +76,15 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 	}
 
 	function distributeCollateral(
+		uint256 liquidationId,
 		address partyB,
 		address collateral,
 		MarginType marginType,
 		address[] calldata partyAs,
 		uint256[] calldata amounts
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-		LibClearingHouse.distributeCollateral(partyB, collateral, marginType, partyAs, amounts);
-		emit DistributeCollateral(msg.sender, partyB, collateral, partyAs, amounts);
-		// if (isLiquidationFinished) {
-		// 	emit FullyLiquidated(partyB, liquidationId);
-		// }
+		LibClearingHouse.distributeCollateral(liquidationId, partyB, collateral, marginType, partyAs, amounts);
+		emit DistributeCollateral(msg.sender, partyB, collateral, liquidationId, partyAs, amounts);
 	}
 
 	function flagCrossPartyBLiquidation(
