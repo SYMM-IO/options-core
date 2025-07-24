@@ -18,7 +18,7 @@ import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
 import { CloseIntentStorage } from "../../storages/CloseIntentStorage.sol";
 import { SymbolStorage } from "../../storages/SymbolStorage.sol";
 
-import { MarginType, TradeSide } from "../../types/BaseTypes.sol";
+import { MarginType, TradeSide, TradeAgreements } from "../../types/BaseTypes.sol";
 import { OpenIntentStatus, CloseIntentStatus, OpenIntent, CloseIntent } from "../../types/IntentTypes.sol";
 import { Trade, TradeStatus } from "../../types/TradeTypes.sol";
 import { Withdraw, WithdrawStatus } from "../../types/WithdrawTypes.sol";
@@ -37,7 +37,7 @@ library LibClearingHouse {
 	using LibCloseIntentOps for CloseIntent;
 
 	// =============================================================
-	//                      ✨  Internal helpers  ✨
+	//                  ✨  Internal helpers  ✨
 	// =============================================================
 
 	/**
@@ -149,13 +149,8 @@ library LibClearingHouse {
 		}
 
 		if (crossBalance.balance > 0) {
-			partyA.balanceOf(collateral).subForCounterParty(
-				partyB,
-				uint256(crossBalance.balance),
-				MarginType.CROSS,
-				DecreaseBalanceReason.LIQUIDATION
-			);
-			balB.scheduledAdd(partyA, uint256(crossBalance.balance), MarginType.CROSS, IncreaseBalanceReason.LIQUIDATION);
+			balB.subForCounterParty(partyA, uint256(crossBalance.balance), MarginType.CROSS, DecreaseBalanceReason.LIQUIDATION);
+			partyA.balanceOf(collateral).scheduledAdd(partyB, uint256(crossBalance.balance), MarginType.CROSS, IncreaseBalanceReason.LIQUIDATION);
 		}
 		crossBalance.balance = 0;
 		crossBalance.locked = 0;
@@ -191,7 +186,7 @@ library LibClearingHouse {
 		if (crossBalance.balance > 0) {
 			ScheduledReleaseBalance storage balB = detail.partyB.balanceOf(detail.collateral);
 			balA.subForCounterParty(detail.partyB, uint256(crossBalance.balance), MarginType.CROSS, DecreaseBalanceReason.LIQUIDATION);
-			balB.scheduledAdd(detail.partyB, uint256(crossBalance.balance), MarginType.CROSS, IncreaseBalanceReason.LIQUIDATION);
+			balB.scheduledAdd(detail.partyA, uint256(crossBalance.balance), MarginType.CROSS, IncreaseBalanceReason.LIQUIDATION);
 		}
 		crossBalance.balance = 0;
 		crossBalance.locked = 0;
@@ -210,8 +205,13 @@ library LibClearingHouse {
 		LiquidationDetail storage detail = LiquidationStorage.layout().liquidationDetails[liquidationId];
 		_requireStatus(detail, LiquidationStatus.IN_PROGRESS);
 
+		TradeStorage.Layout storage tradeLayout = TradeStorage.layout();
+		SymbolStorage.Layout storage symbolLayout = SymbolStorage.layout();
+
 		for (uint256 i = 0; i < tradeIds.length; i++) {
-			Trade storage trade = TradeStorage.layout().trades[tradeIds[i]];
+			Trade storage trade = tradeLayout.trades[tradeIds[i]];
+			TradeAgreements storage tradeAgreement = trade.tradeAgreements;
+
 			uint256 price = prices[i];
 
 			ValidationErrors.requireStatus("TradeStatus", uint8(trade.status), uint8(TradeStatus.OPENED));
@@ -219,23 +219,21 @@ library LibClearingHouse {
 				revert LiquidationErrors.TradeNotInLiquidation(liquidationId, trade.id);
 			}
 
-			if (trade.tradeAgreements.tradeSide == TradeSide.BUY) {
-				ScheduledReleaseBalance storage partyBBalance = trade.partyB.balanceOf(
-					SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId].collateral
-				);
+			if (tradeAgreement.tradeSide == TradeSide.BUY) {
+				ScheduledReleaseBalance storage partyBBalance = trade.partyB.balanceOf(symbolLayout.symbols[tradeAgreement.symbolId].collateral);
 
-				if (trade.tradeAgreements.marginType == MarginType.ISOLATED) {
+				if (tradeAgreement.marginType == MarginType.ISOLATED) {
 					partyBBalance.instantIsolatedAdd(trade.calculateProportionalPremium(trade.getOpenAmount()), IncreaseBalanceReason.PREMIUM);
 				} else {
 					partyBBalance.scheduledAdd(
 						trade.partyA,
 						trade.calculateProportionalPremium(trade.getOpenAmount()),
-						trade.tradeAgreements.marginType,
+						tradeAgreement.marginType,
 						IncreaseBalanceReason.PREMIUM
 					);
 				}
 			} else {
-				trade.partyA.balanceOf(SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId].collateral).decreaseMM(
+				trade.partyA.balanceOf(symbolLayout.symbols[tradeAgreement.symbolId].collateral).decreaseMM(
 					trade.partyB,
 					trade.calculateProportionalMM(trade.getOpenAmount())
 				);
@@ -253,21 +251,22 @@ library LibClearingHouse {
 		balance.scheduledAdd(counterParty, amount, MarginType.CROSS, IncreaseBalanceReason.ALLOCATE_FROM_RESERVE);
 	}
 
-	function confiscatePartyA(uint256 liquidationId, uint256 amount) internal {
+	function confiscate(uint256 liquidationId, uint256 amount, address party) internal {
 		LiquidationDetail storage detail = LiquidationStorage.layout().liquidationDetails[liquidationId];
 
-		ScheduledReleaseBalance storage balance = detail.partyA.balanceOf(detail.collateral);
+		address counterParty = detail.partyA == party ? detail.partyB : detail.partyA;
 
-		int256 counterPartyBalance = balance.counterPartyBalance(detail.partyB, MarginType.CROSS);
-		if (counterPartyBalance < int256(amount))
-			revert BalanceErrors.InsufficientIntBalance(detail.partyA, detail.collateral, amount, counterPartyBalance);
+		ScheduledReleaseBalance storage balance = party.balanceOf(detail.collateral);
+
+		int256 counterPartyBalance = balance.counterPartyBalance(counterParty, MarginType.CROSS);
+		if (counterPartyBalance < int256(amount)) revert BalanceErrors.InsufficientIntBalance(party, detail.collateral, amount, counterPartyBalance);
 
 		_requireStatus(detail, LiquidationStatus.IN_PROGRESS);
 
-		balance.subForCounterParty(detail.partyB, amount, MarginType.CROSS, DecreaseBalanceReason.CONFISCATE);
+		balance.subForCounterParty(counterParty, amount, MarginType.CROSS, DecreaseBalanceReason.CONFISCATE);
 	}
 
-	function confiscatePartyBWithdrawal(uint256 withdrawId) internal {
+	function confiscateWithdrawal(uint256 withdrawId) internal {
 		Withdraw storage withdrawal = AccountStorage.layout().withdrawals[withdrawId];
 		ValidationErrors.requireStatus("WithdrawStatus", uint8(withdrawal.status), uint8(WithdrawStatus.INITIATED));
 		withdrawal.status = WithdrawStatus.CANCELED;
@@ -290,9 +289,6 @@ library LibClearingHouse {
 			address partyA = partyAs[i];
 			uint256 amount = amounts[i];
 			totalAmount += amount;
-
-			// Subtract from partyB's balance
-			balanceB.subForCounterParty(partyA, amount, marginType, DecreaseBalanceReason.LIQUIDATION);
 
 			// Add to partyA's balance
 			partyA.balanceOf(collateral).scheduledAdd(partyB, amount, marginType, IncreaseBalanceReason.LIQUIDATION);

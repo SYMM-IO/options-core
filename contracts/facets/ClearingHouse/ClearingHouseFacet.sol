@@ -61,17 +61,18 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 		emit LiquidateIsolatedPartyB(msg.sender, partyB, collateral, partyB.balanceOf(collateral).isolatedBalance, upnl, collateralPrice);
 	}
 
-	function confiscatePartyA(
+	function confiscate(
 		uint256 liquidationId,
-		uint256 amount
+		uint256 amount,
+		address party
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-		LibClearingHouse.confiscatePartyA(liquidationId, amount);
-		emit ConfiscatePartyA(msg.sender, liquidationId, amount);
+		LibClearingHouse.confiscate(liquidationId, amount, party);
+		emit Confiscate(msg.sender, party, liquidationId, amount);
 	}
 
-	function confiscatePartyBWithdrawal(uint256 withdrawId) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-		LibClearingHouse.confiscatePartyBWithdrawal(withdrawId);
-		emit ConfiscatePartyBWithdrawal(msg.sender, withdrawId);
+	function confiscateWithdrawal(uint256 withdrawId) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
+		LibClearingHouse.confiscateWithdrawal(withdrawId);
+		emit ConfiscateWithdrawal(msg.sender, withdrawId);
 	}
 
 	function distributeCollateral(
