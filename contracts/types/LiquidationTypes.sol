@@ -20,6 +20,8 @@ struct LiquidationDetail {
 	uint256 flagTimestamp;
 	uint256 liquidationTimestamp;
 	uint256 collateralPrice;
+	uint256 confiscatedAmount;
+	uint256 distributedAmount;
 	address flagger;
 	address collateral;
 	address partyA;

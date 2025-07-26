@@ -149,8 +149,9 @@ library LibClearingHouse {
 		}
 
 		if (crossBalance.balance > 0) {
-			balB.subForCounterParty(partyA, uint256(crossBalance.balance), MarginType.CROSS, DecreaseBalanceReason.LIQUIDATION);
-			partyA.balanceOf(collateral).scheduledAdd(partyB, uint256(crossBalance.balance), MarginType.CROSS, IncreaseBalanceReason.LIQUIDATION);
+			uint256 balance = uint256(crossBalance.balance);
+			balB.subForCounterParty(partyA, balance, MarginType.CROSS, DecreaseBalanceReason.LIQUIDATION);
+			partyA.balanceOf(collateral).scheduledAdd(partyB, balance, MarginType.CROSS, IncreaseBalanceReason.LIQUIDATION);
 		}
 		crossBalance.balance = 0;
 		crossBalance.locked = 0;
@@ -185,8 +186,9 @@ library LibClearingHouse {
 
 		if (crossBalance.balance > 0) {
 			ScheduledReleaseBalance storage balB = detail.partyB.balanceOf(detail.collateral);
-			balA.subForCounterParty(detail.partyB, uint256(crossBalance.balance), MarginType.CROSS, DecreaseBalanceReason.LIQUIDATION);
-			balB.scheduledAdd(detail.partyA, uint256(crossBalance.balance), MarginType.CROSS, IncreaseBalanceReason.LIQUIDATION);
+			uint256 balance = uint256(crossBalance.balance);
+			balA.subForCounterParty(detail.partyB, balance, MarginType.CROSS, DecreaseBalanceReason.LIQUIDATION);
+			balB.scheduledAdd(detail.partyA, balance, MarginType.CROSS, IncreaseBalanceReason.LIQUIDATION);
 		}
 		crossBalance.balance = 0;
 		crossBalance.locked = 0;
@@ -264,6 +266,9 @@ library LibClearingHouse {
 		_requireStatus(detail, LiquidationStatus.IN_PROGRESS);
 
 		balance.subForCounterParty(counterParty, amount, MarginType.CROSS, DecreaseBalanceReason.CONFISCATE);
+
+		// Track the confiscated amount
+		detail.confiscatedAmount += amount;
 	}
 
 	function confiscateWithdrawal(uint256 withdrawId) internal {
@@ -274,6 +279,7 @@ library LibClearingHouse {
 	}
 
 	function distributeCollateral(
+		uint256 liquidationId,
 		address partyB,
 		address collateral,
 		MarginType marginType,
@@ -281,6 +287,9 @@ library LibClearingHouse {
 		uint256[] calldata amounts
 	) internal {
 		if (partyAs.length != amounts.length) revert LiquidationErrors.MismatchedArrayLengths(partyAs.length, amounts.length);
+
+		LiquidationDetail storage detail = LiquidationStorage.layout().liquidationDetails[liquidationId];
+		_requireStatus(detail, LiquidationStatus.IN_PROGRESS);
 
 		ScheduledReleaseBalance storage balanceB = partyB.balanceOf(collateral);
 
@@ -292,7 +301,12 @@ library LibClearingHouse {
 
 			// Add to partyA's balance
 			partyA.balanceOf(collateral).scheduledAdd(partyB, amount, marginType, IncreaseBalanceReason.LIQUIDATION);
+
+			// Track the distributed amount
+			detail.distributedAmount += amount;
 		}
+
+		if (detail.distributedAmount > detail.confiscatedAmount) revert LiquidationErrors.DistributedAmountExceedsConfiscatedAmount(liquidationId);
 
 		if (balanceB.counterPartyBalance(partyB, marginType) < int256(totalAmount)) {
 			revert BalanceErrors.InsufficientIntBalance(partyB, collateral, totalAmount, balanceB.counterPartyBalance(partyB, marginType));

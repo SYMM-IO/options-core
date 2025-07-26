@@ -11,4 +11,5 @@ library LiquidationErrors {
 	error PartyBSolvent(address partyA, address partyB, address token);
 	error TradeNotInLiquidation(uint256 liquidationId, uint256 tradeId);
 	error PartiesNotInLiquidation(address partyA, address partyB, address collateral);
+	error DistributedAmountExceedsConfiscatedAmount(uint256 liquidationId);
 }
