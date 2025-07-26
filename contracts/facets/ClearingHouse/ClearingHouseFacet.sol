@@ -64,10 +64,11 @@ contract ClearingHouseFacet is Pausable, Accessibility, IClearingHouseFacet {
 	function confiscate(
 		uint256 liquidationId,
 		uint256 amount,
-		address party
+		address party,
+		MarginType marginType	
 	) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
-		LibClearingHouse.confiscate(liquidationId, amount, party);
-		emit Confiscate(msg.sender, party, liquidationId, amount);
+		LibClearingHouse.confiscate(liquidationId, amount, party, marginType);
+		emit Confiscate(msg.sender, party, liquidationId, amount, marginType);
 	}
 
 	function confiscateWithdrawal(uint256 withdrawId) external whenNotLiquidationPaused onlyRole(LibAccessibility.CLEARING_HOUSE_ROLE) {
