@@ -152,6 +152,17 @@
     {
         "inputs": [
             {
+                "internalType": "uint256",
+                "name": "liquidationId",
+                "type": "uint256"
+            }
+        ],
+        "name": "DistributedAmountExceedsConfiscatedAmount",
+        "type": "error"
+    },
+    {
+        "inputs": [
+            {
                 "internalType": "string",
                 "name": "property",
                 "type": "string"
@@ -1903,6 +1914,12 @@
                 "type": "address"
             },
             {
+                "indexed": true,
+                "internalType": "address",
+                "name": "party",
+                "type": "address"
+            },
+            {
                 "indexed": false,
                 "internalType": "uint256",
                 "name": "liquidationId",
@@ -1915,7 +1932,7 @@
                 "type": "uint256"
             }
         ],
-        "name": "ConfiscatePartyA",
+        "name": "Confiscate",
         "type": "event"
     },
     {
@@ -1934,7 +1951,7 @@
                 "type": "uint256"
             }
         ],
-        "name": "ConfiscatePartyBWithdrawal",
+        "name": "ConfiscateWithdrawal",
         "type": "event"
     },
     {
@@ -2223,6 +2240,12 @@
                 "internalType": "address",
                 "name": "collateral",
                 "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "liquidationId",
+                "type": "uint256"
             },
             {
                 "indexed": false,
@@ -4800,9 +4823,14 @@
                 "internalType": "uint256",
                 "name": "amount",
                 "type": "uint256"
+            },
+            {
+                "internalType": "address",
+                "name": "party",
+                "type": "address"
             }
         ],
-        "name": "confiscatePartyA",
+        "name": "confiscate",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -4815,7 +4843,7 @@
                 "type": "uint256"
             }
         ],
-        "name": "confiscatePartyBWithdrawal",
+        "name": "confiscateWithdrawal",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -5035,6 +5063,11 @@
     },
     {
         "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "liquidationId",
+                "type": "uint256"
+            },
             {
                 "internalType": "address",
                 "name": "partyB",
@@ -6882,6 +6915,16 @@
                     {
                         "internalType": "uint256",
                         "name": "collateralPrice",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "confiscatedAmount",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "distributedAmount",
                         "type": "uint256"
                     },
                     {

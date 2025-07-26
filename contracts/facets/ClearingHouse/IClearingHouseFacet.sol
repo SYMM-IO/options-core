@@ -15,11 +15,18 @@ interface IClearingHouseFacet is IClearingHouseEvents {
 
 	function liquidateIsolatedPartyB(address partyB, address collateral, int256 upnl, uint256 collateralPrice) external;
 
-	function confiscatePartyA(uint256 liquidationId, uint256 amount) external;
+	function confiscate(uint256 liquidationId, uint256 amount, address party) external;
 
-	function confiscatePartyBWithdrawal(uint256 withdrawId) external;
+	function confiscateWithdrawal(uint256 withdrawId) external;
 
-	function distributeCollateral(address partyB, address collateral, MarginType marginType, address[] calldata partyAs, uint256[] calldata amounts) external;
+	function distributeCollateral(
+		uint256 liquidationId,
+		address partyB,
+		address collateral,
+		MarginType marginType,
+		address[] calldata partyAs,
+		uint256[] calldata amounts
+	) external;
 
 	// Actions needed for partyB in cross
 	function flagCrossPartyBLiquidation(address partyB, address partyA, address collateral) external;
