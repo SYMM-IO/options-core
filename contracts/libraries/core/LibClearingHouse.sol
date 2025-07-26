@@ -253,19 +253,19 @@ library LibClearingHouse {
 		balance.scheduledAdd(counterParty, amount, MarginType.CROSS, IncreaseBalanceReason.ALLOCATE_FROM_RESERVE);
 	}
 
-	function confiscate(uint256 liquidationId, uint256 amount, address party) internal {
+	function confiscate(uint256 liquidationId, uint256 amount, address party, MarginType marginType) internal {
 		LiquidationDetail storage detail = LiquidationStorage.layout().liquidationDetails[liquidationId];
 
 		address counterParty = detail.partyA == party ? detail.partyB : detail.partyA;
 
 		ScheduledReleaseBalance storage balance = party.balanceOf(detail.collateral);
 
-		int256 counterPartyBalance = balance.counterPartyBalance(counterParty, MarginType.CROSS);
+		int256 counterPartyBalance = balance.counterPartyBalance(counterParty, marginType);
 		if (counterPartyBalance < int256(amount)) revert BalanceErrors.InsufficientIntBalance(party, detail.collateral, amount, counterPartyBalance);
 
 		_requireStatus(detail, LiquidationStatus.IN_PROGRESS);
 
-		balance.subForCounterParty(counterParty, amount, MarginType.CROSS, DecreaseBalanceReason.CONFISCATE);
+		balance.subForCounterParty(counterParty, amount, marginType, DecreaseBalanceReason.CONFISCATE);
 
 		// Track the confiscated amount
 		detail.confiscatedAmount += amount;
