@@ -1,36 +1,15 @@
 import { ethers, run } from "hardhat"
 import { Diamond, FakeOracle, FakeStablecoin, InstantLayer, SignatureVerifier } from "../types"
 import { createRunContext, RunContext } from "./run-context"
-import { toUtf8Bytes, ZeroAddress } from "ethers"
 import { e } from "../utils/e"
 import { OptionType } from "./option-enums"
-import { MultiAccount, SymmioPartyB } from "../types/contracts/helpers"
 import { grantingRoles } from "./granting-roles"
 import { diamondInitialize } from "./diamond-init"
 
 export async function initializeTestFixture(): Promise<RunContext> {
-	const mocks: Map<string, string> = await run("deploy:mocks")
-	const verifier: SignatureVerifier = await run("deploy:SignatureVerifier")
-	const oracle: FakeOracle = await run("deploy:oracle")
-
-	const stableCoin: FakeStablecoin = await run("deploy:stablecoin", {
-		name: "MyFakeStablecoin",
-		symbol: "FUSD",
-	})
-	const stableCoinNL: FakeStablecoin = await run("deploy:stablecoin", {
-		name: "StablecoinNotListed",
-		symbol: "NLUSD",
-	})
-
 	const diamond: Diamond = await run("deploy:diamond", true)
 
-	let context = await createRunContext(
-		await diamond.getAddress(),
-		[await stableCoin.getAddress(), await stableCoinNL.getAddress()],
-		await oracle.getAddress(),
-		await verifier.getAddress(),
-		mocks,
-	)
+	let context = await createRunContext(await diamond.getAddress())
 	context = await grantingRoles(context)
 	context = await diamondInitialize(context)
 

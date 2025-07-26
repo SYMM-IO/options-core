@@ -13,6 +13,7 @@ import {
 	FakeStablecoin,
 	ForceActionsFacet,
 	InstantLayer,
+	MockHookHandler,
 	MultiAccount,
 	PartyACloseFacet,
 	PartyAOpenFacet,
@@ -57,6 +58,7 @@ export class RunContext {
 	collateral!: FakeStablecoin
 	collateralNL!: FakeStablecoin
 	oracle!: FakeOracle
+	hookHandler!: MockHookHandler
 	mocks!: {
 		libCloseIntentMock: CloseIntentOpsMock
 	}
@@ -67,13 +69,7 @@ export class RunContext {
 	}
 }
 
-export async function createRunContext(
-	diamond: string,
-	collateral: string[],
-	oracle: string,
-	signatureVerifier: string,
-	mocks?: Map<string, string>,
-): Promise<RunContext> {
+export async function createRunContext(diamond: string): Promise<RunContext> {
 	let context = new RunContext()
 
 	const signers: SignerWithAddress[] = await ethers.getSigners()
@@ -91,11 +87,26 @@ export async function createRunContext(
 		others: [signers[10], signers[11]],
 	}
 
-	context.collateral = await ethers.getContractAt("FakeStablecoin", collateral[0])
-	context.collateralNL = await ethers.getContractAt("FakeStablecoin", collateral[1])
+	const mocks: Map<string, string> = await run("deploy:mocks")
+	const verifier: SignatureVerifier = await run("deploy:SignatureVerifier")
+	const oracle: FakeOracle = await run("deploy:oracle")
+	const hookHandler: MockHookHandler = await run("deploy:hookHandler")
+
+	const stableCoin: FakeStablecoin = await run("deploy:stablecoin", {
+		name: "MyFakeStablecoin",
+		symbol: "FUSD",
+	})
+	const stableCoinNL: FakeStablecoin = await run("deploy:stablecoin", {
+		name: "StablecoinNotListed",
+		symbol: "NLUSD",
+	})
+
+	context.collateral = stableCoin
+	context.collateralNL = stableCoinNL
+	context.hookHandler = hookHandler
 
 	context.oracle = await ethers.getContractAt("FakeOracle", oracle)
-	context.signatureVerifier = await ethers.getContractAt("SignatureVerifier", signatureVerifier)
+	context.signatureVerifier = await ethers.getContractAt("SignatureVerifier", verifier)
 	context.accountFacet = await ethers.getContractAt("AccountFacet", diamond)
 	context.diamondCutFacet = await ethers.getContractAt("DiamondCutFacet", diamond)
 	context.diamondLoupeFacet = await ethers.getContractAt("DiamondLoupeFacet", diamond)
