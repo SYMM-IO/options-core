@@ -4,6 +4,8 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
+import { MarginType } from "../../types/BaseTypes.sol";
+
 interface IClearingHouseEvents {
 	event FlagIsolatedPartyBLiquidation(address indexed operator, address indexed partyB, address indexed collateral);
 	event UnflagIsolatedPartyBLiquidation(address indexed operator, address indexed partyB, address indexed collateral);
@@ -15,7 +17,7 @@ interface IClearingHouseEvents {
 		int256 upnl,
 		uint256 collateralPrice
 	);
-	event Confiscate(address indexed operator, address indexed party, uint256 liquidationId, uint256 amount);
+	event Confiscate(address indexed operator, address indexed party, uint256 liquidationId, uint256 amount, MarginType marginType);
 	event ConfiscateWithdrawal(address indexed operator, uint256 withdrawId);
 	event DistributeCollateral(
 		address indexed operator,

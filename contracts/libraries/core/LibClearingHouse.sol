@@ -149,8 +149,9 @@ library LibClearingHouse {
 		}
 
 		if (crossBalance.balance > 0) {
-			balB.subForCounterParty(partyA, uint256(crossBalance.balance), MarginType.CROSS, DecreaseBalanceReason.LIQUIDATION);
-			partyA.balanceOf(collateral).scheduledAdd(partyB, uint256(crossBalance.balance), MarginType.CROSS, IncreaseBalanceReason.LIQUIDATION);
+			uint256 balance = uint256(crossBalance.balance);
+			balB.subForCounterParty(partyA, balance, MarginType.CROSS, DecreaseBalanceReason.LIQUIDATION);
+			partyA.balanceOf(collateral).scheduledAdd(partyB, balance, MarginType.CROSS, IncreaseBalanceReason.LIQUIDATION);
 		}
 		crossBalance.balance = 0;
 		crossBalance.locked = 0;
@@ -185,8 +186,9 @@ library LibClearingHouse {
 
 		if (crossBalance.balance > 0) {
 			ScheduledReleaseBalance storage balB = detail.partyB.balanceOf(detail.collateral);
-			balA.subForCounterParty(detail.partyB, uint256(crossBalance.balance), MarginType.CROSS, DecreaseBalanceReason.LIQUIDATION);
-			balB.scheduledAdd(detail.partyA, uint256(crossBalance.balance), MarginType.CROSS, IncreaseBalanceReason.LIQUIDATION);
+			uint256 balance = uint256(crossBalance.balance);
+			balA.subForCounterParty(detail.partyB, balance, MarginType.CROSS, DecreaseBalanceReason.LIQUIDATION);
+			balB.scheduledAdd(detail.partyA, balance, MarginType.CROSS, IncreaseBalanceReason.LIQUIDATION);
 		}
 		crossBalance.balance = 0;
 		crossBalance.locked = 0;
@@ -251,19 +253,19 @@ library LibClearingHouse {
 		balance.scheduledAdd(counterParty, amount, MarginType.CROSS, IncreaseBalanceReason.ALLOCATE_FROM_RESERVE);
 	}
 
-	function confiscate(uint256 liquidationId, uint256 amount, address party) internal {
+	function confiscate(uint256 liquidationId, uint256 amount, address party, MarginType marginType) internal {
 		LiquidationDetail storage detail = LiquidationStorage.layout().liquidationDetails[liquidationId];
 
 		address counterParty = detail.partyA == party ? detail.partyB : detail.partyA;
 
 		ScheduledReleaseBalance storage balance = party.balanceOf(detail.collateral);
 
-		int256 counterPartyBalance = balance.counterPartyBalance(counterParty, MarginType.CROSS);
+		int256 counterPartyBalance = balance.counterPartyBalance(counterParty, marginType);
 		if (counterPartyBalance < int256(amount)) revert BalanceErrors.InsufficientIntBalance(party, detail.collateral, amount, counterPartyBalance);
 
 		_requireStatus(detail, LiquidationStatus.IN_PROGRESS);
 
-		balance.subForCounterParty(counterParty, amount, MarginType.CROSS, DecreaseBalanceReason.CONFISCATE);
+		balance.subForCounterParty(counterParty, amount, marginType, DecreaseBalanceReason.CONFISCATE);
 
 		// Track the confiscated amount
 		detail.confiscatedAmount += amount;
