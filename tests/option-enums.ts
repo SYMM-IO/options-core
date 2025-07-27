@@ -43,4 +43,5 @@ export enum WithdrawStatus {
 	INITIATED,
 	CANCELED,
 	COMPLETED,
+	SUSPENDED,
 }

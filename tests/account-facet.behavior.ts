@@ -882,15 +882,95 @@ export function shouldBehaveLikeAccountFacet(): void {
 		})
 
 		it("Should cancel withdraw successfully", async function () {
-			const isolatedBalanceBefore =  await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral)
-			
-			expect(await context.accountFacet.connect(partyA1.getSigner).cancelWithdraw(1)).to.be.not.reverted			
+			const isolatedBalanceBefore = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral)
+
+			expect(await context.accountFacet.connect(partyA1.getSigner).cancelWithdraw(1)).to.be.not.reverted
 			const withdraw = await context.viewFacet.getWithdrawal(1)
 
-			const isolatedBalanceAfter =  await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral)
+			const isolatedBalanceAfter = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral)
 
 			expect(withdraw.status).to.be.equal(WithdrawStatus.CANCELED)
 			expect(isolatedBalanceAfter - isolatedBalanceBefore).to.be.equal(withdraw.amount)
+		})
+	})
+
+	describe("Suspend Withdraw", async function () {
+		beforeEach(async function () {
+			const amount = 100
+			await context.accountFacet
+				.connect(partyA1.getSigner)
+				.initiateWithdraw(await context.collateral.getAddress(), amount, await context.signers.partyA2.getAddress())
+		})
+
+		it("Should fail when Not with Proper Role", async function () {
+			await expect(context.accountFacet.connect(partyA1.getSigner).suspendWithdraw(1)).to.be.reverted
+		})
+
+		it("Should fail when status is wrong", async function () {
+			await context.accountFacet.completeWithdraw(1)
+			await expect(context.accountFacet.suspendWithdraw(1)).to.be.revertedWithCustomError(context.accountFacet, "InvalidState")
+		})
+
+		it("Should Pass ...", async function () {
+			await expect(context.accountFacet.suspendWithdraw(1)).not.to.be.reverted
+
+			const withdraw = await context.viewFacet.getWithdrawal(await context.viewFacet.getLastWithdrawalId())
+			expect(withdraw.status).to.equal(WithdrawStatus.SUSPENDED)
+		})
+	})
+
+	describe("Restore Withdraw", async function () {
+		beforeEach(async function () {
+			const amount = 100
+			await context.accountFacet
+				.connect(partyA1.getSigner)
+				.initiateWithdraw(await context.collateral.getAddress(), amount, await context.signers.partyA2.getAddress())
+		})
+
+		it("Should fail when Not with Proper Role", async function () {
+			await expect(context.accountFacet.connect(partyA1.getSigner).restoreWithdraw(1, 98)).to.be.reverted
+		})
+
+		it("Should fail when status is wrong", async function () {
+			await context.accountFacet.completeWithdraw(1)
+			await expect(context.accountFacet.restoreWithdraw(1, 98)).to.be.revertedWithCustomError(context.accountFacet, "InvalidState")
+		})
+
+		it("Should fail when Withdrawal Pool not Set", async function () {
+			await context.accountFacet.suspendWithdraw(1)
+
+			// await context.controlFacet.setInvalidWithdrawalsAmountsPool(ZeroAddress.toString())
+
+			// await expect(context.accountFacet.restoreWithdraw(1, 98)).to.be.revertedWithCustomError(context.accountFacet, "ZeroAddress")
+			//TODO find a way to implement zero address
+		})
+
+		it("Should fail when Valid Amount is More than Withdrawal Amount", async function () {
+			const withdraw = await context.viewFacet.getWithdrawal(await context.viewFacet.getLastWithdrawalId())
+
+			await context.accountFacet.suspendWithdraw(1)
+			await context.controlFacet.setInvalidWithdrawalsAmountsPool(partyB1.address)
+			await expect(context.accountFacet.restoreWithdraw(1, withdraw.amount + 1n)).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"ValidAmountExceedsOriginal",
+			)
+		})
+
+		it("Should Successfully Update the Pool Balance and State ", async function () {
+			const surplus = 10n
+			let withdraw = await context.viewFacet.getWithdrawal(await context.viewFacet.getLastWithdrawalId())
+			
+			const PoolBalanceBefore = await context.viewFacet.getIsolatedBalance(partyB1.address, context.collateral)
+			
+			await context.accountFacet.suspendWithdraw(1)
+			await context.controlFacet.setInvalidWithdrawalsAmountsPool(partyB1.address)
+			await expect(context.accountFacet.restoreWithdraw(1, withdraw.amount - surplus)).not.to.be.reverted
+			withdraw = await context.viewFacet.getWithdrawal(await context.viewFacet.getLastWithdrawalId())
+			
+			const PoolBalanceAfter = await context.viewFacet.getIsolatedBalance(partyB1.address, context.collateral)
+
+			expect(PoolBalanceAfter - PoolBalanceBefore).to.equal(surplus)
+			expect(withdraw.status).to.equal(WithdrawStatus.INITIATED)
 		})
 	})
 
