@@ -1150,6 +1150,32 @@
         "inputs": [
             {
                 "internalType": "address",
+                "name": "party",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "partyA",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "partyB",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "collateral",
+                "type": "address"
+            }
+        ],
+        "name": "PartyNotInLiquidation",
+        "type": "error"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
                 "name": "receiver",
                 "type": "address"
             },
@@ -1920,6 +1946,12 @@
                 "type": "address"
             },
             {
+                "indexed": true,
+                "internalType": "address",
+                "name": "counterParty",
+                "type": "address"
+            },
+            {
                 "indexed": false,
                 "internalType": "uint256",
                 "name": "liquidationId",
@@ -1930,6 +1962,12 @@
                 "internalType": "uint256",
                 "name": "amount",
                 "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "enum MarginType",
+                "name": "marginType",
+                "type": "uint8"
             }
         ],
         "name": "Confiscate",
@@ -4828,6 +4866,16 @@
                 "internalType": "address",
                 "name": "party",
                 "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "counterParty",
+                "type": "address"
+            },
+            {
+                "internalType": "enum MarginType",
+                "name": "marginType",
+                "type": "uint8"
             }
         ],
         "name": "confiscate",

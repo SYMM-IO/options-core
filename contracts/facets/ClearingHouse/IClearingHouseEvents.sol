@@ -17,7 +17,14 @@ interface IClearingHouseEvents {
 		int256 upnl,
 		uint256 collateralPrice
 	);
-	event Confiscate(address indexed operator, address indexed party, uint256 liquidationId, uint256 amount, MarginType marginType);
+	event Confiscate(
+		address indexed operator,
+		address indexed party,
+		address indexed counterParty,
+		uint256 liquidationId,
+		uint256 amount,
+		MarginType marginType
+	);
 	event ConfiscateWithdrawal(address indexed operator, uint256 withdrawId);
 	event DistributeCollateral(
 		address indexed operator,
