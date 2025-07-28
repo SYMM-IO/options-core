@@ -156,7 +156,12 @@ library ScheduledReleaseBalanceOps {
 		DecreaseBalanceReason reason
 	) internal {
 		if (value == 0) return;
-		if (counterParty == address(0)) revert ValidationErrors.ZeroAddress("counterParty");
+		if (marginType == MarginType.CROSS && counterParty == address(0)) revert ValidationErrors.ZeroAddress("counterParty");
+		
+		if (counterParty == address(0)) {
+			isolatedSub(self, value, reason);
+			return;
+		}
 
 		if (marginType == MarginType.CROSS) {
 			self.crossBalance[counterParty].balance -= int256(value);
@@ -219,6 +224,13 @@ library ScheduledReleaseBalanceOps {
 	 * @notice Return total balance of user for a counterparty
 	 */
 	function counterPartyBalance(ScheduledReleaseBalance storage self, address counterParty, MarginType marginType) internal view returns (int256) {
+		if (counterParty == address(0)) {
+			if (marginType == MarginType.ISOLATED) {
+				return int256(self.isolatedBalance);
+			} else {
+				return self.crossBalance[counterParty].balance;
+			}
+		}
 		ScheduledReleaseEntry storage entry = self.counterPartySchedules[counterParty];
 		if (marginType == MarginType.ISOLATED) {
 			return int256(self.isolatedBalance + entry.transitioning + entry.scheduled);
