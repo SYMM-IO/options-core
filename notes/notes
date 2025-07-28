@@ -2,8 +2,9 @@ FAQs:
 
 - external trasnfer
 - manualSync
-- provider in inititilal withdraw
+- provider in initialize withdraw
     - is virtual
 - balanceLimitPerUser why?
 - bilateral settlement mechanism
+- why to allocate when it can be negative
 

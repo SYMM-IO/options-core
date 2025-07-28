@@ -104,9 +104,8 @@ export async function createRunContext(diamond: string): Promise<RunContext> {
 	context.collateral = stableCoin
 	context.collateralNL = stableCoinNL
 	context.hookHandler = hookHandler
-
-	context.oracle = await ethers.getContractAt("FakeOracle", oracle)
-	context.signatureVerifier = await ethers.getContractAt("SignatureVerifier", verifier)
+	context.oracle = oracle
+	context.signatureVerifier = verifier
 	context.accountFacet = await ethers.getContractAt("AccountFacet", diamond)
 	context.diamondCutFacet = await ethers.getContractAt("DiamondCutFacet", diamond)
 	context.diamondLoupeFacet = await ethers.getContractAt("DiamondLoupeFacet", diamond)

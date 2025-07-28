@@ -15,11 +15,11 @@ import { shouldBehaveLikeSymmioPartyB } from "./helpers/symmio-partyb.behavior"
 
 describe(`${name}-v${version}`, () => {
 	if (process.env.TEST_MODE === TestModeEnum.UNIT_TEST) {
-		describe.only("Facets_Accounts", async function () {
+		describe("Facets_Accounts", async function () {
 			shouldBehaveLikeAccountFacet()
 		})
 
-		describe("Facets_PartyAOpenFacet", async function () {
+		describe.only("Facets_PartyAOpenFacet", async function () {
 			shouldBehaveLikePartyAOpenFacet()
 		})
 
