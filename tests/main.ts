@@ -20,7 +20,7 @@ describe(`${name}-v${version}`, () => {
 			shouldBehaveLikeAccountFacet()
 		})
 
-		describe("Facets_PartyAOpenFacet", async function () {
+		describe.only("Facets_PartyAOpenFacet", async function () {
 			shouldBehaveLikePartyAOpenFacet()
 		})
 
