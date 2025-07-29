@@ -45,7 +45,7 @@ export async function initializeTestFixture(): Promise<RunContext> {
 
 	await context.controlFacet.setPartyBConfig(context.signers.partyB2, {
 		isActive: true,
-		lossCoverage: 0,
+		lossCoverage: e(1),
 		oracleId: 1,
 	})
 	await context.controlFacet.addSymbol("BTC_PUT", OptionType.PUT, 1, context.collateral.getAddress(), { openFee: 10, closeFee: 20 }, 0)
@@ -60,14 +60,14 @@ export async function initializeTestFixture(): Promise<RunContext> {
 	await context.controlFacet.connect(context.signers.admin).whiteListCollateral(await context.collateralNL.getAddress())
 
 	await context.controlFacet.setAffiliateStatus(context.signers.affiliate1, true)
-	await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: 10, closeFee: 20 }])
-	await context.controlFacet.setSymbolsTradingFees(
+	await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: e(0.001), closeFee: e(0.003) }])
+	await context.controlFacet.setSymbolsPlatformFees(
 		[1, 2, 3, 4],
 		[
-			{ openFee: 10, closeFee: 20 },
-			{ openFee: 10, closeFee: 20 },
-			{ openFee: 10, closeFee: 20 },
-			{ openFee: 10, closeFee: 20 },
+			{ openFee: e(0.001), closeFee: e(0.003) },
+			{ openFee: e(0.001), closeFee: e(0.003) },
+			{ openFee: e(0.001), closeFee: e(0.003) },
+			{ openFee: e(0.001), closeFee: e(0.003) },
 		],
 	)
 

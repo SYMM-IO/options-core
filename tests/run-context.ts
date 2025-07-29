@@ -19,7 +19,7 @@ import {
 	PartyBCloseFacet,
 	PartyBOpenFacet,
 	SignatureVerifier,
-	SymmioPartyB,
+	SymmioPartyB, TradeFacet,
 	ViewFacet,
 } from "../types"
 import { ZeroAddress } from "ethers"
@@ -35,6 +35,7 @@ export class RunContext {
 	viewFacet!: ViewFacet
 	controlFacet!: ControlFacet
 	forceActionsFacet!: ForceActionsFacet
+	tradeFacet!: TradeFacet
 	clearingHouse!: ClearingHouseFacet
 	counterPartyRelation!: CounterPartyRelationsFacet
 	instantLayer!: InstantLayer
@@ -52,6 +53,7 @@ export class RunContext {
 		affiliate1: SignerWithAddress
 		bridge1: SignerWithAddress
 		bridge2: SignerWithAddress
+		clearingHouse : SignerWithAddress
 		others: SignerWithAddress[]
 	}
 	collateral!: FakeStablecoin
@@ -88,7 +90,8 @@ export async function createRunContext(
 		affiliate1: signers[7],
 		bridge1: signers[8],
 		bridge2: signers[9],
-		others: [signers[10], signers[11]],
+		clearingHouse: signers[10],
+		others: [signers[11], signers[12]],
 	}
 
 	context.collateral = await ethers.getContractAt("FakeStablecoin", collateral[0])
@@ -110,7 +113,7 @@ export async function createRunContext(
 	context.partyBCloseFacet = await ethers.getContractAt("PartyBCloseFacet", diamond)
 	context.partyBOpenFacet = await ethers.getContractAt("PartyBOpenFacet", diamond)
 	context.counterPartyRelation = await ethers.getContractAt("CounterPartyRelationsFacet", diamond)
-
+	context.tradeFacet = await ethers.getContractAt("TradeFacet" , diamond)
 	if (mocks) {
 		context.mocks = {
 			libCloseIntentMock: await ethers.getContractAt("CloseIntentOpsMock", mocks.get("CloseIntentOpsMock")!),
@@ -129,7 +132,7 @@ export async function createRunContext(
 	const multiAccount: MultiAccount = await run("deploy:multiAccount", {
 		symmioaddress: context.common.diamondAddress,
 		admin: context.signers.admin.address,
-		tradeNFTAddress: ZeroAddress,
+		tradenftaddress: ZeroAddress,
 	})
 	const symmioPartyB: SymmioPartyB = await run("deploy:symmioPartyB", {
 		symmioaddress: context.common.diamondAddress,

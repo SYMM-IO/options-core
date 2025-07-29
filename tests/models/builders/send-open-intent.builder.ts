@@ -26,9 +26,9 @@ export interface OpenIntent {
 const openIntentRequest: OpenIntent = {
 	partyBsWhiteList: [ZeroAddress],
 	symbolId: 1,
-	price: 1,
+	price: e(10),
 	quantity: e(1),
-	strikePrice: 1,
+	strikePrice: e(100),
 	expirationTimestamp: 0,
 	mm: 0,
 	tradeSide: TradeSide.BUY,
@@ -38,8 +38,8 @@ const openIntentRequest: OpenIntent = {
 		rate: 0,
 	},
 	solverFee: {
-		openFee: 1,
-		closeFee: 1,
+		openFee: e(0.001),
+		closeFee: e(0.001),
 	},
 	deadline: 0,
 	feeToken: ZeroAddress,

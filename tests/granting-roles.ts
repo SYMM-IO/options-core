@@ -56,5 +56,10 @@ export async function grantingRoles(context: RunContext): Promise<RunContext> {
 	await context.controlFacet
 		.connect(context.signers.admin)
 		.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("INSTANT_LAYER_ROLE")))
+
+	await context.controlFacet
+		.connect(context.signers.admin)
+		.grantRole(context.signers.clearingHouse.getAddress(), ethers.keccak256(toUtf8Bytes("CLEARING_HOUSE_ROLE")))
+
 	return context
 }
