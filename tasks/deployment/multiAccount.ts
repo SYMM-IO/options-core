@@ -15,18 +15,18 @@ task("deploy:multiAccount", "Deploys the MultiAccount")
 		const SymmioPartyA = await ethers.getContractFactory("SymmioPartyA")
 
 		// Deploy MultiAccount as upgradeable
-		const symmioMultiAccountFactory = await ethers.getContractFactory("MultiAccount")
-		const symmioMultiAccount = await upgrades.deployProxy(symmioMultiAccountFactory, [admin, symmioaddress, SymmioPartyA.bytecode, tradenftaddress], {
+		const SymmioPartyBFactory = await ethers.getContractFactory("MultiAccount")
+		const symmioPartyB = await upgrades.deployProxy(SymmioPartyBFactory, [admin, symmioaddress, SymmioPartyA.bytecode, tradenftaddress], {
 			initializer: "initialize",
 		})
-		await symmioMultiAccount.waitForDeployment()
+		await symmioPartyB.waitForDeployment()
 
 		const addresses = {
-			proxy: await symmioMultiAccount.getAddress(),
-			admin: await upgrades.erc1967.getAdminAddress(await symmioMultiAccount.getAddress()),
-			implementation: await upgrades.erc1967.getImplementationAddress(await symmioMultiAccount.getAddress()),
+			proxy: await symmioPartyB.getAddress(),
+			admin: await upgrades.erc1967.getAdminAddress(await symmioPartyB.getAddress()),
+			implementation: await upgrades.erc1967.getImplementationAddress(await symmioPartyB.getAddress()),
 		}
 		console.log("MultiAccount deployed to", addresses)
 
-		return symmioMultiAccount
+		return symmioPartyB
 	})

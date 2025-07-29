@@ -1,7 +1,7 @@
 import { Builder } from "builder-pattern"
 import { TradeStruct } from "../../../types/contracts/interfaces/ISymmio"
 import { ZeroAddress } from "ethers"
-
+import {e} from "../../../utils/e"
 const defaultTrade: TradeStruct = {
 	id: 0,
 	openIntentId: 0,
@@ -33,16 +33,16 @@ const defaultTrade: TradeStruct = {
 		feeToken: ZeroAddress,
 		tokenPriceInCollateral: 1,
 		affiliateFee: {
-			openFee: 1,
-			closeFee: 1,
+			openFee: e(1),
+			closeFee: e(1),
 		},
 		solverFee: {
-			openFee: 1,
-			closeFee: 1,
+			openFee: e(1),
+			closeFee: e(1),
 		},
 		platformFee: {
-			openFee: 1,
-			closeFee: 1,
+			openFee: e(1),
+			closeFee: e(1),
 		},
 	},
 	affiliate: ZeroAddress,

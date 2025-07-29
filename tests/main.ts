@@ -12,6 +12,7 @@ import { shouldBehaveLikeBridgeFacet } from "./bridge-facet.behavior"
 import { shouldBehaveLikeInstantLayer } from "./helpers/instant-layer.behavior"
 import { shouldBehaveLikeMultiAccount } from "./helpers/multi-account.behavior"
 import { shouldBehaveLikeSymmioPartyB } from "./helpers/symmio-partyb.behavior"
+import { shouldBehaveLikeClearingHouseFacet } from "./clearing-house"
 
 describe(`${name}-v${version}`, () => {
 	if (process.env.TEST_MODE === TestModeEnum.UNIT_TEST) {
@@ -39,7 +40,7 @@ describe(`${name}-v${version}`, () => {
 			shouldBehaveLikePartyBCloseFacet()
 		})
 
-		describe.skip("Facets_Settlement", async function () {
+		describe("Facets_Settlement", async function () {
 			shouldBehaveLikeSettlementFacet()
 		})
 
@@ -62,6 +63,12 @@ describe(`${name}-v${version}`, () => {
 		describe("Symmio PartyB", async function () {
 			shouldBehaveLikeSymmioPartyB()
 		})
+
+		describe("Symmio Clearing House", async function () {
+			shouldBehaveLikeClearingHouseFacet()
+		})
+
+
 	} else {
 		throw new Error(`Invalid TEST_MODE property. Should be one of: ${Object.keys(TestModeEnum).join(", ")}`)
 	}

@@ -24,7 +24,7 @@ export async function initializeTestFixture(): Promise<RunContext> {
 
 	await context.controlFacet.setPartyBConfig(context.signers.partyB2, {
 		isActive: true,
-		lossCoverage: 0,
+		lossCoverage: e(1),
 		oracleId: 1,
 	})
 	await context.controlFacet.addSymbol("BTC_PUT", OptionType.PUT, 1, context.collateral.getAddress(), { openFee: e(1), closeFee: e(1) }, 0)

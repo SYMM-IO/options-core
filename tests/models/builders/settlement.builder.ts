@@ -1,13 +1,14 @@
 import { Builder } from "builder-pattern"
 import { SettlementPriceSigStruct } from "../../../types/contracts/interfaces/ISymmio"
+import { e } from "../../../utils/e"
 
 const settlementSig: SettlementPriceSigStruct = {
 	reqId: "0x",
 	timestamp: 23,
 	symbolId: 1,
-	settlementPrice: 7,
+	settlementPrice: e(7),
 	settlementTimestamp: 23,
-	collateralPrice: 8,
+	collateralPrice: e(8),
 	gatewaySignature: "0x",
 	sigs: {
 		signature: 0,

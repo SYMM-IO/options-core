@@ -26,9 +26,9 @@ export interface OpenIntent {
 const openIntentRequest: OpenIntent = {
 	partyBsWhiteList: [ZeroAddress],
 	symbolId: 1,
-	price: 1000,
+	price: e(10),
 	quantity: e(1),
-	strikePrice: 1,
+	strikePrice: e(100),
 	expirationTimestamp: 0,
 	mm: e(1),
 	tradeSide: TradeSide.BUY,
