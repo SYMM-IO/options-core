@@ -959,14 +959,14 @@ export function shouldBehaveLikeAccountFacet(): void {
 		it("Should Successfully Update the Pool Balance and State ", async function () {
 			const surplus = 10n
 			let withdraw = await context.viewFacet.getWithdrawal(await context.viewFacet.getLastWithdrawalId())
-			
+
 			const PoolBalanceBefore = await context.viewFacet.getIsolatedBalance(partyB1.address, context.collateral)
-			
+
 			await context.accountFacet.suspendWithdraw(1)
 			await context.controlFacet.setInvalidWithdrawalsAmountsPool(partyB1.address)
 			await expect(context.accountFacet.restoreWithdraw(1, withdraw.amount - surplus)).not.to.be.reverted
 			withdraw = await context.viewFacet.getWithdrawal(await context.viewFacet.getLastWithdrawalId())
-			
+
 			const PoolBalanceAfter = await context.viewFacet.getIsolatedBalance(partyB1.address, context.collateral)
 
 			expect(PoolBalanceAfter - PoolBalanceBefore).to.equal(surplus)

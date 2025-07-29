@@ -103,19 +103,19 @@ export function shouldBehaveLikePartyACloseFacet(): void {
 
 			await expect(partyA1.sendCancelCloseIntent(["1"])).not.to.be.reverted
 			const closeIntent = await context.viewFacet.getCloseIntent(1)
-			expect(closeIntent.status).to.be.equal(CloseIntentStatus.EXPIRED)			
-		})	
+			expect(closeIntent.status).to.be.equal(CloseIntentStatus.EXPIRED)
+		})
 
 		it("Should Update Trade Time Stamp on Expire", async function () {
 			const latestBlockTime = await getLatestBlockTime()
 			await network.provider.send("evm_setNextBlockTimestamp", [latestBlockTime + 160])
 			await network.provider.send("evm_mine")
-			
+
 			await expect(partyA1.sendCancelCloseIntent(["2"])).not.to.be.reverted
-			
+
 			const closeIntent = await context.viewFacet.getCloseIntent(2)
-			expect(closeIntent.statusModifyTimestamp).to.be.equal(await getLatestBlockTime())			
-		})	
+			expect(closeIntent.statusModifyTimestamp).to.be.equal(await getLatestBlockTime())
+		})
 
 		it("Should Update Trade Close Pending Amount on Expire", async function () {
 			const latestBlockTime = await getLatestBlockTime()
@@ -127,19 +127,19 @@ export function shouldBehaveLikePartyACloseFacet(): void {
 			const closeIntent = await context.viewFacet.getCloseIntent(2)
 			const tradeAfter = await context.viewFacet.getTrade(1)
 			expect(tradeBefore.closePendingAmount - tradeAfter.closePendingAmount).to.be.equal(closeIntent.quantity)
-		})	
+		})
 
-		it("Should Update State to 'CANCEL_PENDING' on Cancel Close Intent", async function () {			
+		it("Should Update State to 'CANCEL_PENDING' on Cancel Close Intent", async function () {
 			await expect(partyA1.sendCancelCloseIntent(["1"])).not.to.be.reverted
 			const closeIntent = await context.viewFacet.getCloseIntent(1)
-			expect(closeIntent.status).to.be.equal(CloseIntentStatus.CANCEL_PENDING)			
-		})		
+			expect(closeIntent.status).to.be.equal(CloseIntentStatus.CANCEL_PENDING)
+		})
 
-		it("Should Update Timestamp on Cancel Close Intent", async function () {			
+		it("Should Update Timestamp on Cancel Close Intent", async function () {
 			await expect(partyA1.sendCancelCloseIntent(["1"])).not.to.be.reverted
 			const closeIntent = await context.viewFacet.getCloseIntent(1)
-			expect(closeIntent.statusModifyTimestamp).to.be.equal(await getLatestBlockTime())			
-		})		
+			expect(closeIntent.statusModifyTimestamp).to.be.equal(await getLatestBlockTime())
+		})
 	})
 
 	describe("sendCloseIntent", async function () {

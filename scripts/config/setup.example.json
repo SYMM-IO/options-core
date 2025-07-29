@@ -1,131 +1,116 @@
 {
-  "admin": "0xabCDeF0123456789AbcdEf0123456789aBCDEF01",
-  "grantRoles": [
-    {
-      "roleUser": "0x0123456789abcDEF0123456789abCDef01234567",
-      "role": "0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd"
-    },
-    {
-      "roleUser": "0x456789AbcDeF0123456789AbCdEF0123456789AB",
-      "role": "0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd"
-    }
-  ],
-  "revokeRoles": [
-    {
-      "roleUser": "0x0123456789abcDEF0123456789abCDef01234567",
-      "role": "0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd"
-    },
-    {
-      "roleUser": "0x456789AbcDeF0123456789AbCdEF0123456789AB",
-      "role": "0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd"
-    }
-  ],
-  "collateral": "0x50E88C692B137B8a51b6017026Ef414651e0d5ba",
-  "maxCloseOrdersLength": 4,
-  "maxTradePerPartyA": 6,
-  "balanceLimitPerUser": [
-    {
-      "collateral": "0x50E88C692B137B8a51b6017026Ef414651e0d5ba",
-      "limit": 2500
-    }
-  ],
-  "timingParameters": {
-    "partyADeallocateCooldown": 442,
-    "partyBDeallocateCooldown": 245,
-    "forceCancelOpenTimeout": 25,
-    "forceCancelCloseTimeout": 35,
-    "settlementPriceSigValidTime": 24,
-    "upnlSigValidTime": 426,
-    "partyBExclusiveWindow": 462,
-    "unbindingCooldown": 24,
-    "deactiveInstantActionModeCooldown": 6
-  },
-  "partyBReleaseInterval": {
-    "partyB": "0x50E88C692B137B8a51b6017026Ef414651e0d5ba",
-    "interval": 4
-  },
-  "defaultReleaseInterval": 43,
-  "maxConnectedCounterParties": 6,
-  "defaultFeeCollector": "0x50E88C692B137B8a51b6017026Ef414651e0d5ba",
-  "partyBs": [
-    {
-      "address": "0x7B8a51b6017026Ef414651e0d5ba50E88C692B13",
-      "isActive": false,
-      "lossCoverage": 4,
-      "oracleId": 1,
-      "symbolType": 1
-    }
-  ],
-  "affiliates": [
-    {
-      "address": "0x50E88CB8a51b6017026Ef414651e0d5ba692B137",
-      "status": false,
-      "feesCollector": "0x551b6017026Ef414651e0d50E88C692B137B8aba",
-      "affiliateFees": {
-        "symbolIds": [
-          1,
-          2
-        ],
-        "fees": [
-          [
-            10,
-            12
-          ],
-          [
-            20,
-            16
-          ]
-        ]
-      }
-    }
-  ],
-  "oracle": {
-    "name": "oc",
-    "address": "0x50E88C692B137B8a51b6017026Ef414651e0d5ba"
-  },
-  "symbols": [
-    {
-      "symbolId": 1,
-      "isValid": true,
-      "name": "BTC",
-      "optionType": 0,
-      "oracleId": 1,
-      "collateral": "0x92B137B8a51b6017026Ef41465651e0d5ba0E88C",
-      "tradingFee": [
-        400000000000000,
-        400000000000000
-      ],
-      "symbolType": 0
-    },
-    {
-      "symbolId": 2,
-      "isValid": true,
-      "name": "ETH",
-      "optionType": 1,
-      "oracleId": 1,
-      "collateral": "0x88C692B150E37B8a51b6017026Ef414d5ba651e0",
-      "tradingFee": [
-        300000000000000,
-        300000000000000
-      ],
-      "symbolType": 0
-    }
-  ],
-  "priceOracleAddress": "0x137B8a51b6017050E88C692B26Ef414651e0d5ba",
-  "signatureVerifier": "0x26Ef414651e0d5ba50E88C692B137B8a51b60170",
-  "expressWithdrawProviderConfig": {
-    "provider": "0x50E88C692B137B8a51b6017026Ef414651e0d5ba",
-    "collateral": "0x50E88C692B137B8a51b6017026Ef414651e0d5ba",
-    "config": {
-      "isActive": true,
-      "isVirtual": false,
-      "receiver": "0x50E88C692B137B8a51b6017026Ef414651e0d5ba"
-    }
-  },
-  "invalidWithdrawalsAmountsPool": "0x00662B55EbdA861F19F1F035e25f66a2b7f31528",
-  "externalTransferTargetValidationStatus": {
-    "target": "0x50E88C692B137B8a51b6017026Ef414651e0d5ba",
-    "collateral": "0x50E88C692B137B8a51b6017026Ef414651e0d5ba",
-    "status": true
-  }
+	"admin": "0xabCDeF0123456789AbcdEf0123456789aBCDEF01",
+	"grantRoles": [
+		{
+			"roleUser": "0x0123456789abcDEF0123456789abCDef01234567",
+			"role": "0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd"
+		},
+		{
+			"roleUser": "0x456789AbcDeF0123456789AbCdEF0123456789AB",
+			"role": "0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd"
+		}
+	],
+	"revokeRoles": [
+		{
+			"roleUser": "0x0123456789abcDEF0123456789abCDef01234567",
+			"role": "0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd"
+		},
+		{
+			"roleUser": "0x456789AbcDeF0123456789AbCdEF0123456789AB",
+			"role": "0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd"
+		}
+	],
+	"collateral": "0x50E88C692B137B8a51b6017026Ef414651e0d5ba",
+	"maxCloseOrdersLength": 4,
+	"maxTradePerPartyA": 6,
+	"balanceLimitPerUser": [
+		{
+			"collateral": "0x50E88C692B137B8a51b6017026Ef414651e0d5ba",
+			"limit": 2500
+		}
+	],
+	"timingParameters": {
+		"partyADeallocateCooldown": 442,
+		"partyBDeallocateCooldown": 245,
+		"forceCancelOpenTimeout": 25,
+		"forceCancelCloseTimeout": 35,
+		"settlementPriceSigValidTime": 24,
+		"upnlSigValidTime": 426,
+		"partyBExclusiveWindow": 462,
+		"unbindingCooldown": 24,
+		"deactiveInstantActionModeCooldown": 6
+	},
+	"partyBReleaseInterval": {
+		"partyB": "0x50E88C692B137B8a51b6017026Ef414651e0d5ba",
+		"interval": 4
+	},
+	"defaultReleaseInterval": 43,
+	"maxConnectedCounterParties": 6,
+	"defaultFeeCollector": "0x50E88C692B137B8a51b6017026Ef414651e0d5ba",
+	"partyBs": [
+		{
+			"address": "0x7B8a51b6017026Ef414651e0d5ba50E88C692B13",
+			"isActive": false,
+			"lossCoverage": 4,
+			"oracleId": 1,
+			"symbolType": 1
+		}
+	],
+	"affiliates": [
+		{
+			"address": "0x50E88CB8a51b6017026Ef414651e0d5ba692B137",
+			"status": false,
+			"feesCollector": "0x551b6017026Ef414651e0d50E88C692B137B8aba",
+			"affiliateFees": {
+				"symbolIds": [1, 2],
+				"fees": [
+					[10, 12],
+					[20, 16]
+				]
+			}
+		}
+	],
+	"oracle": {
+		"name": "oc",
+		"address": "0x50E88C692B137B8a51b6017026Ef414651e0d5ba"
+	},
+	"symbols": [
+		{
+			"symbolId": 1,
+			"isValid": true,
+			"name": "BTC",
+			"optionType": 0,
+			"oracleId": 1,
+			"collateral": "0x92B137B8a51b6017026Ef41465651e0d5ba0E88C",
+			"tradingFee": [400000000000000, 400000000000000],
+			"symbolType": 0
+		},
+		{
+			"symbolId": 2,
+			"isValid": true,
+			"name": "ETH",
+			"optionType": 1,
+			"oracleId": 1,
+			"collateral": "0x88C692B150E37B8a51b6017026Ef414d5ba651e0",
+			"tradingFee": [300000000000000, 300000000000000],
+			"symbolType": 0
+		}
+	],
+	"priceOracleAddress": "0x137B8a51b6017050E88C692B26Ef414651e0d5ba",
+	"signatureVerifier": "0x26Ef414651e0d5ba50E88C692B137B8a51b60170",
+	"expressWithdrawProviderConfig": {
+		"provider": "0x50E88C692B137B8a51b6017026Ef414651e0d5ba",
+		"collateral": "0x50E88C692B137B8a51b6017026Ef414651e0d5ba",
+		"config": {
+			"isActive": true,
+			"isVirtual": false,
+			"receiver": "0x50E88C692B137B8a51b6017026Ef414651e0d5ba"
+		}
+	},
+	"invalidWithdrawalsAmountsPool": "0x00662B55EbdA861F19F1F035e25f66a2b7f31528",
+	"externalTransferTargetValidationStatus": {
+		"target": "0x50E88C692B137B8a51b6017026Ef414651e0d5ba",
+		"collateral": "0x50E88C692B137B8a51b6017026Ef414651e0d5ba",
+		"status": true
+	}
 }

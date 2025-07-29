@@ -20,7 +20,7 @@ describe(`${name}-v${version}`, () => {
 			shouldBehaveLikeAccountFacet()
 		})
 
-		describe.only("Facets_PartyAOpenFacet", async function () {
+		describe("Facets_PartyAOpenFacet", async function () {
 			shouldBehaveLikePartyAOpenFacet()
 		})
 
@@ -67,8 +67,6 @@ describe(`${name}-v${version}`, () => {
 		describe("Symmio Clearing House", async function () {
 			shouldBehaveLikeClearingHouseFacet()
 		})
-
-
 	} else {
 		throw new Error(`Invalid TEST_MODE property. Should be one of: ${Object.keys(TestModeEnum).join(", ")}`)
 	}

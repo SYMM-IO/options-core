@@ -6,5 +6,8 @@ FAQs:
     - is virtual
 - balanceLimitPerUser why?
 - bilateral settlement mechanism
-- why to allocate when it can be negative
+- why to allocate when cross balance can be negative? answer:  we are a platform
+- suspend definition and when not to ?
+- when to have parameters of type array when calling a contract to reqs  multiple operations at once
+- Start Index to be 0 or 1
 

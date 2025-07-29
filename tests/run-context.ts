@@ -20,7 +20,8 @@ import {
 	PartyBCloseFacet,
 	PartyBOpenFacet,
 	SignatureVerifier,
-	SymmioPartyB, TradeFacet,
+	SymmioPartyB,
+	TradeFacet,
 	ViewFacet,
 } from "../types"
 import { ZeroAddress } from "ethers"
@@ -54,7 +55,7 @@ export class RunContext {
 		affiliate1: SignerWithAddress
 		bridge1: SignerWithAddress
 		bridge2: SignerWithAddress
-		clearingHouse : SignerWithAddress
+		clearingHouse: SignerWithAddress
 		others: SignerWithAddress[]
 	}
 	collateral!: FakeStablecoin
@@ -123,7 +124,7 @@ export async function createRunContext(diamond: string): Promise<RunContext> {
 	context.partyBCloseFacet = await ethers.getContractAt("PartyBCloseFacet", diamond)
 	context.partyBOpenFacet = await ethers.getContractAt("PartyBOpenFacet", diamond)
 	context.counterPartyRelation = await ethers.getContractAt("CounterPartyRelationsFacet", diamond)
-	context.tradeFacet = await ethers.getContractAt("TradeFacet" , diamond)
+	context.tradeFacet = await ethers.getContractAt("TradeFacet", diamond)
 	if (mocks) {
 		context.mocks = {
 			libCloseIntentMock: await ethers.getContractAt("CloseIntentOpsMock", mocks.get("CloseIntentOpsMock")!),

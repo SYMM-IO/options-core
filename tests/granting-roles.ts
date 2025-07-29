@@ -16,7 +16,7 @@ export async function grantingRoles(context: RunContext): Promise<RunContext> {
 	await context.controlFacet.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("SETTER_ROLE")))
 
 	await context.controlFacet.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("SUSPENDER_ROLE")))
-	
+
 	await context.controlFacet.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("DISPUTER_ROLE")))
 
 	await context.controlFacet.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("WINDOW_UPDATER_ROLE")))
@@ -34,5 +34,7 @@ export async function grantingRoles(context: RunContext): Promise<RunContext> {
 	await context.controlFacet.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("INSTANT_LAYER_ROLE")))
 
 	await context.controlFacet.grantRole(context.signers.admin.getAddress(), ethers.keccak256(toUtf8Bytes("CLEARING_HOUSE_ROLE")))
+
+	await context.controlFacet.grantRole(context.signers.clearingHouse.getAddress(), ethers.keccak256(toUtf8Bytes("CLEARING_HOUSE_ROLE")))
 	return context
 }

@@ -49,10 +49,10 @@ export enum WithdrawStatus {
 export enum LiquidationStatus {
 	FLAGGED,
 	IN_PROGRESS,
-	CANCELLED
+	CANCELLED,
 }
 
 export enum LiquidationSide {
 	PARTY_A,
-	PARTY_B
+	PARTY_B,
 }

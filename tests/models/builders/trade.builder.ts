@@ -1,7 +1,7 @@
 import { Builder } from "builder-pattern"
 import { TradeStruct } from "../../../types/contracts/interfaces/ISymmio"
 import { ZeroAddress } from "ethers"
-import {e} from "../../../utils/e"
+import { e } from "../../../utils/e"
 const defaultTrade: TradeStruct = {
 	id: 0,
 	openIntentId: 0,

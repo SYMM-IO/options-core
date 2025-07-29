@@ -140,9 +140,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			const closeIntent = await context.viewFacet.getCloseIntent(2)
 			const tradeAfter = await context.viewFacet.getTrade(1)
 			expect(tradeBefore.closePendingAmount - tradeAfter.closePendingAmount).to.be.equal(closeIntent.quantity)
-		})	
-
-		
+		})
 	})
 	describe("fillCloseIntent", async function () {
 		it("Should be failed when Globally Paused", async () => {
@@ -538,8 +536,8 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			const affiliateBalanceAfter = await context.viewFacet.getIsolatedBalance(openTrade.affiliate, await context.collateralNL.getAddress())
 			const partyAFeeBalance = await context.viewFacet.getIsolatedBalance(partyA1.address, await context.collateralNL.getAddress())
 
-			const intentTradingFee = await context.viewFacet.getCloseIntentPlatformFee(closeIntent.id,quantity,price) //Platform Fee
-			const intentAffiliateFee = await context.viewFacet.getCloseIntentAffiliateFee(closeIntent.id,quantity,price) //Affiliate Fee
+			const intentTradingFee = await context.viewFacet.getCloseIntentPlatformFee(closeIntent.id, quantity, price) //Platform Fee
+			const intentAffiliateFee = await context.viewFacet.getCloseIntentAffiliateFee(closeIntent.id, quantity, price) //Affiliate Fee
 
 			const affiliateFeeCalculated =
 				(quantity * price * closeIntent.feeStructure.affiliateFee.closeFee) / (openTrade.feeStructure.tokenPriceInCollateral * parseUnits("1", 18))
@@ -572,8 +570,8 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			const defaultFeeBalanceAfter = await context.viewFacet.getIsolatedBalance(partyA3.address, await context.collateralNL.getAddress())
 			const partyAFeeBalanceAfter = await context.viewFacet.getIsolatedBalance(openTrade.partyA, await context.collateralNL.getAddress())
 
-			const intentPlatformFee = await context.viewFacet.getCloseIntentPlatformFee(closeIntent.id,quantity,price) //Platform Fee
-			const intentAffiliateFee = await context.viewFacet.getCloseIntentAffiliateFee(closeIntent.id,quantity,price) //Affiliate Fee
+			const intentPlatformFee = await context.viewFacet.getCloseIntentPlatformFee(closeIntent.id, quantity, price) //Platform Fee
+			const intentAffiliateFee = await context.viewFacet.getCloseIntentAffiliateFee(closeIntent.id, quantity, price) //Affiliate Fee
 
 			const platformFeeCalculated =
 				(quantity * price * closeIntent.feeStructure.platformFee.closeFee) / (openTrade.feeStructure.tokenPriceInCollateral * parseUnits("1", 18))
@@ -616,13 +614,21 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 		it("Should fail if Fees Not Payed To Party B as expected in BUY Cross Margin", async () => {
 			const closeIntent = await context.viewFacet.getCloseIntent(2)
 			const openTrade = await context.viewFacet.getTrade(2)
-			const partyBFeeBalanceBefore = await context.viewFacet.getCrossBalance(openTrade.partyB, await context.collateralNL.getAddress(),openTrade.partyA)
+			const partyBFeeBalanceBefore = await context.viewFacet.getCrossBalance(
+				openTrade.partyB,
+				await context.collateralNL.getAddress(),
+				openTrade.partyA,
+			)
 
 			const quantity = e(50)
 			const price = openTrade.openedPrice
 			await expect(partyB1.fillCloseIntent(2, quantity, price)).not.to.reverted
 
-			const partyBFeeBalanceAfter = await context.viewFacet.getCrossBalance(openTrade.partyB, await context.collateralNL.getAddress(),openTrade.partyA)
+			const partyBFeeBalanceAfter = await context.viewFacet.getCrossBalance(
+				openTrade.partyB,
+				await context.collateralNL.getAddress(),
+				openTrade.partyA,
+			)
 
 			const solverFeePaid =
 				(quantity * price * closeIntent.feeStructure.solverFee.closeFee) / (openTrade.feeStructure.tokenPriceInCollateral * parseUnits("1", 18))
