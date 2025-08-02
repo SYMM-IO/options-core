@@ -521,7 +521,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			expect(partyACrossBalanceAfter.balance).to.be.equal(finalPremium - partyBProfit)
 		})
 
-		it("Should fail if Fees not Payed to Affiliate Collector as Expected", async () => {
+		it("Should pay fees to affiliate collector as expected", async () => {
 			const openTrade = await context.viewFacet.getTrade(1)
 			const closeIntent = await context.viewFacet.getCloseIntent(1)
 
@@ -555,7 +555,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			expect(affiliateBalanceAfter - affiliateBalanceBefore).to.equal(intentAffiliateFee)
 		})
 
-		it("Should fail if Fees not Payed to Trade Fee Collector as Expected", async () => {
+		it("Should pay fees to Protocol Fee Collector as Expected", async () => {
 			await context.controlFacet.setDefaultFeeCollector(partyA3.address)
 			const defaultFeeBalanceBefore = await context.viewFacet.getIsolatedBalance(partyA3.address, await context.collateralNL.getAddress())
 
@@ -589,7 +589,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			expect(defaultFeeBalanceAfter - defaultFeeBalanceBefore).to.equal(intentPlatformFee)
 		})
 
-		it("Should fail if Fees Not Payed To Party B as expected in Isolated Margin", async () => {
+		it("Should pay solver fees To Party B as expected in Isolated Margin", async () => {
 			const closeIntent = await context.viewFacet.getCloseIntent(1)
 			const openTrade = await context.viewFacet.getTrade(1)
 			const partyBFeeBalanceBefore = await context.viewFacet.getIsolatedBalance(openTrade.partyB, await context.collateralNL.getAddress())
@@ -611,7 +611,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			expect(partyBFeeBalanceAfter - partyBFeeBalanceBefore).to.equal(solverFeePaid)
 		})
 
-		it("Should fail if Fees Not Payed To Party B as expected in BUY Cross Margin", async () => {
+		it("Should pay solver fees To Party B as expected in BUY Cross Margin", async () => {
 			const closeIntent = await context.viewFacet.getCloseIntent(2)
 			const openTrade = await context.viewFacet.getTrade(2)
 			const partyBFeeBalanceBefore = await context.viewFacet.getCrossBalance(
