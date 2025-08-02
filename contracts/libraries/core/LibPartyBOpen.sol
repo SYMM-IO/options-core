@@ -92,7 +92,7 @@ library LibPartyBOpen {
 		if (!appLayout.partyBSupportedSymbolTypes[sender][symbol.symbolType]) revert IntentErrors.SymbolTypeNotSupported(sender, symbol.symbolType);
 
 		// Verify Party B is not in liquidation process
-		sender.requireSolvent(intent.partyA, symbol.collateral, MarginType.ISOLATED);
+		sender.requireSolvent(intent.partyA, symbol.collateral, intent.tradeAgreements.marginType);
 
 		/* ---------------------------------------- UPDATE ---------------------------------------- */
 
