@@ -18,7 +18,7 @@ export async function initializeTestFixture(): Promise<RunContext> {
 
 	await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
 		isActive: true,
-		lossCoverage: e(1),
+		lossCoverage: e(0),
 		oracleId: 1,
 	})
 

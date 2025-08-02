@@ -77,4 +77,8 @@ export class PartyA extends PartyEntity {
 	public async forceCancelOpenIntent(id: string) {
 		await runTx(this.context.forceActionsFacet.connect(this.signer).forceCancelOpenIntent(id))
 	}
+
+	public async expireCloseIntent(ids: string[]) {
+		await runTx(this.context.partyACloseFacet.connect(this.signer).expireCloseIntent(ids))
+	}
 }
