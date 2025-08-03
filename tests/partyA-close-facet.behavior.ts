@@ -71,13 +71,13 @@ export function shouldBehaveLikePartyACloseFacet(): void {
 
 		it("Should fail when partyA actions paused", async function () {
 			await context.controlFacet.pausePartyAActions()
-			await expect(partyA2.sendCancelCloseIntent(["1"])).to.be.revertedWithCustomError(context.partyACloseFacet, "PartyAActionsPaused")
+			await expect(partyA1.sendCancelCloseIntent(["1"])).to.be.revertedWithCustomError(context.partyACloseFacet, "PartyAActionsPaused")
 		})
 
 		it("Should fail when global paused", async function () {
 			await context.controlFacet.pauseGlobal()
 
-			await expect(partyA2.sendCancelCloseIntent(["1"])).to.be.revertedWithCustomError(context.partyACloseFacet, "GlobalPaused")
+			await expect(partyA1.sendCancelCloseIntent(["1"])).to.be.revertedWithCustomError(context.partyACloseFacet, "GlobalPaused")
 		})
 
 		it("Should fail when msgSender not be PartyA", async function () {
@@ -279,4 +279,88 @@ export function shouldBehaveLikePartyACloseFacet(): void {
 			expect(closeIntent.feeStructure).to.be.deep.equal(trade.feeStructure)
 		})
 	})
+
+	describe.only("expire close intents", async function () {
+		beforeEach(async () => {
+			const latestBlockTime = await getLatestBlockTime()
+
+			let request1 = openIntentRequestBuilder()
+				.partyBsWhiteList([partyB1.getSigner])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateral)
+				.symbolId(1)
+				.deadline(latestBlockTime + 120)
+				.expirationTimestamp(latestBlockTime + 120)
+				.exerciseFee({ cap: e(1), rate: "0" })
+				.quantity(e(100))
+				.price(10)
+				.build()
+
+			let request2 = openIntentRequestBuilder()
+				.partyBsWhiteList([partyB2.getSigner])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateral)
+				.symbolId(1)
+				.deadline(latestBlockTime + 120)
+				.expirationTimestamp(latestBlockTime + 120)
+				.exerciseFee({ cap: e(1), rate: "0" })
+				.quantity(e(100))
+				.price(10)
+				.build()
+
+			await partyA1.sendOpenIntent(request1)
+			await partyA1.sendOpenIntent(request2)
+			await partyA2.sendOpenIntent(request2)
+			await partyB1.lockOpenIntent(1)
+			await partyB1.fillOpenIntent(1, e(100), 10)
+			await partyB2.lockOpenIntent(2)
+			await partyB2.fillOpenIntent(2, e(100), 10)
+			await partyA1.sendCloseIntent(1, e(10), 10, latestBlockTime + 140)
+			await partyA1.sendCloseIntent(1, e(10), 10, latestBlockTime + 140)
+			await partyA1.sendCloseIntent(2, e(10), 10, latestBlockTime + 140)
+			await partyA1.sendCloseIntent(2, e(10), 10, latestBlockTime + 140)
+
+
+		})
+
+		it("Should fail when partyA actions paused", async function () {
+			await context.controlFacet.pausePartyAActions()
+
+			await expect(partyA1.expireCloseIntent(["1"])).to.be.revertedWithCustomError(context.partyACloseFacet, "PartyAActionsPaused")
+		})
+
+		it("Should fail when global paused", async function () {
+			await context.controlFacet.pauseGlobal()
+
+			await expect(partyA1.expireCloseIntent(["1"])).to.be.revertedWithCustomError(context.partyACloseFacet, "GlobalPaused")
+		})
+
+		it("Should fail when expiring close intents by non-expired ids", async function () {
+			await expect(partyA1.expireCloseIntent(["1" , "2"])).to.be.revertedWithCustomError(context.partyACloseFacet, "IntentNotExpired")
+		})
+
+		it("Should fail when expiring close intents by non-pending ids", async function () {
+			await partyB1.fillCloseIntent(1 , e(10),10)
+			await partyB1.fillCloseIntent(2 , e(10),10)
+
+			const latestBlockTime = await getLatestBlockTime()
+			await network.provider.send("evm_setNextBlockTimestamp", [latestBlockTime + 200])
+			await network.provider.send("evm_mine")
+
+			await expect(partyA1.expireCloseIntent(["1" , "2"])).to.be.revertedWithCustomError(context.partyACloseFacet, "InvalidState")
+		})
+
+
+		it("Should Expire Close Intents", async function () {
+
+			const latestBlockTime = await getLatestBlockTime()
+			await network.provider.send("evm_setNextBlockTimestamp", [latestBlockTime + 200])
+			await network.provider.send("evm_mine")
+
+			expect(await partyA1.expireCloseIntent(["1" , "2"])).not.to.be.reverted
+			expect((await context.viewFacet.getCloseIntent(1)).status).to.be.equal(CloseIntentStatus.EXPIRED)
+			expect((await context.viewFacet.getCloseIntent(2)).status).to.be.equal(CloseIntentStatus.EXPIRED)
+		})
+	})
+
 }
