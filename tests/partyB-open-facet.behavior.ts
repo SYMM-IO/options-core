@@ -3,7 +3,7 @@ import { expect, use } from "chai"
 import { initializeTestFixture } from "./initialize-test.fixture"
 import { PartyA } from "./models/partyA.model"
 import { RunContext } from "./run-context"
-import { IntentStatus, TradeSide } from "./option-enums"
+import { IntentStatus, TradeSide, TradeStatus } from "./option-enums"
 import { openIntentRequestBuilder } from "./models/builders/send-open-intent.builder"
 import { PartyB } from "./models/partyB.model"
 import { ethers, network } from "hardhat"
@@ -99,26 +99,6 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 	})
 
 	describe("lockOpenIntent", async function () {
-		it("Should be failed when Sender address is Suspended", async () => {
-			await context.controlFacet.suspendAddress(partyB1.getSigner, true)
-			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "UserSuspended")
-		})
-
-		// it("Should be failed when in Emergency Mode", async () => {
-		// 	await context.controlFacet.activePartyBsEmergencyMode()
-		// 	await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "SystemInEmergencyMode")
-		// })
-
-		it("Should be failed when PartyB in Emergency Mode", async () => {
-			await context.controlFacet.activePartyBEmergencyMode(partyB1.getSigner)
-			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "PartyBInEmergencyMode")
-		})
-
-		it("Should be failed when Globally Paused", async () => {
-			await context.controlFacet.pauseGlobal()
-			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "GlobalPaused")
-		})
-
 		it("Should failed when PartyB action Paused", async () => {
 			await context.controlFacet.pausePartyBActions()
 			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "PartyBActionsPaused")
@@ -131,44 +111,51 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			)
 		})
 
-		it("Should failed when partyA have partyB Roll", async () => {
-			await context.controlFacet.setPartyBConfig(partyA1.getSigner, {
-				isActive: true,
+		it("Should failed when partyB is not Active or Valid", async () => {
+			await context.controlFacet.setPartyBConfig(partyB1.getSigner, {
+				isActive: false,
 				lossCoverage: 0,
 				oracleId: 1,
 			})
 
-			await expect(context.partyBOpenFacet.connect(context.signers.partyA1).lockOpenIntent(1)).to.be.revertedWithCustomError(
-				context.partyBOpenFacet,
-				"NotWhitelistedPartyB",
-			)
+			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "NotPartyB")
 		})
 
-		it("Should failed when partyA have partyB Roll", async () => {
-			const latestBlock = await getLatestBlockTime()
-			const request = openIntentRequestBuilder()
-				.partyBsWhiteList([])
-				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateralNL)
-				.symbolId(2)
-				.deadline(latestBlock + 140)
-				.expirationTimestamp(latestBlock + 120)
-				.exerciseFee({ cap: e(1), rate: "0" })
-				.quantity(e(10))
-				.price(1)
-				.build()
-			await expect(partyA1.sendOpenIntent(request)).to.not.reverted
+		it("Should be failed when User address is Suspended", async () => {
+			await context.controlFacet.suspendAddress(partyA1.address, true)
+			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "UserSuspended")
+		})
 
-			await context.controlFacet.setPartyBConfig(partyA1.getSigner, {
-				isActive: true,
-				lossCoverage: 0,
-				oracleId: 1,
-			})
+		it("Should Pass when User address is Not Suspended", async () => {
+			await expect(partyB1.lockOpenIntent(1)).not.to.be.reverted
+		})
 
-			await expect(context.partyBOpenFacet.connect(context.signers.partyA1).lockOpenIntent(1)).to.be.revertedWithCustomError(
-				context.partyBOpenFacet,
-				"NotWhitelistedPartyB",
-			)
+		it("Should be failed when Sender address is Suspended", async () => {
+			await context.controlFacet.suspendAddress(partyB1.address, true)
+			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "UserSuspended")
+		})
+
+		it("Should pass when Solver address is Not Suspended", async () => {
+			await expect(partyB1.lockOpenIntent(1)).not.to.be.reverted
+		})
+
+		it("Should be failed when in Emergency Mode", async () => {
+			await context.controlFacet.activePartyBsEmergencyMode()
+			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "PartyBsInEmergencyMode")
+		})
+
+		it("Should be failed when PartyB in Emergency Mode", async () => {
+			await context.controlFacet.activePartyBEmergencyMode(partyB1.getSigner)
+			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "PartyBInEmergencyMode")
+		})
+
+		it("Should be failed when Globally Paused", async () => {
+			await context.controlFacet.pauseGlobal()
+			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "GlobalPaused")
+		})
+
+		it("Should failed when intent id not exist", async () => {
+			await expect(partyB1.lockOpenIntent(200)).to.be.revertedWithCustomError(context.partyBOpenFacet, "IntentNotFound")
 		})
 
 		it("Should failed when intent status not  PENDING", async () => {
@@ -205,28 +192,11 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			await expect(partyB2.lockOpenIntent(4)).to.be.revertedWithCustomError(context.partyBOpenFacet, "InvalidSymbol")
 		})
 
-		it("should revert when partB symbol type mismatch intent symbol type", async () => {
-			const latestBlock = await getLatestBlockTime()
-			await context.controlFacet.setPartyBSupportedSymbolTypes(context.signers.partyB1, [0], [false])
-
-			await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
-				isActive: true,
-				lossCoverage: 0,
-				oracleId: 1,
-			})
-
-			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "SymbolTypeNotSupported")
-		})
-
 		it("Should failed when intent expiration has been passed", async () => {
 			const newBlock = (await getLatestBlockTime()) + 130
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
 
 			await expect(partyB1.lockOpenIntent(1)).to.revertedWithCustomError(context.partyBOpenFacet, "ExpirationTimestampPassed")
-		})
-
-		it("Should failed when intent id not exist", async () => {
-			await expect(partyB1.lockOpenIntent(200)).to.be.revertedWithCustomError(context.partyBOpenFacet, "IntentNotFound")
 		})
 
 		it("Should failed when partyB oracle id not equal with intent symbol oracle id", async () => {
@@ -240,30 +210,115 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "OracleMismatch")
 		})
 
-		it("Should failed when partyB is not Active or Valid", async () => {
-			await context.controlFacet.setPartyBConfig(partyB1.getSigner, {
-				isActive: false,
+		it("Should failed when partyA have partyB Roll", async () => {
+			await context.controlFacet.setPartyBConfig(partyA1.getSigner, {
+				isActive: true,
 				lossCoverage: 0,
 				oracleId: 1,
 			})
 
-			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "NotPartyB")
+			await expect(context.partyBOpenFacet.connect(context.signers.partyA1).lockOpenIntent(1)).to.be.revertedWithCustomError(
+				context.partyBOpenFacet,
+				"NotWhitelistedPartyB",
+			)
 		})
 
 		it("Should failed when partyB not whitelisted in the intent sent by partyA", async () => {
 			await expect(partyB2.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "NotWhitelistedPartyB")
 		})
 
-		it("Should failed when partyB is not Solvent", async () => {
-			//requireSolventPartyB
-			// await context.clearingHouse.flagIsolatedPartyBLiquidation(context.signers.partyB1,context.collateral)
-			// await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "NotSolvent")
-			//TODO ::: it is implemented after clearing house development
+		it("Should failed when partyA have partyB Roll", async () => {
+			const latestBlock = await getLatestBlockTime()
+			const request = openIntentRequestBuilder()
+				.partyBsWhiteList([])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateralNL)
+				.symbolId(1)
+				.deadline(latestBlock + 140)
+				.expirationTimestamp(latestBlock + 120)
+				.exerciseFee({ cap: e(1), rate: "0" })
+				.quantity(e(10))
+				.price(1)
+				.build()
+			await expect(partyA1.sendOpenIntent(request)).to.not.reverted
+
+			await context.controlFacet.setPartyBConfig(partyA1.address, {
+				isActive: true,
+				lossCoverage: 0,
+				oracleId: 1,
+			})
+
+			await context.controlFacet.setPartyBSupportedSymbolTypes(partyA1.address, [0], [true])
+
+			await expect(context.partyBOpenFacet.connect(partyA1.getSigner).lockOpenIntent(await context.viewFacet.getLastOpenIntentId())).not.to.be
+				.reverted
+		})
+
+		it("should revert when partB symbol type mismatch intent symbol type", async () => {
+			const latestBlock = await getLatestBlockTime()
+			await context.controlFacet.setPartyBSupportedSymbolTypes(context.signers.partyB1, [0], [false])
+
+			await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
+				isActive: true,
+				lossCoverage: 0,
+				oracleId: 1,
+			})
+
+			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "SymbolTypeNotSupported")
+		})
+
+		it("Should failed when partyB is not Solvent in Isolated Margin", async () => {
+			await context.controlFacet.setPartyBConfig(partyB1.address, {
+				isActive: true,
+				lossCoverage: 10,
+				oracleId: 1,
+			})
+
+			await context.clearingHouse.flagIsolatedPartyBLiquidation(partyB1.address, await context.collateral.getAddress())
+			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "NotSolvent")
+			await context.clearingHouse.unflagIsolatedPartyBLiquidation(partyB1.address, await context.collateral.getAddress())
+			await expect(partyB1.lockOpenIntent(1)).not.to.be.reverted
+		})
+
+		it("Should failed when partyB is not Solvent in Cross Margin", async () => {
+			await context.controlFacet.setPartyBConfig(partyB1.address, {
+				isActive: true,
+				lossCoverage: 10,
+				oracleId: 1,
+			})
+			await context.controlFacet.setPartyBConfig(partyB2.address, {
+				isActive: true,
+				lossCoverage: 10,
+				oracleId: 1,
+			})
+
+			const intent2 = await context.viewFacet.getOpenIntent(2)
+			const intent3 = await context.viewFacet.getOpenIntent(3)
+
+			await context.clearingHouse.flagCrossPartyBLiquidation(partyB1.address, intent2.partyA, await context.collateral.getAddress())
+			await context.clearingHouse.flagCrossPartyBLiquidation(partyB2.address, intent3.partyA, await context.collateral.getAddress())
+			await expect(partyB1.lockOpenIntent(2)).to.be.revertedWithCustomError(context.partyBOpenFacet, "NotSolvent")
+			await expect(partyB2.lockOpenIntent(3)).to.be.revertedWithCustomError(context.partyBOpenFacet, "NotSolvent")
+			await context.clearingHouse.unflagCrossPartyBLiquidation(partyB1.address, intent2.partyA, await context.collateral.getAddress())
+			await context.clearingHouse.unflagCrossPartyBLiquidation(partyB2.address, intent3.partyA, await context.collateral.getAddress())
+			await expect(partyB1.lockOpenIntent(2)).not.to.be.reverted
+			await expect(partyB2.lockOpenIntent(3)).not.to.be.reverted
 		})
 
 		it("Should add partyB to intent storage", async () => {
-			// await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "NotSolvent")
-			//TODO ::: it is implemented after clearing house development
+			await expect(partyB1.lockOpenIntent(1)).not.to.be.reverted
+
+			const intent = await context.viewFacet.getOpenIntent(1)
+			const activeIntents = await context.viewFacet.getActiveOpenIntents(intent.partyB, 0, 100)
+			const activeIntentsIDs = await context.viewFacet.getActiveOpenIntentIds(intent.partyB)
+
+			console.log("Active Open Intents IDs Count:", activeIntentsIDs.length)
+			console.log("Active Open Intents Count:", activeIntents.length)
+			console.log("Intent Status", activeIntents.length)
+
+			for (let i = 0; i < activeIntentsIDs.length; i++) console.log("Id", i, ":", activeIntentsIDs[i])
+
+			expect(activeIntents[activeIntentsIDs.length - 1].id).to.be.equal(intent.id)
 		})
 
 		it("Should lock open intent successfully", async () => {
@@ -271,14 +326,13 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 			const intent = await context.viewFacet.getOpenIntent(1)
 
-			expect(intent.status).to.equal(1) // IntentStatus.LOCKED
-			expect(intent.partyB).to.equal(partyB1.getSigner)
-
-			// TODO ::: check intentLayout states
+			expect(intent.status).to.equal(IntentStatus.LOCKED) // IntentStatus.LOCKED
+			expect(intent.partyB).to.equal(partyB1.address)
+			expect(intent.createTimestamp).to.be.approximately(await getLatestBlockTime(), 5)
 		})
 	})
 
-	describe("fillOpenIntent", async function () {
+	describe.only("fillOpenIntent", async function () {
 		beforeEach(async () => {
 			await partyB1.lockOpenIntent(1)
 			await partyB1.lockOpenIntent(2)
@@ -295,19 +349,14 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			await expect(partyB1.fillOpenIntent(2, 100, 7)).to.revertedWithCustomError(context.partyAOpenFacet, "PartyBActionsPaused")
 		})
 
-		// it("Should be failed when in Emergency Mode", async () => {
-		// 	await context.controlFacet()
-		// 	await expect(partyB1.fillOpenIntent(1, 100, 7)).to.be.revertedWithCustomError(context.partyBOpenFacet, "SystemInEmergencyMode")
-		// })
-
-		// it("Should be failed when PartyB in Emergency Mode", async () => {
-		// 	await context.controlFacet.activePartyBEmergencyMode(partyB1.getSigner)
-		// 	await expect(partyB1.fillOpenIntent(1, 100, 7)).to.be.revertedWithCustomError(context.partyBOpenFacet, "PartyBInEmergencyMode")
-		// })
+		it("Should be failed when PartyB in Emergency Mode", async () => {
+			await context.controlFacet.activePartyBEmergencyMode(partyB1.address)
+			await expect(partyB1.fillOpenIntent(1, 100, 7)).to.be.revertedWithCustomError(context.partyBOpenFacet, "PartyBInEmergencyMode")
+		})
 
 		it("Should be failed when PartyB in Emergency Mode", async () => {
-			await context.controlFacet.activePartyBEmergencyMode(partyB1.getSigner)
-			await expect(partyB1.fillOpenIntent(1, 100, 7)).to.be.revertedWithCustomError(context.partyBOpenFacet, "PartyBInEmergencyMode")
+			await context.controlFacet.activePartyBsEmergencyMode()
+			await expect(partyB1.fillOpenIntent(1, 100, 7)).to.be.revertedWithCustomError(context.partyBOpenFacet, "PartyBsInEmergencyMode")
 		})
 
 		it("Should failed when msgSender is not PartyB", async () => {
@@ -315,13 +364,13 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 
 		it("Should failed when partyA suspended", async () => {
-			await context.controlFacet.suspendAddress(partyA1.getSigner, true)
+			await context.controlFacet.suspendAddress(partyA1.address, true)
 
 			await expect(partyB1.fillOpenIntent(1, 100, 7)).to.revertedWithCustomError(context.partyBOpenFacet, "UserSuspended")
 		})
 
 		it("Should failed when partyB suspended", async () => {
-			await context.controlFacet.suspendAddress(partyB1.getSigner, true)
+			await context.controlFacet.suspendAddress(partyB1.address, true)
 
 			await expect(partyB1.fillOpenIntent(1, 100, 7)).to.revertedWithCustomError(context.partyBOpenFacet, "UserSuspended")
 		})
@@ -333,26 +382,12 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 
 		it("Should failed when intent not in Valid state", async () => {
-			await partyA2.setBalances(context.collateral, e(100000), e(100000))
+			await partyA1.sendCancelOpenIntent([1])
 
-			const request = openIntentRequestBuilder()
-				.partyBsWhiteList([partyB2.getSigner])
-				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
-				.symbolId(1)
-				.deadline((await getLatestBlockTime()) + 140)
-				.expirationTimestamp((await getLatestBlockTime()) + 120)
-				.exerciseFee({ cap: e(1), rate: "0" })
-				.quantity(e(5))
-				.price(2)
-				.build()
+			const intent = await context.viewFacet.getOpenIntent(1)
+			console.log("Intent Status:", intent.status == BigInt(IntentStatus.CANCEL_PENDING) ? "Cancel_pending" : intent.status)
 
-			await partyA2.sendOpenIntent(request)
-			await partyB2.lockOpenIntent(4)
-			await partyA2.sendCancelOpenIntent(["4"])
-
-			// await expect(partyB2.fillOpenIntent(2, 5, 2)).to.revertedWithCustomError(context.partyBOpenFacet, "InvalidState")
-			//TODO ::: should find a way to call the fill intent with an invalid state
+			await expect(partyB1.fillOpenIntent(1, 5, 2)).not.to.reverted
 		})
 
 		it("Should failed when deadline passed", async () => {
@@ -402,24 +437,148 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 
 		it("Should failed when Intent price mismatch fill type price(BUY Trade)", async () => {
-			await expect(partyB1.fillOpenIntent(1, 100, 20000)).to.revertedWithCustomError(context.partyBOpenFacet, "InvalidOpenPrice")
-			await expect(partyB1.fillOpenIntent(1, 100, 6)).not.to.reverted
-			await expect(partyB1.fillOpenIntent(2, 100, 20000)).to.revertedWithCustomError(context.partyBOpenFacet, "InvalidOpenPrice")
-			await expect(partyB1.fillOpenIntent(2, 100, 6)).not.to.reverted
+			const intent1 = await context.viewFacet.getOpenIntent(1)
+			const intent2 = await context.viewFacet.getOpenIntent(2)
+			await expect(partyB1.fillOpenIntent(intent1.id, 100, intent1.price + 1n)).to.revertedWithCustomError(
+				context.partyBOpenFacet,
+				"InvalidOpenPrice",
+			)
+			await expect(partyB1.fillOpenIntent(intent1.id, 100, intent1.price - 1n)).not.to.reverted
+			await expect(partyB1.fillOpenIntent(intent2.id, 100, intent2.price + 1n)).to.revertedWithCustomError(
+				context.partyBOpenFacet,
+				"InvalidOpenPrice",
+			)
+			await expect(partyB1.fillOpenIntent(intent2.id, 100, intent2.price - 1n)).not.to.reverted
 		})
 
 		it("Should failed when Intent price mismatch fill type price(Sell Trade)", async () => {
-			await expect(partyB2.fillOpenIntent(3, 100, 200)).to.revertedWithCustomError(context.partyBOpenFacet, "InvalidOpenPrice")
-			await expect(partyB2.fillOpenIntent(3, 100, 20000)).not.to.reverted
+			const intent = await context.viewFacet.getOpenIntent(3)
+			await expect(partyB2.fillOpenIntent(intent.id, 100, intent.price - 1n)).to.revertedWithCustomError(context.partyBOpenFacet, "InvalidOpenPrice")
+			await expect(partyB2.fillOpenIntent(intent.id, 100, intent.price + 1n)).not.to.reverted
 		})
 
 		it("Should make Trade Object ", async () => {
-			// Manage trading fees for affiliators and fee collectors
-			// update the state  and layout of intent for counterparties (full or partial fill)
-			// successfully add the trade object for counter parties
-			// update account balance relationship
-			//
-			//TODO ::: should work as expected
+			const intent = await context.viewFacet.getOpenIntent(1)
+
+			const quantity = e(10)
+			const price = intent.price - 1n
+			await expect(partyB1.fillOpenIntent(intent.id, quantity, price)).not.to.reverted
+
+			const trade = await context.viewFacet.getTrade(1)
+			expect(trade.id).to.equal(1)
+			expect(trade.openIntentId).to.equal(intent.id)
+			expect(trade.tradeAgreements.symbolId).to.equal(intent.tradeAgreements.symbolId)
+			expect(trade.tradeAgreements.strikePrice).to.equal(intent.tradeAgreements.strikePrice)
+			expect(trade.tradeAgreements.tradeSide).to.equal(intent.tradeAgreements.tradeSide)
+			expect(trade.tradeAgreements.marginType).to.equal(intent.tradeAgreements.marginType)
+			expect(trade.tradeAgreements.expirationTimestamp).to.equal(intent.tradeAgreements.expirationTimestamp)
+			expect(trade.tradeAgreements.mm).to.equal((intent.tradeAgreements.mm * quantity) / intent.tradeAgreements.quantity)
+			expect(trade.tradeAgreements.quantity).to.equal(quantity)
+			expect(trade.tradeAgreements.exerciseFee).to.deep.equal(intent.tradeAgreements.exerciseFee)
+			expect(trade.feeStructure).to.deep.equal(intent.feeStructure)
+			expect(trade.affiliate).to.deep.equal(intent.affiliate)
+			expect(trade.partyA).to.equal(intent.partyA)
+			expect(trade.partyB).to.equal(intent.partyB)
+
+			expect(trade.activeCloseIntentIds.length).to.equal(0)
+			expect(trade.openedPrice).to.equal(price)
+			expect(trade.settledPrice).to.equal(0)
+			expect(trade.closedAmountBeforeExpiration).to.equal(0)
+			expect(trade.closePendingAmount).to.equal(0)
+			expect(trade.avgClosedPriceBeforeExpiration).to.equal(0)
+			expect(trade.avgClosedPriceBeforeExpiration).to.equal(0)
+
+			expect(trade.status).to.equal(TradeStatus.OPENED)
+		})
+
+		it("Should Unlock Fees from PartyA in Isolated as Expected", async () => {
+			let intent = await context.viewFacet.getOpenIntent(1) // intent Before Fill
+			const balanceBefore = await context.viewFacet.getIsolatedLockedBalance(intent.partyA, context.collateralNL)
+
+			const quantity = e(10) // Partial Fill
+			const price = intent.price - 1n // Lower Price in Buy Trade
+			await expect(partyB1.fillOpenIntent(intent.id, quantity, price)).not.to.reverted
+			intent = await context.viewFacet.getOpenIntent(1) // intent After Fill
+
+			const affiliateFee = await context.viewFacet.getOpenIntentAffiliateFee(intent.id)
+			const platformFee = await context.viewFacet.getOpenIntentPlatformFee(intent.id)
+			const solverFee =
+				(BigInt(intent.price) * BigInt(intent.tradeAgreements.quantity) * BigInt(intent.feeStructure.solverFee.openFee)) /
+				((await context.oracle.getPrice(
+					intent.feeStructure.feeToken,
+					(await context.viewFacet.getSymbol(intent.tradeAgreements.symbolId)).collateral,
+				)) *
+					parseUnits("1", 18))
+
+			const balanceAfter = await context.viewFacet.getIsolatedLockedBalance(intent.partyA, context.collateralNL)
+			expect(balanceBefore - balanceAfter).to.be.equal(affiliateFee + platformFee + solverFee)
+		})
+
+		it("Should Unlock Fees from PartyA in Cross Margin as Expected", async () => {
+			let intent = await context.viewFacet.getOpenIntent(2)
+			const balanceBefore = await context.viewFacet.getCrossBalance(intent.partyA, context.collateralNL, intent.partyB)
+
+			const quantity = e(10)
+			const price = intent.price - 1n
+			await expect(partyB1.fillOpenIntent(intent.id, quantity, price)).not.to.reverted
+			intent = await context.viewFacet.getOpenIntent(2) // After Fill
+
+			const affiliateFee = await context.viewFacet.getOpenIntentAffiliateFee(intent.id)
+			const platformFee = await context.viewFacet.getOpenIntentPlatformFee(intent.id)
+			const solverFee =
+				(BigInt(intent.price) * BigInt(intent.tradeAgreements.quantity) * BigInt(intent.feeStructure.solverFee.openFee)) /
+				((await context.oracle.getPrice(
+					intent.feeStructure.feeToken,
+					(await context.viewFacet.getSymbol(intent.tradeAgreements.symbolId)).collateral,
+				)) *
+					parseUnits("1", 18))
+
+			const balanceAfter = await context.viewFacet.getCrossBalance(intent.partyA, context.collateralNL, intent.partyB)
+			expect(balanceBefore.locked - balanceAfter.locked).to.be.equal(affiliateFee + platformFee + solverFee)
+		})
+
+		it("Should Unlock Premium from PartyA in Isolated Buy as Expected", async () => {
+			let intent = await context.viewFacet.getOpenIntent(1)
+			const balanceBefore = await context.viewFacet.getIsolatedLockedBalance(intent.partyA, context.collateral)
+
+			const quantity = e(10)
+			const price = intent.price - 1n
+			await expect(partyB1.fillOpenIntent(intent.id, quantity, price)).not.to.reverted
+			intent = await context.viewFacet.getOpenIntent(1)
+
+			const premium = await context.viewFacet.getOpenIntentPremium(intent.id)
+
+			const balanceAfter = await context.viewFacet.getIsolatedLockedBalance(intent.partyA, context.collateral)
+			expect(balanceBefore - balanceAfter).to.be.equal(premium)
+		})
+
+		it("Should Unlock Premium from PartyA in Cross Buy as Expected", async () => {
+			let intent = await context.viewFacet.getOpenIntent(2)
+			const balanceBefore = await context.viewFacet.getCrossBalance(intent.partyA, context.collateral, intent.partyB)
+
+			const quantity = e(10)
+			const price = intent.price - 1n
+			await expect(partyB1.fillOpenIntent(intent.id, quantity, price)).not.to.reverted
+			intent = await context.viewFacet.getOpenIntent(2)
+
+			const premium = await context.viewFacet.getOpenIntentPremium(intent.id)
+			const balanceAfter = await context.viewFacet.getCrossBalance(intent.partyA, context.collateral, intent.partyB)
+			expect(balanceBefore.locked - balanceAfter.locked).to.be.equal(premium)
+		})
+
+		it("Should Unlock Maintenance Margin from PartyA in Cross Sell as Expected", async () => {
+			let intent = await context.viewFacet.getOpenIntent(3)
+			const balanceBefore = await context.viewFacet.getCrossBalance(intent.partyA, context.collateral, intent.partyB)
+
+			const quantity = e(10)
+			const price = intent.price + 1n
+			await expect(partyB2.fillOpenIntent(intent.id, quantity, price)).not.to.reverted
+			intent = await context.viewFacet.getOpenIntent(3)
+			const trade = await context.viewFacet.getTrade(1)
+
+			const premium = await context.viewFacet.getOpenIntentPremium(intent.id)
+			const balanceAfter = await context.viewFacet.getCrossBalance(intent.partyA, context.collateral, intent.partyB)
+			expect(balanceBefore.locked - balanceAfter.locked).to.be.equal(trade.tradeAgreements.mm)
 		})
 
 		it("Should fail if Fees not Payed to Affiliate Collector as Expected", async () => {

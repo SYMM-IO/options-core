@@ -236,6 +236,22 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "BoundedToAnotherPartyB")
 		})
 
+		it("Should Pass when partyA bound to a partyB that IS in whitelisted partyB", async function () {
+			const latestBlock = await getLatestBlockTime()
+			const request = openIntentRequestBuilder()
+				.partyBsWhiteList([partyB1.getSigner])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateralNL)
+				.symbolId(1)
+				.deadline(latestBlock + 120)
+				.expirationTimestamp(latestBlock + 120)
+				.exerciseFee({ cap: e(1), rate: "0" })
+				.build()
+
+			await context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(partyB1.getSigner)
+			await expect(partyA1.sendOpenIntent(request)).not.to.be.reverted
+		})
+
 		it("Should fail as MSG Sender is in whitelisted partyB", async function () {
 			const latestBlock = await getLatestBlockTime()
 			const request = openIntentRequestBuilder()
