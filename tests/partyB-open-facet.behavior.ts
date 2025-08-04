@@ -332,7 +332,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 	})
 
-	describe.only("fillOpenIntent", async function () {
+	describe("fillOpenIntent", async function () {
 		beforeEach(async () => {
 			await partyB1.lockOpenIntent(1)
 			await partyB1.lockOpenIntent(2)

@@ -12,6 +12,8 @@ import { e } from "../utils/e"
 import { CloseIntentStruct, SettlementPriceSigStruct, TradeStruct } from "../types/contracts/interfaces/ISymmio"
 import { getLatestBlockTime } from "../utils/time"
 import { settlementSigBuilder } from "./models/builders/settlement.builder"
+import { ZeroAddress } from "ethers"
+import { MarginType, TradeSide } from "./option-enums"
 
 export function shouldBehaveLikeSettlementFacet(): void {
 	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyB1: PartyB, partyB2: PartyB
@@ -37,13 +39,13 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			.expirationTimestamp((await getLatestBlockTime()) + 150)
 			.exerciseFee({ cap: e(1), rate: e(1) })
 			.quantity(e(100))
-			.strikePrice(e(60))
-			.price(e(7))
+			.strikePrice(e(100))
+			.price(e(10))
 			.build()
 
 		await partyA1.sendOpenIntent(request)
 		await partyB1.lockOpenIntent(1)
-		await partyB1.fillOpenIntent(1, e(100), e(7))
+		await partyB1.fillOpenIntent(1, e(100), e(10))
 
 		const newBlock = (await getLatestBlockTime()) + 170
 		await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
@@ -448,5 +450,188 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			expect(await context.tradeFacet.executeTrades([ID], priceSig)).to.be.not.reverted
 		})
+	})
+	describe("Transfer Trade", async function () {
+		it("Should Fail to transfer trade because of global pause", async  () => {
+			await context.controlFacet.pauseGlobal()
+			const tradeId = 1
+
+			await expect(context.tradeFacet.connect(partyA1.getSigner).transferTrade(
+				partyA2.address,
+				tradeId
+			)).to.be.revertedWithCustomError(context.tradeFacet, "GlobalPaused")
+
+		})
+
+		it("Should Fail to transfer trade because of party A pause", async  () => {
+			await context.controlFacet.pausePartyAActions()
+			const tradeId = 1
+
+			await expect(context.tradeFacet.connect(partyA1.getSigner).transferTrade(
+				partyA2.address,
+				tradeId
+			)).to.be.revertedWithCustomError(context.tradeFacet, "PartyAActionsPaused")
+		})
+
+		it("Should Fail to transfer trade because of invalid party", async  () => {
+			const tradeId = 1
+
+			await expect(context.tradeFacet.connect(partyA2.getSigner).transferTrade(
+				partyA2.address,
+				tradeId
+			)).to.be.revertedWithCustomError(context.tradeFacet, "UnauthorizedSender")
+		})
+
+		it("Should Fail to transfer trade because of unauthorized party", async  () => {
+			const tradeId = 1
+
+			await expect(context.tradeFacet.connect(partyA2.getSigner).transferTrade(
+				partyA2.address,
+				tradeId
+			)).to.be.revertedWithCustomError(context.tradeFacet, "UnauthorizedSender")
+
+			await expect(context.tradeFacet.connect(partyB2.getSigner).transferTrade(
+				partyA2.address,
+				tradeId
+			)).to.be.revertedWithCustomError(context.tradeFacet, "UnauthorizedSender")
+
+			await expect(context.tradeFacet.connect(partyB1.getSigner).transferTrade(
+				partyA2.address,
+				tradeId
+			)).to.be.revertedWithCustomError(context.tradeFacet, "UnauthorizedSender")
+		})
+
+		it("Should Fail to transfer trade because of suspended party", async  () => {
+			await context.controlFacet.suspendAddress(partyA1.address , true)
+			const tradeId = 1
+
+			await expect(context.tradeFacet.connect(partyA1.getSigner).transferTrade(
+				partyA2.address,
+				tradeId
+			)).to.be.revertedWithCustomError(context.tradeFacet, "UserSuspended")
+		})
+
+		it("Should Fail to transfer trade because of suspended receiver", async  () => {
+			await context.controlFacet.suspendAddress(partyA2.address , true)
+			const tradeId = 1
+
+			await expect(context.tradeFacet.connect(partyA1.getSigner).transferTrade(
+				partyA2.address,
+				tradeId
+			)).to.be.revertedWithCustomError(context.tradeFacet, "UserSuspended")
+		})
+
+		it("Should Fail to transfer trade because of zero receiver", async  () => {
+			const tradeId = 1
+
+			await expect(context.tradeFacet.connect(partyA1.getSigner).transferTrade(
+				ZeroAddress,
+				tradeId
+			)).to.be.revertedWithCustomError(context.tradeFacet, "ZeroAddress")
+		})
+
+		it("Should Fail to transfer trade because of Party B receiver", async  () => {
+			const tradeId = 1
+
+			await expect(context.tradeFacet.connect(partyA1.getSigner).transferTrade(
+				partyB1.address,
+				tradeId
+			)).to.be.revertedWithCustomError(context.tradeFacet, "ReceiverIsPartyB")
+
+			await expect(context.tradeFacet.connect(partyA1.getSigner).transferTrade(
+				partyB2.address,
+				tradeId
+			)).to.be.revertedWithCustomError(context.tradeFacet, "ReceiverIsPartyB")
+
+		})
+
+		it("Should Fail to transfer trade because of invalid state", async  () => {
+			const tradeId = 1
+			const timestamp = await getLatestBlockTime()
+			const priceSig: SettlementPriceSigStruct = {
+				reqId: ethers.toUtf8Bytes("1"), // or a Buffer/hex string
+				timestamp: timestamp + 100,
+				symbolId: 1,
+				settlementPrice: e(100),
+				settlementTimestamp: timestamp,
+				collateralPrice: e(10),
+				gatewaySignature: "0xabcdef",
+				sigs: {
+					signature: 0x1234567890,
+					owner: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+					nonce: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+				},
+			}
+			await context.tradeFacet.executeTrades([tradeId], priceSig)
+
+			await expect(context.tradeFacet.connect(partyA1.getSigner).transferTrade(
+				partyA2.address,
+				tradeId
+			)).to.be.revertedWithCustomError(context.tradeFacet, "InvalidState")
+
+		})
+
+
+		it("Should Fail to transfer trade because of cross margin", async  () => {
+
+			const request2 = openIntentRequestBuilder()
+				.partyBsWhiteList([partyB1.getSigner])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateral)
+				.symbolId(1)
+				.deadline((await getLatestBlockTime()) + 140)
+				.expirationTimestamp((await getLatestBlockTime()) + 150)
+				.exerciseFee({ cap: e(1), rate: e(1) })
+				.quantity(e(100))
+				.strikePrice(e(100))
+				.price(e(10))
+				.marginType(MarginType.CROSS)
+				.tradeSide(TradeSide.BUY)
+				.build()
+
+			await partyA1.sendOpenIntent(request2)
+			await partyB1.lockOpenIntent(2)
+			await partyB1.fillOpenIntent(2, e(100), e(10))
+
+			const tradeId = 2
+			await expect(context.tradeFacet.connect(partyA1.getSigner).transferTrade(
+				partyA2.address,
+				tradeId
+			)).to.be.revertedWithCustomError(context.tradeFacet, "CrossTradeTransferNotAllowed")
+
+		})
+
+		it("Should Fail to transfer trade because of Party B insolvent", async  () => {
+			const tradeId = 1
+
+			await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
+				isActive: true,
+				lossCoverage: e(1),
+				oracleId: 1,
+			})
+
+			await context.clearingHouse.connect(context.signers.clearingHouse).flagIsolatedPartyBLiquidation(
+				partyB1.address,
+				context.collateral.getAddress()
+			)
+
+			await expect(context.tradeFacet.connect(partyA1.getSigner).transferTrade(
+				partyA2.address,
+				tradeId
+			)).to.be.revertedWithCustomError(context.tradeFacet, "NotSolvent")
+
+		})
+
+		it("Should Fail to transfer trade because of Party B insolvent", async  () => {
+			const tradeId = 1
+
+			expect(await context.tradeFacet.connect(partyA1.getSigner).transferTrade(
+				partyA2.address,
+				tradeId
+			)).not.to.reverted
+
+			expect((await context.viewFacet.getTrade(tradeId)).partyA).be.equal(partyA2.address)
+		})
+
 	})
 }

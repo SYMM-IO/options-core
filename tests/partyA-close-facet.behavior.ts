@@ -280,7 +280,7 @@ export function shouldBehaveLikePartyACloseFacet(): void {
 		})
 	})
 
-	describe.only("expire close intents", async function () {
+	describe("expire close intents", async function () {
 		beforeEach(async () => {
 			const latestBlockTime = await getLatestBlockTime()
 
