@@ -408,9 +408,6 @@ library ScheduledReleaseBalanceOps {
 			TradeStorage.layout().activeTradesOfPartyAWithPartyBCount[self.user][self.collateral][counterParty] != 0
 		) return;
 
-		uint256 balance = inTransitionBalance(self, counterParty); // if any window open
-		if (balance != 0) revert BalanceErrors.NonZeroBalanceCounterParty(counterParty, balance);
-
 		uint256 idxPlusOne = self.counterPartyIndexes[counterParty];
 		if (idxPlusOne == 0) return; // already removed
 
