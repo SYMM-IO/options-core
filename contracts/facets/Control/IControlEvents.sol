@@ -60,6 +60,7 @@ interface IControlEvents {
 	event AddressSuspended(address indexed user, bool status);
 	event WithdrawalSuspended(uint256 indexed withdrawId, bool status);
 	event DeactiveInstantActionModeCooldownUpdated(uint256 cooldown);
+	event TradeNftAddressUpdated(address indexed tradeNftAddress);
 	event OracleAdded(uint256 indexed oracleId, string name, address contractAddress);
 	event SymbolAdded(
 		uint256 indexed symbolId,

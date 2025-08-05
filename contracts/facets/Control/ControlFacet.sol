@@ -278,6 +278,15 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 		emit DeactiveInstantActionModeCooldownUpdated(_cooldown);
 	}
 
+	/**
+	 * @notice Sets the trade NFT address
+	 * @param _tradeNftAddress The trade NFT address
+	 */
+	function setTradeNftAddress(address _tradeNftAddress) external onlyRole(LibAccessibility.SETTER_ROLE) {
+		AppStorage.layout().tradeNftAddress = _tradeNftAddress;
+		emit TradeNftAddressUpdated(_tradeNftAddress);
+	}
+
 	// ═══════════════════════════════════════════════════════════════════════════
 	//                          RELEASE INTERVAL MANAGEMENT
 	// ═══════════════════════════════════════════════════════════════════════════
