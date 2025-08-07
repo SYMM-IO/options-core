@@ -759,11 +759,11 @@ export function shouldBehaveLikeAccountFacet(): void {
 
 		it("Should withdraw successfully", async function () {
 			const balanceBefore = await context.collateral.balanceOf(context.signers.partyA2)
-			expect(await context.accountFacet.connect(partyA1.getSigner).completeWithdraw(1)).to.be.not.reverted
+			await expect( context.accountFacet.connect(partyA1.getSigner).completeWithdraw(1)).to.be.not.reverted
 
 			const withdraw = await context.viewFacet.getWithdrawal(1)
 
-			const balanceAfter = await context.collateral.balanceOf(context.signers.partyA2)
+			const balanceAfter = await context.collateral.balanceOf(partyA2.address)
 			expect(withdraw.status).to.be.equal(WithdrawStatus.COMPLETED)
 			expect(balanceAfter - balanceBefore).to.be.equal(withdraw.amount)
 		})

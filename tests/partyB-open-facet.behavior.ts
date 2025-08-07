@@ -17,6 +17,7 @@ import { MarginType } from "./option-enums"
 import { getLatestBlockTime } from "../utils/time"
 import { tradeNftSol } from "../types/contracts/helpers"
 import { exitOnError } from "winston"
+import { account } from "../types/contracts/facets"
 
 export function shouldBehaveLikePartyBOpenFacet(): void {
 	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyA3: PartyA, partyB1: PartyB, partyB2: PartyB
@@ -29,9 +30,9 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		partyB1 = new PartyB(context, context.signers.partyB1)
 		partyB2 = new PartyB(context, context.signers.partyB2)
 
-		await partyA1.setBalances(context.collateral, e(100000), e(100000))
+		await partyA1.setBalances(context.collateral, e(100000), e(30000))
 		await partyA1.setBalances(context.collateralNL, e(100), e(30)) // as Fee token
-		await partyA2.setBalances(context.collateral, e(100000), e(100000))
+		await partyA2.setBalances(context.collateral, e(100000), e(30000))
 		await partyA2.setBalances(context.collateralNL, e(100), e(50)) // as Fee token
 		await partyA3.setBalances(context.collateral, e(100000), e(100000))
 		await partyA3.setBalances(context.collateralNL, e(100), e(50)) // as Fee token
@@ -873,6 +874,54 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			expect(partyACrossBalanceAfter.balance - partyACrossBalanceBefore.balance).to.equal(premium)
 		})
 
+		it("Should Prevent Withdraw whit Solvency violation when Premium payed to Party A in Sell Trade", async () => {
+			const openIntent = await context.viewFacet.getOpenIntent(3)
+			const partyACrossBalanceBefore = await context.viewFacet.getCrossBalance(
+				openIntent.partyA,
+				await context.collateral.getAddress(),
+				openIntent.partyB,
+			)
+
+			const quantity = openIntent.tradeAgreements.quantity / 2n
+			const price = openIntent.price * 2n
+			await expect(partyB2.fillOpenIntent(3, quantity, price)).not.to.reverted
+
+			const partyACrossBalanceAfter = await context.viewFacet.getCrossBalance(
+				openIntent.partyA,
+				await context.collateral.getAddress(),
+				openIntent.partyB,
+			)
+			const premium = await context.viewFacet.getTradePremium(1)
+
+			console.log("partyB Locked Balance Before", partyACrossBalanceBefore)
+			console.log("partyB Locked Balance After", partyACrossBalanceAfter)
+			console.log("partyB Premium:", premium)
+
+			expect(partyACrossBalanceAfter.balance - partyACrossBalanceBefore.balance).to.equal(premium)
+
+			const partyABalanceBefore = await context.viewFacet.getIsolatedBalance(openIntent.partyA, await context.collateral.getAddress())
+
+			await context.accountFacet.connect(partyA2.getSigner).initiateWithdraw(context.collateral, partyABalanceBefore, partyA1.address)
+
+			const newBlock = (await getLatestBlockTime()) + 130
+			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
+			await network.provider.send("evm_mine")
+
+			const targetBalanceBefore = await context.collateral.balanceOf(partyA1.address)
+
+			await context.accountFacet.connect(partyA2.getSigner).completeWithdraw(1)
+
+			const partyABalanceAfter = await context.viewFacet.getIsolatedBalance(openIntent.partyA, await context.collateral.getAddress())
+			const targetBalanceAfter = await context.collateral.balanceOf(partyA1.address)
+
+			console.log("Source Deposit Balance Before", partyABalanceBefore)
+			console.log("Source Deposit Balance After", partyABalanceAfter)
+			console.log("Target Collateral Balance Before:", targetBalanceBefore)
+			console.log("Target Collateral Balance After:", targetBalanceAfter)
+
+			expect(targetBalanceAfter - targetBalanceBefore).to.equal(partyABalanceBefore)
+		})
+
 		it("Should Update Nonce for Party A as expected in Cross Margin", async () => {
 			const openIntent = await context.viewFacet.getOpenIntent(3)
 			const nonceBefore = await context.viewFacet.getNonce(openIntent.partyA, openIntent.partyB)
@@ -1117,19 +1166,21 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		it("Should change intent status to EXPIRED when deadline reached", async () => {
 			const newBlock = (await getLatestBlockTime()) + 150
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
+
 			expect(await partyB1.unlockOpenIntent(1)).to.not.reverted
 			const intent = await context.viewFacet.getOpenIntent(1)
 			expect(intent.status).to.equal(IntentStatus.EXPIRED)
 		})
 
 		it("Should change intent status to PENDING", async () => {
-			expect(await partyB1.unlockOpenIntent("1")).to.not.reverted
+			await expect(partyB1.unlockOpenIntent("1")).to.not.reverted
 
 			const intent = await context.viewFacet.getOpenIntent(1)
 
 			expect(intent.status).to.equal(IntentStatus.PENDING) //IntentStatus.PENDING
 			expect(intent.partyB).to.equal(ZeroAddress)
 		})
+
 	})
 
 	describe("acceptCancelOpenIntent", async function () {

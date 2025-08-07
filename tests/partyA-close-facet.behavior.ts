@@ -124,8 +124,13 @@ export function shouldBehaveLikePartyACloseFacet(): void {
 
 			const tradeBefore = await context.viewFacet.getTrade(1)
 			await expect(partyA1.sendCancelCloseIntent(["2"])).not.to.be.reverted
+
 			const closeIntent = await context.viewFacet.getCloseIntent(2)
 			const tradeAfter = await context.viewFacet.getTrade(1)
+
+			console.log("Close Pending Amount Before Expire:", tradeBefore.closePendingAmount)
+			console.log("Close Pending Amount After Expire:", tradeAfter.closePendingAmount) // it is lower due to close intent cancel
+
 			expect(tradeBefore.closePendingAmount - tradeAfter.closePendingAmount).to.be.equal(closeIntent.quantity)
 		})
 
@@ -235,7 +240,7 @@ export function shouldBehaveLikePartyACloseFacet(): void {
 			)
 		})
 
-		it("Should fail when we have pending close Intent", async function () {
+		it("Should Consider Pending Intents when sending new Intent", async function () {
 			const latestBlockTime = await getLatestBlockTime()
 			await partyA1.sendCloseIntent(1, e(10), 10, latestBlockTime + 140)
 
@@ -248,10 +253,13 @@ export function shouldBehaveLikePartyACloseFacet(): void {
 			)
 
 			await partyA1.sendCancelCloseIntent(["1"])
+			const closeIntent = await context.viewFacet.getCloseIntent(1)
+			console.log("Close Intent Status:", closeIntent.status == BigInt(CloseIntentStatus.EXPIRED) ? "Expired" : closeIntent.status)
+
 			await expect(partyA1.sendCloseIntent(1, e(100), 10, latestBlockTime + 200)).not.to.be.reverted
 		})
 
-		it("Should fail when invalid Close Intent Count", async function () {
+		it("Should fail when Exceeds Max Close Intent Count", async function () {
 			await context.controlFacet.setMaxCloseOrdersLength(1)
 
 			const latestBlockTime = await getLatestBlockTime()
@@ -319,8 +327,6 @@ export function shouldBehaveLikePartyACloseFacet(): void {
 			await partyA1.sendCloseIntent(1, e(10), 10, latestBlockTime + 140)
 			await partyA1.sendCloseIntent(2, e(10), 10, latestBlockTime + 140)
 			await partyA1.sendCloseIntent(2, e(10), 10, latestBlockTime + 140)
-
-
 		})
 
 		it("Should fail when partyA actions paused", async function () {
@@ -336,31 +342,28 @@ export function shouldBehaveLikePartyACloseFacet(): void {
 		})
 
 		it("Should fail when expiring close intents by non-expired ids", async function () {
-			await expect(partyA1.expireCloseIntent(["1" , "2"])).to.be.revertedWithCustomError(context.partyACloseFacet, "IntentNotExpired")
+			await expect(partyA1.expireCloseIntent(["1", "2"])).to.be.revertedWithCustomError(context.partyACloseFacet, "IntentNotExpired")
 		})
 
-		it("Should fail when expiring close intents by non-pending ids", async function () {
-			await partyB1.fillCloseIntent(1 , e(10),10)
-			await partyB1.fillCloseIntent(2 , e(10),10)
+		it("Should fail when expiring close intents by non-pending IDs", async function () {
+			await partyB1.fillCloseIntent(1, e(10), 10)
+			await partyB1.fillCloseIntent(2, e(10), 10)
 
 			const latestBlockTime = await getLatestBlockTime()
 			await network.provider.send("evm_setNextBlockTimestamp", [latestBlockTime + 200])
 			await network.provider.send("evm_mine")
 
-			await expect(partyA1.expireCloseIntent(["1" , "2"])).to.be.revertedWithCustomError(context.partyACloseFacet, "InvalidState")
+			await expect(partyA1.expireCloseIntent(["1", "2"])).to.be.revertedWithCustomError(context.partyACloseFacet, "InvalidState")
 		})
-
 
 		it("Should Expire Close Intents", async function () {
-
 			const latestBlockTime = await getLatestBlockTime()
 			await network.provider.send("evm_setNextBlockTimestamp", [latestBlockTime + 200])
 			await network.provider.send("evm_mine")
 
-			expect(await partyA1.expireCloseIntent(["1" , "2"])).not.to.be.reverted
+			expect(await partyA1.expireCloseIntent(["1", "2"])).not.to.be.reverted
 			expect((await context.viewFacet.getCloseIntent(1)).status).to.be.equal(CloseIntentStatus.EXPIRED)
 			expect((await context.viewFacet.getCloseIntent(2)).status).to.be.equal(CloseIntentStatus.EXPIRED)
 		})
 	})
-
 }
