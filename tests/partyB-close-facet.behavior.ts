@@ -81,17 +81,35 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 		await partyA1.sendOpenIntent(requestCrossBuy)
 		await partyA2.sendOpenIntent(requestCrossSell)
 
-		await partyB1.lockOpenIntent(1)
-		await partyB1.lockOpenIntent(2)
-		await partyB2.lockOpenIntent(3)
+		const openIntent1 = await context.viewFacet.getOpenIntent(1)
+		const openIntent2 = await context.viewFacet.getOpenIntent(2)
+		const openIntent3 = await context.viewFacet.getOpenIntent(3)
 
-		await partyB1.fillOpenIntent(1, e(100), request.price)
-		await partyB1.fillOpenIntent(2, e(100), requestCrossBuy.price)
-		await partyB2.fillOpenIntent(3, e(100), requestCrossSell.price)
+		await partyB1.lockOpenIntent(openIntent1.id)
+		await partyB1.lockOpenIntent(openIntent2.id)
+		await partyB2.lockOpenIntent(openIntent3.id)
 
-		await partyA1.sendCloseIntent(1, e(10), request.price, (await getLatestBlockTime()) + 120)
-		await partyA1.sendCloseIntent(2, e(20), requestCrossBuy.price, (await getLatestBlockTime()) + 120)
-		await partyA2.sendCloseIntent(3, e(30), requestCrossSell.price, (await getLatestBlockTime()) + 120)
+		await partyB1.fillOpenIntent(openIntent1.id, e(100), request.price)
+		await partyB1.fillOpenIntent(openIntent2.id, e(100), requestCrossBuy.price)
+		await partyB2.fillOpenIntent(openIntent3.id, e(100), requestCrossSell.price)
+
+		const trade1 = await context.viewFacet.getTrade(1)
+		const trade2 = await context.viewFacet.getTrade(2)
+		const trade3 = await context.viewFacet.getTrade(3)
+
+		const quantity1 = trade1.tradeAgreements.quantity / 10n
+		const quantity2 = trade2.tradeAgreements.quantity / 5n
+		const quantity3 = trade3.tradeAgreements.quantity / 2n
+
+		const price1 = trade1.openedPrice + 100n
+		const price2 = trade2.openedPrice - 100n
+		const priceSell3 = trade3.openedPrice + 100n
+		const priceSell4 = trade3.openedPrice - 100n
+
+		await partyA1.sendCloseIntent(openIntent1.id, quantity1, price1, (await getLatestBlockTime()) + 120)
+		await partyA1.sendCloseIntent(openIntent2.id, quantity2, price2, (await getLatestBlockTime()) + 120)
+		await partyA2.sendCloseIntent(openIntent3.id, quantity3, priceSell3, (await getLatestBlockTime()) + 120)
+		await partyA2.sendCloseIntent(openIntent3.id, quantity3, priceSell4, (await getLatestBlockTime()) + 120)
 	})
 
 	describe("Accept Cancel Open Intent", async function () {
@@ -298,13 +316,20 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 					.build(),
 			)
 
-			await partyB1.lockOpenIntent(4)
-			await partyB1.fillOpenIntent(4, 100, 7)
-			await partyA1.sendCloseIntent(4, 100, 7, newBlockTime + 180) // longer deadline than option expire
+			const lastId = await context.viewFacet.getLastOpenIntentId()
+
+			await partyB1.lockOpenIntent(lastId)
+			await partyB1.fillOpenIntent(lastId, 100, 7)
+
+			const tradeId = await context.viewFacet.getLastTradeId()
+
+			await partyA1.sendCloseIntent(tradeId, 100, 7, newBlockTime + 180) // longer deadline than option expire
 
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTime + 12])
 			await network.provider.send("evm_mine")
-			await expect(partyB1.fillCloseIntent(4, 1, 7)).to.revertedWithCustomError(context.partyBCloseFacet, "TradeExpired")
+
+			const lastCloseId = await context.viewFacet.getLastCloseIntentId()
+			await expect(partyB1.fillCloseIntent(lastCloseId, 1, 7)).to.revertedWithCustomError(context.partyBCloseFacet, "TradeExpired")
 		})
 
 		it("Should failed when Fill Close Intent price not in range For BUY Trades", async () => {
