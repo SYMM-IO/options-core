@@ -25,13 +25,13 @@ export function shouldBehaveLikeSettlementFacet(): void {
 		partyB1 = new PartyB(context, context.signers.partyB1)
 		partyB2 = new PartyB(context, context.signers.partyB2)
 
-		await partyB1.setBalances(context.collateral, e(100000), e(100000))
-		await partyB2.setBalances(context.collateral, e(100000), e(100000))
-		await partyA1.setBalances(context.collateral, e(100000), e(100000))
-		await partyA2.setBalances(context.collateral, e(100000), e(100000))
+		await partyB1.setBalances(context.collateral, e(100000), e(50000))
+		await partyB2.setBalances(context.collateral, e(100000), e(50000))
+		await partyA1.setBalances(context.collateral, e(100000), e(50000))
+		await partyA2.setBalances(context.collateral, e(100000), e(50000))
 
 		const request = openIntentRequestBuilder()
-			.partyBsWhiteList([partyB1.getSigner])
+			.partyBsWhiteList([partyB1.address])
 			.affiliate(context.signers.affiliate1)
 			.feeToken(context.collateral)
 			.symbolId(1)
@@ -109,7 +109,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 		it("Should failed when trade has no open amount", async () => {
 			const request = openIntentRequestBuilder()
-				.partyBsWhiteList([partyB1.getSigner])
+				.partyBsWhiteList([partyB1.address])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.symbolId(1)
@@ -122,20 +122,25 @@ export function shouldBehaveLikeSettlementFacet(): void {
 				.build()
 
 			await partyA1.sendOpenIntent(request)
-			await partyB1.lockOpenIntent(2) // second (this) intent
-			await partyB1.fillOpenIntent(2, e(100), e(7))
-			await partyA1.sendCloseIntent(2, e(100), e(7), (await getLatestBlockTime()) + 120)
-			let closeIntent: CloseIntentStruct = await context.viewFacet.getCloseIntent(2)
+
+			const lastIntentID = await context.viewFacet.getLastOpenIntentId()
+			const intent = await context.viewFacet.getOpenIntent(lastIntentID)
+			await partyB1.lockOpenIntent(lastIntentID) // second (this) intent
+			await partyB1.fillOpenIntent(lastIntentID, intent.tradeAgreements.quantity, intent.price)
+
+			await partyA1.sendCloseIntent(intent.id, intent.tradeAgreements.quantity, intent.price, (await getLatestBlockTime()) + 120)
+			const closeIntentID = await context.viewFacet.getLastCloseIntentId()
+			let closeIntent: CloseIntentStruct = await context.viewFacet.getCloseIntent(closeIntentID)
 			console.log("Settlement Close Intent Quantity: ", closeIntent.quantity)
 			console.log("Settlement Close Intent Filled Amount: ", closeIntent.filledAmount)
 
-			await partyB1.fillCloseIntent(1, e(100), e(7))
-			closeIntent = await context.viewFacet.getCloseIntent(1)
+			await partyB1.fillCloseIntent(closeIntent.id, closeIntent.quantity, closeIntent.price)
+			closeIntent = await context.viewFacet.getCloseIntent(closeIntent.id)
 			console.log("Settlement After Fill Close Intent Quantity: ", closeIntent.quantity)
 			console.log("Settlement After Fill Close Intent Filled Amount: ", closeIntent.filledAmount)
 
 			const timestamp = await getLatestBlockTime()
-			const tradeID = 2
+			const tradeID = closeIntent.tradeId
 			const priceSig: SettlementPriceSigStruct = {
 				reqId: ethers.toUtf8Bytes("1"), // or a Buffer/hex string
 				timestamp: timestamp + 100,
@@ -165,9 +170,9 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 		it("Should be executed with option carried out as 'Isolated Buy' ", async () => {
 			const request = openIntentRequestBuilder()
-				.partyBsWhiteList([partyB2.getSigner])
+				.partyBsWhiteList([partyB2.address])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(1)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -177,20 +182,27 @@ export function shouldBehaveLikeSettlementFacet(): void {
 				.price(e(10))
 				.build()
 
-			const openIntentId = 2
-			const closeIntentId = 1
-			const tradeID = 2
-
+			await partyA2.setBalances(context.collateralNL, e(1000), e(500))
 			await partyA2.sendOpenIntent(request)
+
+			const openIntentId = await context.viewFacet.getLastOpenIntentId()
+
 			await partyB2.lockOpenIntent(openIntentId)
 			const intentPremium = await context.viewFacet.getOpenIntentPremium(openIntentId)
-			const partyBBalanceBeforeSettlementInit = await context.viewFacet.getIsolatedBalance(partyB2.getSigner, await context.collateral.getAddress())
+			const partyBBalanceBeforeSettlementInit = await context.viewFacet.getIsolatedBalance(partyB2.address, await context.collateral.getAddress())
 			await partyB2.fillOpenIntent(openIntentId, e(100), e(10))
+
 			const closePrice = e(10)
 			const closeQuantity = e(50)
+			const tradeID = await context.viewFacet.getLastTradeId()
 			await partyA2.sendCloseIntent(tradeID, closeQuantity, closePrice, (await getLatestBlockTime()) + 120)
+
+			const closeIntentId = await context.viewFacet.getLastCloseIntentId()
 			const closeIntent = await context.viewFacet.getCloseIntent(closeIntentId)
-			await partyB2.fillCloseIntent(1, closeIntent.quantity, closeIntent.price)
+
+			const partyAFeeBalanceBeforeSettlement = await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateralNL.getAddress())
+
+			await partyB2.fillCloseIntent(closeIntentId, closeIntent.quantity, closeIntent.price)
 			const closePNL = (BigInt(closeIntent.price) * BigInt(closeIntent.quantity)) / BigInt(1e18)
 
 			const timestamp = await getLatestBlockTime()
@@ -220,48 +232,57 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			let tradePremiumSettled = (tradePremium * openAmount) / BigInt(trade.tradeAgreements.quantity)
 
 			const pnl = await context.viewFacet.getTradePnl(tradeID, priceSig.settlementPrice, openAmount)
+
 			const exerciseFee = await context.viewFacet.getTradeExerciseFee(tradeID, priceSig.settlementPrice, pnl)
 			const openFee = await context.viewFacet.getOpenIntentPlatformFee(openIntentId)
-			const closedFee = await context.viewFacet.getCloseIntentPlatformFee(closeIntentId, closeQuantity, closePrice)
+			const platformClosedFee = await context.viewFacet.getCloseIntentPlatformFee(closeIntentId, closeQuantity, closePrice)
 			const openAffiliateFee = await context.viewFacet.getOpenIntentAffiliateFee(openIntentId)
-			const closedAffiliateFee = await context.viewFacet.getCloseIntentAffiliateFee(closeIntentId, closeQuantity, closePrice)
+			const affiliateClosedFee = await context.viewFacet.getCloseIntentAffiliateFee(closeIntentId, closeQuantity, closePrice)
 			const openIntent = await context.viewFacet.getOpenIntent(openIntentId)
 			const openSolverFee = (openIntent.feeStructure.solverFee.openFee * openIntent.tradeAgreements.quantity * openIntent.price) / e(1) / e(1)
-			const closedSolverFee = (closeIntent.feeStructure.solverFee.closeFee * closePrice * closeQuantity) / e(1) / e(1)
-			const allCloseFee = closedFee + closedAffiliateFee + closedSolverFee
+			const solverClosedFee = (closeIntent.feeStructure.solverFee.closeFee * closePrice * closeQuantity) / e(1) / e(1)
+
+			const allClosedFees = platformClosedFee + affiliateClosedFee + solverClosedFee
+
 			const optionSymbol = await context.viewFacet.getSymbol(trade.tradeAgreements.symbolId)
-			const partyABalanceBeforeSettlement = await context.viewFacet.getIsolatedBalance(partyA2.getSigner, await context.collateral.getAddress())
+			const partyABalanceBeforeSettlement = await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress())
 			const partyABalanceBeforeSettlementLocked = await context.viewFacet.getIsolatedLockedBalance(
-				partyA2.getSigner,
+				partyA2.address,
 				await context.collateral.getAddress(),
 			)
-			const partyBBalanceBeforeSettlement = await context.viewFacet.getIsolatedBalance(partyB2.getSigner, await context.collateral.getAddress())
+			const partyBBalanceBeforeSettlement = await context.viewFacet.getIsolatedBalance(partyB2.address, await context.collateral.getAddress())
 			const partyBBalanceBeforeSettlementLocked = await context.viewFacet.getIsolatedLockedBalance(
-				partyB2.getSigner,
+				partyB2.address,
 				await context.collateral.getAddress(),
 			)
 
 			//Scheduling info
-			const releaseInterval = await context.viewFacet.getReleaseInterval(partyA2.getSigner)
-			let scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA2.getSigner, optionSymbol.collateral, partyB2.getSigner)
+			const releaseInterval = await context.viewFacet.getReleaseInterval(partyA2.address)
+			let scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA2.address, optionSymbol.collateral, partyB2.address)
 
 			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).to.be.not.reverted
 
 			// instant premium add to partyB balance
-			const partyBBalanceAfterSettlement = await context.viewFacet.getIsolatedBalance(partyB2.getSigner, context.collateral)
-			console.log("Party A Balance 7", await context.viewFacet.getIsolatedBalance(partyA2.getSigner, await context.collateral.getAddress()))
+			const partyBBalanceAfterSettlement = await context.viewFacet.getIsolatedBalance(partyB2.address, context.collateral)
+			console.log("Party A Balance 7", await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()))
 
 			newBlock = (await getLatestBlockTime()) + Number(releaseInterval) * 2
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
 			await network.provider.send("evm_mine")
 
-			await context.accountFacet.syncBalances(context.collateral, partyA2.getSigner, [partyB2.getSigner])
+			await context.accountFacet.syncBalances(context.collateral, partyA2.address, [partyB2.address])
 
-			const partyABalanceAfterSettlementSchedule = await context.viewFacet.getIsolatedBalance(partyA2.getSigner, context.collateral)
+			const partyABalanceAfterSettlementSchedule = await context.viewFacet.getIsolatedBalance(partyA2.address, context.collateral)
+			const partyAFeeBalanceAfterSettlement = await context.viewFacet.getIsolatedBalance(partyA2.address, context.collateralNL)
+
+			console.log("Fee Balance Before Settlement:", partyAFeeBalanceBeforeSettlement)
+			console.log("Fee Balance After Settlement:", partyAFeeBalanceAfterSettlement)
+
 			// Party B
 			expect(partyBBalanceAfterSettlement - partyBBalanceBeforeSettlement).to.be.equal(tradePremiumSettled - e(pnl.toString()))
 			// Party A
-			expect(partyABalanceAfterSettlementSchedule - partyABalanceBeforeSettlement).to.be.equal(closePNL - allCloseFee)
+			expect(partyABalanceAfterSettlementSchedule - partyABalanceBeforeSettlement).to.be.equal(closePNL)
+			expect(partyAFeeBalanceBeforeSettlement - partyAFeeBalanceAfterSettlement).to.be.equal(allClosedFees)
 		})
 
 		/////////////////////////// assumed values //////////////////////////////
@@ -274,11 +295,11 @@ export function shouldBehaveLikeSettlementFacet(): void {
 		////////// solver fee : open intent = 0.001 / close intent = 0.01
 		////////// execution fee = min(0.002 * pnl, 0.0002 * underlying asset)
 		// TODO : this test pends by contract correction
-		it("Should be executed with option carried out as 'Isolated Buy' when execution is worthful", async () => {
+		it.only("Should be executed with option carried out as 'Isolated Buy' when execution is worthful", async () => {
 			const request = openIntentRequestBuilder()
-				.partyBsWhiteList([partyB2.getSigner])
+				.partyBsWhiteList([partyB2.address])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -288,23 +309,30 @@ export function shouldBehaveLikeSettlementFacet(): void {
 				.price(e(10))
 				.build()
 
-			const openIntentId = 2
-			const closeIntentId = 1
-			const tradeID = 2
-			console.log("Party A Balance 1 : ", await context.viewFacet.getIsolatedBalance(partyA2.getSigner, await context.collateral.getAddress()))
+			console.log("Party A Balance 1 : ", await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()))
+
+			await partyA2.setBalances(context.collateralNL, e(1000), e(500))
 			await partyA2.sendOpenIntent(request)
+
+			const openIntentId = await context.viewFacet.getLastOpenIntentId()
+
 			await partyB2.lockOpenIntent(openIntentId)
 			const intentPremium = await context.viewFacet.getOpenIntentPremium(openIntentId)
-			const partyBBalanceBeforeSettlementInit = await context.viewFacet.getIsolatedBalance(partyB2.getSigner, await context.collateral.getAddress())
-			console.log("Party A Balance 2 : ", await context.viewFacet.getIsolatedBalance(partyA2.getSigner, await context.collateral.getAddress()))
+			const partyBBalanceBeforeSettlementInit = await context.viewFacet.getIsolatedBalance(partyB2.address, await context.collateral.getAddress())
+			console.log("Party A Balance 2 : ", await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()))
 			await partyB2.fillOpenIntent(openIntentId, e(100), e(10))
-			console.log("Party A Balance 3 : ", await context.viewFacet.getIsolatedBalance(partyA2.getSigner, await context.collateral.getAddress()))
+			console.log("Party A Balance 3 : ", await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()))
+
 			const closePrice = e(10)
 			const closeQuantity = e(50)
+			const tradeID = await context.viewFacet.getLastTradeId()
 			await partyA2.sendCloseIntent(tradeID, closeQuantity, closePrice, (await getLatestBlockTime()) + 120)
+
+			const closeIntentId = await context.viewFacet.getLastCloseIntentId()
 			const closeIntent = await context.viewFacet.getCloseIntent(closeIntentId)
-			await partyB2.fillCloseIntent(1, closeIntent.quantity, closeIntent.price)
-			console.log("Party A Balance 4 : ", await context.viewFacet.getIsolatedBalance(partyA2.getSigner, await context.collateral.getAddress()))
+			await partyB2.fillCloseIntent(closeIntentId, closeIntent.quantity, closeIntent.price)
+			console.log("Party A Balance 4 : ", await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()))
+
 			const closePNL = (BigInt(closeIntent.price) * BigInt(closeIntent.quantity)) / BigInt(1e18)
 
 			const timestamp = await getLatestBlockTime()
@@ -330,11 +358,14 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			let newBlock = Number(trade.tradeAgreements.expirationTimestamp) + 12
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
 			await network.provider.send("evm_mine")
+
 			console.log("openAmount", openAmount)
 			console.log("tradePremium", tradePremium)
 			console.log("trade quantity", BigInt(trade.tradeAgreements.quantity))
+
 			let tradePremiumSettled = (tradePremium * openAmount) / BigInt(trade.tradeAgreements.quantity)
 			console.log("tradePremiumSettled", tradePremiumSettled)
+
 			const pnl = await context.viewFacet.getTradePnl(tradeID, priceSig.settlementPrice, openAmount)
 			console.log("pnl", pnl)
 			const exerciseFee = await context.viewFacet.getTradeExerciseFee(tradeID, priceSig.settlementPrice, pnl)
@@ -352,41 +383,43 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			const closedSolverFee = (closeIntent.feeStructure.solverFee.closeFee * closePrice * closeQuantity) / e(1) / e(1)
 			console.log("openSolverFee", openSolverFee)
 			console.log("closedSolverFee", closedSolverFee)
+
 			const allScheduledFee = closedFee + closedAffiliateFee + closedSolverFee + exerciseFee
 
 			const optionSymbol = await context.viewFacet.getSymbol(trade.tradeAgreements.symbolId)
-			const partyABalanceBeforeSettlement = await context.viewFacet.getIsolatedBalance(partyA2.getSigner, await context.collateral.getAddress())
+			const partyABalanceBeforeSettlement = await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress())
 			const partyABalanceBeforeSettlementLocked = await context.viewFacet.getIsolatedLockedBalance(
-				partyA2.getSigner,
+				partyA2.address,
 				await context.collateral.getAddress(),
 			)
-			const partyBBalanceBeforeSettlement = await context.viewFacet.getIsolatedBalance(partyB2.getSigner, await context.collateral.getAddress())
+			const partyBBalanceBeforeSettlement = await context.viewFacet.getIsolatedBalance(partyB2.address, await context.collateral.getAddress())
 			const partyBBalanceBeforeSettlementLocked = await context.viewFacet.getIsolatedLockedBalance(
-				partyB2.getSigner,
+				partyB2.address,
 				await context.collateral.getAddress(),
 			)
 
 			//Scheduling info
-			const releaseInterval = await context.viewFacet.getReleaseInterval(partyA2.getSigner)
-			let scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA2.getSigner, optionSymbol.collateral, partyB2.getSigner)
+			const releaseInterval = await context.viewFacet.getReleaseInterval(partyA2.address)
+			let scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA2.address, optionSymbol.collateral, partyB2.address)
 
 			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).to.be.not.reverted
-			console.log("Party A Balance 5 : ", await context.viewFacet.getIsolatedBalance(partyA2.getSigner, await context.collateral.getAddress()))
+			console.log("Party A Balance 5 : ", await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()))
 			// instant premium add to partyB balance
-			const partyBBalanceAfterSettlement = await context.viewFacet.getIsolatedBalance(partyB2.getSigner, context.collateral)
-			// console.log("Party A Balance 7" ,await context.viewFacet.getIsolatedBalance(partyA2.getSigner, await context.collateral.getAddress()))
+			const partyBBalanceAfterSettlement = await context.viewFacet.getIsolatedBalance(partyB2.address, context.collateral)
+			// console.log("Party A Balance 7" ,await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()))
 
 			newBlock = (await getLatestBlockTime()) + Number(releaseInterval) * 2
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
 			await network.provider.send("evm_mine")
 
-			await context.accountFacet.syncBalances(context.collateral, partyA2.getSigner, [partyB2.getSigner])
-			console.log("Party A Balance 6 : ", await context.viewFacet.getIsolatedBalance(partyA2.getSigner, await context.collateral.getAddress()))
-			const partyABalanceAfterSettlementSchedule = await context.viewFacet.getIsolatedBalance(partyA2.getSigner, context.collateral)
+			await context.accountFacet.syncBalances(context.collateral, partyA2.address, [partyB2.address])
+			console.log("Party A Balance 6 : ", await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()))
+			const partyABalanceAfterSettlementSchedule = await context.viewFacet.getIsolatedBalance(partyA2.address, context.collateral)
 			// Party B
 			expect(partyBBalanceAfterSettlement - partyBBalanceBeforeSettlement).to.be.equal(tradePremiumSettled - pnl + exerciseFee)
 			// Party A
 			// expect(partyABalanceAfterSettlementSchedule - partyABalanceBeforeSettlement).to.be.equal(closePNL - allScheduledFee + pnl)
+			expect(partyABalanceAfterSettlementSchedule - partyABalanceBeforeSettlement).to.be.equal(closePNL)
 		})
 
 		it("Should be executed when executed with option carried out as 'Cross Buy' ", async () => {
@@ -452,100 +485,98 @@ export function shouldBehaveLikeSettlementFacet(): void {
 		})
 	})
 	describe("Transfer Trade", async function () {
-		it("Should Fail to transfer trade because of global pause", async  () => {
+		it("Should Fail to transfer trade because of global pause", async () => {
 			await context.controlFacet.pauseGlobal()
 			const tradeId = 1
 
-			await expect(context.tradeFacet.connect(partyA1.getSigner).transferTrade(
-				partyA2.address,
-				tradeId
-			)).to.be.revertedWithCustomError(context.tradeFacet, "GlobalPaused")
-
+			await expect(context.tradeFacet.connect(partyA1.getSigner).transferTrade(partyA2.address, tradeId)).to.be.revertedWithCustomError(
+				context.tradeFacet,
+				"GlobalPaused",
+			)
 		})
 
-		it("Should Fail to transfer trade because of party A pause", async  () => {
+		it("Should Fail to transfer trade because of party A pause", async () => {
 			await context.controlFacet.pausePartyAActions()
 			const tradeId = 1
 
-			await expect(context.tradeFacet.connect(partyA1.getSigner).transferTrade(
-				partyA2.address,
-				tradeId
-			)).to.be.revertedWithCustomError(context.tradeFacet, "PartyAActionsPaused")
+			await expect(context.tradeFacet.connect(partyA1.getSigner).transferTrade(partyA2.address, tradeId)).to.be.revertedWithCustomError(
+				context.tradeFacet,
+				"PartyAActionsPaused",
+			)
 		})
 
-		it("Should Fail to transfer trade because of invalid party", async  () => {
+		it("Should Fail to transfer trade because of invalid party", async () => {
 			const tradeId = 1
 
-			await expect(context.tradeFacet.connect(partyA2.getSigner).transferTrade(
-				partyA2.address,
-				tradeId
-			)).to.be.revertedWithCustomError(context.tradeFacet, "UnauthorizedSender")
+			await expect(context.tradeFacet.connect(partyA2.getSigner).transferTrade(partyA2.address, tradeId)).to.be.revertedWithCustomError(
+				context.tradeFacet,
+				"UnauthorizedSender",
+			)
 		})
 
-		it("Should Fail to transfer trade because of unauthorized party", async  () => {
+		it("Should Fail to transfer trade because of unauthorized party", async () => {
 			const tradeId = 1
 
-			await expect(context.tradeFacet.connect(partyA2.getSigner).transferTrade(
-				partyA2.address,
-				tradeId
-			)).to.be.revertedWithCustomError(context.tradeFacet, "UnauthorizedSender")
+			await expect(context.tradeFacet.connect(partyA2.getSigner).transferTrade(partyA2.address, tradeId)).to.be.revertedWithCustomError(
+				context.tradeFacet,
+				"UnauthorizedSender",
+			)
 
-			await expect(context.tradeFacet.connect(partyB2.getSigner).transferTrade(
-				partyA2.address,
-				tradeId
-			)).to.be.revertedWithCustomError(context.tradeFacet, "UnauthorizedSender")
+			await expect(context.tradeFacet.connect(partyB2.getSigner).transferTrade(partyA2.address, tradeId)).to.be.revertedWithCustomError(
+				context.tradeFacet,
+				"UnauthorizedSender",
+			)
 
-			await expect(context.tradeFacet.connect(partyB1.getSigner).transferTrade(
-				partyA2.address,
-				tradeId
-			)).to.be.revertedWithCustomError(context.tradeFacet, "UnauthorizedSender")
+			await expect(context.tradeFacet.connect(partyB1.getSigner).transferTrade(partyA2.address, tradeId)).to.be.revertedWithCustomError(
+				context.tradeFacet,
+				"UnauthorizedSender",
+			)
 		})
 
-		it("Should Fail to transfer trade because of suspended party", async  () => {
-			await context.controlFacet.suspendAddress(partyA1.address , true)
+		it("Should Fail to transfer trade because of suspended party", async () => {
+			await context.controlFacet.suspendAddress(partyA1.address, true)
 			const tradeId = 1
 
-			await expect(context.tradeFacet.connect(partyA1.getSigner).transferTrade(
-				partyA2.address,
-				tradeId
-			)).to.be.revertedWithCustomError(context.tradeFacet, "UserSuspended")
+			await expect(context.tradeFacet.connect(partyA1.getSigner).transferTrade(partyA2.address, tradeId)).to.be.revertedWithCustomError(
+				context.tradeFacet,
+				"UserSuspended",
+			)
 		})
 
-		it("Should Fail to transfer trade because of suspended receiver", async  () => {
-			await context.controlFacet.suspendAddress(partyA2.address , true)
+		it("Should Fail to transfer trade because of suspended receiver", async () => {
+			await context.controlFacet.suspendAddress(partyA2.address, true)
 			const tradeId = 1
 
-			await expect(context.tradeFacet.connect(partyA1.getSigner).transferTrade(
-				partyA2.address,
-				tradeId
-			)).to.be.revertedWithCustomError(context.tradeFacet, "UserSuspended")
+			await expect(context.tradeFacet.connect(partyA1.getSigner).transferTrade(partyA2.address, tradeId)).to.be.revertedWithCustomError(
+				context.tradeFacet,
+				"UserSuspended",
+			)
 		})
 
-		it("Should Fail to transfer trade because of zero receiver", async  () => {
+		it("Should Fail to transfer trade because of zero receiver", async () => {
 			const tradeId = 1
 
-			await expect(context.tradeFacet.connect(partyA1.getSigner).transferTrade(
-				ZeroAddress,
-				tradeId
-			)).to.be.revertedWithCustomError(context.tradeFacet, "ZeroAddress")
+			await expect(context.tradeFacet.connect(partyA1.getSigner).transferTrade(ZeroAddress, tradeId)).to.be.revertedWithCustomError(
+				context.tradeFacet,
+				"ZeroAddress",
+			)
 		})
 
-		it("Should Fail to transfer trade because of Party B receiver", async  () => {
+		it("Should Fail to transfer trade because of Party B receiver", async () => {
 			const tradeId = 1
 
-			await expect(context.tradeFacet.connect(partyA1.getSigner).transferTrade(
-				partyB1.address,
-				tradeId
-			)).to.be.revertedWithCustomError(context.tradeFacet, "ReceiverIsPartyB")
+			await expect(context.tradeFacet.connect(partyA1.getSigner).transferTrade(partyB1.address, tradeId)).to.be.revertedWithCustomError(
+				context.tradeFacet,
+				"ReceiverIsPartyB",
+			)
 
-			await expect(context.tradeFacet.connect(partyA1.getSigner).transferTrade(
-				partyB2.address,
-				tradeId
-			)).to.be.revertedWithCustomError(context.tradeFacet, "ReceiverIsPartyB")
-
+			await expect(context.tradeFacet.connect(partyA1.getSigner).transferTrade(partyB2.address, tradeId)).to.be.revertedWithCustomError(
+				context.tradeFacet,
+				"ReceiverIsPartyB",
+			)
 		})
 
-		it("Should Fail to transfer trade because of invalid state", async  () => {
+		it("Should Fail to transfer trade because of invalid state", async () => {
 			const tradeId = 1
 			const timestamp = await getLatestBlockTime()
 			const priceSig: SettlementPriceSigStruct = {
@@ -564,18 +595,15 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			}
 			await context.tradeFacet.executeTrades([tradeId], priceSig)
 
-			await expect(context.tradeFacet.connect(partyA1.getSigner).transferTrade(
-				partyA2.address,
-				tradeId
-			)).to.be.revertedWithCustomError(context.tradeFacet, "InvalidState")
-
+			await expect(context.tradeFacet.connect(partyA1.getSigner).transferTrade(partyA2.address, tradeId)).to.be.revertedWithCustomError(
+				context.tradeFacet,
+				"InvalidState",
+			)
 		})
 
-
-		it("Should Fail to transfer trade because of cross margin", async  () => {
-
+		it("Should Fail to transfer trade because of cross margin", async () => {
 			const request2 = openIntentRequestBuilder()
-				.partyBsWhiteList([partyB1.getSigner])
+				.partyBsWhiteList([partyB1.address])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral)
 				.symbolId(1)
@@ -594,14 +622,13 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			await partyB1.fillOpenIntent(2, e(100), e(10))
 
 			const tradeId = 2
-			await expect(context.tradeFacet.connect(partyA1.getSigner).transferTrade(
-				partyA2.address,
-				tradeId
-			)).to.be.revertedWithCustomError(context.tradeFacet, "CrossTradeTransferNotAllowed")
-
+			await expect(context.tradeFacet.connect(partyA1.getSigner).transferTrade(partyA2.address, tradeId)).to.be.revertedWithCustomError(
+				context.tradeFacet,
+				"CrossTradeTransferNotAllowed",
+			)
 		})
 
-		it("Should Fail to transfer trade because of Party B insolvent", async  () => {
+		it("Should Fail to transfer trade because of Party B insolvent", async () => {
 			const tradeId = 1
 
 			await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
@@ -610,28 +637,22 @@ export function shouldBehaveLikeSettlementFacet(): void {
 				oracleId: 1,
 			})
 
-			await context.clearingHouse.connect(context.signers.clearingHouse).flagIsolatedPartyBLiquidation(
-				partyB1.address,
-				context.collateral.getAddress()
+			await context.clearingHouse
+				.connect(context.signers.clearingHouse)
+				.flagIsolatedPartyBLiquidation(partyB1.address, context.collateral.getAddress())
+
+			await expect(context.tradeFacet.connect(partyA1.getSigner).transferTrade(partyA2.address, tradeId)).to.be.revertedWithCustomError(
+				context.tradeFacet,
+				"NotSolvent",
 			)
-
-			await expect(context.tradeFacet.connect(partyA1.getSigner).transferTrade(
-				partyA2.address,
-				tradeId
-			)).to.be.revertedWithCustomError(context.tradeFacet, "NotSolvent")
-
 		})
 
-		it("Should Fail to transfer trade because of Party B insolvent", async  () => {
+		it("Should Fail to transfer trade because of Party B insolvent", async () => {
 			const tradeId = 1
 
-			expect(await context.tradeFacet.connect(partyA1.getSigner).transferTrade(
-				partyA2.address,
-				tradeId
-			)).not.to.reverted
+			expect(await context.tradeFacet.connect(partyA1.getSigner).transferTrade(partyA2.address, tradeId)).not.to.reverted
 
 			expect((await context.viewFacet.getTrade(tradeId)).partyA).be.equal(partyA2.address)
 		})
-
 	})
 }
