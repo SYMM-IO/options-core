@@ -158,6 +158,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).to.be.revertedWithCustomError(context.tradeFacet, "InvalidState")
 		})
+
 		/////////////////////////// assumed values //////////////////////////////
 		////////// collateral price = 1
 		////////// option price = 10
@@ -167,7 +168,6 @@ export function shouldBehaveLikeSettlementFacet(): void {
 		////////// affiliate and protocol fee : open intent = 0.001 / close intent = 0.003
 		////////// solver fee : open intent = 0.001 / close intent = 0.01
 		////////// execution fee = 1 (fix) + 0.001 (rate)
-
 		it("Should be executed with option carried out as 'Isolated Buy' ", async () => {
 			const request = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.address])
@@ -295,7 +295,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 		////////// solver fee : open intent = 0.001 / close intent = 0.01
 		////////// execution fee = min(0.002 * pnl, 0.0002 * underlying asset)
 		// TODO : this test pends by contract correction
-		it.only("Should be executed with option carried out as 'Isolated Buy' when execution is worthful", async () => {
+		it("Should be executed with option carried out as 'Isolated Buy' when execution is worthful", async () => {
 			const request = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.address])
 				.affiliate(context.signers.affiliate1)

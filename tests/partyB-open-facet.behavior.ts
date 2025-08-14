@@ -1180,7 +1180,6 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			expect(intent.status).to.equal(IntentStatus.PENDING) //IntentStatus.PENDING
 			expect(intent.partyB).to.equal(ZeroAddress)
 		})
-
 	})
 
 	describe("acceptCancelOpenIntent", async function () {
