@@ -193,13 +193,18 @@ library LibTradeOperations {
 					FeeStructure memory s = trade.feeStructure;
 
 					/* ---------------------------------------- GET FEES ---------------------------------------- */
+					ScheduledReleaseBalance storage partyAFeeBalance = trade.partyA.balanceOf(s.feeToken);
+
 					uint256 pnlInCollateral = (pnl * 1e18) / sig.collateralPrice;
-					uint256[2] memory fees = [(pnlInCollateral * s.platformFee.closeFee) / 1e18, (pnlInCollateral * s.affiliateFee.closeFee) / 1e18];
+					uint256[2] memory fees = [
+						(pnlInCollateral * s.platformFee.closeFee) / s.tokenPriceInCollateral,
+						(pnlInCollateral * s.affiliateFee.closeFee) / s.tokenPriceInCollateral
+					];
 
 					DecreaseBalanceReason[2] memory decReasons = [DecreaseBalanceReason.PLATFORM_FEE, DecreaseBalanceReason.AFFILIATE_FEE];
 
 					for (uint8 j; j < 2; ++j)
-						partyABalance.subForCounterParty(trade.partyB, fees[j], trade.tradeAgreements.marginType, decReasons[j]);
+						partyAFeeBalance.subForCounterParty(trade.partyB, fees[j], trade.tradeAgreements.marginType, decReasons[j]);
 
 					/* ---------------------------------------- PAY FEES ---------------------------------------- */
 
@@ -209,13 +214,13 @@ library LibTradeOperations {
 						: feeLayout.affiliateFeeCollector[trade.affiliate];
 
 					// Pay affiliate fees
-					ScheduledReleaseBalance storage affiliateFeeCollectorBalance = affiliateFeeCollector.balanceOf(symbol.collateral);
-					affiliateFeeCollectorBalance.setup(affiliateFeeCollector, symbol.collateral);
+					ScheduledReleaseBalance storage affiliateFeeCollectorBalance = affiliateFeeCollector.balanceOf(s.feeToken);
+					affiliateFeeCollectorBalance.setup(affiliateFeeCollector, s.feeToken);
 					affiliateFeeCollectorBalance.instantIsolatedAdd(fees[1], IncreaseBalanceReason.AFFILIATE_FEE);
 
 					// Pay platform fees
-					ScheduledReleaseBalance storage defaultFeeCollectorBalance = feeLayout.defaultFeeCollector.balanceOf(symbol.collateral);
-					defaultFeeCollectorBalance.setup(feeLayout.defaultFeeCollector, symbol.collateral);
+					ScheduledReleaseBalance storage defaultFeeCollectorBalance = feeLayout.defaultFeeCollector.balanceOf(s.feeToken);
+					defaultFeeCollectorBalance.setup(feeLayout.defaultFeeCollector, s.feeToken);
 					defaultFeeCollectorBalance.instantIsolatedAdd(fees[0], IncreaseBalanceReason.PLATFORM_FEE);
 				}
 
