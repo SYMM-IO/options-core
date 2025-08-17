@@ -1,4 +1,4 @@
-import { TestModeEnum } from "../common/test-mode.enum"
+	import { TestModeEnum } from "../common/test-mode.enum"
 import { name, version } from "../package.json"
 import { shouldBehaveLikeAccountFacet } from "./account-facet.behavior"
 import { shouldBehaveLikeForceActionFacet } from "./force-action.behavior"

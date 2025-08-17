@@ -10,10 +10,10 @@ import { ethers, network } from "hardhat"
 import { e } from "../utils/e"
 
 import { CloseIntentStruct, SettlementPriceSigStruct, TradeStruct } from "../types/contracts/interfaces/ISymmio"
-import { getLatestBlockTime } from "../utils/time"
+import { getLatestBlockTime, moveTime } from "../utils/time"
 import { settlementSigBuilder } from "./models/builders/settlement.builder"
-import { ZeroAddress } from "ethers"
-import { MarginType, TradeSide } from "./option-enums"
+import { parseUnits, ZeroAddress } from "ethers"
+import { MarginType, OptionType, TradeSide, TradeStatus } from "./option-enums"
 
 export function shouldBehaveLikeSettlementFacet(): void {
 	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyB1: PartyB, partyB2: PartyB
@@ -285,43 +285,30 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			expect(partyAFeeBalanceBeforeSettlement - partyAFeeBalanceAfterSettlement).to.be.equal(allClosedFees)
 		})
 
-		/////////////////////////// assumed values //////////////////////////////
-		////////// collateral price = 1
-		////////// option price = 10
-		////////// fee token price = 1
-		////////// strike price = 100 now / 120 on execution
-		////////// option type = 1 : PUT / 2 : CALL
-		////////// affiliate and protocol fee : open intent = 0.001 / close intent = 0.003
-		////////// solver fee : open intent = 0.001 / close intent = 0.01
-		////////// execution fee = min(0.002 * pnl, 0.0002 * underlying asset)
-		// TODO : this test pends by contract correction
-		it("Should be executed with option carried out as 'Isolated Buy' when execution is worthful", async () => {
+		it("Should be executed with option carried out as 'Isolated Buy' - Party A Fee Balances ", async () => {
 			const request = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.address])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateralNL)
-				.symbolId(2)
+				.symbolId(1)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
-				.exerciseFee({ cap: e(0.002), rate: e(0.0002) })
+				.exerciseFee({ cap: e(0.001), rate: e(0.1) })
 				.quantity(e(100))
 				.strikePrice(e(100))
 				.price(e(10))
+				.solverFee({ openFee: e(0.0001), closeFee: e(0.0002) })
 				.build()
 
-			console.log("Party A Balance 1 : ", await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()))
-
+			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: e(0.0001), closeFee: e(0.0003) }])
+			await context.controlFacet.setSymbolsPlatformFees([1], [{ openFee: e(0.0001), closeFee: e(0.0004) }])
 			await partyA2.setBalances(context.collateralNL, e(1000), e(500))
 			await partyA2.sendOpenIntent(request)
 
 			const openIntentId = await context.viewFacet.getLastOpenIntentId()
 
 			await partyB2.lockOpenIntent(openIntentId)
-			const intentPremium = await context.viewFacet.getOpenIntentPremium(openIntentId)
-			const partyBBalanceBeforeSettlementInit = await context.viewFacet.getIsolatedBalance(partyB2.address, await context.collateral.getAddress())
-			console.log("Party A Balance 2 : ", await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()))
 			await partyB2.fillOpenIntent(openIntentId, e(100), e(10))
-			console.log("Party A Balance 3 : ", await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()))
 
 			const closePrice = e(10)
 			const closeQuantity = e(50)
@@ -330,15 +317,112 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			const closeIntentId = await context.viewFacet.getLastCloseIntentId()
 			const closeIntent = await context.viewFacet.getCloseIntent(closeIntentId)
-			await partyB2.fillCloseIntent(closeIntentId, closeIntent.quantity, closeIntent.price)
-			console.log("Party A Balance 4 : ", await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()))
 
-			const closePNL = (BigInt(closeIntent.price) * BigInt(closeIntent.quantity)) / BigInt(1e18)
+			await partyB2.fillCloseIntent(closeIntentId, closeIntent.quantity, closeIntent.price)
 
 			const timestamp = await getLatestBlockTime()
 			const priceSig: SettlementPriceSigStruct = {
 				reqId: ethers.toUtf8Bytes("1"), // or a Buffer/hex string
 				timestamp: timestamp + 180,
+				symbolId: 1, // put option
+				settlementPrice: e(80),
+				settlementTimestamp: timestamp,
+				collateralPrice: e(10),
+				gatewaySignature: "0xabcdef",
+				sigs: {
+					signature: 0x1234567890,
+					owner: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+					nonce: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+				},
+			}
+
+			const openAmount = await context.viewFacet.getTradeOpenAmount(tradeID)
+			const tradePremium = await context.viewFacet.getTradePremium(tradeID)
+			let trade: TradeStruct = await context.viewFacet.getTrade(tradeID)
+			const symbol = await context.viewFacet.getSymbol(trade.tradeAgreements.symbolId)
+
+			const tradePremiumSettled = (tradePremium * openAmount) / BigInt(trade.tradeAgreements.quantity)
+			const pnl = await context.viewFacet.getTradePnl(tradeID, priceSig.settlementPrice, openAmount)
+			const exerciseFee = await context.viewFacet.getTradeExerciseFee(tradeID, priceSig.settlementPrice, pnl)
+			const capFee = (BigInt(trade.tradeAgreements.exerciseFee.cap) * pnl) / parseUnits("1", 18)
+			const rateFee = (BigInt(trade.tradeAgreements.exerciseFee.rate) * BigInt(priceSig.settlementPrice) * openAmount) / parseUnits("1", 36)
+
+			console.log("openAmount:\n", openAmount)
+			console.log("tradePremium:\n", tradePremium)
+			console.log("trade quantity:\n", BigInt(trade.tradeAgreements.quantity))
+			console.log("tradePremiumSettled:\n", tradePremiumSettled)
+			console.log("Symbol Type:", symbol.optionType == BigInt(OptionType.CALL) ? "CALL" : "PUT")
+
+			console.log("pnl:\n", pnl)
+			console.log("exerciseFee:\n", exerciseFee)
+			console.log("Cap Fee:\n", capFee)
+			console.log("Rate Fee:\n", rateFee)
+
+			const pnlInCollateral = (pnl * parseUnits("1", 18)) / BigInt(priceSig.collateralPrice)
+			const platformSettledFee =
+				(pnlInCollateral * BigInt(trade.feeStructure.platformFee.closeFee)) / BigInt(trade.feeStructure.tokenPriceInCollateral)
+			const affiliateSettledFee =
+				(pnlInCollateral * BigInt(trade.feeStructure.affiliateFee.closeFee)) / BigInt(trade.feeStructure.tokenPriceInCollateral)
+
+			const allClosedFees = platformSettledFee + affiliateSettledFee
+			console.log("Platform Fee:\n", platformSettledFee)
+			console.log("Affiliate Fee:\n", affiliateSettledFee)
+
+			const partyAFeeBalanceBeforeSettlement = await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateralNL.getAddress())
+
+			await moveTime(180)
+			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).to.be.not.reverted
+
+			const partyAFeeBalanceAfterSettlement = await context.viewFacet.getIsolatedBalance(partyA2.address, context.collateralNL)
+
+			console.log("Fee Balance Before Settlement:", partyAFeeBalanceBeforeSettlement)
+			console.log("Fee Balance After Settlement:", partyAFeeBalanceAfterSettlement)
+
+			expect(partyAFeeBalanceBeforeSettlement - partyAFeeBalanceAfterSettlement).to.be.equal(allClosedFees)
+		})
+
+		it("Should be executed with CALL option carried out as 'Isolated Buy' when execution is worthful- Party A Balances", async () => {
+			const request = openIntentRequestBuilder()
+				.partyBsWhiteList([partyB2.address])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateralNL)
+				.symbolId(2)
+				.deadline((await getLatestBlockTime()) + 140)
+				.expirationTimestamp((await getLatestBlockTime()) + 150)
+				.exerciseFee({ cap: e(0.003), rate: e(0.0002) })
+				.quantity(e(100))
+				.strikePrice(e(100))
+				.price(e(10))
+				.build()
+
+			const timeAfterExpire = 170
+			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: e(0.1), closeFee: e(0.2) }])
+			await partyA2.setBalances(context.collateralNL, e(1000), e(500))
+
+			console.log("Party A Initial Balance:\n", await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()))
+
+			await partyA2.sendOpenIntent(request)
+			const openIntentId = await context.viewFacet.getLastOpenIntentId()
+			await partyB2.lockOpenIntent(openIntentId)
+
+			console.log(
+				"Party A Balance Before Fill: \n",
+				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+			)
+
+			//Fill Open
+			await partyB2.fillOpenIntent(openIntentId, e(100), e(10))
+			const tradeID = await context.viewFacet.getLastTradeId()
+
+			console.log(
+				"Party A Balance After Fill Open: \n",
+				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+			)
+
+			const timestamp = await getLatestBlockTime()
+			const priceSig: SettlementPriceSigStruct = {
+				reqId: ethers.toUtf8Bytes("1"), // or a Buffer/hex string
+				timestamp: timestamp + timeAfterExpire + 100,
 				symbolId: 2, // call option
 				settlementPrice: e(120),
 				settlementTimestamp: timestamp,
@@ -352,136 +436,950 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			}
 
 			const openAmount = await context.viewFacet.getTradeOpenAmount(tradeID)
+			const tradePremium = await context.viewFacet.getTradePremium(tradeID)
+			let trade: TradeStruct = await context.viewFacet.getTrade(tradeID)
+			const symbol = await context.viewFacet.getSymbol(trade.tradeAgreements.symbolId)
+			let scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA2.address, symbol.collateral, partyB2.address)
+
+			const tradePremiumSettled = (tradePremium * openAmount) / BigInt(trade.tradeAgreements.quantity)
+			const pnl = await context.viewFacet.getTradePnl(tradeID, priceSig.settlementPrice, openAmount)
+			const exerciseFee = await context.viewFacet.getTradeExerciseFee(tradeID, priceSig.settlementPrice, pnl)
+			const capFee = (BigInt(trade.tradeAgreements.exerciseFee.cap) * pnl) / parseUnits("1", 18)
+			const rateFee = (BigInt(trade.tradeAgreements.exerciseFee.rate) * BigInt(priceSig.settlementPrice) * openAmount) / parseUnits("1", 36)
+
+			console.log("openAmount:\n", openAmount)
+			console.log("tradePremium:\n", tradePremium)
+			console.log("trade quantity:\n", BigInt(trade.tradeAgreements.quantity))
+			console.log("tradePremiumSettled:\n", tradePremiumSettled)
+			console.log("Symbol Type:", symbol.optionType == BigInt(OptionType.CALL) ? "CALL" : "PUT")
+
+			console.log("pnl:\n", pnl)
+			console.log("exerciseFee:\n", exerciseFee)
+			console.log("Cap Fee:\n", capFee)
+			console.log("Rate Fee:\n", rateFee)
+			console.log("PNL - FEE:\n", pnl - exerciseFee)
+			console.log("PNL - CAP:\n", pnl - capFee)
+			console.log("PNL - RATE:\n", pnl - rateFee)
+
+			console.log("Before Settlement")
+			console.log("Schedule Release Balance Positions, Transitioning:", scheduleEntry.transitioning)
+			console.log("Schedule Release Balance Positions, Scheduled:", scheduleEntry.scheduled)
+			console.log("Schedule Release Balance Positions, Interval:", scheduleEntry.releaseInterval)
+
+			const partyABalanceBeforeSettlement = await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress())
+
+			//Execute Trade
+			await moveTime(timeAfterExpire)
+			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).to.be.not.reverted
+
+			trade = await context.viewFacet.getTrade(tradeID)
+			console.log("Trade Status:", trade.status == TradeStatus.EXERCISED ? "EXERCISED" : trade.status)
+			console.log(
+				"Party A Balance After Settlement Before Sync:\n",
+				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+			)
+
+			scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA2.address, symbol.collateral, partyB2.address)
+			console.log("After Settlement")
+			console.log("Schedule Release Balance Positions, Transitioning:", scheduleEntry.transitioning)
+			console.log("Schedule Release Balance Positions, Scheduled:", scheduleEntry.scheduled)
+			console.log("Schedule Release Balance Positions, Interval:", scheduleEntry.releaseInterval)
+
+			const releaseInterval = await context.viewFacet.getReleaseInterval(partyA2.address)
+			await moveTime(Number(releaseInterval) * 2)
+			await context.accountFacet.syncBalances(context.collateral, partyA2.address, [partyB2.address])
+			console.log(
+				"Party A Balance After Settlement after Sync:\n",
+				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+			)
+
+			expect(trade.status).to.be.equal(TradeStatus.EXERCISED)
+			const partyABalanceAfterSettlementSchedule = await context.viewFacet.getIsolatedBalance(partyA2.address, context.collateral)
+			expect(partyABalanceAfterSettlementSchedule - partyABalanceBeforeSettlement).to.be.equal(pnl - exerciseFee)
+		})
+
+		it("Should be executed with CALL option carried out as 'Isolated Buy' when execution is NOT Worthful-  Party A Balances", async () => {
+			const request = openIntentRequestBuilder()
+				.partyBsWhiteList([partyB2.address])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateralNL)
+				.symbolId(2)
+				.deadline((await getLatestBlockTime()) + 140)
+				.expirationTimestamp((await getLatestBlockTime()) + 150)
+				.exerciseFee({ cap: e(0.02), rate: e(0.002) })
+				.quantity(e(100))
+				.strikePrice(e(100))
+				.price(e(10))
+				.build()
+
+			const timeAfterExpire = 170
+			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: e(0.1), closeFee: e(0.2) }])
+			await partyA2.setBalances(context.collateralNL, e(1000), e(500))
+
+			console.log("Party A Initial Balance:\n", await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()))
+
+			await partyA2.sendOpenIntent(request)
+			const openIntentId = await context.viewFacet.getLastOpenIntentId()
+			await partyB2.lockOpenIntent(openIntentId)
+
+			console.log(
+				"Party A Balance Before Fill: \n",
+				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+			)
+
+			//Fill Open
+			await partyB2.fillOpenIntent(openIntentId, e(100), e(10))
+			const tradeID = await context.viewFacet.getLastTradeId()
+
+			console.log(
+				"Party A Balance After Fill Open: \n",
+				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+			)
+
+			const timestamp = await getLatestBlockTime()
+			const priceSig: SettlementPriceSigStruct = {
+				reqId: ethers.toUtf8Bytes("1"), // or a Buffer/hex string
+				timestamp: timestamp + timeAfterExpire + 100,
+				symbolId: 2, // call option
+				settlementPrice: e(80), // means the settlement not worthful!!!
+				settlementTimestamp: timestamp,
+				collateralPrice: e(1),
+				gatewaySignature: "0xabcdef",
+				sigs: {
+					signature: 0x1234567890,
+					owner: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+					nonce: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+				},
+			}
+
+			const openAmount = await context.viewFacet.getTradeOpenAmount(tradeID)
+			const tradePremium = await context.viewFacet.getTradePremium(tradeID)
+			let trade: TradeStruct = await context.viewFacet.getTrade(tradeID)
+			const symbol = await context.viewFacet.getSymbol(trade.tradeAgreements.symbolId)
+			const tradePremiumSettled = (tradePremium * openAmount) / BigInt(trade.tradeAgreements.quantity)
+			const pnl = await context.viewFacet.getTradePnl(tradeID, priceSig.settlementPrice, openAmount)
+			const exerciseFee = await context.viewFacet.getTradeExerciseFee(tradeID, priceSig.settlementPrice, pnl)
+			const capFee = (BigInt(trade.tradeAgreements.exerciseFee.cap) * pnl) / parseUnits("1", 18)
+			const rateFee = (BigInt(trade.tradeAgreements.exerciseFee.rate) * BigInt(priceSig.settlementPrice) * openAmount) / parseUnits("1", 36)
+
+			console.log("openAmount:\n", openAmount)
+			console.log("tradePremium:\n", tradePremium)
+			console.log("trade quantity:\n", BigInt(trade.tradeAgreements.quantity))
+			console.log("tradePremiumSettled:\n", tradePremiumSettled)
+			console.log("Symbol Type:", symbol.optionType == BigInt(OptionType.CALL) ? "CALL" : "PUT")
+
+			console.log("pnl:\n", pnl)
+			console.log("exerciseFee:\n", exerciseFee)
+			console.log("Cap Fee:\n", capFee)
+			console.log("Rate Fee:\n", rateFee)
+			console.log("PNL - FEE:\n", pnl - exerciseFee)
+			console.log("PNL - CAP:\n", pnl - capFee)
+			console.log("PNL - RATE:\n", pnl - rateFee)
+
+			const partyABalanceBeforeSettlement = await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress())
+
+			//Execute Trade
+			await moveTime(timeAfterExpire)
+			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).to.be.not.reverted
+
+			trade = await context.viewFacet.getTrade(tradeID)
+			console.log("Trade Status:", trade.status == TradeStatus.EXPIRED ? "Expired" : trade.status)
+			console.log(
+				"Party A Balance After Settlement Before Sync:\n",
+				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+			)
+
+			const releaseInterval = await context.viewFacet.getReleaseInterval(partyA2.address)
+			await moveTime(Number(releaseInterval) * 2)
+			await context.accountFacet.syncBalances(context.collateral, partyA2.address, [partyB2.address])
+			console.log(
+				"Party A Balance After Settlement after Sync:\n",
+				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+			)
+
+			expect(trade.status).to.be.equal(TradeStatus.EXPIRED)
+			const partyABalanceAfterSettlementSchedule = await context.viewFacet.getIsolatedBalance(partyA2.address, context.collateral)
+			expect(partyABalanceAfterSettlementSchedule - partyABalanceBeforeSettlement).to.be.equal(0)
+		})
+
+		it("Should be executed with PUT option carried out as 'Isolated Buy' when execution is worthful-  Party A Balances", async () => {
+			const request = openIntentRequestBuilder()
+				.partyBsWhiteList([partyB2.address])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateralNL)
+				.symbolId(1) //PUT
+				.deadline((await getLatestBlockTime()) + 140)
+				.expirationTimestamp((await getLatestBlockTime()) + 150)
+				.exerciseFee({ cap: e(0.002), rate: e(0.0002) })
+				.quantity(e(100))
+				.strikePrice(e(100))
+				.price(e(10))
+				.build()
+			const timeAfterExpire = 150
+			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: e(0.1), closeFee: e(0.2) }])
+			await partyA2.setBalances(context.collateralNL, e(1000), e(500))
+
+			console.log("Party A Initial Balance:\n", await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()))
+			console.log(
+				"Party A Initial Fee Balance:\n",
+				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateralNL.getAddress()),
+			)
+
+			await partyA2.sendOpenIntent(request)
+			const openIntentId = await context.viewFacet.getLastOpenIntentId()
+			await partyB2.lockOpenIntent(openIntentId)
+
+			console.log(
+				"Party A Balance Before Fill: \n",
+				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+			)
+			console.log(
+				"Party A Fee Balance Before Fill: \n",
+				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateralNL.getAddress()),
+			)
+			//Fill Open
+			await partyB2.fillOpenIntent(openIntentId, e(100), e(10))
+			const tradeID = await context.viewFacet.getLastTradeId()
+
+			console.log(
+				"Party A Balance After Fill Open: \n",
+				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+			)
+			console.log(
+				"Party A Fee Balance After Fill Open: \n",
+				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateralNL.getAddress()),
+			)
+
+			//Send Close
+			const closePrice = e(10)
+			const closeQuantity = e(50)
+			await partyA2.sendCloseIntent(tradeID, closeQuantity, closePrice, (await getLatestBlockTime()) + 120)
+
+			const closeIntentId = await context.viewFacet.getLastCloseIntentId()
+			const closeIntent = await context.viewFacet.getCloseIntent(closeIntentId)
+			await partyB2.fillCloseIntent(closeIntentId, closeIntent.quantity, closeIntent.price)
+
+			console.log(
+				"Party A Balance After Fill Close: \n",
+				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+			)
+			console.log(
+				"Party A Fee Balance After Fill Close: \n",
+				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateralNL.getAddress()),
+			)
+
+			const closePNL = (BigInt(closeIntent.price) * BigInt(closeIntent.quantity)) / BigInt(1e18)
+
+			const timestamp = await getLatestBlockTime()
+			const priceSig: SettlementPriceSigStruct = {
+				reqId: ethers.toUtf8Bytes("1"), // or a Buffer/hex string
+				timestamp: timestamp + timeAfterExpire + 1500,
+				symbolId: 1, // put option
+				settlementPrice: e(80),
+				settlementTimestamp: timestamp + 200,
+				collateralPrice: e(1),
+				gatewaySignature: "0xabcdef",
+				sigs: {
+					signature: 0x1234567890,
+					owner: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+					nonce: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+				},
+			}
+
+			const openAmount = await context.viewFacet.getTradeOpenAmount(tradeID)
 			let tradePremium = await context.viewFacet.getTradePremium(tradeID)
 			const trade: TradeStruct = await context.viewFacet.getTrade(tradeID)
-
-			let newBlock = Number(trade.tradeAgreements.expirationTimestamp) + 12
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
-			await network.provider.send("evm_mine")
-
-			console.log("openAmount", openAmount)
-			console.log("tradePremium", tradePremium)
-			console.log("trade quantity", BigInt(trade.tradeAgreements.quantity))
-
 			let tradePremiumSettled = (tradePremium * openAmount) / BigInt(trade.tradeAgreements.quantity)
-			console.log("tradePremiumSettled", tradePremiumSettled)
+
+			console.log("openAmount:\n", openAmount)
+			console.log("tradePremium:\n", tradePremium)
+			console.log("trade quantity:\n", BigInt(trade.tradeAgreements.quantity))
+			console.log("tradePremiumSettled:\n", tradePremiumSettled)
 
 			const pnl = await context.viewFacet.getTradePnl(tradeID, priceSig.settlementPrice, openAmount)
-			console.log("pnl", pnl)
 			const exerciseFee = await context.viewFacet.getTradeExerciseFee(tradeID, priceSig.settlementPrice, pnl)
-			console.log("exerciseFee", exerciseFee)
 			const openFee = await context.viewFacet.getOpenIntentPlatformFee(openIntentId)
-			console.log("openFee", openFee)
 			const closedFee = await context.viewFacet.getCloseIntentPlatformFee(closeIntentId, closePrice, closeQuantity)
-			console.log("closedFee", closedFee)
 			const openAffiliateFee = await context.viewFacet.getOpenIntentAffiliateFee(openIntentId)
-			console.log("openAffiliateFee", openAffiliateFee)
 			const closedAffiliateFee = await context.viewFacet.getCloseIntentAffiliateFee(closeIntentId, closePrice, closeQuantity)
-			console.log("closedAffiliateFee", closedAffiliateFee)
 			const openIntent = await context.viewFacet.getOpenIntent(openIntentId)
-			const openSolverFee = (openIntent.feeStructure.solverFee.openFee * openIntent.tradeAgreements.quantity * openIntent.price) / e(1) / e(1)
+			const openSolverFee = (openIntent.feeStructure.solverFee.openFee * BigInt(trade.tradeAgreements.quantity) * openIntent.price) / e(1) / e(1)
 			const closedSolverFee = (closeIntent.feeStructure.solverFee.closeFee * closePrice * closeQuantity) / e(1) / e(1)
-			console.log("openSolverFee", openSolverFee)
-			console.log("closedSolverFee", closedSolverFee)
+			console.log("pnl:\n", pnl)
+			console.log("exerciseFee:\n", exerciseFee)
+			console.log("Platform open Fee:\n", openFee)
+			console.log("Platform close Fee:\n", closedFee)
+			console.log("openAffiliateFee:\n", openAffiliateFee)
+			console.log("closedAffiliateFee:\n", closedAffiliateFee)
+			console.log("openSolverFee:\n", openSolverFee)
+			console.log("closedSolverFee:\n", closedSolverFee)
 
-			const allScheduledFee = closedFee + closedAffiliateFee + closedSolverFee + exerciseFee
+			const releaseInterval = await context.viewFacet.getReleaseInterval(partyA2.address)
+			await moveTime(Number(releaseInterval) * 2)
+			await context.accountFacet.syncBalances(context.collateral, partyA2.address, [partyB2.address])
 
-			const optionSymbol = await context.viewFacet.getSymbol(trade.tradeAgreements.symbolId)
 			const partyABalanceBeforeSettlement = await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress())
-			const partyABalanceBeforeSettlementLocked = await context.viewFacet.getIsolatedLockedBalance(
+
+			//Execute Trade
+			await moveTime(Number(timeAfterExpire) + 12)
+			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).to.not.be.reverted
+
+			console.log(
+				"Party A Balance After Settlement Before Sync:\n",
+				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+			)
+
+			await moveTime(Number(releaseInterval) * 3)
+			await context.accountFacet.syncBalances(context.collateral, partyA2.address, [partyB2.address])
+			console.log(
+				"Party A Balance After Settlement after Sync:\n",
+				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+			)
+
+			const partyABalanceAfterSettlementSchedule = await context.viewFacet.getIsolatedBalance(partyA2.address, context.collateral)
+			expect(partyABalanceAfterSettlementSchedule - partyABalanceBeforeSettlement).to.be.equal(pnl - exerciseFee)
+		})
+
+		it("Should be executed with PUT option carried out as 'Isolated Buy' when execution is worthful- Party B Balances", async () => {
+			const request = openIntentRequestBuilder()
+				.partyBsWhiteList([partyB2.address])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateralNL)
+				.symbolId(1) //PUT
+				.deadline((await getLatestBlockTime()) + 140)
+				.expirationTimestamp((await getLatestBlockTime()) + 150)
+				.exerciseFee({ cap: e(0.002), rate: e(0.0002) })
+				.quantity(e(100))
+				.strikePrice(e(100))
+				.price(e(10))
+				.build()
+			const timeAfterExpire = 150
+			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: e(0.1), closeFee: e(0.2) }])
+			await partyA2.setBalances(context.collateralNL, e(1000), e(500))
+
+			await partyA2.sendOpenIntent(request)
+			const openIntentId = await context.viewFacet.getLastOpenIntentId()
+			await partyB2.lockOpenIntent(openIntentId)
+			const intentPremium = await context.viewFacet.getOpenIntentPremium(openIntentId)
+			const partyBBalanceBeforeSettlementInit = await context.viewFacet.getIsolatedBalance(partyB2.address, await context.collateral.getAddress())
+
+			//Fill Open
+			await partyB2.fillOpenIntent(openIntentId, e(100), e(10))
+			const tradeID = await context.viewFacet.getLastTradeId()
+
+			//Send Close
+			const closePrice = e(10)
+			const closeQuantity = e(50)
+			await partyA2.sendCloseIntent(tradeID, closeQuantity, closePrice, (await getLatestBlockTime()) + 120)
+
+			const closeIntentId = await context.viewFacet.getLastCloseIntentId()
+			const closeIntent = await context.viewFacet.getCloseIntent(closeIntentId)
+			await partyB2.fillCloseIntent(closeIntentId, closeIntent.quantity, closeIntent.price)
+
+			const closePNL = (BigInt(closeIntent.price) * BigInt(closeIntent.quantity)) / BigInt(1e18)
+
+			const timestamp = await getLatestBlockTime()
+			const priceSig: SettlementPriceSigStruct = {
+				reqId: ethers.toUtf8Bytes("1"), // or a Buffer/hex string
+				timestamp: timestamp + timeAfterExpire + 1500,
+				symbolId: 1, // put option
+				settlementPrice: e(80),
+				settlementTimestamp: timestamp + 200,
+				collateralPrice: e(1),
+				gatewaySignature: "0xabcdef",
+				sigs: {
+					signature: 0x1234567890,
+					owner: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+					nonce: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+				},
+			}
+
+			const openAmount = await context.viewFacet.getTradeOpenAmount(tradeID)
+			let tradePremium = await context.viewFacet.getTradePremium(tradeID)
+			const trade: TradeStruct = await context.viewFacet.getTrade(tradeID)
+			let tradePremiumSettled = (tradePremium * openAmount) / BigInt(trade.tradeAgreements.quantity)
+
+			console.log("trade quantity:\n", BigInt(trade.tradeAgreements.quantity))
+			console.log("openAmount:\n", openAmount)
+			console.log("tradePremium:\n", tradePremium)
+			console.log("tradePremiumSettled:\n", tradePremiumSettled)
+
+			const pnl = await context.viewFacet.getTradePnl(tradeID, priceSig.settlementPrice, openAmount)
+			const exerciseFee = await context.viewFacet.getTradeExerciseFee(tradeID, priceSig.settlementPrice, pnl)
+			const openFee = await context.viewFacet.getOpenIntentPlatformFee(openIntentId)
+			const closedFee = await context.viewFacet.getCloseIntentPlatformFee(closeIntentId, closePrice, closeQuantity)
+			const openAffiliateFee = await context.viewFacet.getOpenIntentAffiliateFee(openIntentId)
+			const closedAffiliateFee = await context.viewFacet.getCloseIntentAffiliateFee(closeIntentId, closePrice, closeQuantity)
+			const openIntent = await context.viewFacet.getOpenIntent(openIntentId)
+			const openSolverFee = (openIntent.feeStructure.solverFee.openFee * BigInt(trade.tradeAgreements.quantity) * openIntent.price) / e(1) / e(1)
+			const closedSolverFee = (closeIntent.feeStructure.solverFee.closeFee * closePrice * closeQuantity) / e(1) / e(1)
+			console.log("pnl:\n", pnl)
+			console.log("exerciseFee:\n", exerciseFee)
+			console.log("Platform open Fee:\n", openFee)
+			console.log("Platform close Fee:\n", closedFee)
+			console.log("openAffiliateFee:\n", openAffiliateFee)
+			console.log("closedAffiliateFee:\n", closedAffiliateFee)
+			console.log("openSolverFee:\n", openSolverFee)
+			console.log("closedSolverFee:\n", closedSolverFee)
+
+			const partyBBalanceBeforeSettlement = await context.viewFacet.getIsolatedBalance(partyB2.address, await context.collateral.getAddress())
+
+			//Execute Trade
+			await moveTime(Number(timeAfterExpire) + 12)
+			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).to.not.be.reverted
+
+			console.log(
+				"Party B Balance After Settlement:\n",
+				await context.viewFacet.getIsolatedBalance(partyB2.address, await context.collateral.getAddress()),
+			)
+
+			const partyBBalanceAfterSettlement = await context.viewFacet.getIsolatedBalance(partyB2.address, context.collateral)
+			expect(partyBBalanceAfterSettlement - partyBBalanceBeforeSettlement).to.be.equal(tradePremiumSettled + exerciseFee - pnl)
+		})
+
+		it("Should be executed with PUT option carried out as 'Isolated Buy' when execution is NOT worthful- Party B Balances", async () => {
+			const request = openIntentRequestBuilder()
+				.partyBsWhiteList([partyB2.address])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateralNL)
+				.symbolId(1) //PUT
+				.deadline((await getLatestBlockTime()) + 140)
+				.expirationTimestamp((await getLatestBlockTime()) + 150)
+				.exerciseFee({ cap: e(0.002), rate: e(0.0002) })
+				.quantity(e(100))
+				.strikePrice(e(100))
+				.price(e(10))
+				.build()
+			const timeAfterExpire = 150
+			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: e(0.1), closeFee: e(0.2) }])
+			await partyA2.setBalances(context.collateralNL, e(1000), e(500))
+
+			await partyA2.sendOpenIntent(request)
+			const openIntentId = await context.viewFacet.getLastOpenIntentId()
+			await partyB2.lockOpenIntent(openIntentId)
+			const intentPremium = await context.viewFacet.getOpenIntentPremium(openIntentId)
+			const partyBBalanceBeforeSettlementInit = await context.viewFacet.getIsolatedBalance(partyB2.address, await context.collateral.getAddress())
+
+			//Fill Open
+			await partyB2.fillOpenIntent(openIntentId, e(100), e(10))
+			const tradeID = await context.viewFacet.getLastTradeId()
+
+			//Send Close
+			const closePrice = e(10)
+			const closeQuantity = e(50)
+			await partyA2.sendCloseIntent(tradeID, closeQuantity, closePrice, (await getLatestBlockTime()) + 120)
+
+			const closeIntentId = await context.viewFacet.getLastCloseIntentId()
+			const closeIntent = await context.viewFacet.getCloseIntent(closeIntentId)
+			await partyB2.fillCloseIntent(closeIntentId, closeIntent.quantity, closeIntent.price)
+
+			const closePNL = (BigInt(closeIntent.price) * BigInt(closeIntent.quantity)) / BigInt(1e18)
+
+			const timestamp = await getLatestBlockTime()
+			const priceSig: SettlementPriceSigStruct = {
+				reqId: ethers.toUtf8Bytes("1"), // or a Buffer/hex string
+				timestamp: timestamp + timeAfterExpire + 1500,
+				symbolId: 1, // put option
+				settlementPrice: e(120),
+				settlementTimestamp: timestamp + 200,
+				collateralPrice: e(1),
+				gatewaySignature: "0xabcdef",
+				sigs: {
+					signature: 0x1234567890,
+					owner: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+					nonce: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+				},
+			}
+
+			const openAmount = await context.viewFacet.getTradeOpenAmount(tradeID)
+			let tradePremium = await context.viewFacet.getTradePremium(tradeID)
+			const trade: TradeStruct = await context.viewFacet.getTrade(tradeID)
+			let tradePremiumSettled = (tradePremium * openAmount) / BigInt(trade.tradeAgreements.quantity)
+
+			console.log("trade quantity:\n", BigInt(trade.tradeAgreements.quantity))
+			console.log("openAmount:\n", openAmount)
+			console.log("tradePremium:\n", tradePremium)
+			console.log("tradePremiumSettled:\n", tradePremiumSettled)
+
+			const pnl = await context.viewFacet.getTradePnl(tradeID, priceSig.settlementPrice, openAmount)
+			const exerciseFee = await context.viewFacet.getTradeExerciseFee(tradeID, priceSig.settlementPrice, pnl)
+			const openFee = await context.viewFacet.getOpenIntentPlatformFee(openIntentId)
+			const closedFee = await context.viewFacet.getCloseIntentPlatformFee(closeIntentId, closePrice, closeQuantity)
+			const openAffiliateFee = await context.viewFacet.getOpenIntentAffiliateFee(openIntentId)
+			const closedAffiliateFee = await context.viewFacet.getCloseIntentAffiliateFee(closeIntentId, closePrice, closeQuantity)
+			const openIntent = await context.viewFacet.getOpenIntent(openIntentId)
+			const openSolverFee = (openIntent.feeStructure.solverFee.openFee * BigInt(trade.tradeAgreements.quantity) * openIntent.price) / e(1) / e(1)
+			const closedSolverFee = (closeIntent.feeStructure.solverFee.closeFee * closePrice * closeQuantity) / e(1) / e(1)
+			console.log("pnl:\n", pnl)
+			console.log("exerciseFee:\n", exerciseFee)
+			console.log("Platform open Fee:\n", openFee)
+			console.log("Platform close Fee:\n", closedFee)
+			console.log("openAffiliateFee:\n", openAffiliateFee)
+			console.log("closedAffiliateFee:\n", closedAffiliateFee)
+			console.log("openSolverFee:\n", openSolverFee)
+			console.log("closedSolverFee:\n", closedSolverFee)
+
+			const partyBBalanceBeforeSettlement = await context.viewFacet.getIsolatedBalance(partyB2.address, await context.collateral.getAddress())
+
+			//Execute Trade
+			await moveTime(Number(timeAfterExpire) + 12)
+			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).to.not.be.reverted
+
+			console.log(
+				"Party B Balance After Settlement:\n",
+				await context.viewFacet.getIsolatedBalance(partyB2.address, await context.collateral.getAddress()),
+			)
+
+			const partyBBalanceAfterSettlement = await context.viewFacet.getIsolatedBalance(partyB2.address, context.collateral)
+			expect(partyBBalanceAfterSettlement - partyBBalanceBeforeSettlement).to.be.equal(tradePremiumSettled)
+		})
+
+		it("Should be executed with PUT option carried out as 'Isolated Buy' when execution is NOT Worthful- Party A Balances", async () => {
+			const request = openIntentRequestBuilder()
+				.partyBsWhiteList([partyB2.address])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateralNL)
+				.symbolId(1)
+				.deadline((await getLatestBlockTime()) + 140)
+				.expirationTimestamp((await getLatestBlockTime()) + 150)
+				.exerciseFee({ cap: e(0.02), rate: e(0.002) })
+				.quantity(e(100))
+				.strikePrice(e(100))
+				.price(e(10))
+				.build()
+
+			const timeAfterExpire = 170
+			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: e(0.1), closeFee: e(0.2) }])
+			await partyA2.setBalances(context.collateralNL, e(1000), e(500))
+
+			console.log("Party A Initial Balance:\n", await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()))
+
+			await partyA2.sendOpenIntent(request)
+			const openIntentId = await context.viewFacet.getLastOpenIntentId()
+			await partyB2.lockOpenIntent(openIntentId)
+
+			console.log(
+				"Party A Balance Before Fill: \n",
+				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+			)
+
+			//Fill Open
+			await partyB2.fillOpenIntent(openIntentId, e(100), e(10))
+			const tradeID = await context.viewFacet.getLastTradeId()
+
+			console.log(
+				"Party A Balance After Fill Open: \n",
+				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+			)
+
+			const timestamp = await getLatestBlockTime()
+			const priceSig: SettlementPriceSigStruct = {
+				reqId: ethers.toUtf8Bytes("1"), // or a Buffer/hex string
+				timestamp: timestamp + timeAfterExpire + 100,
+				symbolId: 1, // put option
+				settlementPrice: e(110), // means the settlement not worthful!!!
+				settlementTimestamp: timestamp,
+				collateralPrice: e(1),
+				gatewaySignature: "0xabcdef",
+				sigs: {
+					signature: 0x1234567890,
+					owner: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+					nonce: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+				},
+			}
+
+			const openAmount = await context.viewFacet.getTradeOpenAmount(tradeID)
+			const tradePremium = await context.viewFacet.getTradePremium(tradeID)
+			let trade: TradeStruct = await context.viewFacet.getTrade(tradeID)
+			const symbol = await context.viewFacet.getSymbol(trade.tradeAgreements.symbolId)
+			const tradePremiumSettled = (tradePremium * openAmount) / BigInt(trade.tradeAgreements.quantity)
+			const pnl = await context.viewFacet.getTradePnl(tradeID, priceSig.settlementPrice, openAmount)
+			const exerciseFee = await context.viewFacet.getTradeExerciseFee(tradeID, priceSig.settlementPrice, pnl)
+			const capFee = (BigInt(trade.tradeAgreements.exerciseFee.cap) * pnl) / parseUnits("1", 18)
+			const rateFee = (BigInt(trade.tradeAgreements.exerciseFee.rate) * BigInt(priceSig.settlementPrice) * openAmount) / parseUnits("1", 36)
+
+			console.log("openAmount:\n", openAmount)
+			console.log("tradePremium:\n", tradePremium)
+			console.log("trade quantity:\n", BigInt(trade.tradeAgreements.quantity))
+			console.log("tradePremiumSettled:\n", tradePremiumSettled)
+			console.log("Symbol Type:", symbol.optionType == BigInt(OptionType.CALL) ? "CALL" : "PUT")
+
+			console.log("pnl:\n", pnl)
+			console.log("exerciseFee:\n", exerciseFee)
+			console.log("Cap Fee:\n", capFee)
+			console.log("Rate Fee:\n", rateFee)
+			console.log("PNL - FEE:\n", pnl - exerciseFee)
+			console.log("PNL - CAP:\n", pnl - capFee)
+			console.log("PNL - RATE:\n", pnl - rateFee)
+
+			const partyABalanceBeforeSettlement = await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress())
+
+			//Execute Trade
+			await moveTime(timeAfterExpire)
+			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).to.be.not.reverted
+
+			trade = await context.viewFacet.getTrade(tradeID)
+			console.log("Trade Status:", trade.status == TradeStatus.EXPIRED ? "Expired" : trade.status)
+			console.log(
+				"Party A Balance After Settlement Before Sync:\n",
+				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+			)
+
+			const releaseInterval = await context.viewFacet.getReleaseInterval(partyA2.address)
+			await moveTime(Number(releaseInterval) * 2)
+			await context.accountFacet.syncBalances(context.collateral, partyA2.address, [partyB2.address])
+			console.log(
+				"Party A Balance After Settlement after Sync:\n",
+				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+			)
+
+			expect(trade.status).to.be.equal(TradeStatus.EXPIRED)
+			const partyABalanceAfterSettlementSchedule = await context.viewFacet.getIsolatedBalance(partyA2.address, context.collateral)
+			expect(partyABalanceAfterSettlementSchedule - partyABalanceBeforeSettlement).to.be.equal(0)
+		})
+
+		it("Should be executed when executed with option carried out as 'Cross Buy'- Party A Balance ", async () => {
+			const request = openIntentRequestBuilder()
+				.partyBsWhiteList([partyB2.address])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateralNL)
+				.symbolId(2)
+				.deadline((await getLatestBlockTime()) + 140)
+				.expirationTimestamp((await getLatestBlockTime()) + 150)
+				.exerciseFee({ cap: e(0.003), rate: e(0.0002) })
+				.quantity(e(100))
+				.strikePrice(e(100))
+				.price(e(10))
+				.marginType(MarginType.CROSS)
+				.tradeSide(TradeSide.BUY)
+				.build()
+
+			const timeAfterExpire = 170
+			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: e(0.1), closeFee: e(0.2) }])
+			await partyA2.setBalances(context.collateralNL, e(1000), e(500))
+
+			console.log(
+				"Party A Initial Balance:\n",
+				await context.viewFacet.getCrossBalance(partyA2.address, await context.collateral.getAddress(), partyB2.address),
+			)
+
+			await partyA2.sendOpenIntent(request)
+			const openIntentId = await context.viewFacet.getLastOpenIntentId()
+			await partyB2.lockOpenIntent(openIntentId)
+
+			console.log(
+				"Party A Balance Before Fill: \n",
+				await context.viewFacet.getCrossBalance(partyA2.address, await context.collateral.getAddress(), partyB2.address),
+			)
+
+			//Fill Open
+			await partyB2.fillOpenIntent(openIntentId, e(100), e(10))
+			const tradeID = await context.viewFacet.getLastTradeId()
+
+			console.log(
+				"Party A Balance After Fill Open: \n",
+				await context.viewFacet.getCrossBalance(partyA2.address, await context.collateral.getAddress(), partyB2.address),
+			)
+
+			const timestamp = await getLatestBlockTime()
+			const priceSig: SettlementPriceSigStruct = {
+				reqId: ethers.toUtf8Bytes("1"), // or a Buffer/hex string
+				timestamp: timestamp + timeAfterExpire + 100,
+				symbolId: 2, // call option
+				settlementPrice: e(120),
+				settlementTimestamp: timestamp,
+				collateralPrice: e(1),
+				gatewaySignature: "0xabcdef",
+				sigs: {
+					signature: 0x1234567890,
+					owner: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+					nonce: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+				},
+			}
+
+			const openAmount = await context.viewFacet.getTradeOpenAmount(tradeID)
+			const tradePremium = await context.viewFacet.getTradePremium(tradeID)
+			let trade: TradeStruct = await context.viewFacet.getTrade(tradeID)
+			const symbol = await context.viewFacet.getSymbol(trade.tradeAgreements.symbolId)
+			let scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA2.address, symbol.collateral, partyB2.address)
+
+			const tradePremiumSettled = (tradePremium * openAmount) / BigInt(trade.tradeAgreements.quantity)
+			const pnl = await context.viewFacet.getTradePnl(tradeID, priceSig.settlementPrice, openAmount)
+			const exerciseFee = await context.viewFacet.getTradeExerciseFee(tradeID, priceSig.settlementPrice, pnl)
+			const capFee = (BigInt(trade.tradeAgreements.exerciseFee.cap) * pnl) / parseUnits("1", 18)
+			const rateFee = (BigInt(trade.tradeAgreements.exerciseFee.rate) * BigInt(priceSig.settlementPrice) * openAmount) / parseUnits("1", 36)
+
+			console.log("openAmount:\n", openAmount)
+			console.log("tradePremium:\n", tradePremium)
+			console.log("trade quantity:\n", BigInt(trade.tradeAgreements.quantity))
+			console.log("tradePremiumSettled:\n", tradePremiumSettled)
+			console.log("Symbol Type:", symbol.optionType == BigInt(OptionType.CALL) ? "CALL" : "PUT")
+
+			console.log("pnl:\n", pnl)
+			console.log("exerciseFee:\n", exerciseFee)
+			console.log("Cap Fee:\n", capFee)
+			console.log("Rate Fee:\n", rateFee)
+			console.log("PNL - FEE:\n", pnl - exerciseFee)
+			console.log("PNL - CAP:\n", pnl - capFee)
+			console.log("PNL - RATE:\n", pnl - rateFee)
+
+			console.log("Before Settlement")
+			console.log("Schedule Release Balance Positions, Transitioning:", scheduleEntry.transitioning)
+			console.log("Schedule Release Balance Positions, Scheduled:", scheduleEntry.scheduled)
+			console.log("Schedule Release Balance Positions, Interval:", scheduleEntry.releaseInterval)
+
+			const partyABalanceBeforeSettlement = await context.viewFacet.getCrossBalance(
 				partyA2.address,
 				await context.collateral.getAddress(),
+				partyB2.address,
 			)
-			const partyBBalanceBeforeSettlement = await context.viewFacet.getIsolatedBalance(partyB2.address, await context.collateral.getAddress())
-			const partyBBalanceBeforeSettlementLocked = await context.viewFacet.getIsolatedLockedBalance(
+
+			//Execute Trade
+			await moveTime(timeAfterExpire)
+			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).to.be.not.reverted
+
+			trade = await context.viewFacet.getTrade(tradeID)
+			console.log("Trade Status:", trade.status == TradeStatus.EXERCISED ? "EXERCISED" : trade.status)
+			console.log(
+				"Party A Balance After Settlement Before Sync:\n",
+				await context.viewFacet.getCrossBalance(partyA2.address, await context.collateral.getAddress(), partyB2.address),
+			)
+
+			scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA2.address, symbol.collateral, partyB2.address)
+			console.log("After Settlement")
+			console.log("Schedule Release Balance Positions, Transitioning:", scheduleEntry.transitioning)
+			console.log("Schedule Release Balance Positions, Scheduled:", scheduleEntry.scheduled)
+			console.log("Schedule Release Balance Positions, Interval:", scheduleEntry.releaseInterval)
+
+			const releaseInterval = await context.viewFacet.getReleaseInterval(partyA2.address)
+			await moveTime(Number(releaseInterval) * 2)
+			await context.accountFacet.syncBalances(context.collateral, partyA2.address, [partyB2.address])
+			console.log(
+				"Party A Balance After Settlement after Sync:\n",
+				await context.viewFacet.getCrossBalance(partyA2.address, await context.collateral.getAddress(), partyB2.address),
+			)
+
+			expect(trade.status).to.be.equal(TradeStatus.EXERCISED)
+			const partyABalanceAfterSettlementSchedule = await context.viewFacet.getCrossBalance(partyA2.address, context.collateral, partyB2.address)
+			expect(partyABalanceAfterSettlementSchedule.balance - partyABalanceBeforeSettlement.balance).to.be.equal(pnl - exerciseFee)
+		})
+
+		it("Should be executed when executed with option carried out as 'Cross Buy'- Party B Balance ", async () => {
+			const request = openIntentRequestBuilder()
+				.partyBsWhiteList([partyB2.address])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateralNL)
+				.symbolId(2)
+				.deadline((await getLatestBlockTime()) + 140)
+				.expirationTimestamp((await getLatestBlockTime()) + 150)
+				.exerciseFee({ cap: e(0.003), rate: e(0.0002) })
+				.quantity(e(100))
+				.strikePrice(e(100))
+				.price(e(10))
+				.marginType(MarginType.CROSS)
+				.tradeSide(TradeSide.BUY)
+				.build()
+
+			const timeAfterExpire = 170
+			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: e(0.1), closeFee: e(0.2) }])
+			await partyA2.setBalances(context.collateralNL, e(1000), e(500))
+
+			await partyA2.sendOpenIntent(request)
+			const openIntentId = await context.viewFacet.getLastOpenIntentId()
+			await partyB2.lockOpenIntent(openIntentId)
+
+			//Fill Open
+			await partyB2.fillOpenIntent(openIntentId, e(100), e(10))
+			const tradeID = await context.viewFacet.getLastTradeId()
+
+			const timestamp = await getLatestBlockTime()
+			const priceSig: SettlementPriceSigStruct = {
+				reqId: ethers.toUtf8Bytes("1"), // or a Buffer/hex string
+				timestamp: timestamp + timeAfterExpire + 100,
+				symbolId: 2, // call option
+				settlementPrice: e(120),
+				settlementTimestamp: timestamp,
+				collateralPrice: e(1),
+				gatewaySignature: "0xabcdef",
+				sigs: {
+					signature: 0x1234567890,
+					owner: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+					nonce: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+				},
+			}
+
+			const openAmount = await context.viewFacet.getTradeOpenAmount(tradeID)
+			const tradePremium = await context.viewFacet.getTradePremium(tradeID)
+			let trade: TradeStruct = await context.viewFacet.getTrade(tradeID)
+			const symbol = await context.viewFacet.getSymbol(trade.tradeAgreements.symbolId)
+			let scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA2.address, symbol.collateral, partyB2.address)
+
+			const tradePremiumSettled = (tradePremium * openAmount) / BigInt(trade.tradeAgreements.quantity)
+			const pnl = await context.viewFacet.getTradePnl(tradeID, priceSig.settlementPrice, openAmount)
+			const exerciseFee = await context.viewFacet.getTradeExerciseFee(tradeID, priceSig.settlementPrice, pnl)
+			const capFee = (BigInt(trade.tradeAgreements.exerciseFee.cap) * pnl) / parseUnits("1", 18)
+			const rateFee = (BigInt(trade.tradeAgreements.exerciseFee.rate) * BigInt(priceSig.settlementPrice) * openAmount) / parseUnits("1", 36)
+
+			console.log("openAmount:\n", openAmount)
+			console.log("tradePremium:\n", tradePremium)
+			console.log("trade quantity:\n", BigInt(trade.tradeAgreements.quantity))
+			console.log("tradePremiumSettled:\n", tradePremiumSettled)
+			console.log("Symbol Type:", symbol.optionType == BigInt(OptionType.CALL) ? "CALL" : "PUT")
+
+			console.log("pnl:\n", pnl)
+			console.log("exerciseFee:\n", exerciseFee)
+
+			const partyBBalanceBeforeSettlement = await context.viewFacet.getCrossBalance(
 				partyB2.address,
 				await context.collateral.getAddress(),
+				partyA2.address,
 			)
 
-			//Scheduling info
-			const releaseInterval = await context.viewFacet.getReleaseInterval(partyA2.address)
-			let scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA2.address, optionSymbol.collateral, partyB2.address)
-
+			//Execute Trade
+			await moveTime(timeAfterExpire)
 			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).to.be.not.reverted
-			console.log("Party A Balance 5 : ", await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()))
-			// instant premium add to partyB balance
-			const partyBBalanceAfterSettlement = await context.viewFacet.getIsolatedBalance(partyB2.address, context.collateral)
-			// console.log("Party A Balance 7" ,await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()))
 
-			newBlock = (await getLatestBlockTime()) + Number(releaseInterval) * 2
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
-			await network.provider.send("evm_mine")
+			trade = await context.viewFacet.getTrade(tradeID)
+			expect(trade.status).to.be.equal(TradeStatus.EXERCISED)
 
+			const partyBBalanceAfterSettlementSchedule = await context.viewFacet.getCrossBalance(partyB2.address, context.collateral, partyA2.address)
+			const balanceDiff = partyBBalanceAfterSettlementSchedule.balance - partyBBalanceBeforeSettlement.balance
+			console.log("Balance Diff when PNL in Positive:", balanceDiff)
+
+			expect(balanceDiff).to.be.equal(tradePremiumSettled + exerciseFee - pnl)
+		})
+
+		it("Should be executed when executed with option carried out as 'Cross Buy'- Party A Balance ", async () => {
+			const request = openIntentRequestBuilder()
+				.partyBsWhiteList([partyB2.address])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateralNL)
+				.symbolId(2)
+				.deadline((await getLatestBlockTime()) + 140)
+				.expirationTimestamp((await getLatestBlockTime()) + 150)
+				.exerciseFee({ cap: e(0.003), rate: e(0.0002) })
+				.quantity(e(100))
+				.strikePrice(e(100))
+				.price(e(10))
+				.marginType(MarginType.CROSS)
+				.tradeSide(TradeSide.SELL)
+				.build()
+
+			const timeAfterExpire = 170
+			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: e(0.1), closeFee: e(0.2) }])
+			await partyA2.setBalances(context.collateralNL, e(1000), e(500))
+
+			console.log(
+				"Party A Initial Balance:\n",
+				await context.viewFacet.getCrossBalance(partyA2.address, await context.collateral.getAddress(), partyB2.address),
+			)
+
+			await partyA2.sendOpenIntent(request)
+			const openIntentId = await context.viewFacet.getLastOpenIntentId()
+			await partyB2.lockOpenIntent(openIntentId)
+
+			console.log(
+				"Party A Balance Before Fill: \n",
+				await context.viewFacet.getCrossBalance(partyA2.address, await context.collateral.getAddress(), partyB2.address),
+			)
+
+			//Fill Open
+			await partyB2.fillOpenIntent(openIntentId, e(100), e(10))
+			const tradeID = await context.viewFacet.getLastTradeId()
+
+			console.log(
+				"Party A Balance After Fill Open: \n",
+				await context.viewFacet.getCrossBalance(partyA2.address, await context.collateral.getAddress(), partyB2.address),
+			)
+
+			const timestamp = await getLatestBlockTime()
+			const priceSig: SettlementPriceSigStruct = {
+				reqId: ethers.toUtf8Bytes("1"), // or a Buffer/hex string
+				timestamp: timestamp + timeAfterExpire + 100,
+				symbolId: 2, // call option
+				settlementPrice: e(120),
+				settlementTimestamp: timestamp,
+				collateralPrice: e(1),
+				gatewaySignature: "0xabcdef",
+				sigs: {
+					signature: 0x1234567890,
+					owner: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+					nonce: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+				},
+			}
+
+			const openAmount = await context.viewFacet.getTradeOpenAmount(tradeID)
+			const tradePremium = await context.viewFacet.getTradePremium(tradeID)
+			let trade: TradeStruct = await context.viewFacet.getTrade(tradeID)
+			const symbol = await context.viewFacet.getSymbol(trade.tradeAgreements.symbolId)
+			let scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA2.address, symbol.collateral, partyB2.address)
+
+			const tradePremiumSettled = (tradePremium * openAmount) / BigInt(trade.tradeAgreements.quantity)
+			const pnl = await context.viewFacet.getTradePnl(tradeID, priceSig.settlementPrice, openAmount)
+			const exerciseFee = await context.viewFacet.getTradeExerciseFee(tradeID, priceSig.settlementPrice, pnl)
+			const capFee = (BigInt(trade.tradeAgreements.exerciseFee.cap) * pnl) / parseUnits("1", 18)
+			const rateFee = (BigInt(trade.tradeAgreements.exerciseFee.rate) * BigInt(priceSig.settlementPrice) * openAmount) / parseUnits("1", 36)
+
+			console.log("openAmount:\n", openAmount)
+			console.log("tradePremium:\n", tradePremium)
+			console.log("trade quantity:\n", BigInt(trade.tradeAgreements.quantity))
+			console.log("tradePremiumSettled:\n", tradePremiumSettled)
+			console.log("Symbol Type:", symbol.optionType == BigInt(OptionType.CALL) ? "CALL" : "PUT")
+
+			console.log("pnl:\n", pnl)
+			console.log("exerciseFee:\n", exerciseFee)
+			console.log("Cap Fee:\n", capFee)
+			console.log("Rate Fee:\n", rateFee)
+			console.log("PNL - FEE:\n", pnl - exerciseFee)
+			console.log("PNL - CAP:\n", pnl - capFee)
+			console.log("PNL - RATE:\n", pnl - rateFee)
+
+			console.log("Before Settlement")
+			console.log("Schedule Release Balance Positions, Transitioning:", scheduleEntry.transitioning)
+			console.log("Schedule Release Balance Positions, Scheduled:", scheduleEntry.scheduled)
+			console.log("Schedule Release Balance Positions, Interval:", scheduleEntry.releaseInterval)
+
+			const partyABalanceBeforeSettlement = await context.viewFacet.getCrossBalance(
+				partyA2.address,
+				await context.collateral.getAddress(),
+				partyB2.address,
+			)
+
+			//Execute Trade
+			await moveTime(timeAfterExpire)
+			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).to.be.not.reverted
+
+			trade = await context.viewFacet.getTrade(tradeID)
+			console.log("Trade Status:", trade.status == TradeStatus.EXERCISED ? "EXERCISED" : trade.status)
+			console.log(
+				"Party A Balance After Settlement Before Sync:\n",
+				await context.viewFacet.getCrossBalance(partyA2.address, await context.collateral.getAddress(), partyB2.address),
+			)
+
+			scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA2.address, symbol.collateral, partyB2.address)
+			console.log("After Settlement")
+			console.log("Schedule Release Balance Positions, Transitioning:", scheduleEntry.transitioning)
+			console.log("Schedule Release Balance Positions, Scheduled:", scheduleEntry.scheduled)
+			console.log("Schedule Release Balance Positions, Interval:", scheduleEntry.releaseInterval)
+
+			const releaseInterval = await context.viewFacet.getReleaseInterval(partyA2.address)
+			await moveTime(Number(releaseInterval) * 2)
 			await context.accountFacet.syncBalances(context.collateral, partyA2.address, [partyB2.address])
-			console.log("Party A Balance 6 : ", await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()))
-			const partyABalanceAfterSettlementSchedule = await context.viewFacet.getIsolatedBalance(partyA2.address, context.collateral)
-			// Party B
-			expect(partyBBalanceAfterSettlement - partyBBalanceBeforeSettlement).to.be.equal(tradePremiumSettled - pnl + exerciseFee)
-			// Party A
-			// expect(partyABalanceAfterSettlementSchedule - partyABalanceBeforeSettlement).to.be.equal(closePNL - allScheduledFee + pnl)
-			expect(partyABalanceAfterSettlementSchedule - partyABalanceBeforeSettlement).to.be.equal(closePNL)
-		})
+			console.log(
+				"Party A Balance After Settlement after Sync:\n",
+				await context.viewFacet.getCrossBalance(partyA2.address, await context.collateral.getAddress(), partyB2.address),
+			)
 
-		it("Should be executed when executed with option carried out as 'Cross Buy' ", async () => {
-			const timestamp = await getLatestBlockTime()
-			const ID = 1
-			const priceSig: SettlementPriceSigStruct = {
-				reqId: ethers.toUtf8Bytes("1"), // or a Buffer/hex string
-				timestamp: timestamp + 100,
-				symbolId: 1,
-				settlementPrice: e(7),
-				settlementTimestamp: timestamp,
-				collateralPrice: e(8),
-				gatewaySignature: "0xabcdef",
-				sigs: {
-					signature: 0x1234567890,
-					owner: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
-					nonce: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
-				},
-			}
+			expect(trade.status).to.be.equal(TradeStatus.EXERCISED)
 
-			await expect(context.tradeFacet.executeTrades([ID], priceSig)).to.be.not.reverted
-		})
+			const partyABalanceAfterSettlementSchedule = await context.viewFacet.getCrossBalance(partyA2.address, context.collateral, partyB2.address)
+			const balanceDiff = partyABalanceAfterSettlementSchedule.balance - partyABalanceBeforeSettlement.balance
 
-		it("Should be executed when executed with option carried out as 'Isolated Sell' ", async () => {
-			const timestamp = await getLatestBlockTime()
-			const ID = 1
-			const priceSig: SettlementPriceSigStruct = {
-				reqId: ethers.toUtf8Bytes("1"), // or a Buffer/hex string
-				timestamp: timestamp + 100,
-				symbolId: 1, // put option
-				settlementPrice: e(7),
-				settlementTimestamp: timestamp,
-				collateralPrice: e(8),
-				gatewaySignature: "0xabcdef",
-				sigs: {
-					signature: 0x1234567890,
-					owner: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
-					nonce: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
-				},
-			}
-			await expect(context.tradeFacet.executeTrades([ID], priceSig)).to.be.not.reverted
-		})
+			console.log("Balance Party A in Sell Before Settlement:", partyABalanceBeforeSettlement)
+			console.log("Balance Party A in Sell After Settlement:", partyABalanceAfterSettlementSchedule)
+			console.log("Balance Diff when PNL in Positive:", balanceDiff)
 
-		it("Should be executed when executed with option carried out as 'Cross Sell' ", async () => {
-			const timestamp = await getLatestBlockTime()
-			const ID = 1
-			const priceSig: SettlementPriceSigStruct = {
-				reqId: ethers.toUtf8Bytes("1"), // or a Buffer/hex string
-				timestamp: timestamp + 100,
-				symbolId: 1,
-				settlementPrice: e(7),
-				settlementTimestamp: timestamp,
-				collateralPrice: e(8),
-				gatewaySignature: "0xabcdef",
-				sigs: {
-					signature: 0x1234567890,
-					owner: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
-					nonce: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
-				},
-			}
-
-			expect(await context.tradeFacet.executeTrades([ID], priceSig)).to.be.not.reverted
+			expect(balanceDiff).to.be.equal(exerciseFee - pnl)
 		})
 	})
 	describe("Transfer Trade", async function () {

@@ -26,7 +26,7 @@ library LibTradeOps {
 	using LibParty for address;
 
 	function getOpenAmount(Trade memory self) internal pure returns (uint256) {
-		return self.tradeAgreements.quantity - self.closedAmountBeforeExpiration;
+		return self.tradeAgreements.quantity - self.closedAmountBeforeExpiration; // how about pending close intents
 	}
 
 	function getAvailableAmountToClose(Trade memory self) internal pure returns (uint256) {

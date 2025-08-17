@@ -1,0 +1,21 @@
+diff --git a/contracts/libraries/core/LibTradeOperations.sol b/contracts/libraries/core/LibTradeOperations.sol
+index 56fe393..2f2f9ef 100644
+--- a/contracts/libraries/core/LibTradeOperations.sol
++++ b/contracts/libraries/core/LibTradeOperations.sol
+@@ -191,6 +191,7 @@ library LibTradeOperations {
+ 				{
+ 					FeeManagementStorage.Layout storage feeLayout = FeeManagementStorage.layout();
+ 					FeeStructure memory s = trade.feeStructure;
++					ScheduledReleaseBalance storage partyAFeeBalance = trade.partyA.balanceOf(s.feeToken);
+ 
+ 					/* ---------------------------------------- GET FEES ---------------------------------------- */
+ 					uint256 pnlInCollateral = (pnl * 1e18) / sig.collateralPrice;
+@@ -199,7 +200,7 @@ library LibTradeOperations {
+ 					DecreaseBalanceReason[2] memory decReasons = [DecreaseBalanceReason.PLATFORM_FEE, DecreaseBalanceReason.AFFILIATE_FEE];
+ 
+ 					for (uint8 j; j < 2; ++j)
+-						partyABalance.subForCounterParty(trade.partyB, fees[j], trade.tradeAgreements.marginType, decReasons[j]);
++						partyAFeeBalance.subForCounterParty(trade.partyB, fees[j], trade.tradeAgreements.marginType, decReasons[j]);
+ 
+ 					/* ---------------------------------------- PAY FEES ---------------------------------------- */
+ 
