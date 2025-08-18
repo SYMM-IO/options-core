@@ -115,7 +115,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			await expect(
 				context.clearingHouse
 					.connect(context.signers.clearingHouse)
-					.flagIsolatedPartyBLiquidation(partyB1.getSigner.getAddress(), context.collateral.getAddress()),
+					.flagIsolatedPartyBLiquidation(partyB1.address, context.collateral.getAddress()),
 			).to.be.revertedWithCustomError(context.clearingHouse, "ZeroLossCoverage")
 		})
 
