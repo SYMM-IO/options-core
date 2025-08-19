@@ -185,7 +185,7 @@ library LibTradeOperations {
 						trade.tradeAgreements.marginType,
 						DecreaseBalanceReason.REALIZED_PNL
 					);
-					partyBBalance.scheduledAdd(trade.partyB, amountToTransfer, trade.tradeAgreements.marginType, IncreaseBalanceReason.REALIZED_PNL);
+					partyBBalance.scheduledAdd(trade.partyA, amountToTransfer, trade.tradeAgreements.marginType, IncreaseBalanceReason.REALIZED_PNL);
 				}
 
 				{
