@@ -21,8 +21,8 @@ library LibOpenIntentOps {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibParty for address;
 
-	function calculateFee(OpenIntent memory self, uint256 rate) internal pure returns (uint256) {
-		return (self.tradeAgreements.quantity * self.price * rate) / (self.feeStructure.tokenPriceInCollateral * 1e18);
+	function calculateFee(OpenIntent memory self, uint256 rate, uint256 price) internal pure returns (uint256) {
+		return (self.tradeAgreements.quantity * price * rate) / (self.feeStructure.tokenPriceInCollateral * 1e18);
 	}
 
 	function calculatePremium(OpenIntent memory self, uint256 price) internal pure returns (uint256) {
@@ -132,7 +132,7 @@ library LibOpenIntentOps {
 			self.partyA.balanceOf(getSymbol(self).collateral).crossUnlock(self.partyBsWhiteList[0], self.tradeAgreements.mm);
 	}
 
-	function _handleFees(OpenIntent memory self, FeeOp op) internal returns (uint256[3] memory fees) {
+	function _handleFees(OpenIntent memory self, FeeOp op, uint256 price) internal returns (uint256[3] memory fees) {
 		FeeStructure memory s = self.feeStructure;
 		bool isolated = self.tradeAgreements.marginType == MarginType.ISOLATED;
 		bool singlePartyB = self.partyBsWhiteList.length == 1;
@@ -141,9 +141,9 @@ library LibOpenIntentOps {
 		ScheduledReleaseBalance storage bal = self.partyA.balanceOf(s.feeToken);
 
 		fees = [
-			calculateFee(self, s.platformFee.openFee),
-			calculateFee(self, s.affiliateFee.openFee),
-			calculateFee(self, s.solverFee.openFee)
+			calculateFee(self, s.platformFee.openFee, price),
+			calculateFee(self, s.affiliateFee.openFee, price),
+			calculateFee(self, s.solverFee.openFee, price)
 		];
 
 		DecreaseBalanceReason[3] memory decReasons = [
@@ -178,15 +178,15 @@ library LibOpenIntentOps {
 		}
 	}
 
-	function getFeesFromUser(OpenIntent memory self) internal returns (uint256[3] memory fees) {
-		fees = _handleFees(self, FeeOp.Subtract);
+	function getFeesFromUser(OpenIntent memory self, uint256 price) internal returns (uint256[3] memory fees) {
+		fees = _handleFees(self, FeeOp.Subtract, price);
 	}
 
 	function lockFees(OpenIntent memory self) internal {
-		_handleFees(self, FeeOp.Lock);
+		_handleFees(self, FeeOp.Lock, self.price);
 	}
 
 	function unlockFees(OpenIntent memory self) internal {
-		_handleFees(self, FeeOp.Unlock);
+		_handleFees(self, FeeOp.Unlock, self.price);
 	}
 }
