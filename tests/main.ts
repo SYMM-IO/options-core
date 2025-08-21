@@ -24,7 +24,7 @@ describe(`${name}-v${version}`, () => {
 			shouldBehaveLikePartyAOpenFacet()
 		})
 
-		describe.only("Facets_PartyBOpenFacet", async function () {
+		describe("Facets_PartyBOpenFacet", async function () {
 			shouldBehaveLikePartyBOpenFacet()
 		})
 
@@ -64,7 +64,7 @@ describe(`${name}-v${version}`, () => {
 			shouldBehaveLikeSymmioPartyB()
 		})
 
-		describe("Symmio Clearing House", async function () {
+		describe.only("Symmio Clearing House", async function () {
 			shouldBehaveLikeClearingHouseFacet()
 		})
 	} else {
