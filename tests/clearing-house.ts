@@ -22,6 +22,7 @@ import {
 	IntentStatus,
 	CloseIntentStatus,
 	LiquidationSide,
+	OptionType,
 } from "./option-enums"
 import { address } from "hardhat/internal/core/config/config-validation"
 import { ZeroAddress } from "ethers"
@@ -44,6 +45,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 		// await partyB2.setBalances(context.collateral, e(100000), e(10))
 		await partyA1.setBalances(context.collateral, e(100000), e(100000))
 		await partyA2.setBalances(context.collateral, e(100000), e(10))
+		await partyA2.setBalances(context.collateralNL, e(100000), e(1000))
 
 		const newBlock = (await getLatestBlockTime()) + 170
 		await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
@@ -135,20 +137,21 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.address])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
 				.exerciseFee({ cap: e(0.002), rate: e(0.0002) })
 				.quantity(e(100))
-				.strikePrice(e(100))
 				.price(e(10))
+				.strikePrice(e(100))
 				.mm(0)
 				.tradeSide(TradeSide.BUY)
 				.marginType(MarginType.ISOLATED)
 				.build()
 
 			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
 			await partyB2.fillOpenIntent(openIntentId1, e(100), e(10))
@@ -176,20 +179,21 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
 				.exerciseFee({ cap: e(0.002), rate: e(0.0002) })
 				.quantity(e(100))
-				.strikePrice(e(100))
 				.price(e(10))
+				.strikePrice(e(100))
 				.mm(0)
 				.tradeSide(TradeSide.BUY)
 				.marginType(MarginType.ISOLATED)
 				.build()
 
 			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
 			await partyB2.fillOpenIntent(openIntentId1, e(100), e(10))
@@ -216,7 +220,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -230,6 +234,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.build()
 
 			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
 			await partyB2.fillOpenIntent(openIntentId1, e(100), e(10))
@@ -266,7 +271,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -280,6 +285,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.build()
 
 			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
 			await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
@@ -320,7 +326,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -334,6 +340,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.build()
 
 			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
 			await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
@@ -380,7 +387,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -394,6 +401,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.build()
 
 			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
 			await partyB2.fillOpenIntent(openIntentId1, e(100), e(10))
@@ -421,7 +429,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -435,6 +443,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.build()
 
 			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
 			await partyB2.fillOpenIntent(openIntentId1, e(100), e(10))
@@ -470,7 +479,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -484,6 +493,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.build()
 
 			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
 			await partyB2.fillOpenIntent(openIntentId1, e(100), e(10))
@@ -516,7 +526,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -530,6 +540,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.build()
 
 			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
 			await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
@@ -571,7 +582,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -585,6 +596,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.build()
 
 			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
 			await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
@@ -645,7 +657,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -659,6 +671,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.build()
 
 			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
 			await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
@@ -707,7 +720,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -721,6 +734,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.build()
 
 			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
 			await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
@@ -766,7 +780,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -780,6 +794,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.build()
 
 			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
 			await partyB2.fillOpenIntent(openIntentId1, e(100), e(10))
@@ -807,7 +822,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -821,6 +836,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.build()
 
 			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
 			await partyB2.fillOpenIntent(openIntentId1, e(100), e(10))
@@ -857,7 +873,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -871,6 +887,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.build()
 
 			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
 			await partyB2.fillOpenIntent(openIntentId1, e(100), e(10))
@@ -906,7 +923,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -920,6 +937,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.build()
 
 			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
 			await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
@@ -971,7 +989,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -985,6 +1003,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.build()
 
 			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
 			await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
@@ -1046,7 +1065,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -1060,6 +1079,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.build()
 
 			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
 			await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
@@ -1113,7 +1133,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -1162,7 +1182,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -1206,7 +1226,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -1255,7 +1275,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -1309,7 +1329,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -1357,7 +1377,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -1426,7 +1446,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -1480,25 +1500,24 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const getTradeOpenAmount = await context.viewFacet.getTradeOpenAmount(tradeID)
 			const tradePremium = await context.viewFacet.getTradePremium(tradeID)
 			const proportinalPremium = (tradePremium * getTradeOpenAmount) / trade.tradeAgreements.quantity
-			const partyABalanceBefore = await context.viewFacet.getCrossBalance(partyA2.address, context.collateral,partyB2.address)
+			const partyABalanceBefore = await context.viewFacet.getCrossBalance(partyA2.address, context.collateral, partyB2.address)
 
 			const price = [e(30000)]
 			expect(await context.clearingHouse.connect(context.signers.clearingHouse).closeTrades(liquidationId, [tradeID], price)).not.reverted
 			expect((await context.viewFacet.getTrade(tradeID)).status).to.be.equal(TradeStatus.LIQUIDATED)
 
-			const partyABalanceAfter = await context.viewFacet.getCrossBalance(partyA2.address, context.collateral,partyB2.address)
+			const partyABalanceAfter = await context.viewFacet.getCrossBalance(partyA2.address, context.collateral, partyB2.address)
 			const PartyABalaceDiff = partyABalanceAfter.balance - partyABalanceBefore.balance
 
 			console.log("Premium Payed to Party A in Isolated Margin:", proportinalPremium)
 			expect(PartyABalaceDiff).to.equal(proportinalPremium)
-
 		})
 
 		it("Should closed when closing after liquidating party B with CROSS SELL, Trade Status", async () => {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -1568,7 +1587,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -1677,7 +1696,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -1731,7 +1750,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -1745,6 +1764,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.build()
 
 			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
 			await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
@@ -1781,7 +1801,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -1795,6 +1815,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.build()
 
 			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
 			await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
@@ -1874,7 +1895,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -1888,6 +1909,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.build()
 
 			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
 			await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
@@ -1939,7 +1961,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -1953,6 +1975,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.build()
 
 			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
 			await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
@@ -1983,7 +2006,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.getSigner])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral)
+				.feeToken(context.collateralNL)
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -1997,6 +2020,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.build()
 
 			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
 			await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
@@ -2055,6 +2079,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.build()
 
 			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
 			await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
@@ -2128,6 +2153,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.build()
 
 			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
 			await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
@@ -2156,6 +2182,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.build()
 
 			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
 
@@ -2183,6 +2210,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.build()
 
 			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
 			await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
@@ -2249,6 +2277,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.build()
 
 			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
 			await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
@@ -2281,6 +2310,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.build()
 
 			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
 			await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
@@ -2314,6 +2344,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.build()
 
 			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
 			await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
