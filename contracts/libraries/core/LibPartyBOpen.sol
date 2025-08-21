@@ -303,7 +303,7 @@ library LibPartyBOpen {
 
 		/* ---------------------------------------- BALANCES ---------------------------------------- */
 
-		uint256[3] memory fees = intent.getFeesFromUser();
+		uint256[3] memory fees = intent.getFeesFromUser(price);
 
 		{
 			address feeToken = intent.feeStructure.feeToken;

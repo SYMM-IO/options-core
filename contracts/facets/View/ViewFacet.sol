@@ -1013,7 +1013,7 @@ contract ViewFacet is IViewFacet {
 	 */
 	function getOpenIntentPlatformFee(uint256 intentId) external view returns (uint256) {
 		OpenIntent memory intent = OpenIntentStorage.layout().openIntents[intentId];
-		return intent.calculateFee(intent.feeStructure.platformFee.openFee);
+		return intent.calculateFee(intent.feeStructure.platformFee.openFee, intent.price);
 	}
 
 	/**
@@ -1023,7 +1023,7 @@ contract ViewFacet is IViewFacet {
 	 */
 	function getOpenIntentAffiliateFee(uint256 intentId) external view returns (uint256) {
 		OpenIntent memory intent = OpenIntentStorage.layout().openIntents[intentId];
-		return intent.calculateFee(intent.feeStructure.affiliateFee.openFee);
+		return intent.calculateFee(intent.feeStructure.affiliateFee.openFee, intent.price);
 	}
 
 	/**
