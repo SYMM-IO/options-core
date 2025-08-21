@@ -1671,15 +1671,18 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 		})
 
 		it("Should allocate from reserve balance into cross balance", async () => {
-			await context.accountFacet.connect(context.signers.partyB2).allocateToReserveBalance(context.collateral.getAddress(), e(10000))
+			const amountToDeposit = e(10000)
+			await partyB2.setBalances(context.collateral, amountToDeposit, amountToDeposit)
+			await context.accountFacet.connect(context.signers.partyB2).allocateToReserveBalance(context.collateral.getAddress(), amountToDeposit)
 			const partyBBeforeReserveBalance = await context.viewFacet.getReserveBalance(partyB2.address, context.collateral.getAddress())
 			const partyBBeforeCrossBalance = (await context.viewFacet.getCrossBalance(partyB2.address, context.collateral.getAddress(), partyA2.address))
 				.balance
 
+				const amountToAllocate = e(1000)
 			expect(
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
-					.allocateFromReserveToCross(partyB2.address, partyA2.address, context.collateral.getAddress(), e(1000)),
+					.allocateFromReserveToCross(partyB2.address, partyA2.address, context.collateral.getAddress(), amountToDeposit),
 			).not.reverted
 
 			const partyBAfterReserveBalance = await context.viewFacet.getReserveBalance(partyB2.address, context.collateral.getAddress())
@@ -2196,7 +2199,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.address])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral.getAddress())
+				.feeToken(context.collateralNL.getAddress())
 				.symbolId(2)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -2225,7 +2228,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const request2 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.address])
 				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateral.getAddress())
+				.feeToken(context.collateralNL.getAddress())
 				.symbolId(1)
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
@@ -2239,6 +2242,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.build()
 
 			const openIntentId2 = 2
+			// await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request2)
 			await partyB2.lockOpenIntent(openIntentId2)
 
@@ -2278,6 +2282,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 
 			const openIntentId1 = 1
 			await partyA2.setBalances(context.collateral, e(10000), e(1000))
+			await partyB2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
 			await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
