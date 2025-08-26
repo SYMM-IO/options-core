@@ -131,6 +131,7 @@ contract SymmioPartyB is
 
 		_grantRole(DEFAULT_ADMIN_ROLE, admin);
 		_grantRole(SETTER_ROLE, admin);
+		_grantRole(MANAGER_ROLE, admin); // for setting MulticastWhitelist
 		symmioAddress = symmioAddress_;
 	}
 

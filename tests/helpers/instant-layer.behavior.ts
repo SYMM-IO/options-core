@@ -23,6 +23,7 @@ import * as diamond from "../../artifacts/contracts/Diamond.sol/Diamond.json"
 import { trace } from "console"
 import { hexZeroPad, zeroPad } from "@ethersproject/bytes"
 import { Context } from "mocha"
+import { asyncWrapProviders } from "async_hooks"
 
 export function shouldBehaveLikeInstantLayer(): void {
 	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyB1: PartyB, partyB2: PartyB
@@ -47,12 +48,6 @@ export function shouldBehaveLikeInstantLayer(): void {
 		await partyA2.setBalances(context.collateral, e(100000), e(5000))
 		const { instantLayer, collateralNL, partyAOpenFacet, partyBOpenFacet } = context
 
-		await context.controlFacet.setPartyBConfig(context.signers.partyB1, {
-			isActive: true,
-			lossCoverage: 0,
-			oracleId: 1,
-		})
-
 		await context.controlFacet.setUnbindingCooldown(120)
 
 		saltOpen1 = ethers.keccak256(ethers.toUtf8Bytes("saltOpen1"))
@@ -64,7 +59,7 @@ export function shouldBehaveLikeInstantLayer(): void {
 		const deadline = latestBlock + 300
 
 		request = openIntentRequestBuilder()
-			.partyBsWhiteList([partyB1.address])
+			.partyBsWhiteList([])
 			.affiliate(context.signers.affiliate1.address)
 			.feeToken(await collateralNL.getAddress())
 			.symbolId(1)
@@ -97,6 +92,13 @@ export function shouldBehaveLikeInstantLayer(): void {
 		])
 		lockIntentCallData = partyBOpenFacet.interface.encodeFunctionData("lockOpenIntent", [1])
 		fillIntentCallData = partyBOpenFacet.interface.encodeFunctionData("fillOpenIntent", [1, e(100), 7])
+
+		ops = [
+			{
+				insertionPoints: [1, 3, 5],
+				sourceIndices: [2, 4, 6],
+			},
+		]
 	})
 
 	describe("Registering PartyB", async function () {
@@ -131,10 +133,10 @@ export function shouldBehaveLikeInstantLayer(): void {
 		})
 
 		it("Should remove the right role", async () => {
-			await expect(context.instantLayer.registerPartyB(partyB1.getSigner)).not.to.be.reverted
+			await expect(context.instantLayer.unregisterPartyB(partyB1.getSigner)).not.to.be.reverted
 			const OPERATOR_ROLE = ethers.keccak256(ethers.toUtf8Bytes("OPERATOR_ROLE"))
 
-			expect(await context.instantLayer.hasRole(OPERATOR_ROLE, partyB1.getSigner)).to.be.equal(true)
+			expect(await context.instantLayer.hasRole(OPERATOR_ROLE, partyB1.getSigner)).to.be.equal(false)
 		})
 	})
 
@@ -154,9 +156,8 @@ export function shouldBehaveLikeInstantLayer(): void {
 			await expect(context.instantLayer.registerPartyBBatch([partyB1.getSigner, partyB2.getSigner])).not.to.be.reverted
 			const OPERATOR_ROLE = ethers.keccak256(ethers.toUtf8Bytes("OPERATOR_ROLE"))
 
-			// expect(await context.instantLayer.hasRole(OPERATOR_ROLE, partyB1.getSigner)).to.be.equal(true)
-			// expect(await context.instantLayer.hasRole(OPERATOR_ROLE, partyB2.getSigner)).to.be.equal(true)
-			//TODO
+			expect(await context.instantLayer.hasRole(OPERATOR_ROLE, partyB1.getSigner)).to.be.equal(true)
+			expect(await context.instantLayer.hasRole(OPERATOR_ROLE, partyB2.getSigner)).to.be.equal(true)
 		})
 	})
 
@@ -199,42 +200,37 @@ export function shouldBehaveLikeInstantLayer(): void {
 
 	describe("Adding Template", async function () {
 		it("Should be failed when Sender not have Setter Role ", async () => {
-			// await expect(context.instantLayer.connect(partyA1.getSigner).addTemplate("test",ops)).to.be.reverted
+			await expect(context.instantLayer.connect(partyA1.getSigner).addTemplate("test", ops)).to.be.reverted
 			//TODO adapt to recent changes
 		})
 
 		it("Should Set the template Active Mode to true", async () => {
-			// await expect(context.instantLayer.addTemplate("test",ops)).not.to.be.reverted
-			// let template = await context.instantLayer.getTemplate(0)
-			// expect(template.active).to.be.equal(true)
-			//TODO adapt to recent changes
+			await expect(context.instantLayer.addTemplate("test", ops)).not.to.be.reverted
+			let template = await context.instantLayer.getTemplate(0)
+			expect(template.active).to.be.equal(true)
 		})
 
 		it("Should Set the template Name as expected", async () => {
-			// let name = "myTemp"
-			// await expect(context.instantLayer.addTemplate(name,ops)).not.to.be.reverted
-			// let template = await context.instantLayer.getTemplate(0)
-			// expect(template.name).to.be.equal(name)
-			//TODO adapt to recent changes
+			let name = "myTemp"
+			await expect(context.instantLayer.addTemplate(name, ops)).not.to.be.reverted
+			let template = await context.instantLayer.getTemplate(0)
+			expect(template.name).to.be.equal(name)
 		})
 
 		it("Should Set the template Operations as expected", async () => {
-			// let name = "myTemp"
-			// await expect(context.instantLayer.addTemplate(name,ops)).not.to.be.reverted
-			// let operations = await context.instantLayer.getTemplateOperations(0)
-			// expect(operations.length).to.be.equal(ops.length)
-			// for(let i=0;i<ops.length;i++){
-			// 	expect(operations[i].account).to.be.equal(ops[i].account)
-			// 	expect(operations[i].signer).to.be.equal(ops[i].signer)
-			// 	expect(operations[i].callData).to.be.deep.equal(ops[i].callData)
-			// 	if(operations[i].insertionPoints.length > 0){
-			// 		expect(operations[i].insertionPoints[0]).to.be.equal(ops[i].insertionPoints[0])
-			// 	}
-			// 	if(operations[i].sourceIndices.length){
-			// 		expect(operations[i].sourceIndices[0]).to.be.equal(ops[i].sourceIndices[0])
-			// 	}
-			// }
-			//TODO adopt to recent changes
+			let name = "myTemp"
+			await expect(context.instantLayer.addTemplate(name, ops)).not.to.be.reverted
+			const tempID = (await context.instantLayer.getLastTemplateID()) - 1n
+			let template: InstantLayer.TemplateStruct = await context.instantLayer.getTemplate(tempID)
+
+			expect(template.operations.length).to.be.equal(ops.length) // equals 2
+			expect(template.name).to.equal(name)
+			expect(template.active).to.equal(true)
+
+			for (let i = 0; i < template.operations.length; i++) {
+				expect(template.operations[i].sourceIndices).to.deep.equal(ops[i].sourceIndices)
+				expect(template.operations[i].insertionPoints).to.deep.equal(ops[i].insertionPoints)
+			}
 		})
 	})
 
@@ -247,7 +243,7 @@ export function shouldBehaveLikeInstantLayer(): void {
 
 			const saltHex = "0xabc123"
 			const salt = hexZeroPad(saltHex, 32)
-			let saltStr: string = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+			const saltStr: string = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 
 			if (!/^0x[0-9a-fA-F]{64}$/.test(salt) || !/^0x[0-9a-fA-F]{64}$/.test(saltStr)) {
 				throw new Error("Invalid bytes32 format")
@@ -258,7 +254,7 @@ export function shouldBehaveLikeInstantLayer(): void {
 				signer: partyA1.address,
 				callData: "0x1234",
 				nonce: 0,
-				salt: saltStr,
+				salt: salt,
 				deadline: 0,
 				signature: "0x",
 			}
@@ -278,17 +274,13 @@ export function shouldBehaveLikeInstantLayer(): void {
 			const latestBlock = await getLatestBlockTime()
 			const deadline = latestBlock + 300
 
-			// Register roles
-			await context.instantLayer.registerPartyB(await context.symmioPartyB.getAddress())
-			await context.instantLayer.registerMultiAccount(context.multiAccount)
-
-			await context.symmioPartyB.setSigner(partyB1.getSigner)
-
-			accounts = await context.multiAccount.getAccounts(partyA1.address, 0, 100)
-			await expect(context.multiAccount.connect(partyA1.getSigner).addAccount("testAccount")).not.to.reverted
+			await expect(context.multiAccount.connect(partyA1.getSigner).addAccount("testAccount")).not.to.reverted // here the party A Role is an EOA to create an Party A address
 			accounts = await context.multiAccount.getAccounts(partyA1.address, 0, 100)
 
-			await expect(context.collateral.connect(partyA1.getSigner).approve(context.common.diamondAddress, ethers.MaxUint256)).not.reverted
+			// await expect(context.collateral.connect(partyA1.getSigner).approve(context.common.diamondAddress, ethers.MaxUint256)).not.reverted
+			await context.symmioPartyB.grantRole(ethers.keccak256(toUtf8Bytes("TRUSTED_ROLE")), partyA1.address)
+			await expect(context.symmioPartyB.connect(partyA1.getSigner)._approve(context.collateral, e(30))).not.to.be.reverted // for symmoio contract
+
 			await expect(context.collateral.connect(partyA1.getSigner).mint(accounts[0].account, e(30))).to.not.reverted
 			await expect(context.collateralNL.connect(partyA1.getSigner).mint(accounts[0].account, e(30))).to.not.reverted
 			await context.accountFacet.connect(partyA1.getSigner).depositFor(await context.collateral.getAddress(), accounts[0].account, e(20))
@@ -321,7 +313,7 @@ export function shouldBehaveLikeInstantLayer(): void {
 				nonce: 0,
 				salt: saltLock,
 				deadline: deadline,
-				signature: "0x",
+				signature: new Uint8Array([0x1, 0x2]),
 			}
 
 			opFillB1 = {
@@ -399,6 +391,12 @@ export function shouldBehaveLikeInstantLayer(): void {
 			const { instantLayer, collateralNL, partyAOpenFacet, partyBOpenFacet } = context
 			const multiAccount = context.multiAccount
 
+			// Granting Roles
+			await context.instantLayer.registerPartyB(await context.symmioPartyB.getAddress()) // Admin with SETTER Role
+			await context.instantLayer.registerMultiAccount(context.multiAccount) // Admin with SETTER Role
+
+			await context.symmioPartyB.setSigner(partyB1.getSigner) // Admin with SETTER Role
+
 			//Sign using getOperationHash
 			const opOpenAHash1 = await instantLayer.getOperationHash(opOpenA1)
 			const opOpenAHash2 = await instantLayer.getOperationHash(opOpenA2)
@@ -438,10 +436,9 @@ export function shouldBehaveLikeInstantLayer(): void {
 
 			await context.controlFacet.grantRole(context.instantLayer, ethers.keccak256(toUtf8Bytes("INSTANT_LAYER_ROLE")))
 
-			// Execute the batch using 1 open Intent signed from the PartyA submitted to PartyB API
-			// Accompanying with a lock and fill signed from PartyB and Finally submitted to Instant Layer
 			const signedOps: InstantLayer.SignedOperationStruct[] = [opOpenA1, opOpenA2]
 			await expect(instantLayer.executeBatch(signedOps)).not.to.be.reverted
+
 			let intent: OpenIntentStruct = await context.viewFacet.getOpenIntent(1)
 			expect(intent.price).to.be.equal(request.price).to.be.equal(5)
 			expect(intent.tradeAgreements.quantity).to.be.equal(request.quantity).to.equal(e(1))
@@ -450,6 +447,13 @@ export function shouldBehaveLikeInstantLayer(): void {
 		it("should allow Sending Intent, Locking and Filling in a single batch", async function () {
 			const { instantLayer, collateralNL, partyAOpenFacet, partyBOpenFacet } = context
 			const multiAccount = context.multiAccount
+
+			// Granting Roles
+			await context.instantLayer.registerPartyB(await context.symmioPartyB.getAddress())
+			await context.instantLayer.registerMultiAccount(context.multiAccount)
+
+			await context.symmioPartyB.setSigner(partyB1.getSigner)
+			await context.symmioPartyB.setMulticastWhitelist(context.common.diamondAddress, true)
 
 			//Sign using getOperationHash
 			const opOpenAHash1 = await instantLayer.getOperationHash(opOpenA1)
@@ -462,12 +466,27 @@ export function shouldBehaveLikeInstantLayer(): void {
 
 			await context.controlFacet.grantRole(context.instantLayer, ethers.keccak256(toUtf8Bytes("INSTANT_LAYER_ROLE")))
 
-			// Execute the batch using 1 open Intent signed from the PartyA submitted to PartyB API
-			// Accompanying with a lock and fill signed from PartyB and Finally submitted to Instant Layer
-			const signedOps: InstantLayer.SignedOperationStruct[] = [opOpenA1, opLockB1]
-			// await expect(instantLayer.executeBatch(signedOps)).to.be.revertedWithCustomError(context.instantLayer, "InvalidNonce")
+			const signedOps: InstantLayer.SignedOperationStruct[] = [opOpenA1]
+			await expect(instantLayer.executeBatch(signedOps)).not.to.be.reverted // Admin with OPERATOR Role
+			expect(await context.viewFacet.getLastOpenIntentId()).to.equal(1)
 
-			// let intent: OpenIntentStruct = await context.viewFacet.getOpenIntent(1)
+			// await expect(multiAccount.connect(accounts))
+
+			await context.controlFacet.setPartyBConfig(context.symmioPartyB.getAddress(), {
+				// Admin with PARTY_B_MANAGER_ROLE
+				isActive: true,
+				lossCoverage: 0,
+				oracleId: 1,
+			})
+
+			await context.controlFacet.setPartyBSupportedSymbolTypes(context.symmioPartyB.getAddress(), [0], [true])
+			
+			const signedOpsB: InstantLayer.SignedOperationStruct[] = [opLockB1]
+			await expect(instantLayer.executeBatch(signedOpsB)).not.to.be.reverted
+
+			const lastID = await context.viewFacet.getLastOpenIntentId()
+			let intent: OpenIntentStruct = await context.viewFacet.getOpenIntent(lastID)
+
 			// let trade: TradeStruct = await context.viewFacet.getTrade(1)
 			// expect(intent.price).to.be.equal(request.price).to.be.equal(5)
 			// expect(intent.tradeAgreements.quantity).to.be.equal(request.quantity).to.equal(e(1))
@@ -481,6 +500,9 @@ export function shouldBehaveLikeInstantLayer(): void {
 		it("should Fail Signature verification with Invalid Nonce", async function () {
 			const latestBlock = await getLatestBlockTime()
 			const deadline = latestBlock + 300
+
+			// Granting Roles
+			await context.instantLayer.registerMultiAccount(context.multiAccount)
 
 			let saltStr: string = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 			if (!/^0x[0-9a-fA-F]{64}$/.test(saltStr)) {
@@ -499,6 +521,7 @@ export function shouldBehaveLikeInstantLayer(): void {
 
 			const hash = await context.instantLayer.getOperationHash(opOpenALocal)
 			opOpenALocal.signature = await partyA1.sign(ethers.getBytes(hash))
+
 			await context.controlFacet.grantRole(context.instantLayer, ethers.keccak256(toUtf8Bytes("INSTANT_LAYER_ROLE")))
 
 			await expect(context.instantLayer.executeBatch([opOpenALocal])).to.be.revertedWithCustomError(context.instantLayer, "InvalidNonce")
@@ -508,22 +531,30 @@ export function shouldBehaveLikeInstantLayer(): void {
 			const latestBlock = await getLatestBlockTime()
 			const deadline = latestBlock + 300
 
+			// Granting Roles
+			await context.instantLayer.registerMultiAccount(context.multiAccount)
+
+			await expect(context.multiAccount.connect(partyA1.getSigner).addAccount("testAccount")).not.to.reverted // here the party A Role is an EOA to create an Party A address
+			accounts = await context.multiAccount.getAccounts(partyA1.address, 0, 100)
+
 			const saltHex = "0xabc123"
 			const salt = hexZeroPad(saltHex, 32)
 			if (!/^0x[0-9a-fA-F]{64}$/.test(salt)) {
 				throw new Error("Invalid bytes32 format")
 			}
 
+			const nonce = 1
 			const opOpenALocal: InstantLayer.SignedOperationStruct = {
 				accountSource: await context.multiAccount.getAddress(),
 				signer: accounts[0].account,
 				callData: openIntentCallData,
-				nonce: 1,
+				nonce: nonce,
 				salt: salt,
 				deadline: deadline,
 				signature: "0x",
 			}
 
+			const oldNonce = await context.instantLayer.nonces(opOpenALocal.signer)
 			const hash = await context.instantLayer.getOperationHash(opOpenALocal)
 			opOpenALocal.signature = await partyA1.sign(ethers.getBytes(hash))
 			await context.controlFacet.grantRole(context.instantLayer, ethers.keccak256(toUtf8Bytes("INSTANT_LAYER_ROLE")))
@@ -531,7 +562,9 @@ export function shouldBehaveLikeInstantLayer(): void {
 
 			let newNonce = await context.instantLayer.nonces(opOpenALocal.signer)
 			console.log("New Nonce:", newNonce)
-			expect(newNonce).to.be.equal(opOpenALocal.nonce)
+
+			expect(newNonce).to.be.equal(nonce)
+			expect(newNonce).to.be.equal(oldNonce + 1n)
 		})
 
 		// it("Should be failed when ", async () => {

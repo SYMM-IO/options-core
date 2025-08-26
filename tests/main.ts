@@ -52,7 +52,7 @@ describe(`${name}-v${version}`, () => {
 			shouldBehaveLikeBridgeFacet()
 		})
 
-		describe("Instant Layer", async function () {
+		describe.only("Instant Layer", async function () {
 			shouldBehaveLikeInstantLayer()
 		})
 
@@ -64,7 +64,7 @@ describe(`${name}-v${version}`, () => {
 			shouldBehaveLikeSymmioPartyB()
 		})
 
-		describe.only("Symmio Clearing House", async function () {
+		describe("Symmio Clearing House", async function () {
 			shouldBehaveLikeClearingHouseFacet()
 		})
 	} else {
