@@ -223,14 +223,20 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 	 * @notice Execute multiple function calls on behalf of a PartyA account.
 	 * @param account    Account address to execute calls for.
 	 * @param _callDatas Array of encoded function call data.
+	 * @return results Array of results from the calls.
 	 *
 	 * @dev Access is restricted to account owners or InstantLayer when enabled.
 	 *      All calls must succeed for the transaction to complete.
 	 */
-	function _call(address account, bytes[] calldata _callDatas) external whenNotPaused {
+	function _call(address account, bytes[] calldata _callDatas) external whenNotPaused returns (bytes[] memory) {
 		if (msg.sender != owners[account] && !ISymmio(symmioAddress).isCallFromInstantLayer())
 			revert UnauthorizedAccess(account, msg.sender, bytes4(0));
-		for (uint8 i; i < _callDatas.length; i++) innerCall(account, _callDatas[i]);
+		bytes[] memory results = new bytes[](_callDatas.length);
+		for (uint8 i; i < _callDatas.length; i++) {
+			bytes memory result = innerCall(account, _callDatas[i]);
+			results[i] = result;
+		}
+		return results;
 	}
 
 	/**
@@ -263,7 +269,7 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 	 * @param account   Account address to call.
 	 * @param _callData Encoded function call data.
 	 */
-	function innerCall(address account, bytes memory _callData) internal {
+	function innerCall(address account, bytes memory _callData) internal returns (bytes memory) {
 		(bool _success, bytes memory _resultData) = ISymmioPartyA(account).call(_callData);
 		emit Call(msg.sender, account, _callData, _success, _resultData);
 		if (!_success) {
@@ -271,6 +277,7 @@ contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, Pausab
 				revert(add(_resultData, 32), mload(_resultData))
 			}
 		}
+		return _resultData;
 	}
 
 	/**
