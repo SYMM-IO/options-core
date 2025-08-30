@@ -6,7 +6,7 @@ pragma solidity >=0.8.18;
 
 interface IMultiAccount {
 	function owners(address user) external view returns (address);
-	function _call(address account, bytes[] calldata _callDatas) external;
+	function _call(address account, bytes[] calldata _callDatas) external returns (bytes[] memory);
 	function verifySignatureOfAccount(address account, bytes32 hash, bytes calldata signature) external view returns (bytes4);
 	function transferTradeNFT(address account, address to, uint256 tokenId) external;
 }
