@@ -99,6 +99,10 @@ export function shouldBehaveLikeInstantLayer(): void {
 				insertionPoints: [],
 			},
 			{
+				sourceIndices: [],
+				insertionPoints: [],
+			},
+			{
 				sourceIndices: [0],
 				insertionPoints: [0],
 			},
@@ -745,6 +749,16 @@ export function shouldBehaveLikeInstantLayer(): void {
 				signature: "0x",
 			}
 
+			let opsLocal: InstantLayer.OperationStruct[]
+			opsLocal = [
+				{
+					sourceIndices: [],
+					insertionPoints: [],
+				},
+			]
+
+			await context.instantLayer.addTemplate("MyLocal", opsLocal)
+
 			const tempID = (await context.instantLayer.getLastTemplateID()) - 1n
 			await context.controlFacet.grantRole(context.instantLayer, ethers.keccak256(toUtf8Bytes("INSTANT_LAYER_ROLE")))
 			await expect(context.instantLayer.executeTemplate(tempID, [opOpenALocal])).to.be.revertedWithCustomError(
@@ -768,21 +782,32 @@ export function shouldBehaveLikeInstantLayer(): void {
 
 			const tempID = (await context.instantLayer.getLastTemplateID()) - 1n
 			await context.controlFacet.grantRole(context.instantLayer, ethers.keccak256(toUtf8Bytes("INSTANT_LAYER_ROLE")))
-			await expect(context.instantLayer.executeTemplate(tempID, [opOpenALocal])).to.be.revertedWithCustomError(
+			await expect(context.instantLayer.executeTemplate(tempID, [opOpenALocal, opOpenA1, opLockB1, opFillB1])).to.be.revertedWithCustomError(
 				context.instantLayer,
 				"UnregisteredPartyB",
 			)
 		})
 
 		it("should allow Sending Intents with a single Operation", async function () {
-			const { instantLayer, collateralNL, partyAOpenFacet, partyBOpenFacet } = context
+			const { instantLayer, collateralNL, partyAOpenFacet, partyBOpenFacet, symmioPartyB } = context
 			const multiAccount = context.multiAccount
 
 			// Granting Roles
-			await context.instantLayer.registerPartyB(await context.symmioPartyB.getAddress()) // Admin with SETTER Role, grants OPERATOR_ROLE to the us
-			await context.instantLayer.registerMultiAccount(context.multiAccount) // Admin with SETTER Role, grants OPERATOR_ROLE to the user
-
+			await context.instantLayer.registerPartyB(symmioPartyB) // Admin with SETTER Role, grants OPERATOR_ROLE to the us
+			await context.instantLayer.registerMultiAccount(multiAccount) // Admin with SETTER Role, grants OPERATOR_ROLE to the user
+			
 			await context.symmioPartyB.setSigner(partyB1.getSigner) // Admin with SETTER Role
+			
+			await context.controlFacet.grantRole(context.instantLayer, ethers.keccak256(toUtf8Bytes("INSTANT_LAYER_ROLE"))) // to call Control faucet
+
+			await context.controlFacet.setPartyBConfig(context.symmioPartyB.getAddress(), {
+				// Admin with PARTY_B_MANAGER_ROLE
+				isActive: true,
+				lossCoverage: 0,
+				oracleId: 1,
+			})
+			await context.controlFacet.setPartyBSupportedSymbolTypes(context.symmioPartyB.getAddress(), [0], [true])
+
 
 			//Sign using getOperationHash
 			const opOpenAHash1 = await instantLayer.getOperationHash(opOpenA1)
@@ -821,31 +846,30 @@ export function shouldBehaveLikeInstantLayer(): void {
 				return false
 			}
 
-			await context.controlFacet.grantRole(context.instantLayer, ethers.keccak256(toUtf8Bytes("INSTANT_LAYER_ROLE"))) // to call Control faucet
 
 			const tempID = (await context.instantLayer.getLastTemplateID()) - 1n
-			const signedOps: InstantLayer.SignedOperationStruct[] = [opOpenA1]
+			const signedOps: InstantLayer.SignedOperationStruct[] = [opOpenA1, opOpenA2, opLockB1, opFillB1]
 
-			try {
-				// await expect(instantLayer.executeTemplate(tempID, signedOps)).not.to.be.revertedWithCustomError(context.instantLayer, "InvalidTemplate")
-				await instantLayer.executeTemplate(tempID, signedOps)
-			} catch (error: unknown) {
-				console.log("Error Fetched:", error)
-			}
+			await expect(instantLayer.executeTemplate(tempID, signedOps)).not.to.be.revertedWithCustomError(context.instantLayer, "InvalidTemplate")
+			// try {
+			// 	await instantLayer.executeTemplate(tempID, signedOps)
+			// } catch (error: unknown) {
+			// 	console.log("Error Fetched:", error)
+			// }
 
-			const intentId = await context.viewFacet.getLastOpenIntentId()
-			let intent: OpenIntentStruct = await context.viewFacet.getOpenIntent(intentId)
+			let intent: OpenIntentStruct = await context.viewFacet.getOpenIntent(1)
+			console.log("Intent Status:", intent.status == IntentStatus.FILLED?"Filled":intent.status)
 			expect(intent.price).to.be.equal(request.price)
 			expect(intent.tradeAgreements.quantity).to.be.equal(request.quantity)
 		})
 
-		it.only("should allow Sending Intent, Locking and Filling in a single batch Altogether", async function () {
-			const { instantLayer, collateralNL, partyAOpenFacet, partyBOpenFacet } = context
+		it("should allow Sending Intent, Locking and Filling in a single batch Altogether", async function () {
+			const { instantLayer, collateralNL, partyAOpenFacet, partyBOpenFacet, symmioPartyB } = context
 			const multiAccount = context.multiAccount
 
 			// Granting Roles
-			await context.instantLayer.registerPartyB(await context.symmioPartyB.getAddress())
-			await context.instantLayer.registerMultiAccount(context.multiAccount)
+			await context.instantLayer.registerPartyB(symmioPartyB)
+			await context.instantLayer.registerMultiAccount(multiAccount)
 
 			await context.symmioPartyB.setSigner(partyB1.getSigner)
 			// await context.symmioPartyB.setMulticastWhitelist(context.common.diamondAddress, true)
@@ -861,31 +885,33 @@ export function shouldBehaveLikeInstantLayer(): void {
 
 			//Sign using getOperationHash
 			const opOpenAHash1 = await instantLayer.getOperationHash(opOpenA1)
+			const opOpenAHash2 = await instantLayer.getOperationHash(opOpenA2)
 			const opLockBHash = await instantLayer.getOperationHash(opLockB1)
 			const opFillBHash = await instantLayer.getOperationHash(opFillB1)
 
 			opOpenA1.signature = await partyA1.sign(ethers.getBytes(opOpenAHash1))
+			opOpenA2.signature = await partyA1.sign(ethers.getBytes(opOpenAHash2))
 			opLockB1.signature = await partyB1.sign(ethers.getBytes(opLockBHash))
 			opFillB1.signature = await partyB1.sign(ethers.getBytes(opFillBHash))
 
 			const tempID = (await context.instantLayer.getLastTemplateID()) - 1n
 
 			//Execution
-			const signedOps: InstantLayer.SignedOperationStruct[] = [opOpenA1, opLockB1, opFillB1]
+			const signedOps: InstantLayer.SignedOperationStruct[] = [opOpenA1, opOpenA2, opLockB1, opFillB1]
 			await expect(instantLayer.executeTemplate(tempID, signedOps)).not.to.be.reverted
 			// try {
-			// await instantLayer.executeTemplate(tempID, signedOps) // Admin with OPERATOR Role
+			// 	await instantLayer.executeTemplate(tempID, signedOps) // Admin with OPERATOR Role
 			// } catch (error: unknown) {
-			// console.log("Error Fetched:", error)
+			// 	console.log("Error Fetched:", error)
 			// }
 
 			//Verification
 			const lastID = await context.viewFacet.getLastOpenIntentId()
-			expect(lastID).to.equal(1)
-			let intent: OpenIntentStruct = await context.viewFacet.getOpenIntent(lastID)
+			expect(lastID).to.equal(2)
+			let intent: OpenIntentStruct = await context.viewFacet.getOpenIntent(1)
 			expect(intent.price).to.be.equal(request.price)
 			expect(intent.tradeAgreements.quantity).to.be.equal(request.quantity)
-			console.log("Intent Status", lastID, intent.status == IntentStatus.FILLED ? "Filled" : intent.status)
+			console.log("Intent Status", 1, intent.status == IntentStatus.FILLED ? "Filled" : intent.status)
 			expect(intent.status).to.be.equal(IntentStatus.FILLED)
 			const lastTradeId = await context.viewFacet.getLastTradeId()
 			let trade: TradeStruct = await context.viewFacet.getTrade(lastTradeId)
