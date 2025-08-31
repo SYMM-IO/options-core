@@ -432,6 +432,10 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 			// PartyA operation through MultiAccount
 			(success, result) = signedOp.accountSource.call(abi.encodeWithSelector(IMultiAccount._call.selector, signedOp.signer, callDatas));
 		}
+		if (result.length > 0) {
+			bytes[] memory arr = abi.decode(result, (bytes[]));
+			result = arr[0];
+		}
 	}
 
 	/**
