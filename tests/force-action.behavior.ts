@@ -21,7 +21,6 @@ export function shouldBehaveLikeForceActionFacet(): void {
 			isActive: true,
 			lossCoverage: 0,
 			oracleId: 1,
-			symbolType: 0,
 		})
 
 		await context.controlFacet.setAffiliateStatus(context.signers.others[0], true)

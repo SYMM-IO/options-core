@@ -25,6 +25,7 @@ export class PartyA extends PartyEntity {
 					request.tradeSide,
 					request.marginType,
 					request.exerciseFee,
+					request.solverFee,
 					request.deadline,
 					request.feeToken,
 					request.affiliate,
@@ -33,12 +34,16 @@ export class PartyA extends PartyEntity {
 		)
 	}
 
-	public async sendCancelOpenIntent(ids: string[]) {
+	public async sendCancelOpenIntent(ids: BigNumberish[]) {
 		await runTx(this.context.partyAOpenFacet.connect(this.signer).cancelOpenIntent(ids))
 	}
 
-	public async sendCloseIntent(tradeId: BigNumberish, price: BigNumberish, quantity: BigNumberish, deadline: BigNumberish) {
-		await runTx(this.context.partyACloseFacet.connect(this.signer).sendCloseIntent(tradeId, price, quantity, deadline))
+	public async expireOpenIntent(ids: BigNumberish[]) {
+		await runTx(this.context.partyAOpenFacet.connect(this.signer).expireOpenIntent(ids))
+	}
+
+	public async sendCloseIntent(tradeId: BigNumberish, quantity: BigNumberish, price: BigNumberish, deadline: BigNumberish) {
+		await runTx(this.context.partyACloseFacet.connect(this.signer).sendCloseIntent(tradeId, quantity, price, deadline))
 	}
 
 	public async sendCancelCloseIntent(ids: string[]) {
@@ -75,5 +80,9 @@ export class PartyA extends PartyEntity {
 
 	public async forceCancelOpenIntent(id: string) {
 		await runTx(this.context.forceActionsFacet.connect(this.signer).forceCancelOpenIntent(id))
+	}
+
+	public async expireCloseIntent(ids: string[]) {
+		await runTx(this.context.partyACloseFacet.connect(this.signer).expireCloseIntent(ids))
 	}
 }

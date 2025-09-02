@@ -1,0 +1,29 @@
+FAQs:
+
+- external trasnfer
+- manualSync
+- provider in initialize withdraw
+    - is virtual
+- balanceLimitPerUser why?
+- bilateral settlement mechanism
+- why to allocate when cross balance can be negative? answer:  we are a platform
+- suspend definition and when not to ?
+- when to have parameters of type array when calling a contract to reqs  multiple operations at once
+- Start Index to be 0 or 1
+
+#----------- Weekly ----------------------- 
+- scanners
+- funding rate
+- virtual bridge/withdraw
+- master account
+- meta solver --> match engine --> market maker (SHE)
+    - depth of market
+    - off chain
+- Low Cap market --> meta connector
+- pump.fund <--> raidium
+- light house -->
+- the role of subgraph --> tracking onchain data, history, events, and more.
+#----------------------------------------------
+
+
+- Emergency state? for externals

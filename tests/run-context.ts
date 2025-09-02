@@ -1,4 +1,4 @@
-import { ethers } from "hardhat"
+import { ethers, run } from "hardhat"
 
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers"
 import {
@@ -13,14 +13,18 @@ import {
 	FakeStablecoin,
 	ForceActionsFacet,
 	InstantLayer,
+	MockHookHandler,
 	MultiAccount,
 	PartyACloseFacet,
 	PartyAOpenFacet,
 	PartyBCloseFacet,
 	PartyBOpenFacet,
 	SignatureVerifier,
+	SymmioPartyB,
+	TradeFacet,
 	ViewFacet,
 } from "../types"
+import { ZeroAddress } from "ethers"
 
 export class RunContext {
 	accountFacet!: AccountFacet
@@ -33,10 +37,12 @@ export class RunContext {
 	viewFacet!: ViewFacet
 	controlFacet!: ControlFacet
 	forceActionsFacet!: ForceActionsFacet
+	tradeFacet!: TradeFacet
 	clearingHouse!: ClearingHouseFacet
 	counterPartyRelation!: CounterPartyRelationsFacet
 	instantLayer!: InstantLayer
 	multiAccount!: MultiAccount
+	symmioPartyB!: SymmioPartyB
 
 	signers!: {
 		admin: SignerWithAddress
@@ -49,11 +55,13 @@ export class RunContext {
 		affiliate1: SignerWithAddress
 		bridge1: SignerWithAddress
 		bridge2: SignerWithAddress
+		clearingHouse: SignerWithAddress
 		others: SignerWithAddress[]
 	}
 	collateral!: FakeStablecoin
 	collateralNL!: FakeStablecoin
 	oracle!: FakeOracle
+	hookHandler!: MockHookHandler
 	mocks!: {
 		libCloseIntentMock: CloseIntentOpsMock
 	}
@@ -64,13 +72,7 @@ export class RunContext {
 	}
 }
 
-export async function createRunContext(
-	diamond: string,
-	collateral: string[],
-	oracle: string,
-	signatureVerifier: string,
-	mocks?: Map<string, string>,
-): Promise<RunContext> {
+export async function createRunContext(diamond: string): Promise<RunContext> {
 	let context = new RunContext()
 
 	const signers: SignerWithAddress[] = await ethers.getSigners()
@@ -85,14 +87,29 @@ export async function createRunContext(
 		affiliate1: signers[7],
 		bridge1: signers[8],
 		bridge2: signers[9],
-		others: [signers[10], signers[11]],
+		clearingHouse: signers[10],
+		others: [signers[11], signers[12]],
 	}
 
-	context.collateral = await ethers.getContractAt("FakeStablecoin", collateral[0])
-	context.collateralNL = await ethers.getContractAt("FakeStablecoin", collateral[1])
+	const mocks: Map<string, string> = await run("deploy:mocks")
+	const verifier: SignatureVerifier = await run("deploy:SignatureVerifier")
+	const oracle: FakeOracle = await run("deploy:oracle")
+	const hookHandler: MockHookHandler = await run("deploy:hookHandler")
 
-	context.oracle = await ethers.getContractAt("FakeOracle", oracle)
-	context.signatureVerifier = await ethers.getContractAt("SignatureVerifier", signatureVerifier)
+	const stableCoin: FakeStablecoin = await run("deploy:stablecoin", {
+		name: "MyFakeStablecoin",
+		symbol: "FUSD",
+	})
+	const stableCoinNL: FakeStablecoin = await run("deploy:stablecoin", {
+		name: "StablecoinNotListed",
+		symbol: "NLUSD",
+	})
+
+	context.collateral = stableCoin
+	context.collateralNL = stableCoinNL
+	context.hookHandler = hookHandler
+	context.oracle = oracle
+	context.signatureVerifier = verifier
 	context.accountFacet = await ethers.getContractAt("AccountFacet", diamond)
 	context.diamondCutFacet = await ethers.getContractAt("DiamondCutFacet", diamond)
 	context.diamondLoupeFacet = await ethers.getContractAt("DiamondLoupeFacet", diamond)
@@ -107,7 +124,7 @@ export async function createRunContext(
 	context.partyBCloseFacet = await ethers.getContractAt("PartyBCloseFacet", diamond)
 	context.partyBOpenFacet = await ethers.getContractAt("PartyBOpenFacet", diamond)
 	context.counterPartyRelation = await ethers.getContractAt("CounterPartyRelationsFacet", diamond)
-
+	context.tradeFacet = await ethers.getContractAt("TradeFacet", diamond)
 	if (mocks) {
 		context.mocks = {
 			libCloseIntentMock: await ethers.getContractAt("CloseIntentOpsMock", mocks.get("CloseIntentOpsMock")!),
@@ -118,6 +135,23 @@ export async function createRunContext(
 		chainId: Number((await ethers.provider.getNetwork()).chainId),
 		diamondAddress: diamond,
 	}
+
+	const instantLayer: InstantLayer = await run("deploy:InstantLayer", {
+		symmioaddress: context.common.diamondAddress,
+		admin: context.signers.admin.address,
+	})
+	const multiAccount: MultiAccount = await run("deploy:multiAccount", {
+		symmioaddress: context.common.diamondAddress,
+		admin: context.signers.admin.address,
+		tradenftaddress: ZeroAddress,
+	})
+	const symmioPartyB: SymmioPartyB = await run("deploy:symmioPartyB", {
+		symmioaddress: context.common.diamondAddress,
+		admin: context.signers.admin.address,
+	})
+	context.multiAccount = multiAccount
+	context.instantLayer = instantLayer
+	context.symmioPartyB = symmioPartyB
 
 	return context
 }

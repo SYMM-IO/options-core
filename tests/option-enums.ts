@@ -43,4 +43,16 @@ export enum WithdrawStatus {
 	INITIATED,
 	CANCELED,
 	COMPLETED,
+	SUSPENDED,
+}
+
+export enum LiquidationStatus {
+	FLAGGED,
+	IN_PROGRESS,
+	CANCELLED,
+}
+
+export enum LiquidationSide {
+	PARTY_A,
+	PARTY_B,
 }

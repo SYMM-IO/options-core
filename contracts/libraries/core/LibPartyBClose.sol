@@ -122,7 +122,7 @@ library LibPartyBClose {
 		}
 
 		// Collect close-fees from Party A
-		uint256[3] memory fees = intent.getFeesFromUser(quantity, price);
+		uint256[3] memory fees = intent.getFeesFromUser(quantity, price); // enum based Numbers
 
 		{
 			address feeToken = intent.feeStructure.feeToken;

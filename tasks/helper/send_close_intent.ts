@@ -13,19 +13,9 @@ task("send-close-intent", "Calls sendCloseIntent on the contract")
 		const symmioAddress = loadAddresses().symmioAddress
 
 		const partyACloseFacet = (await ethers.getContractAt("PartyACloseFacet", String(symmioAddress))).connect(admin)
-		const {
-			tradeid,
-			quantity,
-			price,
-			deadline,
-		} = args
+		const { tradeid, quantity, price, deadline } = args
 
-		const tx = await partyACloseFacet.sendCloseIntent(
-			BigInt(tradeid),
-			BigInt(quantity),
-			BigInt(price),
-			BigInt(deadline)
-		)
+		const tx = await partyACloseFacet.sendCloseIntent(BigInt(tradeid), BigInt(quantity), BigInt(price), BigInt(deadline))
 		console.log("Transaction sent:", tx.hash)
 		await tx.wait()
 		console.log("Transaction confirmed.")

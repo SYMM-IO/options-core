@@ -63,6 +63,12 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	/// @notice Role for executing operations and templates.
 	bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
 
+	/// @notice Role for trusted operations, token approvals, and external contract calls.
+	bytes32 public constant TRUSTED_ROLE = keccak256("TRUSTED_ROLE");
+
+	/// @notice Role for managing restricted functions, multicast whitelist, and token withdrawals.
+	bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
+
 	/* ────────────────────── EIP-712 Configuration ────────────────────── */
 
 	/// @notice EIP-712 type hash for signed operations with salt-based uniqueness.
@@ -192,6 +198,8 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 		_grantRole(DEFAULT_ADMIN_ROLE, _admin);
 		_grantRole(SETTER_ROLE, _admin);
 		_grantRole(OPERATOR_ROLE, _admin);
+		_grantRole(MANAGER_ROLE, _admin);
+		_grantRole(TRUSTED_ROLE, _admin);
 	}
 
 	/* ───────────────────── Registration Management ───────────────────── */
@@ -265,6 +273,7 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	 * @param operations Array of operations to include in the template.
 	 */
 	function addTemplate(string calldata name, Operation[] calldata operations) external onlyRole(SETTER_ROLE) {
+		// why operations is an array
 		uint256 templateId = nextTemplateId++;
 		Template storage template = templates[templateId];
 		template.name = name;
@@ -522,6 +531,14 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	 */
 	function getTemplate(uint256 templateId) external view returns (Template memory) {
 		return templates[templateId];
+	}
+
+	/**
+	 * @notice Get complete template information.
+	 * @return Last template ID.
+	 */
+	function getLastTemplateID() external view returns (uint256) {
+		return nextTemplateId;
 	}
 
 	/**

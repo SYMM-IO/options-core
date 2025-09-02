@@ -1,7 +1,9 @@
 import { Builder } from "builder-pattern"
 import { AddressLike, BigNumberish, BytesLike, encodeBytes32String, ZeroAddress } from "ethers"
 import { e } from "../../../utils/e"
-import { ExerciseFeeStruct } from "../../../types/contracts/interfaces/ISymmio"
+import { ExerciseFeeStruct, FeeStruct } from "../../../types/contracts/interfaces/ISymmio"
+import { FeeStructureStruct } from "../../../types/contracts/facets/View/IViewFacet"
+import { MarginType, TradeSide } from "../../option-enums"
 
 export interface OpenIntent {
 	partyBsWhiteList: AddressLike[]
@@ -11,10 +13,11 @@ export interface OpenIntent {
 	strikePrice: BigNumberish
 	expirationTimestamp: BigNumberish
 	mm: BigNumberish
-	deadline: BigNumberish
 	tradeSide: BigNumberish
 	marginType: BigNumberish
 	exerciseFee: ExerciseFeeStruct
+	solverFee: FeeStruct
+	deadline: BigNumberish
 	feeToken: AddressLike
 	affiliate: AddressLike
 	userData: BytesLike
@@ -23,18 +26,22 @@ export interface OpenIntent {
 const openIntentRequest: OpenIntent = {
 	partyBsWhiteList: [ZeroAddress],
 	symbolId: 1,
-	price: 1,
+	price: e(10),
 	quantity: e(1),
-	strikePrice: 1,
+	strikePrice: e(100),
 	expirationTimestamp: 0,
+	mm: e(1),
+	tradeSide: TradeSide.BUY,
+	marginType: MarginType.ISOLATED,
 	exerciseFee: {
 		cap: e(1),
 		rate: 0,
 	},
+	solverFee: {
+		openFee: e(0.01),
+		closeFee: e(0.01),
+	},
 	deadline: 0,
-	marginType: 0,
-	mm: 0,
-	tradeSide: 0,
 	feeToken: ZeroAddress,
 	affiliate: ZeroAddress,
 	userData: encodeBytes32String("0"),

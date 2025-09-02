@@ -1,6 +1,7 @@
 import "./deployment/diamond-deploy.task"
 import "./deployment/stable-coin.task"
 import "./deployment/oracle.task"
+import "./deployment/hook-handler.task"
 import "./deployment/deploy.task"
 import "./deployment/multiAccount"
 import "./deployment/instantLayer"

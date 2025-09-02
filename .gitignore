@@ -41,3 +41,6 @@ docs
 .cursorignore
 /scripts/config/setup.json
 .envrc
+.DS_Store
+
+.notes/

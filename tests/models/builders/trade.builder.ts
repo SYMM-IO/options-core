@@ -1,6 +1,7 @@
 import { Builder } from "builder-pattern"
-import { TradeStruct } from "../../../types/contracts/facets/ViewFacet/VeiwFacet.sol/ViewFacet"
-
+import { TradeStruct } from "../../../types/contracts/interfaces/ISymmio"
+import { ZeroAddress } from "ethers"
+import { e } from "../../../utils/e"
 const defaultTrade: TradeStruct = {
 	id: 0,
 	openIntentId: 0,
@@ -26,9 +27,25 @@ const defaultTrade: TradeStruct = {
 	closePendingAmount: 0,
 	avgClosedPriceBeforeExpiration: 0,
 	status: 0,
-	partyBMarginType: 0,
 	createTimestamp: 0,
 	statusModifyTimestamp: 0,
+	feeStructure: {
+		feeToken: ZeroAddress,
+		tokenPriceInCollateral: 1,
+		affiliateFee: {
+			openFee: e(1),
+			closeFee: e(1),
+		},
+		solverFee: {
+			openFee: e(1),
+			closeFee: e(1),
+		},
+		platformFee: {
+			openFee: e(1),
+			closeFee: e(1),
+		},
+	},
+	affiliate: ZeroAddress,
 }
 
 export const tradeBuilder = () => Builder<TradeStruct>(defaultTrade)
