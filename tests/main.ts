@@ -1,4 +1,4 @@
-	import { TestModeEnum } from "../common/test-mode.enum"
+import { TestModeEnum } from "../common/test-mode.enum"
 import { name, version } from "../package.json"
 import { shouldBehaveLikeAccountFacet } from "./account-facet.behavior"
 import { shouldBehaveLikeForceActionFacet } from "./force-action.behavior"
@@ -52,7 +52,7 @@ describe(`${name}-v${version}`, () => {
 			shouldBehaveLikeBridgeFacet()
 		})
 
-		describe.only("Instant Layer", async function () {
+		describe("Instant Layer", async function () {
 			shouldBehaveLikeInstantLayer()
 		})
 
