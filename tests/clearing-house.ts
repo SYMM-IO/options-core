@@ -1064,7 +1064,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			expect(partyBAfterCrossBalance.balance - partyBBeforeCrossBalance.balance).to.be.equal(partyABalance.balance)
 			expect(partyAAfterCrossBalance.balance).to.be.equal(0)
 			expect(partyAAfterCrossBalance.locked).to.be.equal(0)
-			expect(partyAAfterCrossBalance.totalMM).to.be.equal(0)
+			expect(partyAAfterCrossBalance.totalMM).to.be.equal(partyABalance.totalMM)
 		})
 
 		it("Should liquidate when liquidating party A with CROSS SELL, State Updates", async () => {
