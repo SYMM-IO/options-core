@@ -192,7 +192,6 @@ library LibClearingHouse {
 		}
 		crossBalance.balance = 0;
 		crossBalance.locked = 0;
-		crossBalance.totalMM = 0;
 
 		_beginLiquidation(detail, collateralPrice);
 	}

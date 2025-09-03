@@ -64,7 +64,7 @@ describe(`${name}-v${version}`, () => {
 			shouldBehaveLikeSymmioPartyB()
 		})
 
-		describe("Symmio Clearing House", async function () {
+		describe.only("Symmio Clearing House", async function () {
 			shouldBehaveLikeClearingHouseFacet()
 		})
 	} else {
