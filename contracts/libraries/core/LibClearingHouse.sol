@@ -191,7 +191,6 @@ library LibClearingHouse {
 			balB.scheduledAdd(detail.partyA, balance, MarginType.CROSS, IncreaseBalanceReason.LIQUIDATION);
 		}
 		crossBalance.balance = 0;
-		crossBalance.locked = 0;
 
 		_beginLiquidation(detail, collateralPrice);
 	}
@@ -252,22 +251,38 @@ library LibClearingHouse {
 		balance.scheduledAdd(counterParty, amount, MarginType.CROSS, IncreaseBalanceReason.ALLOCATE_FROM_RESERVE);
 	}
 
-	function confiscate(uint256 liquidationId, uint256 amount, address party, address counterParty, MarginType marginType) internal {
+	function confiscate(
+		uint256 liquidationId,
+		address party,
+		address[] calldata counterparties,
+		uint256[] calldata amounts,
+		MarginType marginType
+	) internal {
+		require(counterparties.length == amounts.length, "Length mismatch");
+
 		LiquidationDetail storage detail = LiquidationStorage.layout().liquidationDetails[liquidationId];
 
-		if (party != detail.partyA && party != detail.partyB) revert LiquidationErrors.PartyNotInLiquidation(party, detail.partyA, detail.partyB, detail.collateral);
+		if (party != detail.partyA && party != detail.partyB) {
+			revert LiquidationErrors.PartyNotInLiquidation(party, detail.partyA, detail.partyB, detail.collateral);
+		}
 
 		ScheduledReleaseBalance storage balance = party.balanceOf(detail.collateral);
 
-		int256 counterPartyBalance = balance.counterPartyBalance(counterParty, marginType);
-		if (counterPartyBalance < int256(amount)) revert BalanceErrors.InsufficientIntBalance(party, detail.collateral, amount, counterPartyBalance);
-
 		_requireStatus(detail, LiquidationStatus.IN_PROGRESS);
 
-		balance.subForCounterParty(counterParty, amount, marginType, DecreaseBalanceReason.CONFISCATE);
+		for (uint256 i = 0; i < counterparties.length; i++) {
+			address counterParty = counterparties[i];
+			uint256 amount = amounts[i];
 
-		// Track the confiscated amount
-		detail.confiscatedAmount += amount;
+			int256 counterPartyBalance = balance.counterPartyBalance(counterParty, marginType);
+			if (counterPartyBalance < int256(amount)) {
+				revert BalanceErrors.InsufficientIntBalance(party, detail.collateral, amount, counterPartyBalance);
+			}
+
+			balance.subForCounterParty(counterParty, amount, marginType, DecreaseBalanceReason.CONFISCATE);
+
+			detail.confiscatedAmount += amount;
+		}
 	}
 
 	function confiscateWithdrawal(uint256 withdrawId) internal {

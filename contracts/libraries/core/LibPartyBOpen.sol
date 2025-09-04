@@ -57,15 +57,15 @@ library LibPartyBOpen {
 		// Intent must be in PENDING status to be locked
 		ValidationErrors.requireStatus("OpenIntentStatus", uint8(intent.status), uint8(OpenIntentStatus.PENDING));
 
-		// Check if intent has expired
-		if (block.timestamp > intent.deadline) revert IntentErrors.IntentExpired(intentId, block.timestamp, intent.deadline);
-
 		// Validate the trading symbol
 		if (!symbol.isValid) revert ValidationErrors.InvalidSymbol(intent.tradeAgreements.symbolId);
 
 		// Check if the trade agreement has expired
 		if (block.timestamp >= intent.tradeAgreements.expirationTimestamp)
 			revert IntentErrors.ExpirationTimestampPassed(block.timestamp, intent.tradeAgreements.expirationTimestamp);
+
+		// Check if intent has expired
+		if (block.timestamp > intent.deadline) revert IntentErrors.IntentExpired(intentId, block.timestamp, intent.deadline);
 
 		// Verify Party B's oracle matches the symbol's oracle
 		if (appLayout.partyBConfigs[sender].oracleId != symbol.oracleId)
@@ -201,9 +201,9 @@ library LibPartyBOpen {
 		intent.partyB.requireSolvent(intent.partyA, symbol.collateral, intent.tradeAgreements.marginType);
 
 		// Time validations
-		if (block.timestamp > intent.deadline) revert IntentErrors.IntentExpired(intentId, block.timestamp, intent.deadline);
 		if (block.timestamp >= intent.tradeAgreements.expirationTimestamp)
 			revert IntentErrors.ExpirationTimestampPassed(block.timestamp, intent.tradeAgreements.expirationTimestamp);
+		if (block.timestamp > intent.deadline) revert IntentErrors.IntentExpired(intentId, block.timestamp, intent.deadline);
 
 		// Quantity validations
 		if (quantity == 0) revert ValidationErrors.ZeroAmount();

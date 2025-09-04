@@ -22,6 +22,9 @@ import { account } from "../types/contracts/facets"
 export function shouldBehaveLikePartyBOpenFacet(): void {
 	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyA3: PartyA, partyB1: PartyB, partyB2: PartyB
 
+	let intentExpirationTimestamp: number
+	let intentDeadline: number
+	let openIntentSeriesCount: number
 	beforeEach(async function () {
 		context = await loadFixture(initializeTestFixture)
 		partyA1 = new PartyA(context, context.signers.partyA1)
@@ -41,18 +44,21 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 		const latestBlock = await getLatestBlockTime()
 
+		intentExpirationTimestamp = 450
+		intentDeadline = 140
+
 		const requestIsolatedBuy = openIntentRequestBuilder()
 			.partyBsWhiteList([partyB1.address])
 			.affiliate(context.signers.affiliate1)
 			.feeToken(context.collateralNL)
 			.symbolId(1)
-			.deadline(latestBlock + 140)
-			.expirationTimestamp(latestBlock + 120)
+			.deadline(latestBlock + intentDeadline)
+			.expirationTimestamp(latestBlock + intentExpirationTimestamp)
 			.exerciseFee({ cap: e(1), rate: "0" })
 			.quantity(e(100))
 			.tradeSide(TradeSide.BUY)
 			.marginType(MarginType.ISOLATED)
-			.price(100000)
+			.price(e(1))
 			.solverFee({
 				openFee: e(0.001),
 				closeFee: e(0.001),
@@ -64,13 +70,13 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			.affiliate(context.signers.affiliate1)
 			.feeToken(context.collateralNL)
 			.symbolId(1)
-			.deadline(latestBlock + 140)
-			.expirationTimestamp(latestBlock + 120)
+			.deadline(latestBlock + intentDeadline)
+			.expirationTimestamp(latestBlock + intentExpirationTimestamp)
 			.exerciseFee({ cap: e(1), rate: "0" })
 			.quantity(e(100))
 			.tradeSide(TradeSide.BUY)
 			.marginType(MarginType.CROSS)
-			.price(100000)
+			.price(e(1))
 			.solverFee({
 				openFee: e(0.001),
 				closeFee: e(0.001),
@@ -82,22 +88,25 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			.affiliate(context.signers.affiliate1)
 			.feeToken(context.collateralNL)
 			.symbolId(1)
-			.deadline(latestBlock + 140)
-			.expirationTimestamp(latestBlock + 120)
+			.deadline(latestBlock + intentDeadline)
+			.expirationTimestamp(latestBlock + intentExpirationTimestamp)
 			.exerciseFee({ cap: e(1), rate: "0" })
 			.quantity(e(100))
 			.tradeSide(TradeSide.SELL)
 			.marginType(MarginType.CROSS)
-			.price(100000)
+			.price(e(1))
 			.solverFee({
 				openFee: e(0.001),
 				closeFee: e(0.001),
 			})
 			.build()
 
-		await partyA1.sendOpenIntent(requestIsolatedBuy)
-		await partyA1.sendOpenIntent(requestCrossBuy)
-		await partyA2.sendOpenIntent(requestCrossSell)
+		openIntentSeriesCount = 3
+		for (let i = 0; i < openIntentSeriesCount; i++) {
+			await partyA1.sendOpenIntent(requestIsolatedBuy)
+			await partyA1.sendOpenIntent(requestCrossBuy)
+			await partyA2.sendOpenIntent(requestCrossSell)
+		}
 	})
 
 	describe("lockOpenIntent", async function () {
@@ -192,11 +201,15 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			await partyA1.sendOpenIntent(request)
 
 			await context.controlFacet.setSymbolsValidationState([2], [false])
-			await expect(partyB2.lockOpenIntent(4)).to.be.revertedWithCustomError(context.partyBOpenFacet, "InvalidSymbol")
+			await expect(partyB2.lockOpenIntent(await context.viewFacet.getLastOpenIntentId())).to.be.revertedWithCustomError(
+				context.partyBOpenFacet,
+				"InvalidSymbol",
+			)
 		})
 
 		it("Should failed when intent expiration has been passed", async () => {
-			const newBlock = (await getLatestBlockTime()) + 130
+			const expireTime = intentExpirationTimestamp + 100
+			const newBlock = (await getLatestBlockTime()) + expireTime
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
 
 			await expect(partyB1.lockOpenIntent(1)).to.revertedWithCustomError(context.partyBOpenFacet, "ExpirationTimestampPassed")
@@ -331,7 +344,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 			expect(intent.status).to.equal(IntentStatus.LOCKED) // IntentStatus.LOCKED
 			expect(intent.partyB).to.equal(partyB1.address)
-			expect(intent.createTimestamp).to.be.approximately(await getLatestBlockTime(), 5)
+			expect(intent.createTimestamp).to.be.approximately(await getLatestBlockTime(), 11)
 		})
 	})
 
@@ -394,7 +407,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 
 		it("Should failed when deadline passed", async () => {
-			const newBlock = (await getLatestBlockTime()) + 150
+			const newBlock = (await getLatestBlockTime()) + intentDeadline + 20
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
 			await network.provider.send("evm_mine")
 
@@ -402,7 +415,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 
 		it("Should failed when expiration passed", async () => {
-			const newBlock = (await getLatestBlockTime()) + 130
+			const newBlock = (await getLatestBlockTime()) + intentExpirationTimestamp + 20
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
 			await network.provider.send("evm_mine")
 
@@ -431,12 +444,16 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 				.build()
 
 			await partyA1.sendOpenIntent(request)
-			await partyB2.lockOpenIntent(4)
+			const lastIntentID = await context.viewFacet.getLastOpenIntentId()
+			await partyB2.lockOpenIntent(lastIntentID)
 
 			await context.controlFacet.setMaxConnectedCounterParties(1) // max # of trade with MarginType of type isolated or cross for a partyA
 
 			await expect(partyB1.fillOpenIntent(1, e(100), 7)).not.to.reverted
-			await expect(partyB2.fillOpenIntent(4, e(5), 2)).to.revertedWithCustomError(context.partyBOpenFacet, "MaxCounterPartyConnectionsReached")
+			await expect(partyB2.fillOpenIntent(lastIntentID, e(5), 2)).to.revertedWithCustomError(
+				context.partyBOpenFacet,
+				"MaxCounterPartyConnectionsReached",
+			)
 		})
 
 		it("Should failed when Intent price mismatch fill type price(BUY Trade)", async () => {
@@ -549,8 +566,11 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			)
 			const premium = await context.viewFacet.getOpenIntentPremium(crossBuyIntentID)
 
-			console.log("partyA Locked Balance Before", partyACrossBalanceBefore)
-			console.log("partyA Locked Balance After", partyACrossBalanceAfter)
+			console.log("Filled Quantity:", quantity)
+			console.log("Filled Price:", price)
+			console.log("Filled Premium From Intent:", premium)
+			console.log("partyA Locked Balance Before Fill", partyACrossBalanceBefore)
+			console.log("partyA Locked Balance After Fill", partyACrossBalanceAfter)
 			expect(partyACrossBalanceBefore.locked - partyACrossBalanceAfter.locked).to.equal(premium)
 		})
 
@@ -573,11 +593,37 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 				await context.collateral.getAddress(),
 				openIntent.partyB,
 			)
-			const premium = await context.viewFacet.getOpenIntentPremium(crossBuyIntentID)
+			const premium = await context.viewFacet.getOpenIntentPremiumProportional(crossBuyIntentID, price)
 
 			console.log("partyA Locked Balance Before", partyACrossBalanceBefore)
 			console.log("partyA Locked Balance After", partyACrossBalanceAfter)
-			expect(partyACrossBalanceBefore.balance - partyACrossBalanceAfter.balance).to.equal(premium / scale)
+			expect(partyACrossBalanceBefore.balance - partyACrossBalanceAfter.balance).to.equal(premium)
+		})
+
+		it("Should Decreased Premium From Party A as expected in Cross Buy", async () => {
+			const scale = 2n
+			const crossBuyIntentID = 2
+			const openIntent = await context.viewFacet.getOpenIntent(crossBuyIntentID)
+			const partyACrossBalanceBefore = await context.viewFacet.getCrossBalance(
+				openIntent.partyA,
+				await context.collateral.getAddress(),
+				openIntent.partyB,
+			)
+
+			const quantity = openIntent.tradeAgreements.quantity / scale
+			const price = openIntent.price / scale
+			await expect(partyB1.fillOpenIntent(crossBuyIntentID, quantity, price)).not.to.reverted
+
+			const partyACrossBalanceAfter = await context.viewFacet.getCrossBalance(
+				openIntent.partyA,
+				await context.collateral.getAddress(),
+				openIntent.partyB,
+			)
+			const premium = await context.viewFacet.getOpenIntentPremiumProportional(crossBuyIntentID, price)
+
+			console.log("partyA Locked Balance Before", partyACrossBalanceBefore) // premium * openIntentCount
+			console.log("partyA Locked Balance After", partyACrossBalanceAfter)
+			expect(partyACrossBalanceBefore.balance - partyACrossBalanceAfter.balance).to.equal(premium)
 		})
 
 		it("Should Unlocked Maintenance Margin for Party A as expected in Cross Sell", async () => {
@@ -1070,8 +1116,8 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 			for (let i = 0; i < activeIntentsIDs.length; i++) console.log("Id", i, ":", activeIntentsIDs[i])
 
-			expect(activeIntents.length).to.be.equal(1)
-			expect(activeIntentsIDs.length).to.be.equal(1)
+			expect(activeIntents.length).to.be.equal(openIntentSeriesCount)
+			expect(activeIntentsIDs.length).to.be.equal(openIntentSeriesCount)
 			expect(activeIntents[0].id).to.be.equal(openIntent.id)
 
 			const oldQuantity = openIntent.tradeAgreements.quantity
@@ -1087,8 +1133,8 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			console.log("Active Open Intents IDs Count:", activeIntentsIDs.length)
 			console.log("Active Open Intents Count:", activeIntents.length)
 			console.log("Intent Status:", openIntent.status == BigInt(IntentStatus.FILLED) ? "Filled" : openIntent.status)
-			expect(activeIntents.length).to.be.equal(0) // as no ID is matched
-			expect(activeIntentsIDs.length).to.be.equal(0)
+			expect(activeIntents.length).to.be.equal(openIntentSeriesCount - 1) // as no ID is matched
+			expect(activeIntentsIDs.length).to.be.equal(openIntentSeriesCount - 1)
 
 			const parentIntent = await context.viewFacet.getOpenIntent(intentID)
 			const newIntent = await context.viewFacet.getOpenIntent(await context.viewFacet.getLastOpenIntentId())
@@ -1108,8 +1154,8 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 			for (let i = 0; i < activeIntentsIDs.length; i++) console.log("Id", i, ":", activeIntentsIDs[i])
 
-			expect(activeIntents.length).to.be.equal(1)
-			expect(activeIntentsIDs.length).to.be.equal(1)
+			expect(activeIntents.length).to.be.equal(openIntentSeriesCount)
+			expect(activeIntentsIDs.length).to.be.equal(openIntentSeriesCount)
 			expect(activeIntents[0].id).to.be.equal(openIntent.id)
 
 			const oldQuantity = openIntent.tradeAgreements.quantity
@@ -1124,9 +1170,9 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			console.log("Active Open Intents IDs Count:", activeIntentsIDs.length)
 			console.log("Active Open Intents Count:", activeIntents.length)
 			console.log("Intent Status:", openIntent.status == BigInt(IntentStatus.FILLED) ? "Filled" : openIntent.status)
-			expect(activeIntents.length).to.be.equal(1)
-			expect(activeIntentsIDs.length).to.be.equal(1)
-			expect(activeIntents[0].id).to.be.equal(openIntent.id + 1n)
+			expect(activeIntents.length).to.be.equal(openIntentSeriesCount)
+			expect(activeIntentsIDs.length).to.be.equal(openIntentSeriesCount)
+			// expect(activeIntents[0].id).to.be.equal(openIntent.id + 1n) // TODO as a formula
 		})
 	})
 

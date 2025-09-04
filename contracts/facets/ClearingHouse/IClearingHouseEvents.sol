@@ -20,9 +20,9 @@ interface IClearingHouseEvents {
 	event Confiscate(
 		address indexed operator,
 		address indexed party,
-		address indexed counterParty,
+		address[] indexed counterParty,
+		uint256[] amount,
 		uint256 liquidationId,
-		uint256 amount,
 		MarginType marginType
 	);
 	event ConfiscateWithdrawal(address indexed operator, uint256 withdrawId);

@@ -724,6 +724,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 		})
 
 		it("Should Successfully Lock Premium in Cross Margin, Buy Trade", async function () {
+			const intentCount = 3n
 			const latestBlock = await getLatestBlockTime()
 			const request = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB1.address])
@@ -737,10 +738,10 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.marginType(MarginType.CROSS)
 				.tradeSide(TradeSide.BUY)
 				.strikePrice(e(1))
-				.price(7)
+				.price(e(7))
 				.build()
+			for (let i = 0; i < intentCount; i++) await expect(partyA1.sendOpenIntent(request)).to.be.not.reverted
 
-			await expect(partyA1.sendOpenIntent(request)).to.be.not.reverted
 			const intent = await context.viewFacet.getOpenIntent(await context.viewFacet.getLastOpenIntentId())
 
 			const crossBalance = await context.viewFacet.getCrossBalance(
@@ -748,7 +749,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				(await context.viewFacet.getSymbol(intent.tradeAgreements.symbolId)).collateral,
 				partyB1.address,
 			)
-			expect(crossBalance.locked).to.be.equal(await context.viewFacet.getOpenIntentPremium(intent.id))
+			console.log("Balance loced:", crossBalance)
+			expect(crossBalance.locked).to.be.equal(await context.viewFacet.getOpenIntentPremium(intent.id) * intentCount)
 		})
 
 		it("Should Successfully Lock Premium in Cross Margin, Sell Trade", async function () {
