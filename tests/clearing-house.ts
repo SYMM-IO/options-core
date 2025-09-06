@@ -2678,12 +2678,6 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 
 	describe("Confiscate Withdrawal", async function () {
 		it("Should revert when unauthorized caller (missing CLEARING_HOUSE_ROLE)", async () => {
-			await partyB1.setBalances(context.collateral, e(100000), e(100000))
-
-			await context.accountFacet
-				.connect(context.signers.partyB1)
-				.initiateWithdraw(context.collateral.getAddress(), e(1000), context.signers.others[0])
-
 			const withdrawalId = await context.viewFacet.getLastWithdrawalId()
 
 			const role = ethers.id("CLEARING_HOUSE_ROLE")
@@ -2733,6 +2727,23 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			// Unpause and it should work
 			await context.controlFacet.unpauseLiquidating()
 			await expect(context.clearingHouse.connect(context.signers.clearingHouse).confiscateWithdrawal(withdrawalId)).not.reverted
+		})
+
+		it("Should revert on withdrawId == 0", async () => {
+			await expect(context.clearingHouse.connect(context.signers.clearingHouse).confiscateWithdrawal(0)).to.be.revertedWithCustomError(
+				context.clearingHouse,
+				"InvalidID",
+			)
+		})
+
+		it("Should revert on withdrawId > lastWithdrawId", async () => {
+			const last = await context.viewFacet.getLastWithdrawalId() // uses AccountStorage.lastWithdrawId
+			const nonExistent = Number(last) + 1
+
+			await expect(context.clearingHouse.connect(context.signers.clearingHouse).confiscateWithdrawal(nonExistent)).to.be.revertedWithCustomError(
+				context.clearingHouse,
+				"InvalidID",
+			)
 		})
 
 		it("Should failed when confiscating party B withdrawal by invalid status in ISOLATED BUY", async () => {

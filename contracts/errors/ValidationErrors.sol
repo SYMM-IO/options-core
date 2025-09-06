@@ -15,6 +15,7 @@ library ValidationErrors {
 	error InvalidState(string property, uint8 currentStatus, uint8[] requiredStatus);
 	error UnauthorizedSender(address sender, address requiredSender);
 	error MismatchedLengths();
+	error InvalidID(uint256 id, uint256 lastID);
 	
 	// Access control
 	error NotPartyB(address user);

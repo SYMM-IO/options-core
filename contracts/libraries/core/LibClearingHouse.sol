@@ -29,9 +29,6 @@ import { ValidationErrors } from "../../errors/ValidationErrors.sol";
 import { LiquidationErrors } from "../../errors/LiquidationErrors.sol";
 import { BalanceErrors } from "../../errors/BalanceErrors.sol";
 
-
-import "hardhat/console.sol";
-
 library LibClearingHouse {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibTradeOps for Trade;
@@ -289,10 +286,13 @@ library LibClearingHouse {
 	}
 
 	function confiscateWithdrawal(uint256 withdrawId) internal {
+		AccountStorage.Layout storage acc = AccountStorage.layout();
+		if (withdrawId == 0 || withdrawId > acc.lastWithdrawId) {
+			revert ValidationErrors.InvalidID(withdrawId, acc.lastWithdrawId);
+		}
 		Withdraw storage withdrawal = AccountStorage.layout().withdrawals[withdrawId];
-		ValidationErrors.requireStatus("WithdrawStatus", uint8(withdrawal.status), uint8(WithdrawStatus.INITIATED));//  0 is the initiated state by default
+		ValidationErrors.requireStatus("WithdrawStatus", uint8(withdrawal.status), uint8(WithdrawStatus.INITIATED)); //  0 is the initiated state by default
 		withdrawal.status = WithdrawStatus.CANCELED;
-		console.log("withdrawal.amount", withdrawal.amount);
 		withdrawal.user.balanceOf(withdrawal.collateral).instantIsolatedAdd(withdrawal.amount, IncreaseBalanceReason.DEPOSIT);
 	}
 
@@ -309,6 +309,7 @@ library LibClearingHouse {
 		LiquidationDetail storage detail = LiquidationStorage.layout().liquidationDetails[liquidationId];
 		_requireStatus(detail, LiquidationStatus.IN_PROGRESS);
 
+		uint256 sum;
 		for (uint256 i = 0; i < partyAs.length; i++) {
 			address partyA = partyAs[i];
 			uint256 amount = amounts[i];
@@ -317,8 +318,9 @@ library LibClearingHouse {
 			partyA.balanceOf(collateral).scheduledAdd(partyB, amount, marginType, IncreaseBalanceReason.LIQUIDATION);
 
 			// Track the distributed amount
-			detail.distributedAmount += amount;
+			sum += amount;
 		}
+		detail.distributedAmount += sum;
 
 		if (detail.distributedAmount > detail.confiscatedAmount) revert LiquidationErrors.DistributedAmountExceedsConfiscatedAmount(liquidationId);
 	}
