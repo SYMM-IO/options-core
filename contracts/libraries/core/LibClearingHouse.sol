@@ -29,6 +29,9 @@ import { ValidationErrors } from "../../errors/ValidationErrors.sol";
 import { LiquidationErrors } from "../../errors/LiquidationErrors.sol";
 import { BalanceErrors } from "../../errors/BalanceErrors.sol";
 
+
+import "hardhat/console.sol";
+
 library LibClearingHouse {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibTradeOps for Trade;
@@ -254,11 +257,11 @@ library LibClearingHouse {
 	function confiscate(
 		uint256 liquidationId,
 		address party,
-		address[] calldata counterparties,
+		address[] calldata counterParties,
 		uint256[] calldata amounts,
 		MarginType marginType
 	) internal {
-		require(counterparties.length == amounts.length, "Length mismatch");
+		if (counterParties.length != amounts.length) revert LiquidationErrors.MismatchedArrayLengths(counterParties.length, amounts.length);
 
 		LiquidationDetail storage detail = LiquidationStorage.layout().liquidationDetails[liquidationId];
 
@@ -270,8 +273,8 @@ library LibClearingHouse {
 
 		_requireStatus(detail, LiquidationStatus.IN_PROGRESS);
 
-		for (uint256 i = 0; i < counterparties.length; i++) {
-			address counterParty = counterparties[i];
+		for (uint256 i = 0; i < counterParties.length; i++) {
+			address counterParty = counterParties[i];
 			uint256 amount = amounts[i];
 
 			int256 counterPartyBalance = balance.counterPartyBalance(counterParty, marginType);
@@ -287,8 +290,9 @@ library LibClearingHouse {
 
 	function confiscateWithdrawal(uint256 withdrawId) internal {
 		Withdraw storage withdrawal = AccountStorage.layout().withdrawals[withdrawId];
-		ValidationErrors.requireStatus("WithdrawStatus", uint8(withdrawal.status), uint8(WithdrawStatus.INITIATED));
+		ValidationErrors.requireStatus("WithdrawStatus", uint8(withdrawal.status), uint8(WithdrawStatus.INITIATED));//  0 is the initiated state by default
 		withdrawal.status = WithdrawStatus.CANCELED;
+		console.log("withdrawal.amount", withdrawal.amount);
 		withdrawal.user.balanceOf(withdrawal.collateral).instantIsolatedAdd(withdrawal.amount, IncreaseBalanceReason.DEPOSIT);
 	}
 
