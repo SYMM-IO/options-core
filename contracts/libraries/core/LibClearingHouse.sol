@@ -29,6 +29,8 @@ import { ValidationErrors } from "../../errors/ValidationErrors.sol";
 import { LiquidationErrors } from "../../errors/LiquidationErrors.sol";
 import { BalanceErrors } from "../../errors/BalanceErrors.sol";
 
+import "hardhat/console.sol";
+
 library LibClearingHouse {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibTradeOps for Trade;
@@ -64,7 +66,13 @@ library LibClearingHouse {
 	function _unflag(address partyA, address partyB, address collateral) private {
 		LiquidationStorage.Layout storage l = LiquidationStorage.layout();
 		LiquidationDetail storage detail = _detail(partyA, partyB, collateral);
-		_requireStatus(detail, LiquidationStatus.FLAGGED);
+		if (detail.status != LiquidationStatus.FLAGGED && detail.status != LiquidationStatus.IN_PROGRESS) {
+			uint8[] memory expected = new uint8[](3);
+			expected[0] = uint8(LiquidationStatus.IN_PROGRESS);
+			expected[1] = uint8(LiquidationStatus.IN_PROGRESS);
+			revert ValidationErrors.InvalidState("LiquidationStatus", uint8(detail.status), expected);
+		}
+		// _requireStatus(detail, LiquidationStatus.FLAGGED);
 		l.inProgressLiquidationIds[partyA][partyB][collateral] = 0;
 		detail.status = LiquidationStatus.CANCELLED;
 	}
@@ -154,8 +162,8 @@ library LibClearingHouse {
 			partyA.balanceOf(collateral).scheduledAdd(partyB, balance, MarginType.CROSS, IncreaseBalanceReason.LIQUIDATION);
 		}
 		crossBalance.balance = 0;
-		crossBalance.locked = 0;
-		crossBalance.totalMM = 0;
+		crossBalance.locked = 0; // no effect as Party B is not Locking anything
+		crossBalance.totalMM = 0; // no effect as MM is for Party A
 
 		_beginLiquidation(detail, collateralPrice);
 	}
@@ -270,6 +278,7 @@ library LibClearingHouse {
 
 		_requireStatus(detail, LiquidationStatus.IN_PROGRESS);
 
+		uint256 sum;
 		for (uint256 i = 0; i < counterParties.length; i++) {
 			address counterParty = counterParties[i];
 			uint256 amount = amounts[i];
@@ -281,8 +290,9 @@ library LibClearingHouse {
 
 			balance.subForCounterParty(counterParty, amount, marginType, DecreaseBalanceReason.CONFISCATE);
 
-			detail.confiscatedAmount += amount;
+			sum += amount;
 		}
+		detail.confiscatedAmount += sum;
 	}
 
 	function confiscateWithdrawal(uint256 withdrawId) internal {
@@ -331,6 +341,9 @@ library LibClearingHouse {
 		for (uint256 i = 0; i < intentIds.length; i++) {
 			OpenIntent storage intent = openIntentLayout.openIntents[intentIds[i]];
 
+			address collateral = SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId].collateral;
+			bool partyAIsSolvent = intent.partyA.isSolvent(intent.partyB, collateral, intent.tradeAgreements.marginType);
+			bool partyBIsSolvent = intent.partyB.isSolvent(intent.partyA, collateral, intent.tradeAgreements.marginType);
 			if (!(intent.status == OpenIntentStatus.PENDING || intent.status == OpenIntentStatus.LOCKED)) {
 				uint8[] memory requiredStatuses = new uint8[](2);
 				requiredStatuses[0] = uint8(OpenIntentStatus.PENDING);
@@ -338,9 +351,6 @@ library LibClearingHouse {
 
 				revert ValidationErrors.InvalidState("OpenIntentStatus", uint8(intent.status), requiredStatuses);
 			}
-			address collateral = SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId].collateral;
-			bool partyAIsSolvent = intent.partyA.isSolvent(intent.partyB, collateral, intent.tradeAgreements.marginType);
-			bool partyBIsSolvent = intent.partyB.isSolvent(intent.partyA, collateral, intent.tradeAgreements.marginType);
 
 			if (partyAIsSolvent && partyBIsSolvent) {
 				revert LiquidationErrors.PartiesNotInLiquidation(intent.partyA, intent.partyB, collateral);
@@ -349,11 +359,18 @@ library LibClearingHouse {
 			if (block.timestamp > intent.deadline) {
 				intent.expire();
 			} else {
-				intent.status = OpenIntentStatus.CANCELED;
-				intent.unlockFees();
-				intent.unlockPremiumIfBuy();
-				intent.unlockMMIfSell();
-				intent.unregister(false);
+				if (intent.tradeAgreements.marginType == MarginType.ISOLATED && intent.partyBsWhiteList.length != 1) {
+					// Isolated mode means Party B Liquidated
+					intent.status = OpenIntentStatus.PENDING;
+					intent.unregister(true);
+				} else {
+					// in Cross Mode every Intents must be closed
+					intent.status = OpenIntentStatus.CANCELED;
+					intent.unlockFees();
+					intent.unlockPremiumIfBuy();
+					intent.unlockMMIfSell();
+					intent.unregister(false);
+				}
 			}
 			intent.statusModifyTimestamp = block.timestamp;
 		}

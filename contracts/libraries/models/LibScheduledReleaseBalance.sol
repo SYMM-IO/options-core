@@ -116,8 +116,8 @@ library ScheduledReleaseBalanceOps {
 		if (counterParty.getReleaseInterval() == 0) {
 			// global Interval or per user set on account
 			instantIsolatedAdd(self, value, reason);
-			return;
-		}
+            return;
+        }
 
 		// finally queue the funds
 		self.counterPartySchedules[counterParty].scheduled += value;
