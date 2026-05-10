@@ -18,6 +18,9 @@ library IntentErrors {
 	error InvalidAffiliate(address affiliate);
 	error MultiplePartyBNotAllowed();
 	error InvalidOpenQuantity();
+	error DeferredSellNotAllowedForBoundPartyA(address partyA, address boundPartyB);
+	error MissingOpenIntentEscrow(uint256 intentId);
+	error OpenIntentEscrowAlreadyConsumed(uint256 intentId);
 
 	// Open intent - PartyB specific
 	error IntentNotFound(uint256 intentId);

@@ -256,7 +256,8 @@ library LibClearingHouse {
 	function confiscate(uint256 liquidationId, uint256 amount, address party, address counterParty, MarginType marginType) internal {
 		LiquidationDetail storage detail = LiquidationStorage.layout().liquidationDetails[liquidationId];
 
-		if (party != detail.partyA && party != detail.partyB) revert LiquidationErrors.PartyNotInLiquidation(party, detail.partyA, detail.partyB, detail.collateral);
+		if (party != detail.partyA && party != detail.partyB)
+			revert LiquidationErrors.PartyNotInLiquidation(party, detail.partyA, detail.partyB, detail.collateral);
 
 		ScheduledReleaseBalance storage balance = party.balanceOf(detail.collateral);
 
@@ -330,9 +331,7 @@ library LibClearingHouse {
 				intent.expire();
 			} else {
 				intent.status = OpenIntentStatus.CANCELED;
-				intent.unlockFees();
-				intent.unlockPremiumIfBuy();
-				intent.unlockMMIfSell();
+				intent.unlockForCancelOrExpire();
 				intent.unregister(false);
 			}
 			intent.statusModifyTimestamp = block.timestamp;

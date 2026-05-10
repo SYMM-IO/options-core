@@ -7,13 +7,25 @@ pragma solidity >=0.8.19;
 import { OpenIntentStatus } from "../types/IntentTypes.sol";
 
 interface IPartiesEvents {
-	event SendOpenIntent(
-		address indexed partyA,
-		uint256 intentId,
-		address[] partyBsWhiteList,
-		bytes requestedParams
-	);
+	event SendOpenIntent(address indexed partyA, uint256 intentId, address[] partyBsWhiteList, bytes requestedParams);
 	event CancelOpenIntent(uint256 intentId, OpenIntentStatus finalStatus);
 	event ExpireOpenIntent(uint256 intentId);
 	event ExpireCloseIntent(uint256 intentId);
+	event LockOpenIntentEscrow(
+		uint256 indexed intentId,
+		address indexed partyA,
+		address indexed collateral,
+		uint256 mm,
+		address feeToken,
+		uint256 feeLockAmount
+	);
+	event ReleaseOpenIntentEscrow(
+		uint256 indexed intentId,
+		address indexed partyA,
+		address indexed collateral,
+		uint256 mm,
+		address feeToken,
+		uint256 feeLockAmount
+	);
+	event ConsumeOpenIntentEscrow(uint256 indexed intentId, uint256 indexed tradeId, address indexed partyB, uint256 mmConsumed, uint256 feeConsumed);
 }

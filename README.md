@@ -1,13 +1,14 @@
-# Sample Hardhat Project
+# Options Core
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a Hardhat Ignition module that deploys that contract.
+Options Core is a Hardhat/Solidity repository for the SYMM options protocol. The core contract is an EIP-2535 Diamond made of account, control, intent, trade, settlement, force-action, liquidation, and view facets.
 
-Try running some of the following tasks:
+Documentation starts in [docs/README.md](./docs/README.md).
+
+Useful commands:
 
 ```shell
-npx hardhat help
+npm install
+npx hardhat compile
 npx hardhat test
-REPORT_GAS=true npx hardhat test
-npx hardhat node
-npx hardhat ignition deploy ./ignition/modules/Lock.ts
+npx hardhat deploy:diamond --network hardhat --log-data true
 ```

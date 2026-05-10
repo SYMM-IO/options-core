@@ -35,7 +35,6 @@ serverLog.log
 detailedDebug.log
 .openzeppelin
 
-docs
 .yarn/
 .venv
 .cursorignore
@@ -44,3 +43,4 @@ docs
 .DS_Store
 
 .notes/
+.obsidian

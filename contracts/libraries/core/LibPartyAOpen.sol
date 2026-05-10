@@ -67,15 +67,20 @@ library LibPartyAOpen {
 		// validate affiliate
 		if (!(feeLayout.affiliateStatus[affiliate] || affiliate == address(0))) revert IntentErrors.InvalidAffiliate(affiliate);
 		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		if (CounterPartyRelationsStorage.layout().boundPartyB[sender] != address(0)) {
-			if (!(partyBsWhiteList.length == 1 && partyBsWhiteList[0] == CounterPartyRelationsStorage.layout().boundPartyB[sender]))
-				revert PartyRelationsErrors.BoundedToAnotherPartyB(sender, CounterPartyRelationsStorage.layout().boundPartyB[sender]);
+		bool deferredSell = LibOpenIntentOps.isDeferredPartyBSell(partyBsWhiteList, tradeAgreements);
+		address boundPartyB = CounterPartyRelationsStorage.layout().boundPartyB[sender];
+		if (boundPartyB != address(0)) {
+			if (deferredSell) revert IntentErrors.DeferredSellNotAllowedForBoundPartyA(sender, boundPartyB);
+			if (!(partyBsWhiteList.length == 1 && partyBsWhiteList[0] == boundPartyB))
+				revert PartyRelationsErrors.BoundedToAnotherPartyB(sender, boundPartyB);
 		}
 
 		if (tradeAgreements.marginType == MarginType.CROSS) {
-			if (partyBsWhiteList.length != 1) revert IntentErrors.MultiplePartyBNotAllowed();
-			sender.requireSolvent(partyBsWhiteList[0], symbol.collateral, tradeAgreements.marginType);
-			partyBsWhiteList[0].requireSolvent(sender, symbol.collateral, tradeAgreements.marginType);
+			if (!deferredSell) {
+				if (partyBsWhiteList.length != 1) revert IntentErrors.MultiplePartyBNotAllowed();
+				sender.requireSolvent(partyBsWhiteList[0], symbol.collateral, tradeAgreements.marginType);
+				partyBsWhiteList[0].requireSolvent(sender, symbol.collateral, tradeAgreements.marginType);
+			}
 		} else if (tradeAgreements.marginType == MarginType.ISOLATED && partyBsWhiteList.length == 1) {
 			partyBsWhiteList[0].requireSolvent(address(0), symbol.collateral, tradeAgreements.marginType);
 		}
@@ -111,9 +116,13 @@ library LibPartyAOpen {
 		});
 
 		intent.register();
-		intent.lockFees();
-		intent.lockPremiumIfBuy();
-		intent.lockMMIfSell();
+		if (deferredSell) {
+			intent.lockDeferredSellEscrow();
+		} else {
+			intent.lockFees();
+			intent.lockPremiumIfBuy();
+			intent.lockMMIfSell();
+		}
 	}
 
 	function cancelOpenIntent(address sender, uint256 intentId) internal returns (OpenIntentStatus finalStatus) {
@@ -132,9 +141,7 @@ library LibPartyAOpen {
 			intent.expire();
 		} else if (intent.status == OpenIntentStatus.PENDING) {
 			intent.status = OpenIntentStatus.CANCELED;
-			intent.unlockFees();
-			intent.unlockPremiumIfBuy();
-			intent.unlockMMIfSell();
+			intent.unlockForCancelOrExpire();
 			intent.unregister(false);
 		} else {
 			// LOCKED

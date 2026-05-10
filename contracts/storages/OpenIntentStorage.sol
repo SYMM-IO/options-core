@@ -4,7 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { OpenIntent } from "../types/IntentTypes.sol";
+import { OpenIntent, OpenIntentEscrow } from "../types/IntentTypes.sol";
 
 library OpenIntentStorage {
 	bytes32 internal constant OPEN_INTENT_STORAGE_SLOT = keccak256("diamond.standard.storage.openIntent");
@@ -16,6 +16,7 @@ library OpenIntentStorage {
 		mapping(uint256 => uint256) partyAOpenIntentsIndex; // id -> index
 		mapping(uint256 => uint256) partyBOpenIntentsIndex;
 		uint256 lastOpenIntentId;
+		mapping(uint256 => OpenIntentEscrow) openIntentEscrows;
 	}
 
 	function layout() internal pure returns (Layout storage l) {
