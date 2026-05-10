@@ -286,6 +286,22 @@ export function shouldBehaveLikePartyACloseFacet(): void {
 			expect(closeIntent.deadline).to.be.equal(deadline)
 			expect(closeIntent.feeStructure).to.be.deep.equal(trade.feeStructure)
 		})
+
+		it("Should reserve close quantity on the trade and register active close intent IDs", async function () {
+			const tradeBefore: TradeStruct = await context.viewFacet.getTrade(1)
+			const deadline = (await getLatestBlockTime()) + 140
+
+			await partyA1.sendCloseIntent(1, e(25), 10, deadline)
+			const firstCloseIntentId = await context.viewFacet.getLastCloseIntentId()
+			await partyA1.sendCloseIntent(1, e(15), 11, deadline)
+			const secondCloseIntentId = await context.viewFacet.getLastCloseIntentId()
+
+			const tradeAfter: TradeStruct = await context.viewFacet.getTrade(1)
+			expect(BigInt(tradeAfter.closePendingAmount) - BigInt(tradeBefore.closePendingAmount)).to.be.equal(e(40))
+			expect(tradeAfter.closedAmountBeforeExpiration).to.be.equal(tradeBefore.closedAmountBeforeExpiration)
+			expect(tradeAfter.activeCloseIntentIds).to.deep.equal([firstCloseIntentId, secondCloseIntentId])
+			expect(await context.viewFacet.getTradeOpenAmount(1)).to.be.equal(BigInt(tradeAfter.tradeAgreements.quantity))
+		})
 	})
 
 	describe("expire close intents", async function () {
@@ -364,6 +380,24 @@ export function shouldBehaveLikePartyACloseFacet(): void {
 			expect(await partyA1.expireCloseIntent(["1", "2"])).not.to.be.reverted
 			expect((await context.viewFacet.getCloseIntent(1)).status).to.be.equal(CloseIntentStatus.EXPIRED)
 			expect((await context.viewFacet.getCloseIntent(2)).status).to.be.equal(CloseIntentStatus.EXPIRED)
+		})
+
+		it("Should expire a cancel-pending close intent and release the reserved close amount", async function () {
+			await partyA1.sendCancelCloseIntent(["1"])
+			let closeIntent: CloseIntentStruct = await context.viewFacet.getCloseIntent(1)
+			expect(closeIntent.status).to.be.equal(CloseIntentStatus.CANCEL_PENDING)
+
+			const tradeBefore: TradeStruct = await context.viewFacet.getTrade(closeIntent.tradeId)
+			await network.provider.send("evm_setNextBlockTimestamp", [Number(closeIntent.deadline) + 1])
+			await network.provider.send("evm_mine")
+
+			await partyA1.expireCloseIntent(["1"])
+
+			closeIntent = await context.viewFacet.getCloseIntent(1)
+			const tradeAfter: TradeStruct = await context.viewFacet.getTrade(closeIntent.tradeId)
+			expect(closeIntent.status).to.be.equal(CloseIntentStatus.EXPIRED)
+			expect(BigInt(tradeBefore.closePendingAmount) - BigInt(tradeAfter.closePendingAmount)).to.be.equal(BigInt(closeIntent.quantity))
+			expect(tradeAfter.activeCloseIntentIds).to.not.include(closeIntent.id)
 		})
 	})
 }

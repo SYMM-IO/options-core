@@ -884,6 +884,66 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 			expect(balance.locked).to.be.equal(solverFee + affiliateFee + platformFee)
 		})
+
+		it("Should lock and release deferred sell escrow for unbound cross sell intents without a PartyB whitelist", async function () {
+			const latestBlock = await getLatestBlockTime()
+			const request = openIntentRequestBuilder()
+				.partyBsWhiteList([])
+				.affiliate(ZeroAddress)
+				.feeToken(context.collateralNL)
+				.symbolId(1)
+				.deadline(latestBlock + 120)
+				.expirationTimestamp(latestBlock + 120)
+				.exerciseFee({ cap: e(1), rate: "0" })
+				.quantity(e(10))
+				.marginType(MarginType.CROSS)
+				.tradeSide(TradeSide.SELL)
+				.mm(e(25))
+				.solverFee({ openFee: e(0.5), closeFee: e(0.5) })
+				.price(100)
+				.build()
+
+			const symbol = await context.viewFacet.getSymbol(request.symbolId)
+			const collateralLockedBefore = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, symbol.collateral)
+			const feeLockedBefore = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, request.feeToken)
+
+			await expect(partyA1.sendOpenIntent(request)).not.to.be.reverted
+
+			const intentId = await context.viewFacet.getLastOpenIntentId()
+			const intent = await context.viewFacet.getOpenIntent(intentId)
+			const escrow = await context.viewFacet.getOpenIntentEscrow(intentId)
+			const lockedFee =
+				(await context.viewFacet.getOpenIntentPlatformFee(intentId)) +
+				(await context.viewFacet.getOpenIntentAffiliateFee(intentId)) +
+				(BigInt(request.price) * BigInt(request.quantity) * BigInt(request.solverFee.openFee)) /
+					(intent.feeStructure.tokenPriceInCollateral * parseUnits("1", 18))
+
+			expect(intent.status).to.equal(IntentStatus.PENDING)
+			expect(intent.partyB).to.equal(ZeroAddress)
+			expect(intent.partyBsWhiteList).to.deep.equal([])
+			expect(escrow.exists).to.equal(true)
+			expect(escrow.consumed).to.equal(false)
+			expect(escrow.partyA).to.equal(partyA1.address)
+			expect(escrow.collateral).to.equal(symbol.collateral)
+			expect(escrow.feeToken).to.equal(request.feeToken)
+			expect(escrow.mm).to.equal(request.mm)
+			expect(escrow.feeLockAmount).to.equal(lockedFee)
+			expect(await context.viewFacet.getIsolatedLockedBalance(partyA1.address, symbol.collateral)).to.equal(
+				collateralLockedBefore + BigInt(request.mm),
+			)
+			expect(await context.viewFacet.getIsolatedLockedBalance(partyA1.address, request.feeToken)).to.equal(feeLockedBefore + lockedFee)
+
+			await expect(partyA1.sendCancelOpenIntent([intentId])).not.to.be.reverted
+
+			const canceledIntent = await context.viewFacet.getOpenIntent(intentId)
+			const releasedEscrow = await context.viewFacet.getOpenIntentEscrow(intentId)
+			const activeIntentIds = await context.viewFacet.getActiveOpenIntentIds(partyA1.address)
+			expect(canceledIntent.status).to.equal(IntentStatus.CANCELED)
+			expect(releasedEscrow.exists).to.equal(false)
+			expect(await context.viewFacet.getIsolatedLockedBalance(partyA1.address, symbol.collateral)).to.equal(collateralLockedBefore)
+			expect(await context.viewFacet.getIsolatedLockedBalance(partyA1.address, request.feeToken)).to.equal(feeLockedBefore)
+			expect(activeIntentIds).not.to.include(intentId)
+		})
 	})
 
 	describe("Cancel Open Intent", async function () {

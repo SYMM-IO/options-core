@@ -138,6 +138,18 @@ export function shouldBehaveLikeSymmioPartyB(): void {
 			await context.symmioPartyB.setSigner(partyB1.getSigner)
 			expect(await context.symmioPartyB.isValidSignature(ethers.hashMessage(ethers.getBytes(hash)), opOpenALocal.signature)).to.be.equal("0x1626ba7e")
 		})
+
+		it("should reject a previously valid signature after signer rotation", async function () {
+			const hash = ethers.keccak256(ethers.toUtf8Bytes("partyB-signer-rotation"))
+			const signature = await partyB1.sign(ethers.getBytes(hash))
+			const signedDigest = ethers.hashMessage(ethers.getBytes(hash))
+
+			await context.symmioPartyB.setSigner(partyB1.getSigner)
+			expect(await context.symmioPartyB.isValidSignature(signedDigest, signature)).to.equal("0x1626ba7e")
+
+			await context.symmioPartyB.setSigner(partyB2.getSigner)
+			expect(await context.symmioPartyB.isValidSignature(signedDigest, signature)).to.equal("0xffffffff")
+		})
 	})
 
 	describe("execute _Call Function", async function () {
@@ -178,6 +190,29 @@ export function shouldBehaveLikeSymmioPartyB(): void {
 
 		it("should fail when Call Data not set", async function () {
 			await expect(context.symmioPartyB._call(["0x"])).to.be.revertedWithCustomError(context.symmioPartyB, "InvalidCallData")
+		})
+
+		it("should reject Symmio calls from callers without trusted or manager permission", async function () {
+			const selector = lockIntentCallData.slice(0, 10)
+
+			await expect(context.symmioPartyB.connect(partyA1.getSigner)._call([lockIntentCallData]))
+				.to.be.revertedWithCustomError(context.symmioPartyB, "InsufficientPermissions")
+				.withArgs(partyA1.address, selector)
+		})
+
+		it("should keep restricted selectors manager-only even while instant mode is enabled", async function () {
+			const selector = lockIntentCallData.slice(0, 10)
+			const managerRole = ethers.keccak256(toUtf8Bytes("MANAGER_ROLE"))
+
+			await context.symmioPartyB.setRestrictedSelector(selector, true)
+			await context.controlFacet.setCallFromInstantLayer(true)
+
+			await expect(context.symmioPartyB.connect(partyA1.getSigner)._call([lockIntentCallData])).to.be.revertedWith(
+				`AccessControl: account ${partyA1.address.toLowerCase()} is missing role ${managerRole}`,
+			)
+
+			await context.controlFacet.setCallFromInstantLayer(false)
+			expect(await context.viewFacet.isCallFromInstantLayer()).to.equal(false)
 		})
 
 		it("Should be failed when input Ops have passed the Deadline ", async () => {

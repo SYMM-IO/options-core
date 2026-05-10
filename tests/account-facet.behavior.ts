@@ -226,6 +226,24 @@ export function shouldBehaveLikeAccountFacet(): void {
 			).to.be.equal("100")
 			expect(await context.collateral.balanceOf(partyA1.getSigner)).to.be.equal("300")
 		})
+
+		it("Should debit only sender collateral and credit only receiver isolated balance", async function () {
+			const amount = 75n
+			const collateral = await context.collateral.getAddress()
+			const senderTokenBefore = await context.collateral.balanceOf(partyA1.address)
+			const senderIsolatedBefore = await context.viewFacet.getIsolatedBalance(partyA1.address, collateral)
+			const receiverIsolatedBefore = await context.viewFacet.getIsolatedBalance(partyA2.address, collateral)
+			const diamondTokenBefore = await context.collateral.balanceOf(context.common.diamondAddress)
+
+			await expect(context.accountFacet.connect(partyA1.getSigner).depositFor(collateral, partyA2.address, amount))
+				.to.emit(context.accountFacet, "Deposit")
+				.withArgs(partyA1.address, partyA2.address, collateral, amount, receiverIsolatedBefore + amount)
+
+			expect(await context.collateral.balanceOf(partyA1.address)).to.equal(senderTokenBefore - amount)
+			expect(await context.collateral.balanceOf(context.common.diamondAddress)).to.equal(diamondTokenBefore + amount)
+			expect(await context.viewFacet.getIsolatedBalance(partyA1.address, collateral)).to.equal(senderIsolatedBefore)
+			expect(await context.viewFacet.getIsolatedBalance(partyA2.address, collateral)).to.equal(receiverIsolatedBefore + amount)
+		})
 	})
 
 	describe("Internal Transfer", async function () {
@@ -353,6 +371,24 @@ export function shouldBehaveLikeAccountFacet(): void {
 			const receiverBalanceAfter = await context.viewFacet.getIsolatedBalance(partyA2.address, context.collateral)
 
 			expect(receiverBalanceAfter - receiverBalanceBefore).to.be.equal(amount)
+		})
+
+		it("Should move isolated balance without moving ERC20 collateral", async function () {
+			const amount = 40n
+			const collateral = await context.collateral.getAddress()
+			const senderBalanceBefore = await context.viewFacet.getIsolatedBalance(partyA1.address, collateral)
+			const receiverBalanceBefore = await context.viewFacet.getIsolatedBalance(partyA2.address, collateral)
+			const senderTokenBefore = await context.collateral.balanceOf(partyA1.address)
+			const receiverTokenBefore = await context.collateral.balanceOf(partyA2.address)
+			const diamondTokenBefore = await context.collateral.balanceOf(context.common.diamondAddress)
+
+			await context.accountFacet.connect(partyA1.getSigner).internalTransfer(collateral, partyA2.address, amount)
+
+			expect(await context.viewFacet.getIsolatedBalance(partyA1.address, collateral)).to.equal(senderBalanceBefore - amount)
+			expect(await context.viewFacet.getIsolatedBalance(partyA2.address, collateral)).to.equal(receiverBalanceBefore + amount)
+			expect(await context.collateral.balanceOf(partyA1.address)).to.equal(senderTokenBefore)
+			expect(await context.collateral.balanceOf(partyA2.address)).to.equal(receiverTokenBefore)
+			expect(await context.collateral.balanceOf(context.common.diamondAddress)).to.equal(diamondTokenBefore)
 		})
 	})
 
@@ -502,6 +538,28 @@ export function shouldBehaveLikeAccountFacet(): void {
 			console.log("Sender Collateral After:", senderCollateralBalanceAfter)
 
 			expect(senderCollateralBalanceBefore - senderCollateralBalanceAfter).to.be.equal(amount)
+		})
+
+		it("Should debit sender isolated balance, transfer collateral to target, and leave receiver ledger unchanged", async function () {
+			const amount = 35n
+			const collateral = await context.collateral.getAddress()
+			const target = await context.hookHandler.getAddress()
+			await context.controlFacet.grantRole(context.signers.admin.address, ethers.keccak256(toUtf8Bytes("EXTERNAL_TRANSFER_TARGET_MANAGER_ROLE")))
+			await context.controlFacet.setExternalTransferTargetValidationStatus(target, collateral, true)
+
+			const senderIsolatedBefore = await context.viewFacet.getIsolatedBalance(partyA1.address, collateral)
+			const receiverIsolatedBefore = await context.viewFacet.getIsolatedBalance(partyA2.address, collateral)
+			const targetTokenBefore = await context.collateral.balanceOf(target)
+			const diamondTokenBefore = await context.collateral.balanceOf(context.common.diamondAddress)
+
+			await expect(context.accountFacet.connect(partyA1.getSigner).externalTransfer(collateral, partyA2.address, amount, target))
+				.to.emit(context.accountFacet, "ExternalTransfer")
+				.withArgs(partyA1.address, partyA2.address, collateral, amount, target)
+
+			expect(await context.viewFacet.getIsolatedBalance(partyA1.address, collateral)).to.equal(senderIsolatedBefore - amount)
+			expect(await context.viewFacet.getIsolatedBalance(partyA2.address, collateral)).to.equal(receiverIsolatedBefore)
+			expect(await context.collateral.balanceOf(target)).to.equal(targetTokenBefore + amount)
+			expect(await context.collateral.balanceOf(context.common.diamondAddress)).to.equal(diamondTokenBefore - amount)
 		})
 	})
 
@@ -767,6 +825,20 @@ export function shouldBehaveLikeAccountFacet(): void {
 			expect(withdraw.status).to.be.equal(WithdrawStatus.COMPLETED)
 			expect(balanceAfter - balanceBefore).to.be.equal(withdraw.amount)
 		})
+
+		it("Should complete withdrawal without changing sender isolated balance again", async function () {
+			const senderIsolatedBefore = await context.viewFacet.getIsolatedBalance(partyA1.address, context.collateral)
+			const receiverTokenBefore = await context.collateral.balanceOf(partyA2.address)
+			const withdrawBefore = await context.viewFacet.getWithdrawal(1)
+
+			await expect(context.accountFacet.connect(partyA1.getSigner).completeWithdraw(1)).to.emit(context.accountFacet, "CompleteWithdraw").withArgs(1)
+
+			const withdrawAfter = await context.viewFacet.getWithdrawal(1)
+			expect(withdrawAfter.status).to.equal(WithdrawStatus.COMPLETED)
+			expect(withdrawAfter.amount).to.equal(withdrawBefore.amount)
+			expect(await context.viewFacet.getIsolatedBalance(partyA1.address, context.collateral)).to.equal(senderIsolatedBefore)
+			expect(await context.collateral.balanceOf(partyA2.address)).to.equal(receiverTokenBefore + withdrawBefore.amount)
+		})
 	})
 
 	describe("CancelWithdraw", async function () {
@@ -972,6 +1044,25 @@ export function shouldBehaveLikeAccountFacet(): void {
 			expect(PoolBalanceAfter - PoolBalanceBefore).to.equal(surplus)
 			expect(withdraw.status).to.equal(WithdrawStatus.INITIATED)
 		})
+
+		it("Should complete restored withdrawal with valid amount and route surplus to invalid pool", async function () {
+			const surplus = 25n
+			const receiverTokenBefore = await context.collateral.balanceOf(partyA2.address)
+			const poolBalanceBefore = await context.viewFacet.getIsolatedBalance(partyB1.address, context.collateral)
+			const withdrawBefore = await context.viewFacet.getWithdrawal(1)
+			const validAmount = withdrawBefore.amount - surplus
+
+			await context.accountFacet.suspendWithdraw(1)
+			await context.controlFacet.setInvalidWithdrawalsAmountsPool(partyB1.address)
+			await context.accountFacet.restoreWithdraw(1, validAmount)
+			await context.accountFacet.connect(partyA1.getSigner).completeWithdraw(1)
+
+			const withdrawAfter = await context.viewFacet.getWithdrawal(1)
+			expect(withdrawAfter.status).to.equal(WithdrawStatus.COMPLETED)
+			expect(withdrawAfter.amount).to.equal(validAmount)
+			expect(await context.viewFacet.getIsolatedBalance(partyB1.address, context.collateral)).to.equal(poolBalanceBefore + surplus)
+			expect(await context.collateral.balanceOf(partyA2.address)).to.equal(receiverTokenBefore + validAmount)
+		})
 	})
 
 	describe("activateInstantActionMode", async function () {
@@ -1105,6 +1196,31 @@ export function shouldBehaveLikeAccountFacet(): void {
 			const time = (latestBlock?.timestamp ?? 0) + Number(await context.viewFacet.getDeactiveInstantActionModeCooldown())
 
 			expect(await context.viewFacet.getInstantActionsModeDeactivateTime(partyA1.getSigner)).to.be.equal(time)
+		})
+
+		it("Should deactivate instant mode and allow account actions again", async function () {
+			const amount = 30n
+			const collateral = await context.collateral.getAddress()
+			await context.counterPartyRelation.connect(partyA1.getSigner).activateInstantActionMode()
+
+			await expect(context.accountFacet.connect(partyA1.getSigner).internalTransfer(collateral, partyA2.address, amount)).to.be.revertedWithCustomError(
+				context.accountFacet,
+				"InstantModeActive",
+			)
+
+			await context.counterPartyRelation.connect(partyA1.getSigner).proposeToDeactivateInstantActionMode()
+			const deactivateTime = await context.viewFacet.getInstantActionsModeDeactivateTime(partyA1.address)
+			await network.provider.send("evm_setNextBlockTimestamp", [Number(deactivateTime)])
+			await context.counterPartyRelation.connect(partyA1.getSigner).deactivateInstantActionMode()
+
+			const senderBalanceBefore = await context.viewFacet.getIsolatedBalance(partyA1.address, collateral)
+			const receiverBalanceBefore = await context.viewFacet.getIsolatedBalance(partyA2.address, collateral)
+			await context.accountFacet.connect(partyA1.getSigner).internalTransfer(collateral, partyA2.address, amount)
+
+			expect(await context.viewFacet.isInstantActionsModeActive(partyA1.address)).to.equal(false)
+			expect(await context.viewFacet.getInstantActionsModeDeactivateTime(partyA1.address)).to.equal(0)
+			expect(await context.viewFacet.getIsolatedBalance(partyA1.address, collateral)).to.equal(senderBalanceBefore - amount)
+			expect(await context.viewFacet.getIsolatedBalance(partyA2.address, collateral)).to.equal(receiverBalanceBefore + amount)
 		})
 	})
 

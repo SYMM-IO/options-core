@@ -399,6 +399,55 @@ export function shouldBehaveLikeInstantLayer(): void {
 			await expect(context.instantLayer.executeBatch([opOpenALocal])).to.be.revertedWithCustomError(context.instantLayer, "UnregisteredPartyB")
 		})
 
+		it("should reject PartyA operations from an unregistered MultiAccount before consuming the signature", async function () {
+			await context.controlFacet.grantRole(context.instantLayer, ethers.keccak256(toUtf8Bytes("INSTANT_LAYER_ROLE")))
+
+			await expect(context.instantLayer.executeBatch([opOpenA1]))
+				.to.be.revertedWithCustomError(context.instantLayer, "UnregisteredMultiAccount")
+				.withArgs(await context.multiAccount.getAddress())
+
+			expect(await context.instantLayer.usedOperationHashes(await context.instantLayer.getOperationHash(opOpenA1))).to.equal(false)
+			expect(await context.viewFacet.getLastOpenIntentId()).to.equal(0)
+			expect(await context.viewFacet.isCallFromInstantLayer()).to.equal(false)
+		})
+
+		it("should reject a replayed salt operation without creating another intent", async function () {
+			await context.instantLayer.registerMultiAccount(context.multiAccount)
+			await context.controlFacet.grantRole(context.instantLayer, ethers.keccak256(toUtf8Bytes("INSTANT_LAYER_ROLE")))
+
+			const opHash = await context.instantLayer.getOperationHash(opOpenA1)
+			opOpenA1.signature = await partyA1.sign(ethers.getBytes(opHash))
+
+			await expect(context.instantLayer.executeBatch([opOpenA1]))
+				.to.emit(context.instantLayer, "BatchExecuted")
+				.withArgs(context.signers.admin.address, 1)
+			expect(await context.instantLayer.usedOperationHashes(opHash)).to.equal(true)
+			expect(await context.viewFacet.getLastOpenIntentId()).to.equal(1)
+			expect(await context.viewFacet.isCallFromInstantLayer()).to.equal(false)
+
+			await expect(context.instantLayer.executeBatch([opOpenA1]))
+				.to.be.revertedWithCustomError(context.instantLayer, "OperationAlreadyExecuted")
+				.withArgs(opHash)
+			expect(await context.viewFacet.getLastOpenIntentId()).to.equal(1)
+			expect(await context.viewFacet.isCallFromInstantLayer()).to.equal(false)
+		})
+
+		it("should reject PartyB operations after the PartyB contract signer is rotated", async function () {
+			await context.instantLayer.registerPartyB(context.symmioPartyB)
+			await context.symmioPartyB.setSigner(partyB1.getSigner)
+			await context.controlFacet.grantRole(context.instantLayer, ethers.keccak256(toUtf8Bytes("INSTANT_LAYER_ROLE")))
+
+			const opHash = await context.instantLayer.getOperationHash(opLockB1)
+			opLockB1.signature = await partyB1.sign(ethers.getBytes(opHash))
+			await context.symmioPartyB.setSigner(partyB2.getSigner)
+
+			await expect(context.instantLayer.executeBatch([opLockB1]))
+				.to.be.revertedWithCustomError(context.instantLayer, "InvalidSignature")
+				.withArgs(await context.symmioPartyB.getAddress())
+			expect(await context.instantLayer.usedOperationHashes(opHash)).to.equal(false)
+			expect(await context.viewFacet.isCallFromInstantLayer()).to.equal(false)
+		})
+
 		it("should allow Sending Intents in a single batch", async function () {
 			const { instantLayer, collateralNL, partyAOpenFacet, partyBOpenFacet } = context
 			const multiAccount = context.multiAccount
@@ -711,6 +760,10 @@ export function shouldBehaveLikeInstantLayer(): void {
 
 		it("Should be failed when Sender not have Operator Role ", async () => {
 			await expect(context.instantLayer.connect(partyA1.getSigner).executeTemplate(1, [])).to.be.reverted // with "AccessControl" Error
+		})
+
+		it("Should be failed when Template does not exist", async () => {
+			await expect(context.instantLayer.executeTemplate(99, [])).to.be.revertedWithCustomError(context.instantLayer, "InvalidTemplate").withArgs(99)
 		})
 
 		it("Should be failed when Template Inactive ", async () => {

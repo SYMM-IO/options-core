@@ -460,6 +460,104 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			await expect(partyB2.fillOpenIntent(intent.id, 100, intent.price + 1n)).not.to.reverted
 		})
 
+		it("Should create a canceled child intent when PartyB partially fills a cancel-pending intent", async () => {
+			const intentId = 1n
+			const openIntent = await context.viewFacet.getOpenIntent(intentId)
+			const activePartyAIdsBefore = await context.viewFacet.getActiveOpenIntentIds(openIntent.partyA)
+			const activePartyBIdsBefore = await context.viewFacet.getActiveOpenIntentIds(openIntent.partyB)
+
+			await expect(partyA1.sendCancelOpenIntent([intentId])).not.to.be.reverted
+			expect((await context.viewFacet.getOpenIntent(intentId)).status).to.equal(IntentStatus.CANCEL_PENDING)
+
+			const fillQuantity = openIntent.tradeAgreements.quantity / 4n
+			const fillPrice = openIntent.price / 2n
+			await expect(partyB1.fillOpenIntent(intentId, fillQuantity, fillPrice)).not.to.be.reverted
+
+			const parentIntent = await context.viewFacet.getOpenIntent(intentId)
+			const childIntentId = await context.viewFacet.getLastOpenIntentId()
+			const childIntent = await context.viewFacet.getOpenIntent(childIntentId)
+			const trade = await context.viewFacet.getTrade(await context.viewFacet.getLastTradeId())
+			const activePartyAIdsAfter = await context.viewFacet.getActiveOpenIntentIds(openIntent.partyA)
+			const activePartyBIdsAfter = await context.viewFacet.getActiveOpenIntentIds(openIntent.partyB)
+
+			expect(activePartyAIdsBefore).to.include(intentId)
+			expect(activePartyBIdsBefore).to.include(intentId)
+			expect(parentIntent.status).to.equal(IntentStatus.FILLED)
+			expect(parentIntent.tradeId).to.equal(trade.id)
+			expect(parentIntent.tradeAgreements.quantity).to.equal(fillQuantity)
+			expect(trade.openIntentId).to.equal(intentId)
+			expect(trade.tradeAgreements.quantity).to.equal(fillQuantity)
+			expect(childIntent.status).to.equal(IntentStatus.CANCELED)
+			expect(childIntent.parentId).to.equal(intentId)
+			expect(childIntent.partyB).to.equal(ZeroAddress)
+			expect(childIntent.tradeAgreements.quantity).to.equal(openIntent.tradeAgreements.quantity - fillQuantity)
+			expect(activePartyAIdsAfter).not.to.include(intentId)
+			expect(activePartyAIdsAfter).not.to.include(childIntentId)
+			expect(activePartyBIdsAfter).not.to.include(intentId)
+			expect(activePartyBIdsAfter).not.to.include(childIntentId)
+		})
+
+		it("Should move residual deferred sell escrow to the child intent on partial fill", async () => {
+			const latestBlock = await getLatestBlockTime()
+			const request = openIntentRequestBuilder()
+				.partyBsWhiteList([])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateralNL)
+				.symbolId(1)
+				.deadline(latestBlock + 140)
+				.expirationTimestamp(latestBlock + 120)
+				.exerciseFee({ cap: e(1), rate: "0" })
+				.quantity(e(30))
+				.tradeSide(TradeSide.SELL)
+				.marginType(MarginType.CROSS)
+				.mm(e(12))
+				.price(100000)
+				.solverFee({
+					openFee: e(0.001),
+					closeFee: e(0.001),
+				})
+				.build()
+
+			await partyA3.sendOpenIntent(request)
+			const intentId = await context.viewFacet.getLastOpenIntentId()
+			const openIntent = await context.viewFacet.getOpenIntent(intentId)
+			const escrowBefore = await context.viewFacet.getOpenIntentEscrow(intentId)
+
+			await partyB1.lockOpenIntent(intentId)
+
+			const fillQuantity = openIntent.tradeAgreements.quantity / 3n
+			const fillPrice = openIntent.price * 2n
+			const lockedFeeConsumed =
+				(fillQuantity * openIntent.price * openIntent.feeStructure.platformFee.openFee) /
+					(openIntent.feeStructure.tokenPriceInCollateral * parseUnits("1", 18)) +
+				(fillQuantity * openIntent.price * openIntent.feeStructure.affiliateFee.openFee) /
+					(openIntent.feeStructure.tokenPriceInCollateral * parseUnits("1", 18)) +
+				(fillQuantity * openIntent.price * openIntent.feeStructure.solverFee.openFee) /
+					(openIntent.feeStructure.tokenPriceInCollateral * parseUnits("1", 18))
+
+			await expect(partyB1.fillOpenIntent(intentId, fillQuantity, fillPrice)).not.to.be.reverted
+
+			const parentIntent = await context.viewFacet.getOpenIntent(intentId)
+			const childIntentId = await context.viewFacet.getLastOpenIntentId()
+			const childIntent = await context.viewFacet.getOpenIntent(childIntentId)
+			const parentEscrowAfter = await context.viewFacet.getOpenIntentEscrow(intentId)
+			const childEscrow = await context.viewFacet.getOpenIntentEscrow(childIntentId)
+			const trade = await context.viewFacet.getTrade(await context.viewFacet.getLastTradeId())
+
+			expect(parentIntent.status).to.equal(IntentStatus.FILLED)
+			expect(parentIntent.tradeId).to.equal(trade.id)
+			expect(parentIntent.tradeAgreements.quantity).to.equal(fillQuantity)
+			expect(childIntent.status).to.equal(IntentStatus.PENDING)
+			expect(childIntent.parentId).to.equal(intentId)
+			expect(childIntent.tradeAgreements.quantity).to.equal(openIntent.tradeAgreements.quantity - fillQuantity)
+			expect(childIntent.tradeAgreements.mm).to.equal(escrowBefore.mm - trade.tradeAgreements.mm)
+			expect(parentEscrowAfter.exists).to.equal(false)
+			expect(childEscrow.exists).to.equal(true)
+			expect(childEscrow.partyA).to.equal(openIntent.partyA)
+			expect(childEscrow.mm).to.equal(escrowBefore.mm - trade.tradeAgreements.mm)
+			expect(childEscrow.feeLockAmount).to.equal(escrowBefore.feeLockAmount - lockedFeeConsumed)
+		})
+
 		it("Should make Trade Object ", async () => {
 			const intent = await context.viewFacet.getOpenIntent(1)
 
@@ -1183,12 +1281,21 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 
 		it("Should change intent status to PENDING", async () => {
+			const activePartyBIdsBefore = await context.viewFacet.getActiveOpenIntentIds(partyB1.address)
+			const lockedIntent = await context.viewFacet.getOpenIntent(1)
+			const lockedAt = lockedIntent.statusModifyTimestamp
+
 			await expect(partyB1.unlockOpenIntent("1")).to.not.reverted
 
 			const intent = await context.viewFacet.getOpenIntent(1)
+			const activePartyBIdsAfter = await context.viewFacet.getActiveOpenIntentIds(partyB1.address)
 
+			expect(activePartyBIdsBefore).to.include(1n)
 			expect(intent.status).to.equal(IntentStatus.PENDING) //IntentStatus.PENDING
 			expect(intent.partyB).to.equal(ZeroAddress)
+			expect(intent.statusModifyTimestamp).to.be.greaterThan(lockedAt)
+			expect(activePartyBIdsAfter).not.to.include(1n)
+			expect(await context.viewFacet.getPartyBOpenIntentIndex(1)).to.equal(0)
 		})
 	})
 

@@ -13,7 +13,7 @@ import { CloseIntentStruct, SettlementPriceSigStruct, TradeStruct } from "../typ
 import { getLatestBlockTime, moveTime } from "../utils/time"
 import { settlementSigBuilder } from "./models/builders/settlement.builder"
 import { parseUnits, ZeroAddress } from "ethers"
-import { MarginType, OptionType, TradeSide, TradeStatus } from "./option-enums"
+import { CloseIntentStatus, MarginType, OptionType, TradeSide, TradeStatus } from "./option-enums"
 import { bigint } from "hardhat/internal/core/params/argumentTypes"
 
 export function shouldBehaveLikeSettlementFacet(): void {
@@ -106,6 +106,93 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			}
 
 			await expect(context.tradeFacet.executeTrades([ID], priceSig)).to.be.revertedWithCustomError(context.tradeFacet, "MismatchedSymbolId")
+		})
+
+		it("Should expire a PUT trade when settlement price equals strike", async () => {
+			const timestamp = await getLatestBlockTime()
+			const tradeBefore: TradeStruct = await context.viewFacet.getTrade(1)
+			const priceSig: SettlementPriceSigStruct = {
+				reqId: ethers.toUtf8Bytes("1"),
+				timestamp: timestamp + 100,
+				symbolId: 1,
+				settlementPrice: tradeBefore.tradeAgreements.strikePrice,
+				settlementTimestamp: timestamp,
+				collateralPrice: e(1),
+				gatewaySignature: "0xabcdef",
+				sigs: {
+					signature: 0x1234567890,
+					owner: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+					nonce: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+				},
+			}
+
+			await context.tradeFacet.executeTrades([1], priceSig)
+
+			const tradeAfter: TradeStruct = await context.viewFacet.getTrade(1)
+			expect(tradeAfter.status).to.equal(TradeStatus.EXPIRED)
+			expect(tradeAfter.settledPrice).to.equal(tradeBefore.tradeAgreements.strikePrice)
+			expect(await context.viewFacet.getTradeOpenAmount(1)).to.equal(tradeBefore.tradeAgreements.quantity)
+		})
+
+		it("Should expire a CALL trade at exact strike and cancel active close intents", async () => {
+			const openDeadline = (await getLatestBlockTime()) + 140
+			const expirationTimestamp = openDeadline + 20
+			const request = openIntentRequestBuilder()
+				.partyBsWhiteList([partyB2.address])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateralNL)
+				.symbolId(2)
+				.deadline(openDeadline)
+				.expirationTimestamp(expirationTimestamp)
+				.exerciseFee({ cap: e(1), rate: e(1) })
+				.quantity(e(100))
+				.strikePrice(e(100))
+				.price(e(10))
+				.build()
+
+			await partyA2.setBalances(context.collateralNL, e(1000), e(500))
+			await partyA2.sendOpenIntent(request)
+			const openIntentId = await context.viewFacet.getLastOpenIntentId()
+			await partyB2.lockOpenIntent(openIntentId)
+			await partyB2.fillOpenIntent(openIntentId, request.quantity, request.price)
+
+			const tradeID = await context.viewFacet.getLastTradeId()
+			await partyA2.sendCloseIntent(tradeID, e(40), e(10), expirationTimestamp + 120)
+			const closeIntentId = await context.viewFacet.getLastCloseIntentId()
+			const closeIntentBefore: CloseIntentStruct = await context.viewFacet.getCloseIntent(closeIntentId)
+			const tradeBefore: TradeStruct = await context.viewFacet.getTrade(tradeID)
+			expect(closeIntentBefore.status).to.equal(CloseIntentStatus.PENDING)
+			expect(tradeBefore.closePendingAmount).to.equal(closeIntentBefore.quantity)
+
+			await network.provider.send("evm_setNextBlockTimestamp", [expirationTimestamp + 1])
+			await network.provider.send("evm_mine")
+
+			const timestamp = await getLatestBlockTime()
+			const priceSig: SettlementPriceSigStruct = {
+				reqId: ethers.toUtf8Bytes("1"),
+				timestamp: timestamp + 100,
+				symbolId: 2,
+				settlementPrice: tradeBefore.tradeAgreements.strikePrice,
+				settlementTimestamp: timestamp,
+				collateralPrice: e(1),
+				gatewaySignature: "0xabcdef",
+				sigs: {
+					signature: 0x1234567890,
+					owner: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+					nonce: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+				},
+			}
+
+			await context.tradeFacet.executeTrades([tradeID], priceSig)
+
+			const closeIntentAfter: CloseIntentStruct = await context.viewFacet.getCloseIntent(closeIntentId)
+			const tradeAfter: TradeStruct = await context.viewFacet.getTrade(tradeID)
+			expect(tradeAfter.status).to.equal(TradeStatus.EXPIRED)
+			expect(tradeAfter.settledPrice).to.equal(tradeBefore.tradeAgreements.strikePrice)
+			expect(tradeAfter.closedAmountBeforeExpiration).to.equal(0)
+			expect(tradeAfter.closePendingAmount).to.equal(0)
+			expect(tradeAfter.activeCloseIntentIds).to.not.include(closeIntentId)
+			expect(closeIntentAfter.status).to.equal(CloseIntentStatus.CANCELED)
 		})
 
 		it("Should failed when trade has no open amount", async () => {
