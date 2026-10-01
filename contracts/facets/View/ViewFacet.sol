@@ -1118,6 +1118,16 @@ contract ViewFacet is IViewFacet {
 	}
 
 	/**
+	 * @notice Gets the premium for a trade
+	 * @param tradeId The trade ID
+	 * @param amount The amount of collateral in question
+	 * @return The premium
+	 */
+	function getTradeMM(uint256 tradeId, uint256 amount) external view returns (uint256) {
+		return TradeStorage.layout().trades[tradeId].calculateProportionalMM(amount);
+	}
+
+	/**
 	 * @notice Gets the exercise fee for a trade
 	 * @param tradeId The trade ID
 	 * @param settlementPrice The settlement price
