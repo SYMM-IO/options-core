@@ -1440,16 +1440,21 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const getTradeOpenAmount = await context.viewFacet.getTradeOpenAmount(tradeID)
 			const tradePremium = await context.viewFacet.getTradePremium(tradeID)
 			const proportionalPremium = (tradePremium * getTradeOpenAmount) / trade.tradeAgreements.quantity
+			const partyABalanceBefore = await context.viewFacet.getIsolatedBalance(partyA2.address, context.collateral)
 			const partyBBalanceBefore = await context.viewFacet.getIsolatedBalance(partyB2.address, context.collateral)
 
 			const price = [e(30000)]
-			expect(await context.clearingHouse.connect(context.signers.clearingHouse).closeTrades(liquidationId, [tradeID], price)).not.reverted
-			expect((await context.viewFacet.getTrade(tradeID)).status).to.be.equal(TradeStatus.LIQUIDATED)
+			await context.clearingHouse.connect(context.signers.clearingHouse).closeTrades(liquidationId, [tradeID], price)
+			const liquidatedTrade = await context.viewFacet.getTrade(tradeID)
+			expect(liquidatedTrade.status).to.be.equal(TradeStatus.LIQUIDATED)
+			expect(liquidatedTrade.settledPrice).to.equal(price[0])
+			expect(await context.viewFacet.getTradeOpenAmount(tradeID)).to.equal(getTradeOpenAmount)
 
 			// const nextTime = (await getLatestBlockTime()) + 50
 			// await moveTime(nextTime)
 			// await context.accountFacet.syncBalances(context.collateral, partyA2.address, [partyB2.address])
 
+			const partyABalanceAfter = await context.viewFacet.getIsolatedBalance(partyA2.address, context.collateral)
 			const partyBBalanceAfter = await context.viewFacet.getIsolatedBalance(partyB2.address, context.collateral)
 			const PartyBBalaceDiff = partyBBalanceAfter - partyBBalanceBefore
 			console.log("Party B Balance Before:", partyBBalanceBefore)
@@ -1458,6 +1463,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 
 			console.log("Premium Payed to Party B in Isolated Margin:", proportionalPremium)
 			expect(PartyBBalaceDiff).to.equal(proportionalPremium)
+			expect(partyABalanceAfter - partyABalanceBefore).to.equal(0)
 		})
 
 		it("Should closed when closing after liquidating party B with CROSS BUY", async () => {
@@ -1523,12 +1529,17 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const getTradeOpenAmount = await context.viewFacet.getTradeOpenAmount(tradeID)
 			const tradePremium = await context.viewFacet.getTradePremium(tradeID)
 			const proportionalPremium = (tradePremium * getTradeOpenAmount) / trade.tradeAgreements.quantity
+			const partyABalanceBefore = await context.viewFacet.getCrossBalance(partyA2.address, context.collateral, partyB2.address)
 			const partyBBalanceBefore = await context.viewFacet.getCrossBalance(partyB2.address, context.collateral, partyA2.address)
 
 			const price = [e(30000)]
-			expect(await context.clearingHouse.connect(context.signers.clearingHouse).closeTrades(liquidationId, [tradeID], price)).not.reverted
-			expect((await context.viewFacet.getTrade(tradeID)).status).to.be.equal(TradeStatus.LIQUIDATED)
+			await context.clearingHouse.connect(context.signers.clearingHouse).closeTrades(liquidationId, [tradeID], price)
+			const liquidatedTrade = await context.viewFacet.getTrade(tradeID)
+			expect(liquidatedTrade.status).to.be.equal(TradeStatus.LIQUIDATED)
+			expect(liquidatedTrade.settledPrice).to.equal(price[0])
+			expect(await context.viewFacet.getTradeOpenAmount(tradeID)).to.equal(getTradeOpenAmount)
 
+			const partyABalanceAfter = await context.viewFacet.getCrossBalance(partyA2.address, context.collateral, partyB2.address)
 			const partyBBalanceAfter = await context.viewFacet.getCrossBalance(partyB2.address, context.collateral, partyA2.address)
 			const PartyBBalaceDiff = partyBBalanceAfter.balance - partyBBalanceBefore.balance
 			console.log("Party B Balance Before:", partyBBalanceBefore)
@@ -1537,6 +1548,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 
 			console.log("Premium Payed to Party A in Isolated Margin:", proportionalPremium)
 			expect(PartyBBalaceDiff).to.equal(proportionalPremium)
+			expect(partyABalanceAfter.balance - partyABalanceBefore.balance).to.equal(0)
 		})
 
 		it("Should closed when closing after liquidating party B with CROSS SELL, with Updated Close Intents Status", async () => {
@@ -1790,7 +1802,11 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 
 			console.log("Party A MM:", tradeMM)
 			const price = [e(30000)]
-			expect(await context.clearingHouse.connect(context.signers.clearingHouse).closeTrades(liquidationId, [tradeID], price)).not.reverted
+			await context.clearingHouse.connect(context.signers.clearingHouse).closeTrades(liquidationId, [tradeID], price)
+			const liquidatedTrade = await context.viewFacet.getTrade(tradeID)
+			expect(liquidatedTrade.status).to.equal(TradeStatus.LIQUIDATED)
+			expect(liquidatedTrade.settledPrice).to.equal(price[0])
+			expect(await context.viewFacet.getTradeOpenAmount(tradeID)).to.equal(tradeOpenAmount)
 
 			const partyABalanceAfter = await context.viewFacet.getCrossBalance(partyA2.address, context.collateral, partyB2.address)
 			const PartyBBalaceDiff = partyABalanceBefore.totalMM - partyABalanceAfter.totalMM
@@ -1798,6 +1814,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			console.log("Party A Balance After Liquidation:", partyABalanceBefore)
 			console.log("Party A Balance After CLoseing TRADES:", partyABalanceAfter)
 			expect(PartyBBalaceDiff).to.equal(tradeMM)
+			expect(partyABalanceAfter.balance - partyABalanceBefore.balance).to.equal(0)
 		})
 
 		it("Should be when closing after liquidating party B with CROSS SELL, Balances", async () => {
@@ -2535,6 +2552,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.build()
 
 			const openIntentId1 = 1
+			await partyB2.setBalances(context.collateral, e(20000), e(20000))
 			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
@@ -2554,6 +2572,8 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			).not.reverted
 
 			const liquidationId = await context.viewFacet.getInProgressLiquidationId(ZeroAddress, partyB2.address, await context.collateral.getAddress())
+
+			expect((await context.viewFacet.getLiquidationDetail(liquidationId)).status).to.be.equal(LiquidationStatus.FLAGGED)
 
 			await expect(
 				context.clearingHouse
@@ -2580,6 +2600,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.build()
 
 			const openIntentId1 = 1
+			await partyB2.setBalances(context.collateral, e(30000), e(30000))
 			await partyA2.setBalances(context.collateral, e(10000), e(1000))
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
@@ -2605,6 +2626,9 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			).not.reverted
 
 			const liquidationId = await context.viewFacet.getInProgressLiquidationId(ZeroAddress, partyB2.address, await context.collateral.getAddress())
+			const detail = await context.viewFacet.getLiquidationDetail(liquidationId)
+			expect(detail.status).to.equal(LiquidationStatus.IN_PROGRESS)
+			expect(detail.confiscatedAmount).to.equal(0)
 
 			await expect(
 				context.clearingHouse
@@ -2660,6 +2684,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			).not.reverted
 
 			const liquidationId = await context.viewFacet.getInProgressLiquidationId(ZeroAddress, partyB2.address, await context.collateral.getAddress())
+			expect((await context.viewFacet.getLiquidationDetail(liquidationId)).status).to.equal(LiquidationStatus.IN_PROGRESS)
 
 			const liquidationAmounts = [e(1000), e(1000)]
 			const counterParties = [partyA1.address, partyA2.address]
@@ -2673,6 +2698,10 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			let partyBAfterIsolatedBalance = await context.viewFacet.getIsolatedBalance(partyB2.address, context.collateral.getAddress())
 			for (let i = 0; i < liquidationAmounts.length; i++) totalAmount += liquidationAmounts[i]
 			expect(partyBBeforeIsolatedBalance - partyBAfterIsolatedBalance).to.be.equal(totalAmount)
+
+			const detail = await context.viewFacet.getLiquidationDetail(liquidationId)
+			expect(detail.confiscatedAmount).to.equal(totalAmount)
+			expect(detail.distributedAmount).to.equal(0)
 		})
 	})
 

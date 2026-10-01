@@ -91,6 +91,11 @@ library LibPartyBOpen {
 		// Verify Party B supports this symbol type
 		if (!appLayout.partyBSupportedSymbolTypes[sender][symbol.symbolType]) revert IntentErrors.SymbolTypeNotSupported(sender, symbol.symbolType);
 
+		if (intent.isDeferredPartyBSellIntent()) {
+			if (!intentLayout.openIntentEscrows[intentId].exists) revert IntentErrors.MissingOpenIntentEscrow(intentId);
+			if (intentLayout.openIntentEscrows[intentId].consumed) revert IntentErrors.OpenIntentEscrowAlreadyConsumed(intentId);
+		}
+
 		// Verify Party B is not in liquidation process
 		sender.requireSolvent(intent.partyA, symbol.collateral, intent.tradeAgreements.marginType);
 
@@ -152,9 +157,7 @@ library LibPartyBOpen {
 		intent.status = OpenIntentStatus.CANCELED;
 
 		// Release all locked funds and fees
-		intent.unlockFees();
-		intent.unlockPremiumIfBuy();
-		intent.unlockMMIfSell();
+		intent.unlockForCancelOrExpire();
 		intent.unregister(false);
 	}
 
@@ -215,6 +218,8 @@ library LibPartyBOpen {
 			(intent.tradeAgreements.tradeSide == TradeSide.SELL && price < intent.price)
 		) revert IntentErrors.InvalidOpenPrice(price, intent.price);
 
+		bool deferredSell = intent.isDeferredPartyBSellIntent();
+
 		/* ---------------------------------------- UPDATE ---------------------------------------- */
 
 		tradeId = ++TradeStorage.layout().lastTradeId;
@@ -246,9 +251,13 @@ library LibPartyBOpen {
 			affiliate: intent.affiliate
 		});
 
-		intent.unlockFees();
-		intent.unlockPremiumIfBuy();
-		intent.unlockMMIfSell();
+		if (deferredSell) {
+			intent.consumeDeferredSellEscrow(tradeId, intent.partyB, trade.tradeAgreements.mm, quantity, price);
+		} else {
+			intent.unlockFees();
+			intent.unlockPremiumIfBuy();
+			intent.unlockMMIfSell();
+		}
 
 		/* ---------------------------------------- PARTIAL FILL ---------------------------------------- */
 
@@ -293,9 +302,17 @@ library LibPartyBOpen {
 			});
 
 			newIntent.register();
-			newIntent.lockFees();
-			newIntent.lockPremiumIfBuy();
-			newIntent.lockMMIfSell();
+			if (deferredSell) {
+				if (newStatus == OpenIntentStatus.CANCELED) {
+					LibOpenIntentOps.releaseDeferredSellEscrow(intent.id);
+				} else {
+					LibOpenIntentOps.moveDeferredSellEscrow(intent.id, newIntent);
+				}
+			} else {
+				newIntent.lockFees();
+				newIntent.lockPremiumIfBuy();
+				newIntent.lockMMIfSell();
+			}
 
 			// Update original intent quantity to filled amount
 			intent.tradeAgreements.quantity = quantity;

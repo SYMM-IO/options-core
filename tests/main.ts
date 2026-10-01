@@ -13,11 +13,16 @@ import { shouldBehaveLikeInstantLayer } from "./helpers/instant-layer.behavior"
 import { shouldBehaveLikeMultiAccount } from "./helpers/multi-account.behavior"
 import { shouldBehaveLikeSymmioPartyB } from "./helpers/symmio-partyb.behavior"
 import { shouldBehaveLikeClearingHouseFacet } from "./clearing-house"
+import { shouldBehaveLikeControlFacet } from "./control-facet.behavior"
 
 describe(`${name}-v${version}`, () => {
 	if (process.env.TEST_MODE === TestModeEnum.UNIT_TEST) {
 		describe("Facets_Accounts", async function () {
 			shouldBehaveLikeAccountFacet()
+		})
+
+		describe("Facets_ControlFacet", async function () {
+			shouldBehaveLikeControlFacet()
 		})
 
 		describe("Facets_PartyAOpenFacet", async function () {

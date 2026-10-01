@@ -101,6 +101,26 @@ export function shouldBehaveLikeMultiAccount(): void {
 			expect(accountsLocal.length).to.be.equal(1)
 			expect(accountsLocal[0].name).to.equal("testAccount2")
 		})
+
+		it("should keep account ownership scoped to the creating signer", async () => {
+			await expect(context.multiAccount.connect(partyA2.getSigner).addAccount("partyA2Account")).not.to.reverted
+
+			const partyA1Accounts: MultiAccount.AccountStruct[] = await context.multiAccount.getAccounts(partyA1.address, 0, 100)
+			const partyA2Accounts: MultiAccount.AccountStruct[] = await context.multiAccount.getAccounts(partyA2.address, 0, 100)
+
+			expect(partyA1Accounts.length).to.equal(1)
+			expect(partyA2Accounts.length).to.equal(1)
+			expect(await context.multiAccount.owners(partyA1Accounts[0].account)).to.equal(partyA1.address)
+			expect(await context.multiAccount.owners(partyA2Accounts[0].account)).to.equal(partyA2.address)
+
+			await expect(context.multiAccount.connect(partyA2.getSigner).editAccountName(partyA1Accounts[0].account, "hijacked"))
+				.to.be.revertedWithCustomError(context.multiAccount, "NotOwnerOfAccount")
+				.withArgs(partyA2.address, partyA1Accounts[0].account, partyA1.address)
+
+			await expect(context.multiAccount.connect(partyA1.getSigner).editAccountName(partyA1Accounts[0].account, "renamed")).not.to.reverted
+			const renamedAccounts: MultiAccount.AccountStruct[] = await context.multiAccount.getAccounts(partyA1.address, 0, 100)
+			expect(renamedAccounts[0].name).to.equal("renamed")
+		})
 	})
 
 	describe("_call Function", async function () {
@@ -115,6 +135,14 @@ export function shouldBehaveLikeMultiAccount(): void {
 		it("should fail when not Expected msg sender", async () => {
 			// admin as signer not partyA1
 			await expect(context.multiAccount._call(accounts[0].account, ["0x"])).to.revertedWithCustomError(context.multiAccount, "UnauthorizedAccess")
+		})
+
+		it("should reject calls from a different EOA even when the target account exists", async () => {
+			await expect(context.multiAccount.connect(partyA2.getSigner)._call(accounts[0].account, [openIntentCallData]))
+				.to.be.revertedWithCustomError(context.multiAccount, "UnauthorizedAccess")
+				.withArgs(accounts[0].account, partyA2.address, "0x00000000")
+
+			expect(await context.viewFacet.getLastOpenIntentId()).to.equal(0)
 		})
 
 		it("should PASS", async () => {

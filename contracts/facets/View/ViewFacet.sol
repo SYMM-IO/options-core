@@ -24,7 +24,7 @@ import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelatio
 import { Fee } from "../../types/BaseTypes.sol";
 import { Trade } from "../../types/TradeTypes.sol";
 import { LiquidationDetail } from "../../types/LiquidationTypes.sol";
-import { OpenIntent, CloseIntent } from "../../types/IntentTypes.sol";
+import { OpenIntent, OpenIntentEscrow, CloseIntent } from "../../types/IntentTypes.sol";
 import { ScheduledReleaseEntry, CrossEntry } from "../../types/BalanceTypes.sol";
 import { Withdraw, ExpressWithdrawProviderConfig } from "../../types/WithdrawTypes.sol";
 
@@ -559,6 +559,15 @@ contract ViewFacet is IViewFacet {
 	 */
 	function getOpenIntent(uint256 intentId) external view returns (OpenIntent memory) {
 		return OpenIntentStorage.layout().openIntents[intentId];
+	}
+
+	function getOpenIntentEscrow(uint256 intentId) external view returns (OpenIntentEscrow memory) {
+		return OpenIntentStorage.layout().openIntentEscrows[intentId];
+	}
+
+	function isDeferredPartyBSellIntent(uint256 intentId) external view returns (bool) {
+		OpenIntent storage intent = OpenIntentStorage.layout().openIntents[intentId];
+		return intent.isDeferredPartyBSellIntent();
 	}
 
 	/**

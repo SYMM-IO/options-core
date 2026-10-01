@@ -41,6 +41,16 @@ struct OpenIntent {
 	OpenIntentStatus status;
 }
 
+struct OpenIntentEscrow {
+	address partyA;
+	address collateral;
+	address feeToken;
+	uint256 mm;
+	uint256 feeLockAmount;
+	bool exists;
+	bool consumed;
+}
+
 struct CloseIntent {
 	uint256 id;
 	uint256 tradeId;

@@ -10,8 +10,8 @@ import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance
 import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
 import { Symbol, SymbolStorage } from "../../storages/SymbolStorage.sol";
 
-import { TradeSide, MarginType, FeeStructure, FeeOp } from "../../types/BaseTypes.sol";
-import { OpenIntent, OpenIntentStatus } from "../../types/IntentTypes.sol";
+import { TradeSide, MarginType, FeeStructure, FeeOp, TradeAgreements } from "../../types/BaseTypes.sol";
+import { OpenIntent, OpenIntentEscrow, OpenIntentStatus } from "../../types/IntentTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 
 import { ValidationErrors } from "../../errors/ValidationErrors.sol";
@@ -21,8 +21,42 @@ library LibOpenIntentOps {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibParty for address;
 
+	event LockOpenIntentEscrow(
+		uint256 indexed intentId,
+		address indexed partyA,
+		address indexed collateral,
+		uint256 mm,
+		address feeToken,
+		uint256 feeLockAmount
+	);
+	event ReleaseOpenIntentEscrow(
+		uint256 indexed intentId,
+		address indexed partyA,
+		address indexed collateral,
+		uint256 mm,
+		address feeToken,
+		uint256 feeLockAmount
+	);
+	event ConsumeOpenIntentEscrow(uint256 indexed intentId, uint256 indexed tradeId, address indexed partyB, uint256 mmConsumed, uint256 feeConsumed);
+
+	function calculateFeeForQuantity(OpenIntent memory self, uint256 quantity, uint256 rate, uint256 price) internal pure returns (uint256) {
+		return (quantity * price * rate) / (self.feeStructure.tokenPriceInCollateral * 1e18);
+	}
+
 	function calculateFee(OpenIntent memory self, uint256 rate, uint256 price) internal pure returns (uint256) {
-		return (self.tradeAgreements.quantity * price * rate) / (self.feeStructure.tokenPriceInCollateral * 1e18);
+		return calculateFeeForQuantity(self, self.tradeAgreements.quantity, rate, price);
+	}
+
+	function calculateOpenFeeAmountForQuantity(OpenIntent memory self, uint256 quantity, uint256 price) internal pure returns (uint256) {
+		FeeStructure memory s = self.feeStructure;
+		return
+			calculateFeeForQuantity(self, quantity, s.platformFee.openFee, price) +
+			calculateFeeForQuantity(self, quantity, s.affiliateFee.openFee, price) +
+			calculateFeeForQuantity(self, quantity, s.solverFee.openFee, price);
+	}
+
+	function calculateOpenFeeAmount(OpenIntent memory self, uint256 price) internal pure returns (uint256) {
+		return calculateOpenFeeAmountForQuantity(self, self.tradeAgreements.quantity, price);
 	}
 
 	function calculatePremium(OpenIntent memory self, uint256 price) internal pure returns (uint256) {
@@ -31,6 +65,17 @@ library LibOpenIntentOps {
 
 	function getSymbol(OpenIntent memory self) internal view returns (Symbol memory) {
 		return SymbolStorage.layout().symbols[self.tradeAgreements.symbolId];
+	}
+
+	function isDeferredPartyBSell(address[] calldata partyBsWhiteList, TradeAgreements memory agreements) internal pure returns (bool) {
+		return agreements.tradeSide == TradeSide.SELL && agreements.marginType == MarginType.CROSS && partyBsWhiteList.length == 0;
+	}
+
+	function isDeferredPartyBSellIntent(OpenIntent storage self) internal view returns (bool) {
+		return
+			self.tradeAgreements.tradeSide == TradeSide.SELL &&
+			self.tradeAgreements.marginType == MarginType.CROSS &&
+			self.partyBsWhiteList.length == 0;
 	}
 
 	function register(OpenIntent memory self) internal {
@@ -90,10 +135,111 @@ library LibOpenIntentOps {
 		self.status = OpenIntentStatus.EXPIRED;
 		self.statusModifyTimestamp = block.timestamp;
 
-		unlockFees(self);
-		unlockPremiumIfBuy(self);
-		unlockMMIfSell(self);
+		unlockForCancelOrExpire(self);
 		unregister(self, false);
+	}
+
+	function lockDeferredSellEscrow(OpenIntent memory self) internal {
+		OpenIntentStorage.Layout storage openIntentLayout = OpenIntentStorage.layout();
+		Symbol memory symbol = getSymbol(self);
+
+		uint256 mm = self.tradeAgreements.mm;
+		uint256 feeLockAmount = calculateOpenFeeAmount(self, self.price);
+
+		self.partyA.balanceOf(symbol.collateral).isolatedLock(mm);
+		self.partyA.balanceOf(self.feeStructure.feeToken).isolatedLock(feeLockAmount);
+
+		openIntentLayout.openIntentEscrows[self.id] = OpenIntentEscrow({
+			partyA: self.partyA,
+			collateral: symbol.collateral,
+			feeToken: self.feeStructure.feeToken,
+			mm: mm,
+			feeLockAmount: feeLockAmount,
+			exists: true,
+			consumed: false
+		});
+
+		emit LockOpenIntentEscrow(self.id, self.partyA, symbol.collateral, mm, self.feeStructure.feeToken, feeLockAmount);
+	}
+
+	function releaseDeferredSellEscrow(uint256 intentId) internal {
+		OpenIntentStorage.Layout storage openIntentLayout = OpenIntentStorage.layout();
+		OpenIntentEscrow storage escrow = openIntentLayout.openIntentEscrows[intentId];
+
+		if (!escrow.exists) revert IntentErrors.MissingOpenIntentEscrow(intentId);
+		if (escrow.consumed) revert IntentErrors.OpenIntentEscrowAlreadyConsumed(intentId);
+
+		escrow.partyA.balanceOf(escrow.collateral).isolatedUnlock(escrow.mm);
+		escrow.partyA.balanceOf(escrow.feeToken).isolatedUnlock(escrow.feeLockAmount);
+
+		emit ReleaseOpenIntentEscrow(intentId, escrow.partyA, escrow.collateral, escrow.mm, escrow.feeToken, escrow.feeLockAmount);
+
+		delete openIntentLayout.openIntentEscrows[intentId];
+	}
+
+	function consumeDeferredSellEscrow(
+		OpenIntent storage self,
+		uint256 tradeId,
+		address partyB,
+		uint256 consumedMM,
+		uint256 filledQuantity,
+		uint256 fillPrice
+	) internal {
+		OpenIntentStorage.Layout storage openIntentLayout = OpenIntentStorage.layout();
+		OpenIntentEscrow storage escrow = openIntentLayout.openIntentEscrows[self.id];
+
+		if (!escrow.exists) revert IntentErrors.MissingOpenIntentEscrow(self.id);
+		if (escrow.consumed) revert IntentErrors.OpenIntentEscrowAlreadyConsumed(self.id);
+
+		uint256 feeLockConsumed = filledQuantity == self.tradeAgreements.quantity
+			? escrow.feeLockAmount
+			: calculateOpenFeeAmountForQuantity(self, filledQuantity, self.price);
+		uint256 actualFeeAmount = calculateOpenFeeAmountForQuantity(self, filledQuantity, fillPrice);
+
+		escrow.partyA.balanceOf(escrow.collateral).isolatedUnlock(consumedMM);
+		escrow.partyA.balanceOf(escrow.collateral).allocateBalance(partyB, consumedMM);
+
+		escrow.partyA.balanceOf(escrow.feeToken).isolatedUnlock(feeLockConsumed);
+		escrow.partyA.balanceOf(escrow.feeToken).allocateBalance(partyB, actualFeeAmount);
+
+		escrow.mm -= consumedMM;
+		escrow.feeLockAmount -= feeLockConsumed;
+		emit ConsumeOpenIntentEscrow(self.id, tradeId, partyB, consumedMM, actualFeeAmount);
+
+		if (escrow.mm == 0 && escrow.feeLockAmount == 0) {
+			escrow.consumed = true;
+			delete openIntentLayout.openIntentEscrows[self.id];
+		}
+	}
+
+	function moveDeferredSellEscrow(uint256 fromIntentId, OpenIntent memory toIntent) internal {
+		OpenIntentStorage.Layout storage openIntentLayout = OpenIntentStorage.layout();
+		OpenIntentEscrow storage escrow = openIntentLayout.openIntentEscrows[fromIntentId];
+
+		if (!escrow.exists) revert IntentErrors.MissingOpenIntentEscrow(fromIntentId);
+		if (escrow.consumed) revert IntentErrors.OpenIntentEscrowAlreadyConsumed(fromIntentId);
+
+		openIntentLayout.openIntentEscrows[toIntent.id] = OpenIntentEscrow({
+			partyA: toIntent.partyA,
+			collateral: escrow.collateral,
+			feeToken: escrow.feeToken,
+			mm: escrow.mm,
+			feeLockAmount: escrow.feeLockAmount,
+			exists: true,
+			consumed: false
+		});
+
+		delete openIntentLayout.openIntentEscrows[fromIntentId];
+	}
+
+	function unlockForCancelOrExpire(OpenIntent storage self) internal {
+		if (isDeferredPartyBSellIntent(self)) {
+			releaseDeferredSellEscrow(self.id);
+		} else {
+			unlockFees(self);
+			unlockPremiumIfBuy(self);
+			unlockMMIfSell(self);
+		}
 	}
 
 	function _lock(OpenIntent memory self, address collateral, uint256 amount) internal {
@@ -136,7 +282,9 @@ library LibOpenIntentOps {
 		FeeStructure memory s = self.feeStructure;
 		bool isolated = self.tradeAgreements.marginType == MarginType.ISOLATED;
 		bool singlePartyB = self.partyBsWhiteList.length == 1;
-		address partyB = singlePartyB ? self.partyBsWhiteList[0] : address(0);
+		address partyB = singlePartyB ? self.partyBsWhiteList[0] : self.partyB;
+
+		if (!isolated && partyB == address(0)) revert ValidationErrors.ZeroAddress("partyB");
 
 		ScheduledReleaseBalance storage bal = self.partyA.balanceOf(s.feeToken);
 

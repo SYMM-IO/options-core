@@ -10,7 +10,7 @@ import { Symbol, Oracle } from "../../storages/SymbolStorage.sol";
 import { Fee } from "../../types/BaseTypes.sol";
 import { Trade } from "../../types/TradeTypes.sol";
 import { LiquidationDetail } from "../../types/LiquidationTypes.sol";
-import { OpenIntent, CloseIntent } from "../../types/IntentTypes.sol";
+import { OpenIntent, OpenIntentEscrow, CloseIntent } from "../../types/IntentTypes.sol";
 import { ScheduledReleaseEntry, CrossEntry } from "../../types/BalanceTypes.sol";
 import { Withdraw, ExpressWithdrawProviderConfig } from "../../types/WithdrawTypes.sol";
 
@@ -151,6 +151,10 @@ interface IViewFacet {
 	// ════════════════════════════════════════════════════════════════════════════
 
 	function getOpenIntent(uint256 intentId) external view returns (OpenIntent memory);
+
+	function getOpenIntentEscrow(uint256 intentId) external view returns (OpenIntentEscrow memory);
+
+	function isDeferredPartyBSellIntent(uint256 intentId) external view returns (bool);
 
 	function getActiveOpenIntentIds(address user) external view returns (uint256[] memory);
 

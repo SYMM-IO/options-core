@@ -199,6 +199,47 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			await expect(partyB1.fillCloseIntent(closeIntent.id, quantity, closeIntent.price)).not.to.reverted
 		})
 
+		it("Should partially fill a pending close intent without unregistering the remaining amount", async () => {
+			const closeIntentBefore: CloseIntentStruct = await context.viewFacet.getCloseIntent(1)
+			const tradeBefore: TradeStruct = await context.viewFacet.getTrade(closeIntentBefore.tradeId)
+			const fillQuantity = BigInt(closeIntentBefore.quantity) / 2n
+			const fillPrice = BigInt(closeIntentBefore.price) + 100n
+
+			await partyB1.fillCloseIntent(closeIntentBefore.id, fillQuantity, fillPrice)
+
+			const closeIntentAfter: CloseIntentStruct = await context.viewFacet.getCloseIntent(closeIntentBefore.id)
+			const tradeAfter: TradeStruct = await context.viewFacet.getTrade(closeIntentBefore.tradeId)
+			expect(closeIntentAfter.status).to.equal(CloseIntentStatus.PENDING)
+			expect(closeIntentAfter.filledAmount).to.equal(fillQuantity)
+			expect(tradeAfter.status).to.equal(TradeStatus.OPENED)
+			expect(BigInt(tradeAfter.closedAmountBeforeExpiration) - BigInt(tradeBefore.closedAmountBeforeExpiration)).to.equal(fillQuantity)
+			expect(BigInt(tradeAfter.closePendingAmount)).to.equal(BigInt(tradeBefore.closePendingAmount))
+			expect(BigInt(tradeAfter.avgClosedPriceBeforeExpiration)).to.equal(fillPrice)
+			expect(tradeAfter.activeCloseIntentIds).to.deep.equal(tradeBefore.activeCloseIntentIds)
+		})
+
+		it("Should cancel the remaining amount after a partial fill of a cancel-pending close intent", async () => {
+			await partyA1.sendCancelCloseIntent(["1"])
+			const closeIntentBefore: CloseIntentStruct = await context.viewFacet.getCloseIntent(1)
+			const tradeBefore: TradeStruct = await context.viewFacet.getTrade(closeIntentBefore.tradeId)
+			const fillQuantity = BigInt(closeIntentBefore.quantity) / 2n
+
+			await partyB1.fillCloseIntent(closeIntentBefore.id, fillQuantity, closeIntentBefore.price)
+
+			const closeIntentAfter: CloseIntentStruct = await context.viewFacet.getCloseIntent(closeIntentBefore.id)
+			const tradeAfter: TradeStruct = await context.viewFacet.getTrade(closeIntentBefore.tradeId)
+			expect(closeIntentAfter.status).to.equal(CloseIntentStatus.CANCELED)
+			expect(closeIntentAfter.filledAmount).to.equal(fillQuantity)
+			expect(tradeAfter.status).to.equal(TradeStatus.OPENED)
+			expect(BigInt(tradeAfter.closedAmountBeforeExpiration) - BigInt(tradeBefore.closedAmountBeforeExpiration)).to.equal(fillQuantity)
+			expect(BigInt(tradeBefore.closePendingAmount) - BigInt(tradeAfter.closePendingAmount)).to.equal(BigInt(closeIntentBefore.quantity))
+			expect(tradeAfter.activeCloseIntentIds).to.not.include(closeIntentBefore.id)
+			await expect(partyB1.fillCloseIntent(closeIntentBefore.id, fillQuantity, closeIntentBefore.price)).to.be.revertedWithCustomError(
+				context.partyBCloseFacet,
+				"InvalidState",
+			)
+		})
+
 		it("Should set the Trade as Closed when close Quantity match trade quantity", async () => {
 			const newBlockTime = (await getLatestBlockTime()) + 150
 
@@ -364,9 +405,11 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			//take balance snapshot
 
 			const division = 2n
+			const releaseInterval = 30n
 			const closeIntentID = 1
 			const closeIntent: CloseIntentStruct = await context.viewFacet.getCloseIntent(closeIntentID)
 			closeIntent.quantity
+			await context.controlFacet.setPartyBReleaseInterval(partyB1.getSigner, releaseInterval)
 
 			const partyBBalanceBefore = await context.viewFacet.getIsolatedBalance(partyB1.getSigner, context.collateral)
 			const partyABalanceBefore = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral)
@@ -376,7 +419,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			await expect(partyB1.fillCloseIntent(closeIntentID, halfQuantity, price)).to.not.be.reverted
 
 			// more than 2 intervals pass for schedules
-			let newBlockTime = (await getLatestBlockTime()) + 36
+			let newBlockTime = (await getLatestBlockTime()) + Number(releaseInterval * 2n)
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTime])
 			await network.provider.send("evm_mine")
 
@@ -409,7 +452,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			//for party A we expect to have half of its output as the balance is scheduled and updated using sync function
 			expect(partyABalanceAfter - partyABalanceBefore).to.be.equal(partyAProfit / division)
 
-			newBlockTime = (await getLatestBlockTime()) + 12
+			newBlockTime = Number(scheduleEntry.lastTransitionTimestamp + scheduleEntry.releaseInterval)
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTime])
 			await network.provider.send("evm_mine")
 
@@ -420,7 +463,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 
 			expect(scheduleEntry.transitioning).to.be.equal(partyAProfit / division)
 
-			newBlockTime = (await getLatestBlockTime()) + 12
+			newBlockTime = Number(scheduleEntry.lastTransitionTimestamp + scheduleEntry.releaseInterval)
 			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTime])
 			await network.provider.send("evm_mine")
 
