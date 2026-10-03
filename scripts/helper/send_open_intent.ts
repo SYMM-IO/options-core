@@ -1,4 +1,4 @@
-import { run } from "hardhat"
+import hre from "hardhat"
 
 async function main() {
 	const symbolId = "1"
@@ -19,7 +19,7 @@ async function main() {
 	const userdata = "0x1234abcd"
 	const whitelist = "0x1111111111111111111111111111111111111111,0x2222222222222222222222222222222222222222"
 
-	await run("send-open-intent", {
+	await hre.tasks.getTask("send-open-intent").run({
 		symbolid: symbolId,
 		price: price,
 		quantity: quantity,

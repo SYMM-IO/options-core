@@ -1,4 +1,5 @@
-import { run } from "hardhat"
+import { verifyContract } from "@nomicfoundation/hardhat-verify/verify"
+import hre from "hardhat"
 
 async function main() {
 	let facets: { [x: string]: string } = {
@@ -20,10 +21,7 @@ async function main() {
 		if (!facets.hasOwnProperty(facet)) continue
 		const facetAddr = facets[facet]
 		console.log(`Verifying ${facet} with impl in ${facetAddr}`)
-		await run("verify:verify", {
-			address: facetAddr,
-			constructorArguments: [],
-		})
+		await verifyContract({ address: facetAddr, constructorArgs: [] }, hre)
 	}
 }
 

@@ -1,4 +1,7 @@
-import { task } from "hardhat/config"
-import { deployLibMocks } from "./deploy-lib"
+import type { HardhatRuntimeEnvironment } from "hardhat/types/hre"
+import { deployLibMocks } from "./deploy-lib.js"
 
-task("deploy:mocks", "Deploys the Mock contract").setAction(async (_, { ethers }) => deployLibMocks(ethers))
+export default async function (_: Record<string, unknown>, hre: HardhatRuntimeEnvironment) {
+	const { ethers } = await hre.network.getOrCreate()
+	return deployLibMocks(ethers)
+}

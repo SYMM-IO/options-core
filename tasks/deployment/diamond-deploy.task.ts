@@ -1,6 +1,7 @@
-import { task, types } from "hardhat/config"
-import { deployDiamond } from "./deploy-lib"
+import type { HardhatRuntimeEnvironment } from "hardhat/types/hre"
+import { deployDiamond } from "./deploy-lib.js"
 
-task("deploy:diamond", "Deploys the Diamond contract")
-	.addParam("logData", "Write the deployed addresses to a data file", true, types.boolean)
-	.setAction(async ({ logData }, { ethers }) => deployDiamond(ethers, logData))
+export default async function ({ skipLog }: { skipLog: boolean }, hre: HardhatRuntimeEnvironment) {
+	const { ethers } = await hre.network.getOrCreate()
+	return deployDiamond(ethers, !skipLog)
+}

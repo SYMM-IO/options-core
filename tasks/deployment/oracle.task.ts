@@ -1,4 +1,7 @@
-import { task } from "hardhat/config"
-import { deployFakeOracle } from "./deploy-lib"
+import type { HardhatRuntimeEnvironment } from "hardhat/types/hre"
+import { deployFakeOracle } from "./deploy-lib.js"
 
-task("deploy:oracle", "Deploys the FakeOracle").setAction(async (_, { ethers }) => deployFakeOracle(ethers))
+export default async function (_: Record<string, unknown>, hre: HardhatRuntimeEnvironment) {
+	const { ethers } = await hre.network.getOrCreate()
+	return deployFakeOracle(ethers)
+}

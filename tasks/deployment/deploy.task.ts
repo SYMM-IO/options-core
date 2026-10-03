@@ -1,8 +1,6 @@
-import { task } from "hardhat/config"
-import { Diamond } from "../../types"
+import type { HardhatRuntimeEnvironment } from "hardhat/types/hre"
 
-task("deploy:deploy", "Deploy, verify and setup facets").setAction(async (_, { run }) => {
-	const diamond = (await run("deploy:diamond", true)) as Diamond
-	await run("verify:deployment")
-	// await run("setup:deployment", { optionAddress: await diamond.getAddress() })
-})
+export default async function (_: Record<string, unknown>, hre: HardhatRuntimeEnvironment) {
+	await hre.tasks.getTask("deploy:diamond").run({})
+	await hre.tasks.getTask("verify:deployment").run({})
+}

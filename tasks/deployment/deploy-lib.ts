@@ -1,6 +1,7 @@
-import type { HardhatRuntimeEnvironment } from "hardhat/types"
+import type { HardhatEthers } from "@nomicfoundation/hardhat-ethers/types"
+import type { HardhatUpgrades } from "@openzeppelin/hardhat-upgrades"
 
-import { DEPLOYMENT_LOG_FILE, FacetNames } from "../../common/constants"
+import { DEPLOYMENT_LOG_FILE, FacetNames } from "../../common/constants.js"
 import type {
 	Diamond,
 	FakeOracle,
@@ -10,12 +11,12 @@ import type {
 	MultiAccount,
 	SignatureVerifier,
 	SymmioPartyB,
-} from "../../types"
-import { FacetCutAction, getSelectors } from "../utils/diamond-cut"
-import { writeData } from "../utils/fs"
+} from "../../types/index.js"
+import { FacetCutAction, getSelectors } from "../utils/diamond-cut.js"
+import { writeData } from "../utils/fs.js"
 
-export type Ethers = HardhatRuntimeEnvironment["ethers"]
-export type Upgrades = HardhatRuntimeEnvironment["upgrades"]
+export type Ethers = HardhatEthers
+export type Upgrades = HardhatUpgrades
 
 export async function deployDiamond(ethers: Ethers, logData: boolean): Promise<Diamond> {
 	const [owner] = await ethers.getSigners()

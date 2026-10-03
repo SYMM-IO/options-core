@@ -1,4 +1,7 @@
-import { task } from "hardhat/config"
-import { deploySignatureVerifier } from "./deploy-lib"
+import type { HardhatRuntimeEnvironment } from "hardhat/types/hre"
+import { deploySignatureVerifier } from "./deploy-lib.js"
 
-task("deploy:SignatureVerifier", "Deploys the SignatureVerifier contract").setAction(async (_, { ethers }) => deploySignatureVerifier(ethers))
+export default async function (_: Record<string, unknown>, hre: HardhatRuntimeEnvironment) {
+	const { ethers } = await hre.network.getOrCreate()
+	return deploySignatureVerifier(ethers)
+}

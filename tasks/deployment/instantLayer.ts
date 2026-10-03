@@ -1,7 +1,8 @@
-import { task } from "hardhat/config"
-import { deployInstantLayer } from "./deploy-lib"
+import type { HardhatRuntimeEnvironment } from "hardhat/types/hre"
+import { requireArg } from "../utils/args.js"
+import { deployInstantLayer } from "./deploy-lib.js"
 
-task("deploy:InstantLayer", "Deploys the InstantLayer contract")
-	.addParam("symmioaddress", "The address of the Symmio contract")
-	.addParam("admin", "The admin address")
-	.setAction(async ({ symmioaddress, admin }, { ethers }) => deployInstantLayer(ethers, symmioaddress, admin))
+export default async function ({ symmioaddress, admin }: { symmioaddress: string; admin: string }, hre: HardhatRuntimeEnvironment) {
+	const { ethers } = await hre.network.getOrCreate()
+	return deployInstantLayer(ethers, requireArg(symmioaddress, "symmioaddress"), requireArg(admin, "admin"))
+}

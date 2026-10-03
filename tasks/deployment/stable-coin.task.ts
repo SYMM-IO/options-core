@@ -1,7 +1,8 @@
-import { task } from "hardhat/config"
-import { deployStablecoin } from "./deploy-lib"
+import type { HardhatRuntimeEnvironment } from "hardhat/types/hre"
+import { requireArg } from "../utils/args.js"
+import { deployStablecoin } from "./deploy-lib.js"
 
-task("deploy:stablecoin", "Deploys the FakeStablecoin")
-	.addParam("name", "The token's name")
-	.addParam("symbol", "The token's symbol")
-	.setAction(async ({ name, symbol }, { ethers }) => deployStablecoin(ethers, name, symbol))
+export default async function ({ name, symbol }: { name: string; symbol: string }, hre: HardhatRuntimeEnvironment) {
+	const { ethers } = await hre.network.getOrCreate()
+	return deployStablecoin(ethers, requireArg(name, "name"), requireArg(symbol, "symbol"))
+}

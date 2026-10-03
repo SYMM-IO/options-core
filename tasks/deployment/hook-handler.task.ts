@@ -1,4 +1,7 @@
-import { task } from "hardhat/config"
-import { deployHookHandler } from "./deploy-lib"
+import type { HardhatRuntimeEnvironment } from "hardhat/types/hre"
+import { deployHookHandler } from "./deploy-lib.js"
 
-task("deploy:hookHandler", "Deploys the Hook Handler").setAction(async (_, { ethers }) => deployHookHandler(ethers))
+export default async function (_: Record<string, unknown>, hre: HardhatRuntimeEnvironment) {
+	const { ethers } = await hre.network.getOrCreate()
+	return deployHookHandler(ethers)
+}

@@ -1,10 +1,18 @@
-import { task } from "hardhat/config"
-import { deployMultiAccount } from "./deploy-lib"
+import { upgrades } from "@openzeppelin/hardhat-upgrades"
+import type { HardhatRuntimeEnvironment } from "hardhat/types/hre"
+import { requireArg } from "../utils/args.js"
+import { deployMultiAccount } from "./deploy-lib.js"
 
-task("deploy:multiAccount", "Deploys the MultiAccount")
-	.addParam("symmioaddress", "The address of the Symmio contract")
-	.addParam("admin", "The admin address")
-	.addParam("tradenftaddress", "The trade NFT address")
-	.setAction(async ({ symmioaddress, admin, tradenftaddress }, { ethers, upgrades }) =>
-		deployMultiAccount(ethers, upgrades, symmioaddress, admin, tradenftaddress),
+export default async function (
+	{ symmioaddress, admin, tradenftaddress }: { symmioaddress: string; admin: string; tradenftaddress: string },
+	hre: HardhatRuntimeEnvironment,
+) {
+	const connection = await hre.network.getOrCreate()
+	return deployMultiAccount(
+		connection.ethers,
+		await upgrades(hre, connection),
+		requireArg(symmioaddress, "symmioaddress"),
+		requireArg(admin, "admin"),
+		requireArg(tradenftaddress, "tradenftaddress"),
 	)
+}
