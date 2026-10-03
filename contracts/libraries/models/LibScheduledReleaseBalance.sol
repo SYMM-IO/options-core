@@ -11,7 +11,13 @@ import { TradeStorage } from "../../storages/TradeStorage.sol";
 import { AccountStorage } from "../../storages/AccountStorage.sol";
 
 import { MarginType } from "../../types/BaseTypes.sol";
-import { ScheduledReleaseBalance, ScheduledReleaseEntry, IncreaseBalanceReason, DecreaseBalanceReason, CrossEntry } from "../../types/BalanceTypes.sol";
+import {
+	ScheduledReleaseBalance,
+	ScheduledReleaseEntry,
+	IncreaseBalanceReason,
+	DecreaseBalanceReason,
+	CrossEntry
+} from "../../types/BalanceTypes.sol";
 
 import { BalanceErrors } from "../../errors/BalanceErrors.sol";
 import { ValidationErrors } from "../../errors/ValidationErrors.sol";
@@ -157,7 +163,7 @@ library ScheduledReleaseBalanceOps {
 	) internal {
 		if (value == 0) return;
 		if (marginType == MarginType.CROSS && counterParty == address(0)) revert ValidationErrors.ZeroAddress("counterParty");
-		
+
 		if (counterParty == address(0)) {
 			isolatedSub(self, value, reason);
 			return;
@@ -313,9 +319,8 @@ library ScheduledReleaseBalanceOps {
 		// (1) Release interval changed externally → reinitialize everything.
 		if (entry.releaseInterval != updatedReleaseInterval) {
 			entry.releaseInterval = updatedReleaseInterval;
-			entry.lastTransitionTimestamp = entry.releaseInterval == 0
-				? block.timestamp
-				: (block.timestamp / entry.releaseInterval) * entry.releaseInterval;
+			entry.lastTransitionTimestamp =
+				entry.releaseInterval == 0 ? block.timestamp : (block.timestamp / entry.releaseInterval) * entry.releaseInterval;
 
 			if (entry.releaseInterval == 0) {
 				self.isolatedBalance += (entry.transitioning + entry.scheduled);
@@ -384,9 +389,8 @@ library ScheduledReleaseBalanceOps {
 
 		ScheduledReleaseEntry storage entry = self.counterPartySchedules[counterParty];
 		entry.releaseInterval = counterParty.getReleaseInterval();
-		entry.lastTransitionTimestamp = entry.releaseInterval == 0
-			? block.timestamp
-			: (block.timestamp / entry.releaseInterval) * entry.releaseInterval;
+		entry.lastTransitionTimestamp =
+			entry.releaseInterval == 0 ? block.timestamp : (block.timestamp / entry.releaseInterval) * entry.releaseInterval;
 
 		// book‑keeping (packed array)
 		uint256 newIndex = self.counterPartyAddresses.length;

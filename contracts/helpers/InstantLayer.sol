@@ -25,11 +25,12 @@ pragma solidity >=0.8.19;
  *         Both PartyB contracts and MultiAccount contracts must be registered before use.
  */
 
-import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
+import { AccessControlEnumerable } from "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
+import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
-import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import { MessageHashUtils } from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+
+import { LibSignatureChecker } from "../libraries/utils/LibSignatureChecker.sol";
 
 /* ────────────────────────── External Interfaces ────────────────────────── */
 
@@ -54,7 +55,7 @@ interface ISymmio {
 	function setCallFromInstantLayer(bool _callFromInstantLayer) external;
 }
 
-contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
+contract InstantLayer is AccessControlEnumerable, ReentrancyGuardTransient, EIP712 {
 	/* ─────────────────────────────── Roles ─────────────────────────────── */
 
 	/// @notice Role for managing contract configuration and templates.
@@ -72,8 +73,9 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	/* ────────────────────── EIP-712 Configuration ────────────────────── */
 
 	/// @notice EIP-712 type hash for signed operations with salt-based uniqueness.
-	bytes32 public constant OPERATION_TYPEHASH =
-		keccak256("SignedOperation(address accountSource,address signer,bytes callData,uint256 nonce,bytes32 salt,uint256 deadline)");
+	bytes32 public constant OPERATION_TYPEHASH = keccak256(
+		"SignedOperation(address accountSource,address signer,bytes callData,uint256 nonce,bytes32 salt,uint256 deadline)"
+	);
 
 	/* ──────────────────────── Storage Variables ──────────────────────── */
 
@@ -558,6 +560,6 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuard, EIP712 {
 	 * @return Whether the signature is valid.
 	 */
 	function isValidSignature(address signer, bytes32 hash, bytes calldata signature) public view returns (bool) {
-		return SignatureChecker.isValidSignatureNow(signer, ECDSA.toEthSignedMessageHash(hash), signature);
+		return LibSignatureChecker.isValidSignatureNow(signer, MessageHashUtils.toEthSignedMessageHash(hash), signature);
 	}
 }

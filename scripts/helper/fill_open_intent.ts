@@ -1,11 +1,11 @@
-import { run } from "hardhat"
+import hre from "hardhat"
 
 async function main() {
 	const intentId = "1"
 	const quantity = "10"
 	const price = "1000"
 
-	await run("fill-open-intent", {
+	await hre.tasks.getTask("fill-open-intent").run({
 		intentid: intentId,
 		quantity: quantity,
 		price: price,

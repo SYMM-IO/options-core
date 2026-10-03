@@ -95,10 +95,11 @@ library LibAllocationOperations {
 		PartyBConfig storage partyBConfig = AppStorage.layout().partyBConfigs[counterParty];
 
 		CrossEntry memory partyACrossEntry = msg.sender.balanceOf(collateral).crossBalance[counterParty];
-		int256 partyAAvailableBalance = partyACrossEntry.balance +
-			((upnlSig.partyUpnl * 1e18) / int256(upnlSig.collateralPrice)) -
-			int256(partyACrossEntry.totalMM) -
-			int256(partyACrossEntry.locked);
+		int256 partyAAvailableBalance =
+			partyACrossEntry.balance +
+				((upnlSig.partyUpnl * 1e18) / int256(upnlSig.collateralPrice)) -
+				int256(partyACrossEntry.totalMM) -
+				int256(partyACrossEntry.locked);
 
 		// min balance and available balance
 		int256 partyAReadyToDeallocate = partyACrossEntry.balance < partyAAvailableBalance ? partyACrossEntry.balance : partyAAvailableBalance;
@@ -126,9 +127,8 @@ library LibAllocationOperations {
 		PartyBConfig storage partyBConfig = AppStorage.layout().partyBConfigs[msg.sender];
 
 		CrossEntry memory partyACrossEntry = counterParty.balanceOf(collateral).crossBalance[msg.sender];
-		int256 partyAAvailableBalance = partyACrossEntry.balance +
-			((upnlSig.counterPartyUpnl * 1e18) / int256(upnlSig.collateralPrice)) -
-			int256(partyACrossEntry.totalMM);
+		int256 partyAAvailableBalance =
+			partyACrossEntry.balance + ((upnlSig.counterPartyUpnl * 1e18) / int256(upnlSig.collateralPrice)) - int256(partyACrossEntry.totalMM);
 
 		CrossEntry memory partyBCrossEntry = msg.sender.balanceOf(collateral).crossBalance[counterParty];
 		int256 partyBAvailableBalance = partyBCrossEntry.balance + ((upnlSig.partyUpnl * 1e18) / int256(upnlSig.collateralPrice));
@@ -144,7 +144,8 @@ library LibAllocationOperations {
 		} else {
 			// partyB solvent with loss coverage
 			int256 collateralMustHave = (-upnlSig.partyUpnl * int256(partyBConfig.lossCoverage)) / int256(upnlSig.collateralPrice);
-			if (partyBCrossEntry.balance - int256(amount) < collateralMustHave) revert BalanceErrors.NotSolvent(msg.sender, counterParty, collateral, MarginType.CROSS);
+			if (partyBCrossEntry.balance - int256(amount) < collateralMustHave)
+				revert BalanceErrors.NotSolvent(msg.sender, counterParty, collateral, MarginType.CROSS);
 		}
 	}
 }

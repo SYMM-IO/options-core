@@ -1,23 +1,20 @@
-import { task } from "hardhat/config"
-import { DEPLOYMENT_LOG_FILE } from "../../common/constants"
-import { readData } from "../utils/fs"
+import { verifyContract } from "@nomicfoundation/hardhat-verify/verify"
+import type { HardhatRuntimeEnvironment } from "hardhat/types/hre"
+import { DEPLOYMENT_LOG_FILE } from "../../common/constants.js"
+import { readData } from "../utils/fs.js"
 
-task("verify:deployment", "Verifies the deployed contracts").setAction(async (_, { run }) => {
+export default async function (_: Record<string, unknown>, hre: HardhatRuntimeEnvironment) {
 	const deployedAddresses = readData(DEPLOYMENT_LOG_FILE) as {
 		name: string
 		address: string
-		constructorArguments: any
+		constructorArguments: unknown[]
 	}[]
-
 	for (const { name, address, constructorArguments } of deployedAddresses) {
 		try {
 			console.info(`Verifying ${name} :: ${address}`)
-			await run("verify:verify", {
-				address,
-				constructorArguments,
-			})
+			await verifyContract({ address, constructorArgs: constructorArguments }, hre)
 		} catch (err) {
 			console.error(err)
 		}
 	}
-})
+}

@@ -1,4 +1,4 @@
-import { run } from "hardhat"
+import hre from "hardhat"
 
 async function main() {
 	const symbolId = "1"
@@ -11,13 +11,15 @@ async function main() {
 	const marginType = "0"
 	const exerciseFeeRate = "500"
 	const exerciseFeeCap = "10000"
+	const solverFeeOpen = "0"
+	const solverFeeClose = "0"
 	const deadline = "1700000000"
 	const feeToken = "0x3333333333333333333333333333333333333333"
 	const affiliate = "0x4444444444444444444444444444444444444444"
 	const userdata = "0x1234abcd"
 	const whitelist = "0x1111111111111111111111111111111111111111,0x2222222222222222222222222222222222222222"
 
-	await run("send-open-intent", {
+	await hre.tasks.getTask("send-open-intent").run({
 		symbolid: symbolId,
 		price: price,
 		quantity: quantity,
@@ -28,6 +30,8 @@ async function main() {
 		margintype: marginType,
 		exercisefeerate: exerciseFeeRate,
 		exercisefeecap: exerciseFeeCap,
+		solverfeeopen: solverFeeOpen,
+		solverfeeclose: solverFeeClose,
 		deadline: deadline,
 		feetoken: feeToken,
 		affiliate: affiliate,

@@ -1,26 +1,23 @@
-import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers"
-import "@nomicfoundation/hardhat-ethers"
+import { ethers, networkHelpers } from "./connection.js"
 import { expect, use } from "chai"
-import { initializeTestFixture } from "./initialize-test.fixture"
-import { PartyA } from "./models/partyA.model"
-import { RunContext } from "./run-context"
-import { openIntentRequestBuilder } from "./models/builders/send-open-intent.builder"
-import { PartyB } from "./models/partyB.model"
-import { ethers, network } from "hardhat"
-import { e } from "../utils/e"
+import { initializeTestFixture } from "./initialize-test.fixture.js"
+import { PartyA } from "./models/partyA.model.js"
+import { RunContext } from "./run-context.js"
+import { openIntentRequestBuilder } from "./models/builders/send-open-intent.builder.js"
+import { PartyB } from "./models/partyB.model.js"
+import { e } from "../utils/e.js"
 
-import { CloseIntentStruct, SettlementPriceSigStruct, TradeStruct } from "../types/contracts/interfaces/ISymmio"
-import { getLatestBlockTime, moveTime } from "../utils/time"
-import { settlementSigBuilder } from "./models/builders/settlement.builder"
+import { CloseIntentStruct, SettlementPriceSigStruct, TradeStruct } from "../types/interfaces/ISymmio.js"
+import { getLatestBlockTime, moveTime } from "./utils/time.js"
+import { settlementSigBuilder } from "./models/builders/settlement.builder.js"
 import { parseUnits, ZeroAddress } from "ethers"
-import { CloseIntentStatus, MarginType, OptionType, TradeSide, TradeStatus } from "./option-enums"
-import { bigint } from "hardhat/internal/core/params/argumentTypes"
+import { CloseIntentStatus, MarginType, OptionType, TradeSide, TradeStatus } from "./option-enums.js"
 
 export function shouldBehaveLikeSettlementFacet(): void {
 	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyB1: PartyB, partyB2: PartyB
 
 	beforeEach(async function () {
-		context = await loadFixture(initializeTestFixture)
+		context = await networkHelpers.loadFixture(initializeTestFixture)
 		partyA1 = new PartyA(context, context.signers.partyA1)
 		partyA2 = new PartyA(context, context.signers.partyA2)
 		partyB1 = new PartyB(context, context.signers.partyB1)
@@ -49,8 +46,8 @@ export function shouldBehaveLikeSettlementFacet(): void {
 		await partyB1.fillOpenIntent(1, e(100), e(10))
 
 		const newBlock = (await getLatestBlockTime()) + 170
-		await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
-		await network.provider.send("evm_mine")
+		await ethers.provider.send("evm_setNextBlockTimestamp", [newBlock])
+		await ethers.provider.send("evm_mine")
 	})
 
 	describe("executeTrade", async function () {
@@ -164,8 +161,8 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			expect(closeIntentBefore.status).to.equal(CloseIntentStatus.PENDING)
 			expect(tradeBefore.closePendingAmount).to.equal(closeIntentBefore.quantity)
 
-			await network.provider.send("evm_setNextBlockTimestamp", [expirationTimestamp + 1])
-			await network.provider.send("evm_mine")
+			await ethers.provider.send("evm_setNextBlockTimestamp", [expirationTimestamp + 1])
+			await ethers.provider.send("evm_mine")
 
 			const timestamp = await getLatestBlockTime()
 			const priceSig: SettlementPriceSigStruct = {
@@ -305,8 +302,8 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			const trade: TradeStruct = await context.viewFacet.getTrade(tradeID)
 
 			let newBlock = Number(trade.tradeAgreements.expirationTimestamp) + 12
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
-			await network.provider.send("evm_mine")
+			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlock])
+			await ethers.provider.send("evm_mine")
 
 			let tradePremiumSettled = (tradePremium * openAmount) / BigInt(trade.tradeAgreements.quantity)
 
@@ -339,15 +336,15 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			const releaseInterval = await context.viewFacet.getReleaseInterval(partyA2.address)
 			let scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA2.address, optionSymbol.collateral, partyB2.address)
 
-			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).to.be.not.reverted
+			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).not.to.revert(ethers)
 
 			// instant premium add to partyB balance
 			const partyBBalanceAfterSettlement = await context.viewFacet.getIsolatedBalance(partyB2.address, context.collateral)
 			console.log("Party A Balance 7", await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()))
 
 			newBlock = (await getLatestBlockTime()) + Number(releaseInterval) * 2
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
-			await network.provider.send("evm_mine")
+			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlock])
+			await ethers.provider.send("evm_mine")
 
 			await context.accountFacet.syncBalances(context.collateral, partyA2.address, [partyB2.address])
 
@@ -450,7 +447,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			const partyAFeeBalanceBeforeSettlement = await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateralNL.getAddress())
 
 			await moveTime(180)
-			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).to.be.not.reverted
+			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).not.to.revert(ethers)
 
 			const partyAFeeBalanceAfterSettlement = await context.viewFacet.getIsolatedBalance(partyA2.address, context.collateralNL)
 
@@ -549,7 +546,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			//Execute Trade
 			await moveTime(timeAfterExpire)
-			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).to.be.not.reverted
+			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).not.to.revert(ethers)
 
 			trade = await context.viewFacet.getTrade(tradeID)
 			console.log("Trade Status:", trade.status == TradeStatus.EXERCISED ? "EXERCISED" : trade.status)
@@ -659,7 +656,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			//Execute Trade
 			await moveTime(timeAfterExpire)
-			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).to.be.not.reverted
+			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).not.to.revert(ethers)
 
 			trade = await context.viewFacet.getTrade(tradeID)
 			console.log("Trade Status:", trade.status == TradeStatus.EXPIRED ? "Expired" : trade.status)
@@ -801,7 +798,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			//Execute Trade
 			await moveTime(Number(timeAfterExpire) + 12)
-			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).to.not.be.reverted
+			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).not.to.revert(ethers)
 
 			console.log(
 				"Party A Balance After Settlement Before Sync:\n",
@@ -905,7 +902,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			//Execute Trade
 			await moveTime(Number(timeAfterExpire) + 12)
-			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).to.not.be.reverted
+			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).not.to.revert(ethers)
 
 			console.log(
 				"Party B Balance After Settlement:\n",
@@ -1002,7 +999,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			//Execute Trade
 			await moveTime(Number(timeAfterExpire) + 12)
-			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).to.not.be.reverted
+			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).not.to.revert(ethers)
 
 			console.log(
 				"Party B Balance After Settlement:\n",
@@ -1095,7 +1092,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			//Execute Trade
 			await moveTime(timeAfterExpire)
-			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).to.be.not.reverted
+			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).not.to.revert(ethers)
 
 			trade = await context.viewFacet.getTrade(tradeID)
 			console.log("Trade Status:", trade.status == TradeStatus.EXPIRED ? "Expired" : trade.status)
@@ -1215,7 +1212,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			//Execute Trade
 			await moveTime(timeAfterExpire)
-			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).to.be.not.reverted
+			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).not.to.revert(ethers)
 
 			trade = await context.viewFacet.getTrade(tradeID)
 			console.log("Trade Status:", trade.status == TradeStatus.EXERCISED ? "EXERCISED" : trade.status)
@@ -1316,7 +1313,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			//Execute Trade
 			await moveTime(timeAfterExpire)
-			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).to.be.not.reverted
+			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).not.to.revert(ethers)
 
 			trade = await context.viewFacet.getTrade(tradeID)
 			expect(trade.status).to.be.equal(TradeStatus.EXERCISED)
@@ -1426,7 +1423,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			//Execute Trade
 			await moveTime(timeAfterExpire)
-			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).to.be.not.reverted
+			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).not.to.revert(ethers)
 
 			trade = await context.viewFacet.getTrade(tradeID)
 			console.log("Trade Status:", trade.status == TradeStatus.EXERCISED ? "EXERCISED" : trade.status)
@@ -1527,7 +1524,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			let scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA2.address, symbol.collateral, partyB2.address)
 
 			const tradePremiumSettled = (tradePremium * openAmount) / BigInt(trade.tradeAgreements.quantity)
-			const totalMM = openAmount * BigInt(trade.tradeAgreements.mm) / BigInt(trade.tradeAgreements.quantity)
+			const totalMM = (openAmount * BigInt(trade.tradeAgreements.mm)) / BigInt(trade.tradeAgreements.quantity)
 			const pnl = await context.viewFacet.getTradePnl(tradeID, priceSig.settlementPrice, openAmount)
 			const exerciseFee = await context.viewFacet.getTradeExerciseFee(tradeID, priceSig.settlementPrice, pnl)
 			const capFee = (BigInt(trade.tradeAgreements.exerciseFee.cap) * pnl) / parseUnits("1", 18)
@@ -1561,7 +1558,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			//Execute Trade
 			await moveTime(timeAfterExpire)
-			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).to.be.not.reverted
+			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).not.to.revert(ethers)
 
 			trade = await context.viewFacet.getTrade(tradeID)
 			console.log("Trade Status:", trade.status == TradeStatus.EXERCISED ? "EXERCISED" : trade.status)
@@ -1666,23 +1663,22 @@ export function shouldBehaveLikeSettlementFacet(): void {
 				await context.collateral.getAddress(),
 				partyA2.address,
 			)
-			console.log("Party B Balance Befor Settlement:\n",partyBBalanceBeforeSettlement)
-			
+			console.log("Party B Balance Befor Settlement:\n", partyBBalanceBeforeSettlement)
+
 			//Execute Trade
 			await moveTime(timeAfterExpire)
-			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).to.be.not.reverted
-			
+			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).not.to.revert(ethers)
+
 			trade = await context.viewFacet.getTrade(tradeID)
 			expect(trade.status).to.be.equal(TradeStatus.EXERCISED)
-			
+
 			const partyBBalanceAfterSettlementSchedule = await context.viewFacet.getCrossBalance(partyB2.address, context.collateral, partyA2.address)
 			const balanceDiff = partyBBalanceAfterSettlementSchedule.balance - partyBBalanceBeforeSettlement.balance
-			console.log("Party B Balance After Settlement:\n",partyBBalanceAfterSettlementSchedule)
+			console.log("Party B Balance After Settlement:\n", partyBBalanceAfterSettlementSchedule)
 			console.log("Balance Diff when PNL in Positive:", balanceDiff)
 
 			expect(balanceDiff).to.be.equal(pnl - exerciseFee)
 		})
-
 	})
 	describe("Transfer Trade", async function () {
 		it("Should Fail to transfer trade because of global pause", async () => {
@@ -1850,7 +1846,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 		it("Should Fail to transfer trade because of Party B insolvent", async () => {
 			const tradeId = 1
 
-			expect(await context.tradeFacet.connect(partyA1.getSigner).transferTrade(partyA2.address, tradeId)).not.to.reverted
+			expect(await context.tradeFacet.connect(partyA1.getSigner).transferTrade(partyA2.address, tradeId)).not.to.revert(ethers)
 
 			expect((await context.viewFacet.getTrade(tradeId)).partyA).be.equal(partyA2.address)
 		})

@@ -1,5 +1,5 @@
-import { ethers } from "hardhat"
+import { parseEther } from "ethers"
 
 export function e(value: string | number) {
-	return ethers.parseEther(value + "")
+	return parseEther(value + "")
 }

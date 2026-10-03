@@ -16,7 +16,7 @@ library ValidationErrors {
 	error UnauthorizedSender(address sender, address requiredSender);
 	error MismatchedLengths();
 	error InvalidID(uint256 id, uint256 lastID);
-	
+
 	// Access control
 	error NotPartyB(address user);
 	error PartyBUser(address user);

@@ -1,21 +1,18 @@
-import { task } from "hardhat/config"
-import { loadAddresses } from "../../scripts/utils/file"
-import { HardhatRuntimeEnvironment } from "hardhat/types"
+import type { HardhatRuntimeEnvironment } from "hardhat/types/hre"
+import { loadAddresses } from "../../scripts/utils/file.js"
+import { requireArg } from "../utils/args.js"
 
-task("fill-open-intent", "Calls fillOpenIntent on the contract")
-	.addParam("intentid", "ID of the intentId")
-	.addParam("quantity", "Quantity of the quantity")
-	.addParam("price", "Price of the price")
-	.setAction(async (args, hre: HardhatRuntimeEnvironment) => {
-		const { ethers } = hre
-		const admin = (await ethers.getSigners())[0]
-		const symmioAddress = loadAddresses().symmioAddress
+export default async function ({ intentid, quantity, price }: { intentid: string; quantity: string; price: string }, hre: HardhatRuntimeEnvironment) {
+	// Validate before connecting, so a missing option never reaches a live network or a keystore prompt.
+	const intentId = BigInt(requireArg(intentid, "intentid"))
+	const fillQuantity = BigInt(requireArg(quantity, "quantity"))
+	const fillPrice = BigInt(requireArg(price, "price"))
 
-		const partyBOpenFacet = (await ethers.getContractAt("PartyBOpenFacet", String(symmioAddress))).connect(admin)
-		const { intentid, quantity, price } = args
-
-		const tx = await partyBOpenFacet.fillOpenIntent(BigInt(intentid), BigInt(quantity), BigInt(price))
-		console.log("Transaction sent:", tx.hash)
-		await tx.wait()
-		console.log("Transaction confirmed.")
-	})
+	const { ethers } = await hre.network.getOrCreate()
+	const [admin] = await ethers.getSigners()
+	const partyBOpenFacet = (await ethers.getContractAt("PartyBOpenFacet", String(loadAddresses().symmioAddress))).connect(admin)
+	const tx = await partyBOpenFacet.fillOpenIntent(intentId, fillQuantity, fillPrice)
+	console.log("Transaction sent:", tx.hash)
+	await tx.wait()
+	console.log("Transaction confirmed.")
+}

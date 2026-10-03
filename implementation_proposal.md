@@ -17,28 +17,25 @@ This allows PartyA to broadcast a funded sell intent before PartyB is known. SYM
 Recommended v1 scope:
 
 **lafa comment**
+
 1. Allow only `SELL + CROSS + empty whitelist`.
 2. Keep `SELL + ISOLATED` rejected.
 3. Keep `BUY + CROSS + empty whitelist` rejected.
 4. Keep `SELL + CROSS + multiple PartyBs` rejected.
-*lets discuss if we want these other modes 2/, 3/, 4/ as well the others as well*
-[See addendum: mode scope discussion](./impl_proposal_add.md#discussion-other-modes)
+   _lets discuss if we want these other modes 2/, 3/, 4/ as well the others as well_
+   [See addendum: mode scope discussion](./impl_proposal_add.md#discussion-other-modes)
 
 5. Require PartyA to be unbound to a PartyB.
 6. Lock escrow from isolated balances until fill.
 7. Move escrow into selected PartyB cross state at fill, not at lock.
 
-
-**lafa comment**
-8. Disable partial fills for deferred sells in v1.
+**lafa comment** 8. Disable partial fills for deferred sells in v1.
 // I guess its very hard to implement partial fills, and might also not be desired UX from PartyA sender perspective, as we most likely have to isolate both sells.
 so its an AOC (all or cancel only)
 
-**lafa comment**
-9. Release escrow on every non-fill terminal path.
-*potentially gotta add a cancel function? I guess we already have something?*
+**lafa comment** 9. Release escrow on every non-fill terminal path.
+_potentially gotta add a cancel function? I guess we already have something?_
 [See addendum: PartyA cancellation](./impl_proposal_add.md#partya-cancellation)
-
 
 ## Current Blockers
 
@@ -56,17 +53,17 @@ if (tradeAgreements.marginType == MarginType.CROSS) {
 
 ```solidity
 function _lock(OpenIntent memory self, address collateral, uint256 amount) internal {
-    ScheduledReleaseBalance storage partyABalance = self.partyA.balanceOf(collateral);
-    if (self.tradeAgreements.marginType == MarginType.ISOLATED) {
-        partyABalance.isolatedLock(amount);
-    } else {
-        partyABalance.crossLock(self.partyBsWhiteList[0], amount);
-    }
+	ScheduledReleaseBalance storage partyABalance = self.partyA.balanceOf(collateral);
+	if (self.tradeAgreements.marginType == MarginType.ISOLATED) {
+		partyABalance.isolatedLock(amount);
+	} else {
+		partyABalance.crossLock(self.partyBsWhiteList[0], amount);
+	}
 }
 
 function lockMMIfSell(OpenIntent memory self) internal {
-    if (self.tradeAgreements.tradeSide == TradeSide.SELL)
-        self.partyA.balanceOf(getSymbol(self).collateral).crossLock(self.partyBsWhiteList[0], self.tradeAgreements.mm);
+	if (self.tradeAgreements.tradeSide == TradeSide.SELL)
+		self.partyA.balanceOf(getSymbol(self).collateral).crossLock(self.partyBsWhiteList[0], self.tradeAgreements.mm);
 }
 ```
 
@@ -80,13 +77,13 @@ Add to `contracts/types/IntentTypes.sol`:
 
 ```solidity
 struct OpenIntentEscrow {
-    address partyA;
-    address collateral;
-    address feeToken;
-    uint256 mm;
-    uint256 feeLockAmount;
-    bool exists;
-    bool consumed;
+	address partyA;
+	address collateral;
+	address feeToken;
+	uint256 mm;
+	uint256 feeLockAmount;
+	bool exists;
+	bool consumed;
 }
 ```
 
@@ -103,21 +100,15 @@ Appending to the layout preserves the existing diamond storage shape. The source
 Add helpers in `LibOpenIntent.sol`:
 
 ```solidity
-function isDeferredPartyBSell(
-    address[] memory partyBsWhiteList,
-    TradeAgreements memory agreements
-) internal pure returns (bool) {
-    return
-        agreements.tradeSide == TradeSide.SELL &&
-        agreements.marginType == MarginType.CROSS &&
-        partyBsWhiteList.length == 0;
+function isDeferredPartyBSell(address[] memory partyBsWhiteList, TradeAgreements memory agreements) internal pure returns (bool) {
+	return agreements.tradeSide == TradeSide.SELL && agreements.marginType == MarginType.CROSS && partyBsWhiteList.length == 0;
 }
 
 function isDeferredPartyBSellIntent(OpenIntent memory intent) internal pure returns (bool) {
-    return
-        intent.tradeAgreements.tradeSide == TradeSide.SELL &&
-        intent.tradeAgreements.marginType == MarginType.CROSS &&
-        intent.partyBsWhiteList.length == 0;
+	return
+		intent.tradeAgreements.tradeSide == TradeSide.SELL &&
+		intent.tradeAgreements.marginType == MarginType.CROSS &&
+		intent.partyBsWhiteList.length == 0;
 }
 ```
 
@@ -154,10 +145,10 @@ For v1, `_validateDeferredSellPartyA` should at least reject bound PartyA accoun
 
 ```solidity
 function _validateDeferredSellPartyA(address partyA) internal view {
-    address boundPartyB = CounterPartyRelationsStorage.layout().boundPartyB[partyA];
-    if (boundPartyB != address(0)) {
-        revert IntentErrors.DeferredSellNotAllowedForBoundPartyA(partyA, boundPartyB);
-    }
+	address boundPartyB = CounterPartyRelationsStorage.layout().boundPartyB[partyA];
+	if (boundPartyB != address(0)) {
+		revert IntentErrors.DeferredSellNotAllowedForBoundPartyA(partyA, boundPartyB);
+	}
 }
 ```
 
@@ -186,26 +177,26 @@ Implementation shape:
 
 ```solidity
 function lockDeferredSellEscrow(OpenIntent memory intent) internal {
-    OpenIntentStorage.Layout storage layout = OpenIntentStorage.layout();
-    Symbol memory symbol = getSymbol(intent);
+	OpenIntentStorage.Layout storage layout = OpenIntentStorage.layout();
+	Symbol memory symbol = getSymbol(intent);
 
-    uint256 mm = intent.tradeAgreements.mm;
-    uint256 feeLockAmount = calculateOpenFeeLock(intent);
+	uint256 mm = intent.tradeAgreements.mm;
+	uint256 feeLockAmount = calculateOpenFeeLock(intent);
 
-    intent.partyA.balanceOf(symbol.collateral).isolatedLock(mm);
-    intent.partyA.balanceOf(intent.feeStructure.feeToken).isolatedLock(feeLockAmount);
+	intent.partyA.balanceOf(symbol.collateral).isolatedLock(mm);
+	intent.partyA.balanceOf(intent.feeStructure.feeToken).isolatedLock(feeLockAmount);
 
-    layout.openIntentEscrows[intent.id] = OpenIntentEscrow({
-        partyA: intent.partyA,
-        collateral: symbol.collateral,
-        feeToken: intent.feeStructure.feeToken,
-        mm: mm,
-        feeLockAmount: feeLockAmount,
-        exists: true,
-        consumed: false
-    });
+	layout.openIntentEscrows[intent.id] = OpenIntentEscrow({
+		partyA: intent.partyA,
+		collateral: symbol.collateral,
+		feeToken: intent.feeStructure.feeToken,
+		mm: mm,
+		feeLockAmount: feeLockAmount,
+		exists: true,
+		consumed: false
+	});
 
-    emit LockOpenIntentEscrow(intent.id, intent.partyA, symbol.collateral, mm, intent.feeStructure.feeToken, feeLockAmount);
+	emit LockOpenIntentEscrow(intent.id, intent.partyA, symbol.collateral, mm, intent.feeStructure.feeToken, feeLockAmount);
 }
 ```
 
@@ -213,12 +204,12 @@ function lockDeferredSellEscrow(OpenIntent memory intent) internal {
 
 ```solidity
 function calculateOpenFeeLock(OpenIntent memory intent) internal pure returns (uint256) {
-    FeeStructure memory s = intent.feeStructure;
+	FeeStructure memory s = intent.feeStructure;
 
-    return
-        intent.calculateFee(s.platformFee.openFee, intent.price) +
-        intent.calculateFee(s.affiliateFee.openFee, intent.price) +
-        intent.calculateFee(s.solverFee.openFee, intent.price);
+	return
+		intent.calculateFee(s.platformFee.openFee, intent.price) +
+		intent.calculateFee(s.affiliateFee.openFee, intent.price) +
+		intent.calculateFee(s.solverFee.openFee, intent.price);
 }
 ```
 
@@ -278,25 +269,21 @@ if (deferredSell) {
 Consume logic:
 
 ```solidity
-function consumeDeferredSellEscrow(
-    OpenIntent storage intent,
-    uint256 tradeId,
-    address partyB
-) internal {
-    OpenIntentStorage.Layout storage layout = OpenIntentStorage.layout();
-    OpenIntentEscrow storage escrow = layout.openIntentEscrows[intent.id];
+function consumeDeferredSellEscrow(OpenIntent storage intent, uint256 tradeId, address partyB) internal {
+	OpenIntentStorage.Layout storage layout = OpenIntentStorage.layout();
+	OpenIntentEscrow storage escrow = layout.openIntentEscrows[intent.id];
 
-    if (!escrow.exists) revert IntentErrors.MissingOpenIntentEscrow(intent.id);
-    if (escrow.consumed) revert IntentErrors.OpenIntentEscrowAlreadyConsumed(intent.id);
+	if (!escrow.exists) revert IntentErrors.MissingOpenIntentEscrow(intent.id);
+	if (escrow.consumed) revert IntentErrors.OpenIntentEscrowAlreadyConsumed(intent.id);
 
-    escrow.partyA.balanceOf(escrow.collateral).isolatedUnlock(escrow.mm);
-    escrow.partyA.balanceOf(escrow.feeToken).isolatedUnlock(escrow.feeLockAmount);
+	escrow.partyA.balanceOf(escrow.collateral).isolatedUnlock(escrow.mm);
+	escrow.partyA.balanceOf(escrow.feeToken).isolatedUnlock(escrow.feeLockAmount);
 
-    escrow.partyA.balanceOf(escrow.collateral).allocateBalance(partyB, escrow.mm);
+	escrow.partyA.balanceOf(escrow.collateral).allocateBalance(partyB, escrow.mm);
 
-    emit ConsumeOpenIntentEscrow(intent.id, tradeId, partyB, escrow.mm, 0);
+	emit ConsumeOpenIntentEscrow(intent.id, tradeId, partyB, escrow.mm, 0);
 
-    delete layout.openIntentEscrows[intent.id];
+	delete layout.openIntentEscrows[intent.id];
 }
 ```
 
@@ -361,13 +348,13 @@ New helper:
 
 ```solidity
 function unlockForCancelOrExpire(OpenIntent storage intent) internal {
-    if (intent.isDeferredPartyBSellIntent()) {
-        releaseDeferredSellEscrow(intent.id);
-    } else {
-        intent.unlockFees();
-        intent.unlockPremiumIfBuy();
-        intent.unlockMMIfSell();
-    }
+	if (intent.isDeferredPartyBSellIntent()) {
+		releaseDeferredSellEscrow(intent.id);
+	} else {
+		intent.unlockFees();
+		intent.unlockPremiumIfBuy();
+		intent.unlockMMIfSell();
+	}
 }
 ```
 
@@ -383,18 +370,18 @@ Release logic:
 
 ```solidity
 function releaseDeferredSellEscrow(uint256 intentId) internal {
-    OpenIntentStorage.Layout storage layout = OpenIntentStorage.layout();
-    OpenIntentEscrow storage escrow = layout.openIntentEscrows[intentId];
+	OpenIntentStorage.Layout storage layout = OpenIntentStorage.layout();
+	OpenIntentEscrow storage escrow = layout.openIntentEscrows[intentId];
 
-    if (!escrow.exists) return;
-    if (escrow.consumed) return;
+	if (!escrow.exists) return;
+	if (escrow.consumed) return;
 
-    escrow.partyA.balanceOf(escrow.collateral).isolatedUnlock(escrow.mm);
-    escrow.partyA.balanceOf(escrow.feeToken).isolatedUnlock(escrow.feeLockAmount);
+	escrow.partyA.balanceOf(escrow.collateral).isolatedUnlock(escrow.mm);
+	escrow.partyA.balanceOf(escrow.feeToken).isolatedUnlock(escrow.feeLockAmount);
 
-    emit ReleaseOpenIntentEscrow(intentId, escrow.partyA, escrow.collateral, escrow.mm, escrow.feeToken, escrow.feeLockAmount);
+	emit ReleaseOpenIntentEscrow(intentId, escrow.partyA, escrow.collateral, escrow.mm, escrow.feeToken, escrow.feeLockAmount);
 
-    delete layout.openIntentEscrows[intentId];
+	delete layout.openIntentEscrows[intentId];
 }
 ```
 
@@ -413,30 +400,24 @@ Add events to `IPartyAOpenEvents.sol` or another shared open-intent event interf
 
 ```solidity
 event LockOpenIntentEscrow(
-    uint256 indexed intentId,
-    address indexed partyA,
-    address indexed collateral,
-    uint256 mm,
-    address feeToken,
-    uint256 feeLockAmount
+	uint256 indexed intentId,
+	address indexed partyA,
+	address indexed collateral,
+	uint256 mm,
+	address feeToken,
+	uint256 feeLockAmount
 );
 
 event ReleaseOpenIntentEscrow(
-    uint256 indexed intentId,
-    address indexed partyA,
-    address indexed collateral,
-    uint256 mm,
-    address feeToken,
-    uint256 feeLockAmount
+	uint256 indexed intentId,
+	address indexed partyA,
+	address indexed collateral,
+	uint256 mm,
+	address feeToken,
+	uint256 feeLockAmount
 );
 
-event ConsumeOpenIntentEscrow(
-    uint256 indexed intentId,
-    uint256 indexed tradeId,
-    address indexed partyB,
-    uint256 mmConsumed,
-    uint256 mmRemaining
-);
+event ConsumeOpenIntentEscrow(uint256 indexed intentId, uint256 indexed tradeId, address indexed partyB, uint256 mmConsumed, uint256 mmRemaining);
 ```
 
 ## Views
@@ -445,13 +426,13 @@ Add a view struct if needed:
 
 ```solidity
 struct OpenIntentEscrowView {
-    bool exists;
-    bool consumed;
-    address partyA;
-    address collateral;
-    address feeToken;
-    uint256 mm;
-    uint256 feeLockAmount;
+	bool exists;
+	bool consumed;
+	address partyA;
+	address collateral;
+	address feeToken;
+	uint256 mm;
+	uint256 feeLockAmount;
 }
 ```
 
@@ -470,23 +451,23 @@ The frontend and PartyBs need to see that the broadcast sell intent is funded be
 Likely Solidity changes:
 
 1. `contracts/types/IntentTypes.sol`
-   - Add `OpenIntentEscrow`.
+    - Add `OpenIntentEscrow`.
 2. `contracts/storages/OpenIntentStorage.sol`
-   - Append `mapping(uint256 => OpenIntentEscrow) openIntentEscrows`.
+    - Append `mapping(uint256 => OpenIntentEscrow) openIntentEscrows`.
 3. `contracts/errors/IntentErrors.sol`
-   - Add deferred-sell escrow errors.
+    - Add deferred-sell escrow errors.
 4. `contracts/facets/PartyAOpen/IPartyAOpenEvents.sol`
-   - Add escrow events.
+    - Add escrow events.
 5. `contracts/libraries/models/LibOpenIntent.sol`
-   - Add predicates, fee-lock calculation, escrow lock/release/consume helpers, and cancel/expire unlock helper.
+    - Add predicates, fee-lock calculation, escrow lock/release/consume helpers, and cancel/expire unlock helper.
 6. `contracts/libraries/core/LibPartyAOpen.sol`
-   - Allow deferred sell at send time and lock escrow.
+    - Allow deferred sell at send time and lock escrow.
 7. `contracts/libraries/core/LibPartyBOpen.sol`
-   - Validate escrow on lock, consume escrow on fill, reject partial deferred fills, avoid normal unlock helpers for deferred sell.
+    - Validate escrow on lock, consume escrow on fill, reject partial deferred fills, avoid normal unlock helpers for deferred sell.
 8. `contracts/libraries/core/LibForceActions.sol`
-   - Release escrow on force-cancel.
+    - Release escrow on force-cancel.
 9. `contracts/libraries/core/LibClearingHouse.sol`
-   - Release or route escrow on clearing-house cancellation.
+    - Release or route escrow on clearing-house cancellation.
 10. `contracts/facets/View/ViewFacet.sol`
     - Expose escrow state.
 11. `contracts/facets/View/IViewFacet.sol`

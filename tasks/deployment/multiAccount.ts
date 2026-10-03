@@ -1,32 +1,18 @@
-import { ZeroAddress } from "ethers"
-import { task, types } from "hardhat/config"
+import { upgrades } from "@openzeppelin/hardhat-upgrades"
+import type { HardhatRuntimeEnvironment } from "hardhat/types/hre"
+import { requireArg } from "../utils/args.js"
+import { deployMultiAccount } from "./deploy-lib.js"
 
-task("deploy:multiAccount", "Deploys the MultiAccount")
-	.addParam("symmioaddress", "The address of the Symmio contract")
-	.addParam("admin", "The admin address")
-	.addParam("tradenftaddress", "The trade NFT address")
-	.addOptionalParam("logData", "Write the deployed addresses to a data file", true, types.boolean)
-	.setAction(async ({ symmioaddress, admin, tradenftaddress, logData }, { ethers, upgrades, run }) => {
-		console.log("Running deploy:MultiAccount")
-
-		const [deployer] = await ethers.getSigners()
-
-		console.log("Deploying contracts with the account:", deployer.address)
-		const SymmioPartyA = await ethers.getContractFactory("SymmioPartyA")
-
-		// Deploy MultiAccount as upgradeable
-		const SymmioPartyBFactory = await ethers.getContractFactory("MultiAccount")
-		const symmioPartyB = await upgrades.deployProxy(SymmioPartyBFactory, [admin, symmioaddress, SymmioPartyA.bytecode, tradenftaddress], {
-			initializer: "initialize",
-		})
-		await symmioPartyB.waitForDeployment()
-
-		const addresses = {
-			proxy: await symmioPartyB.getAddress(),
-			admin: await upgrades.erc1967.getAdminAddress(await symmioPartyB.getAddress()),
-			implementation: await upgrades.erc1967.getImplementationAddress(await symmioPartyB.getAddress()),
-		}
-		console.log("MultiAccount deployed to", addresses)
-
-		return symmioPartyB
-	})
+export default async function (
+	{ symmioaddress, admin, tradenftaddress }: { symmioaddress: string; admin: string; tradenftaddress: string },
+	hre: HardhatRuntimeEnvironment,
+) {
+	const connection = await hre.network.getOrCreate()
+	return deployMultiAccount(
+		connection.ethers,
+		await upgrades(hre, connection),
+		requireArg(symmioaddress, "symmioaddress"),
+		requireArg(admin, "admin"),
+		requireArg(tradenftaddress, "tradenftaddress"),
+	)
+}

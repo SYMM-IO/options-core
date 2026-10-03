@@ -1,12 +1,11 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers"
+import { ethers, networkHelpers } from "./connection.js"
 import { expect } from "chai"
-import { ethers } from "hardhat"
 import { ZeroAddress, toUtf8Bytes } from "ethers"
-import { e } from "../utils/e"
-import { initializeTestFixture } from "./initialize-test.fixture"
-import { OptionType } from "./option-enums"
-import { PartyA } from "./models/partyA.model"
-import { RunContext } from "./run-context"
+import { e } from "../utils/e.js"
+import { initializeTestFixture } from "./initialize-test.fixture.js"
+import { OptionType } from "./option-enums.js"
+import { PartyA } from "./models/partyA.model.js"
+import { RunContext } from "./run-context.js"
 
 const role = (name: string) => ethers.keccak256(toUtf8Bytes(name))
 
@@ -14,7 +13,7 @@ export function shouldBehaveLikeControlFacet(): void {
 	let context: RunContext
 
 	beforeEach(async function () {
-		context = await loadFixture(initializeTestFixture)
+		context = await networkHelpers.loadFixture(initializeTestFixture)
 	})
 
 	it("gates role administration to DEFAULT_ADMIN_ROLE and emits role events", async function () {
@@ -220,8 +219,10 @@ export function shouldBehaveLikeControlFacet(): void {
 		expect(storedConfig.oracleId).to.equal(activeConfig.oracleId)
 		expect(await context.viewFacet.isManualSync(partyB.address)).to.equal(true)
 
-		await expect(context.controlFacet.setPartyBSupportedSymbolTypes(partyB.address, [1, 2], [true]))
-			.to.be.revertedWithCustomError(context.controlFacet, "MismatchedLengths")
+		await expect(context.controlFacet.setPartyBSupportedSymbolTypes(partyB.address, [1, 2], [true])).to.be.revertedWithCustomError(
+			context.controlFacet,
+			"MismatchedLengths",
+		)
 		await expect(context.controlFacet.setPartyBSupportedSymbolTypes(partyB.address, [1, 2], [true, false]))
 			.to.emit(context.controlFacet, "PartyBSupportedSymbolTypesUpdated")
 			.withArgs(partyB.address, 1, true)
@@ -240,8 +241,10 @@ export function shouldBehaveLikeControlFacet(): void {
 		await expect(context.controlFacet.connect(suspender).suspendAddresses([user1.address], [true]))
 			.to.be.revertedWithCustomError(context.controlFacet, "MissingRole")
 			.withArgs(suspender.address, role("SUSPENDER_ROLE"))
-		await expect(context.controlFacet.suspendAddresses([user1.address, user2.address], [true]))
-			.to.be.revertedWithCustomError(context.controlFacet, "MismatchedLengths")
+		await expect(context.controlFacet.suspendAddresses([user1.address, user2.address], [true])).to.be.revertedWithCustomError(
+			context.controlFacet,
+			"MismatchedLengths",
+		)
 		await expect(context.controlFacet.suspendAddresses([user1.address, ZeroAddress], [true, false]))
 			.to.be.revertedWithCustomError(context.controlFacet, "ZeroAddress")
 			.withArgs("user")
@@ -251,9 +254,7 @@ export function shouldBehaveLikeControlFacet(): void {
 			.withArgs(user1.address, true)
 			.and.to.emit(context.controlFacet, "AddressSuspended")
 			.withArgs(user2.address, false)
-		await expect(context.controlFacet.suspendWithdrawal(44, true))
-			.to.emit(context.controlFacet, "WithdrawalSuspended")
-			.withArgs(44, true)
+		await expect(context.controlFacet.suspendWithdrawal(44, true)).to.emit(context.controlFacet, "WithdrawalSuspended").withArgs(44, true)
 
 		expect(await context.viewFacet.isAddressSuspended(user1.address)).to.equal(true)
 		expect(await context.viewFacet.isAddressSuspended(user2.address)).to.equal(false)

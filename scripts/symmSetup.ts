@@ -1,6 +1,8 @@
-import { ethers } from "hardhat"
+import { network } from "hardhat"
 import fs from "fs"
-import { loadAddresses } from "./utils/file"
+import { loadAddresses } from "./utils/file.js"
+
+const { ethers } = await network.getOrCreate()
 
 async function main() {
 	const configFile = "scripts/config/setup.json"

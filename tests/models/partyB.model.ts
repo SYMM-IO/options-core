@@ -1,8 +1,8 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers"
-import { RunContext } from "../run-context"
-import { runTx } from "../../utils/tx"
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types"
+import { RunContext } from "../run-context.js"
+import { runTx } from "../../utils/tx.js"
 import { BigNumberish } from "ethers"
-import { PartyEntity } from "./partyEntitiy"
+import { PartyEntity } from "./partyEntitiy.js"
 
 export class PartyB extends PartyEntity {
 	constructor(context: RunContext, signer: SignerWithAddress) {

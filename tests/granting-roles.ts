@@ -1,6 +1,6 @@
-import { ethers } from "hardhat"
+import { ethers } from "./connection.js"
 
-import { RunContext } from "./run-context"
+import { RunContext } from "./run-context.js"
 import { toUtf8Bytes } from "ethers"
 
 export async function grantingRoles(context: RunContext): Promise<RunContext> {

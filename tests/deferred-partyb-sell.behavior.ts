@@ -1,13 +1,13 @@
-import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers"
+import { ethers, networkHelpers } from "./connection.js"
 import { expect } from "chai"
-import { initializeTestFixture } from "./initialize-test.fixture"
-import { PartyA } from "./models/partyA.model"
-import { PartyB } from "./models/partyB.model"
-import { openIntentRequestBuilder } from "./models/builders/send-open-intent.builder"
-import { IntentStatus, MarginType, TradeSide } from "./option-enums"
-import { RunContext } from "./run-context"
-import { e } from "../utils/e"
-import { getLatestBlockTime } from "../utils/time"
+import { initializeTestFixture } from "./initialize-test.fixture.js"
+import { PartyA } from "./models/partyA.model.js"
+import { PartyB } from "./models/partyB.model.js"
+import { openIntentRequestBuilder } from "./models/builders/send-open-intent.builder.js"
+import { IntentStatus, MarginType, TradeSide } from "./option-enums.js"
+import { RunContext } from "./run-context.js"
+import { e } from "../utils/e.js"
+import { getLatestBlockTime } from "./utils/time.js"
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 const FIXTURE_PLATFORM_OPEN_FEE = e(0.01)
@@ -20,7 +20,7 @@ describe("Deferred PartyB sell escrow", function () {
 	let partyB2: PartyB
 
 	beforeEach(async function () {
-		context = await loadFixture(initializeTestFixture)
+		context = await networkHelpers.loadFixture(initializeTestFixture)
 		partyA1 = new PartyA(context, context.signers.partyA1)
 		partyB1 = new PartyB(context, context.signers.partyB1)
 		partyB2 = new PartyB(context, context.signers.partyB2)
@@ -82,7 +82,7 @@ describe("Deferred PartyB sell escrow", function () {
 		const collateralLockedBefore = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, collateral)
 		const feeLockedBefore = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, feeToken)
 
-		await expect(partyA1.sendOpenIntent(request)).not.to.be.reverted
+		await expect(partyA1.sendOpenIntent(request)).not.to.revert(ethers)
 
 		const intentId = await context.viewFacet.getLastOpenIntentId()
 		const platformFee = await context.viewFacet.getOpenIntentPlatformFee(intentId)
@@ -365,7 +365,7 @@ describe("Deferred PartyB sell escrow", function () {
 		const collateralLockedBeforeExpire = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, collateral)
 		const feeLockedBeforeExpire = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, feeToken)
 
-		await time.increase(141)
+		await networkHelpers.time.increase(141)
 		await partyA1.expireOpenIntent([intentId])
 
 		const intent = await context.viewFacet.getOpenIntent(intentId)
@@ -394,7 +394,7 @@ describe("Deferred PartyB sell escrow", function () {
 		const collateralLockedBeforeForceCancel = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, collateral)
 		const feeLockedBeforeForceCancel = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, feeToken)
 
-		await time.increase(2)
+		await networkHelpers.time.increase(2)
 		await partyA1.forceCancelOpenIntent(intentId.toString())
 
 		const intent = await context.viewFacet.getOpenIntent(intentId)

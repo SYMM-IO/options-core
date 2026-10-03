@@ -17,25 +17,25 @@ The enum is defined in `contracts/types/BaseTypes.sol:12` (`enum MarginType { IS
 
 ## Contents
 
--   [Mental Model](#mental-model)
--   [Storage Layout Differences](#storage-layout-differences)
--   [Where The marginType Flag Flows](#where-the-margintype-flag-flows)
--   [Restrictions](#restrictions)
--   [Liquidation Differences](#liquidation-differences)
--   [Nonces](#nonces)
--   [Concrete Walk-through](#concrete-walk-through)
--   [Visual: Balance Routing](#visual-balance-routing)
+- [Mental Model](#mental-model)
+- [Storage Layout Differences](#storage-layout-differences)
+- [Where The marginType Flag Flows](#where-the-margintype-flag-flows)
+- [Restrictions](#restrictions)
+- [Liquidation Differences](#liquidation-differences)
+- [Nonces](#nonces)
+- [Concrete Walk-through](#concrete-walk-through)
+- [Visual: Balance Routing](#visual-balance-routing)
 
 ## Mental Model
 
-| Aspect            | Isolated                                                                                                                                     | Cross                                                                                                                                                                         |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Margin scope      | Per trade. Each open intent's premium / fee is locked from `isolatedLockedBalance` without cross-pooling.                                    | Per `(partyA, partyB, collateral)` tuple. All intents and trades share the same `crossBalance[partyB]` slot once the Party B is known.                                        |
-| Counterparty pool | None — credits from Party B may sit in a scheduled-release queue keyed by Party B but the spendable side is Party A's free isolated balance. | Bilateral. Premium and PnL move directly between the two parties' `crossBalance` entries with no scheduling delay.                                                            |
-| What it protects  | Loss isolation: a default on one trade cannot drain margin posted for another trade or another counterparty.                                 | Capital efficiency: a Party A can run many positions against one Party B with margin offset across them.                                                                      |
-| Trade transfer    | Allowed (`TradeFacet.transferTrade`, `TradeNFT`).                                                                                            | Forbidden — the trade is bound to the `(partyA, partyB)` cross slot.                                                                                                          |
+| Aspect            | Isolated                                                                                                                                     | Cross                                                                                                                                                                        |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Margin scope      | Per trade. Each open intent's premium / fee is locked from `isolatedLockedBalance` without cross-pooling.                                    | Per `(partyA, partyB, collateral)` tuple. All intents and trades share the same `crossBalance[partyB]` slot once the Party B is known.                                       |
+| Counterparty pool | None — credits from Party B may sit in a scheduled-release queue keyed by Party B but the spendable side is Party A's free isolated balance. | Bilateral. Premium and PnL move directly between the two parties' `crossBalance` entries with no scheduling delay.                                                           |
+| What it protects  | Loss isolation: a default on one trade cannot drain margin posted for another trade or another counterparty.                                 | Capital efficiency: a Party A can run many positions against one Party B with margin offset across them.                                                                     |
+| Trade transfer    | Allowed (`TradeFacet.transferTrade`, `TradeNFT`).                                                                                            | Forbidden — the trade is bound to the `(partyA, partyB)` cross slot.                                                                                                         |
 | When to use       | Retail Party As, multi-Party-B competition, cases where a position must be portable as an NFT.                                               | Professional Party A↔Party B relationships where margin pooling is desired. A deferred Party B sell can start as an unassigned cross sell, then chooses the Party B at fill. |
-| Side restrictions | `BUY` only — Party A cannot SELL in isolated.                                                                                                | Both `BUY` and `SELL` allowed.                                                                                                                                                |
+| Side restrictions | `BUY` only — Party A cannot SELL in isolated.                                                                                                | Both `BUY` and `SELL` allowed.                                                                                                                                               |
 
 A useful one-liner: **isolated trades belong to Party A; cross trades belong to a Party A↔Party B relationship**.
 
@@ -170,9 +170,9 @@ The asymmetry is encoded in `LibParty.isSolvent` (`contracts/libraries/models/Li
 
 Inside the execution paths (`contracts/libraries/core/LibClearingHouse.sol`):
 
--   Cross Party B liquidation (`liquidateCrossPartyB`, `:130`) zeroes the bilateral cross balance via `subForCounterParty(partyA, balance, MarginType.CROSS, LIQUIDATION)` and re-credits Party A through `scheduledAdd(partyB, balance, MarginType.CROSS, LIQUIDATION)` — both instant writes since the margin type is CROSS.
--   Liquidation distribution from the pool uses `scheduledAdd(partyB, amount, marginType, LIQUIDATION)` (`:299`), so isolated payouts queue through the scheduled-release pipeline while cross payouts land instantly.
--   Trade closure during liquidation reads `tradeAgreement.marginType` to decide whether locks/MM are released through the isolated or cross channel (`:227-233`).
+- Cross Party B liquidation (`liquidateCrossPartyB`, `:130`) zeroes the bilateral cross balance via `subForCounterParty(partyA, balance, MarginType.CROSS, LIQUIDATION)` and re-credits Party A through `scheduledAdd(partyB, balance, MarginType.CROSS, LIQUIDATION)` — both instant writes since the margin type is CROSS.
+- Liquidation distribution from the pool uses `scheduledAdd(partyB, amount, marginType, LIQUIDATION)` (`:299`), so isolated payouts queue through the scheduled-release pipeline while cross payouts land instantly.
+- Trade closure during liquidation reads `tradeAgreement.marginType` to decide whether locks/MM are released through the isolated or cross channel (`:227-233`).
 
 ## Nonces
 

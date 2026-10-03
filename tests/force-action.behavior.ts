@@ -1,18 +1,17 @@
-import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers"
+import { ethers, networkHelpers } from "./connection.js"
 import { expect } from "chai"
-import { initializeTestFixture } from "./initialize-test.fixture"
-import { PartyA } from "./models/partyA.model"
-import { RunContext } from "./run-context"
-import { openIntentRequestBuilder } from "./models/builders/send-open-intent.builder"
-import { PartyB } from "./models/partyB.model"
-import { ethers, network } from "hardhat"
-import { e } from "../utils/e"
+import { initializeTestFixture } from "./initialize-test.fixture.js"
+import { PartyA } from "./models/partyA.model.js"
+import { RunContext } from "./run-context.js"
+import { openIntentRequestBuilder } from "./models/builders/send-open-intent.builder.js"
+import { PartyB } from "./models/partyB.model.js"
+import { e } from "../utils/e.js"
 
 export function shouldBehaveLikeForceActionFacet(): void {
 	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyB1: PartyB, partyB2: PartyB
 
 	beforeEach(async function () {
-		context = await loadFixture(initializeTestFixture)
+		context = await networkHelpers.loadFixture(initializeTestFixture)
 		partyA1 = new PartyA(context, context.signers.partyA1)
 		partyB1 = new PartyB(context, context.signers.partyB1)
 		await partyA1.setBalances(context.collateral, "500")
@@ -74,8 +73,8 @@ export function shouldBehaveLikeForceActionFacet(): void {
 			})
 
 			it("Should force cancel open intent successfuly", async function () {
-				await time.increase(await context.viewFacet.getForceCancelOpenIntentTimeout())
-				await expect(partyA1.forceCancelOpenIntent("1")).to.not.reverted
+				await networkHelpers.time.increase(await context.viewFacet.getForceCancelOpenIntentTimeout())
+				await expect(partyA1.forceCancelOpenIntent("1")).not.to.revert(ethers)
 
 				const { statusModifyTimestamp, status } = await context.viewFacet.getOpenIntent(1)
 

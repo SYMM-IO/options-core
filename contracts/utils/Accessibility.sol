@@ -69,7 +69,8 @@ abstract contract Accessibility {
 	}
 
 	modifier whenInstantModeIsNotActive(address sender) {
-		if (CounterPartyRelationsStorage.layout().instantActionsMode[sender] && !AppStorage.layout().callFromInstantLayer) revert PartyRelationsErrors.InstantModeActive(sender);
+		if (CounterPartyRelationsStorage.layout().instantActionsMode[sender] && !AppStorage.layout().callFromInstantLayer)
+			revert PartyRelationsErrors.InstantModeActive(sender);
 		_;
 	}
 

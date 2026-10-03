@@ -17,26 +17,26 @@ Indexed parameters are marked `(idx)` in tables; non-indexed are `(data)`. Most 
 
 ## Contents
 
--   [AccountFacet](#accountfacet)
--   [PartyAOpenFacet (shared `IPartiesEvents`)](#partyaopenfacet-shared-ipartiesevents)
--   [PartyBOpenFacet](#partybopenfacet)
--   [PartyACloseFacet](#partyaclosefacet)
--   [PartyBCloseFacet](#partybclosefacet)
--   [TradeFacet](#tradefacet)
--   [ForceActionsFacet](#forceactionsfacet)
--   [ClearingHouseFacet](#clearinghousefacet)
--   [CounterPartyRelationsFacet](#counterpartyrelationsfacet)
--   [ControlFacet](#controlfacet)
--   [LibScheduledReleaseBalance (library events)](#libscheduledreleasebalance-library-events)
--   [LibDiamond / DiamondCutFacet](#libdiamond--diamondcutfacet)
--   [InstantLayer (helper)](#instantlayer-helper)
--   [MultiAccount (helper)](#multiaccount-helper)
--   [SymmioPartyA (helper)](#symmiopartya-helper)
--   [SymmioPartyB (helper)](#symmiopartyb-helper)
--   [TradeNFT (helper)](#tradenft-helper)
--   [MuonOracle (helper)](#muonoracle-helper)
--   [Defined But Not Emitted](#defined-but-not-emitted)
--   [Cross-Cutting Patterns](#cross-cutting-patterns)
+- [AccountFacet](#accountfacet)
+- [PartyAOpenFacet (shared `IPartiesEvents`)](#partyaopenfacet-shared-ipartiesevents)
+- [PartyBOpenFacet](#partybopenfacet)
+- [PartyACloseFacet](#partyaclosefacet)
+- [PartyBCloseFacet](#partybclosefacet)
+- [TradeFacet](#tradefacet)
+- [ForceActionsFacet](#forceactionsfacet)
+- [ClearingHouseFacet](#clearinghousefacet)
+- [CounterPartyRelationsFacet](#counterpartyrelationsfacet)
+- [ControlFacet](#controlfacet)
+- [LibScheduledReleaseBalance (library events)](#libscheduledreleasebalance-library-events)
+- [LibDiamond / DiamondCutFacet](#libdiamond--diamondcutfacet)
+- [InstantLayer (helper)](#instantlayer-helper)
+- [MultiAccount (helper)](#multiaccount-helper)
+- [SymmioPartyA (helper)](#symmiopartya-helper)
+- [SymmioPartyB (helper)](#symmiopartyb-helper)
+- [TradeNFT (helper)](#tradenft-helper)
+- [MuonOracle (helper)](#muonoracle-helper)
+- [Defined But Not Emitted](#defined-but-not-emitted)
+- [Cross-Cutting Patterns](#cross-cutting-patterns)
 
 ---
 
@@ -73,63 +73,63 @@ Subgraph notes: `id` from `InitiateWithdraw` / `InitiateExpressWithdraw` is the 
 
 `SendOpenIntent(address indexed partyA, uint256 intentId, address[] partyBsWhiteList, bytes requestedParams)`
 
--   Decl: `contracts/interfaces/IPartiesEvents.sol:10`
--   Emit: `contracts/facets/PartyAOpen/PartyAOpenFacet.sol:85` (initial intent), `contracts/facets/PartyBOpen/PartyBOpenFacet.sol:74` (residual intent created when a partial fill leaves leftover quantity).
--   Triggered by `PartyAOpenFacet.sendOpenIntent` and inside `PartyBOpenFacet.fillOpenIntent` when `newIntentId != 0`.
--   `requestedParams` packs: `(symbolId, price, quantity, strikePrice, expirationTimestamp, mm, tradeSide, marginType, exerciseFee.rate, exerciseFee.cap, solverFee.openFee, solverFee.closeFee, deadline)` for the original; the residual variant omits `solverFee` fields. All amounts are 18-decimal.
--   Subgraph: `intentId` is the primary key for `OpenIntent`. Two emission sites means indexers must accept both.
+- Decl: `contracts/interfaces/IPartiesEvents.sol:10`
+- Emit: `contracts/facets/PartyAOpen/PartyAOpenFacet.sol:85` (initial intent), `contracts/facets/PartyBOpen/PartyBOpenFacet.sol:74` (residual intent created when a partial fill leaves leftover quantity).
+- Triggered by `PartyAOpenFacet.sendOpenIntent` and inside `PartyBOpenFacet.fillOpenIntent` when `newIntentId != 0`.
+- `requestedParams` packs: `(symbolId, price, quantity, strikePrice, expirationTimestamp, mm, tradeSide, marginType, exerciseFee.rate, exerciseFee.cap, solverFee.openFee, solverFee.closeFee, deadline)` for the original; the residual variant omits `solverFee` fields. All amounts are 18-decimal.
+- Subgraph: `intentId` is the primary key for `OpenIntent`. Two emission sites means indexers must accept both.
 
 ### `CancelOpenIntent`
 
 `CancelOpenIntent(uint256 intentId, OpenIntentStatus finalStatus)`
 
--   Decl: `contracts/interfaces/IPartiesEvents.sol:11`
--   Emit: `contracts/facets/PartyAOpen/PartyAOpenFacet.sol:136`, `contracts/facets/PartyBOpen/PartyBOpenFacet.sol:93`.
--   `cancelOpenIntent` resolves to either `CANCELED` (immediate) or `CANCEL_PENDING` (locked, awaiting Party B). Also fired when the residual intent of a fill is auto-canceled.
--   `finalStatus` enum is `OpenIntentStatus` from `contracts/types/IntentTypes.sol`.
+- Decl: `contracts/interfaces/IPartiesEvents.sol:11`
+- Emit: `contracts/facets/PartyAOpen/PartyAOpenFacet.sol:136`, `contracts/facets/PartyBOpen/PartyBOpenFacet.sol:93`.
+- `cancelOpenIntent` resolves to either `CANCELED` (immediate) or `CANCEL_PENDING` (locked, awaiting Party B). Also fired when the residual intent of a fill is auto-canceled.
+- `finalStatus` enum is `OpenIntentStatus` from `contracts/types/IntentTypes.sol`.
 
 ### `ExpireOpenIntent`
 
 `ExpireOpenIntent(uint256 intentId)`
 
--   Decl: `contracts/interfaces/IPartiesEvents.sol:12`
--   Emit: `contracts/facets/PartyAOpen/PartyAOpenFacet.sol:117`, `:134`, and `contracts/facets/PartyBOpen/PartyBOpenFacet.sol:43` (lock attempt past deadline).
--   Marks the intent as `EXPIRED`; can be fired by anyone for already-expired intents via `expireOpenIntent`, indirectly through `cancelOpenIntent`, or by a Party B trying to lock.
+- Decl: `contracts/interfaces/IPartiesEvents.sol:12`
+- Emit: `contracts/facets/PartyAOpen/PartyAOpenFacet.sol:117`, `:134`, and `contracts/facets/PartyBOpen/PartyBOpenFacet.sol:43` (lock attempt past deadline).
+- Marks the intent as `EXPIRED`; can be fired by anyone for already-expired intents via `expireOpenIntent`, indirectly through `cancelOpenIntent`, or by a Party B trying to lock.
 
 ### `ExpireCloseIntent`
 
 `ExpireCloseIntent(uint256 intentId)`
 
--   Decl: `contracts/interfaces/IPartiesEvents.sol:13`
--   Emit: `contracts/facets/PartyAClose/PartyACloseFacet.sol:58`, `:73`. Same dual path as the open variant.
+- Decl: `contracts/interfaces/IPartiesEvents.sol:13`
+- Emit: `contracts/facets/PartyAClose/PartyACloseFacet.sol:58`, `:73`. Same dual path as the open variant.
 
 ### `LockOpenIntentEscrow`
 
 `LockOpenIntentEscrow(uint256 indexed intentId, address indexed partyA, address indexed collateral, uint256 mm, address feeToken, uint256 feeLockAmount)`
 
--   Decl: `contracts/interfaces/IPartiesEvents.sol:14-21`; library declaration mirrors it in `contracts/libraries/models/LibOpenIntent.sol:24-31`.
--   Emit: `contracts/libraries/models/LibOpenIntent.sol:162`.
--   Triggered when Party A creates a deferred Party B sell (`SELL + CROSS + empty whitelist`).
--   `mm` is the seller maintenance margin locked from Party A isolated `collateral`; `feeLockAmount` is the estimated total open fee locked from Party A isolated `feeToken` at the intent limit price.
+- Decl: `contracts/interfaces/IPartiesEvents.sol:14-21`; library declaration mirrors it in `contracts/libraries/models/LibOpenIntent.sol:24-31`.
+- Emit: `contracts/libraries/models/LibOpenIntent.sol:162`.
+- Triggered when Party A creates a deferred Party B sell (`SELL + CROSS + empty whitelist`).
+- `mm` is the seller maintenance margin locked from Party A isolated `collateral`; `feeLockAmount` is the estimated total open fee locked from Party A isolated `feeToken` at the intent limit price.
 
 ### `ReleaseOpenIntentEscrow`
 
 `ReleaseOpenIntentEscrow(uint256 indexed intentId, address indexed partyA, address indexed collateral, uint256 mm, address feeToken, uint256 feeLockAmount)`
 
--   Decl: `contracts/interfaces/IPartiesEvents.sol:22-29`; library declaration mirrors it in `contracts/libraries/models/LibOpenIntent.sol:32-39`.
--   Emit: `contracts/libraries/models/LibOpenIntent.sol:175`.
--   Triggered when a deferred Party B sell reaches a non-fill terminal path: pending cancel, Party B accept-cancel, force-cancel, expiry, or clearing-house cancel/expire.
--   Subgraph: pair this with `LockOpenIntentEscrow` to know that the isolated reservation was returned and `openIntentEscrows[intentId]` was deleted.
+- Decl: `contracts/interfaces/IPartiesEvents.sol:22-29`; library declaration mirrors it in `contracts/libraries/models/LibOpenIntent.sol:32-39`.
+- Emit: `contracts/libraries/models/LibOpenIntent.sol:175`.
+- Triggered when a deferred Party B sell reaches a non-fill terminal path: pending cancel, Party B accept-cancel, force-cancel, expiry, or clearing-house cancel/expire.
+- Subgraph: pair this with `LockOpenIntentEscrow` to know that the isolated reservation was returned and `openIntentEscrows[intentId]` was deleted.
 
 ### `ConsumeOpenIntentEscrow`
 
 `ConsumeOpenIntentEscrow(uint256 indexed intentId, uint256 indexed tradeId, address indexed partyB, uint256 mmConsumed, uint256 feeConsumed)`
 
--   Decl: `contracts/interfaces/IPartiesEvents.sol:30`; library declaration mirrors it in `contracts/libraries/models/LibOpenIntent.sol:40`.
--   Emit: `contracts/libraries/models/LibOpenIntent.sol:207`.
--   Triggered during fill of a deferred Party B sell, after the selected Party B is known and before the normal cross fee/premium accounting completes. On partial fills, the event reports only the consumed slice.
--   `mmConsumed` is allocated into Party A's cross collateral bucket against `partyB`; `feeConsumed` is the actual fill-price open fee allocated into Party A's cross `feeToken` bucket against `partyB`.
--   A residual partial-fill escrow move does not emit a second lock event because the balances stay locked; indexers should follow the residual `SendOpenIntent` child and read `getOpenIntentEscrow(childIntentId)`.
+- Decl: `contracts/interfaces/IPartiesEvents.sol:30`; library declaration mirrors it in `contracts/libraries/models/LibOpenIntent.sol:40`.
+- Emit: `contracts/libraries/models/LibOpenIntent.sol:207`.
+- Triggered during fill of a deferred Party B sell, after the selected Party B is known and before the normal cross fee/premium accounting completes. On partial fills, the event reports only the consumed slice.
+- `mmConsumed` is allocated into Party A's cross collateral bucket against `partyB`; `feeConsumed` is the actual fill-price open fee allocated into Party A's cross `feeToken` bucket against `partyB`.
+- A residual partial-fill escrow move does not emit a second lock event because the balances stay locked; indexers should follow the residual `SendOpenIntent` child and read `getOpenIntentEscrow(childIntentId)`.
 
 ---
 
@@ -141,34 +141,34 @@ Source: `contracts/facets/PartyBOpen/IPartyBOpenEvents.sol`. Inherits `IPartiesE
 
 `LockOpenIntent(uint256 intentId, address indexed partyB)`
 
--   Decl: `IPartyBOpenEvents.sol:11`
--   Emit: `PartyBOpenFacet.sol:31`
--   Party B reserves an `OpenIntent` for exclusive fill (state → `LOCKED`).
+- Decl: `IPartyBOpenEvents.sol:11`
+- Emit: `PartyBOpenFacet.sol:31`
+- Party B reserves an `OpenIntent` for exclusive fill (state → `LOCKED`).
 
 ### `UnlockOpenIntent`
 
 `UnlockOpenIntent(uint256 intentId, address indexed partyB)`
 
--   Decl: `IPartyBOpenEvents.sol:12`
--   Emit: `PartyBOpenFacet.sol:45`
--   Party B releases its lock (state → `PENDING`). Same call path may emit `ExpireOpenIntent` instead if past deadline.
+- Decl: `IPartyBOpenEvents.sol:12`
+- Emit: `PartyBOpenFacet.sol:45`
+- Party B releases its lock (state → `PENDING`). Same call path may emit `ExpireOpenIntent` instead if past deadline.
 
 ### `AcceptCancelOpenIntent`
 
 `AcceptCancelOpenIntent(uint256 intentId)`
 
--   Decl: `IPartyBOpenEvents.sol:10`
--   Emit: `PartyBOpenFacet.sol:57`
--   Party B accepts a Party A `CANCEL_PENDING` request (state → `CANCELED`).
+- Decl: `IPartyBOpenEvents.sol:10`
+- Emit: `PartyBOpenFacet.sol:57`
+- Party B accepts a Party A `CANCEL_PENDING` request (state → `CANCELED`).
 
 ### `FillOpenIntent`
 
 `FillOpenIntent(uint256 intentId, uint256 tradeId, uint256 quantity, uint256 price)`
 
--   Decl: `IPartyBOpenEvents.sol:13`
--   Emit: `PartyBOpenFacet.sol:71`
--   `quantity` and `price` are 18-decimal. `tradeId` is the newly created trade. If `quantity` < requested, a residual `SendOpenIntent` follows.
--   Subgraph: `tradeId` is the primary key for `Trade`; pair with the originating `intentId`.
+- Decl: `IPartyBOpenEvents.sol:13`
+- Emit: `PartyBOpenFacet.sol:71`
+- `quantity` and `price` are 18-decimal. `tradeId` is the newly created trade. If `quantity` < requested, a residual `SendOpenIntent` follows.
+- Subgraph: `tradeId` is the primary key for `Trade`; pair with the originating `intentId`.
 
 ---
 
@@ -180,17 +180,17 @@ Source: `contracts/facets/PartyAClose/IPartyACloseEvents.sol` (extends `IParties
 
 `SendCloseIntent(uint256 tradeId, uint256 intentId, uint256 price, uint256 quantity, uint256 deadline)`
 
--   Decl: `IPartyACloseEvents.sol:10`
--   Emit: `PartyACloseFacet.sol:45`
--   Party A asks to close `quantity` of `tradeId` at `price` before `deadline` (unix seconds). Field order is `(tradeId, intentId, price, quantity, deadline)` — note `price` precedes `quantity` in the event, opposite to the function signature order.
+- Decl: `IPartyACloseEvents.sol:10`
+- Emit: `PartyACloseFacet.sol:45`
+- Party A asks to close `quantity` of `tradeId` at `price` before `deadline` (unix seconds). Field order is `(tradeId, intentId, price, quantity, deadline)` — note `price` precedes `quantity` in the event, opposite to the function signature order.
 
 ### `CancelCloseIntent`
 
 `CancelCloseIntent(uint256 intentId)`
 
--   Decl: `IPartyACloseEvents.sol:11`
--   Emit: `PartyACloseFacet.sol:75`
--   Resolves to `CANCEL_PENDING` (the only state that fires this event; expired close intents fire `ExpireCloseIntent` instead).
+- Decl: `IPartyACloseEvents.sol:11`
+- Emit: `PartyACloseFacet.sol:75`
+- Resolves to `CANCEL_PENDING` (the only state that fires this event; expired close intents fire `ExpireCloseIntent` instead).
 
 ---
 
@@ -202,17 +202,17 @@ Source: `contracts/facets/PartyBClose/IPartyBCloseEvents.sol`. Emissions in `con
 
 `AcceptCancelCloseIntent(uint256 intentId)`
 
--   Decl: `IPartyBCloseEvents.sol:10`
--   Emit: `PartyBCloseFacet.sol:28`
--   Party B accepts Party A's pending close cancellation.
+- Decl: `IPartyBCloseEvents.sol:10`
+- Emit: `PartyBCloseFacet.sol:28`
+- Party B accepts Party A's pending close cancellation.
 
 ### `FillCloseIntent`
 
 `FillCloseIntent(uint256 intentId, uint256 quantity, uint256 price)`
 
--   Decl: `IPartyBCloseEvents.sol:11`
--   Emit: `PartyBCloseFacet.sol:40`
--   No new `tradeId` is emitted — closes operate on the intent's bound trade. `quantity` and `price` are 18-decimal.
+- Decl: `IPartyBCloseEvents.sol:11`
+- Emit: `PartyBCloseFacet.sol:40`
+- No new `tradeId` is emitted — closes operate on the intent's bound trade. `quantity` and `price` are 18-decimal.
 
 ---
 
@@ -224,17 +224,17 @@ Source: `contracts/facets/Trade/ITradeEvents.sol`. Emissions in `contracts/facet
 
 `TransferTradeByPartyA(address indexed sender, address indexed receiver, uint256 tradeId)`
 
--   Decl: `ITradeEvents.sol:8`
--   Emit: `TradeFacet.sol:34` (Party A direct transfer), `:51` (mirrored from `TradeNFT` via `transferTradeFromNFT`).
--   Tracks ownership change of a `Trade`. The same event handles both bare transfers and NFT-mediated transfers; pair with `TradeNFT.TradeNFTTransferred` to disambiguate.
+- Decl: `ITradeEvents.sol:8`
+- Emit: `TradeFacet.sol:34` (Party A direct transfer), `:51` (mirrored from `TradeNFT` via `transferTradeFromNFT`).
+- Tracks ownership change of a `Trade`. The same event handles both bare transfers and NFT-mediated transfers; pair with `TradeNFT.TradeNFTTransferred` to disambiguate.
 
 ### `ExecuteTrades`
 
 `ExecuteTrades(address operator, uint256[] tradeIds, bool[] exercised, bool[] expired, uint256 settlementPrice, uint256 collateralPrice)`
 
--   Decl: `ITradeEvents.sol:9`
--   Emit: `TradeFacet.sol:63`
--   Emitted by `executeTrades(tradeIds, settlementPriceSig)` after expiration. `exercised[i]` and `expired[i]` describe per-trade outcome (mutually exclusive). `settlementPrice` and `collateralPrice` come from the Muon-signed `SettlementPriceSig` and are 18-decimal.
+- Decl: `ITradeEvents.sol:9`
+- Emit: `TradeFacet.sol:63`
+- Emitted by `executeTrades(tradeIds, settlementPriceSig)` after expiration. `exercised[i]` and `expired[i]` describe per-trade outcome (mutually exclusive). `settlementPrice` and `collateralPrice` come from the Muon-signed `SettlementPriceSig` and are 18-decimal.
 
 ---
 
@@ -404,36 +404,36 @@ Source: `contracts/libraries/models/LibScheduledReleaseBalance.sol`. These are t
 
 `IncreaseBalance(address indexed user, address indexed counterParty, address indexed collateral, uint256 amount, IncreaseBalanceReason reason, bool isInstant, MarginType marginType)`
 
--   Decl: `LibScheduledReleaseBalance.sol:30-38`
--   Emit: lines 103, 124, 131
--   Fired whenever any balance (cross or isolated) credits a user. `isInstant=true` means the credit is immediately spendable; `false` means it joins the scheduled-release queue. `counterParty == address(0)` for isolated credits.
--   `IncreaseBalanceReason`: `DEPOSIT, INTERNAL_TRANSFER, EXPRESS_WITHDRAW, AFFILIATE_FEE, SOLVER_FEE, PLATFORM_FEE, PREMIUM, REALIZED_PNL, LIQUIDATION, INVALID_WITHDRAWAL, ALLOCATE_FROM_RESERVE`.
+- Decl: `LibScheduledReleaseBalance.sol:30-38`
+- Emit: lines 103, 124, 131
+- Fired whenever any balance (cross or isolated) credits a user. `isInstant=true` means the credit is immediately spendable; `false` means it joins the scheduled-release queue. `counterParty == address(0)` for isolated credits.
+- `IncreaseBalanceReason`: `DEPOSIT, INTERNAL_TRANSFER, EXPRESS_WITHDRAW, AFFILIATE_FEE, SOLVER_FEE, PLATFORM_FEE, PREMIUM, REALIZED_PNL, LIQUIDATION, INVALID_WITHDRAWAL, ALLOCATE_FROM_RESERVE`.
 
 ### `DecreaseBalance`
 
 `DecreaseBalance(address indexed user, address indexed counterParty, address indexed collateral, uint256 amount, DecreaseBalanceReason reason, MarginType marginType)`
 
--   Decl: `LibScheduledReleaseBalance.sol:40-47`
--   Emit: lines 143, 168, 190, 201, 212
--   Fired on every debit. `DecreaseBalanceReason`: `WITHDRAW, INTERNAL_TRANSFER, EXPRESS_WITHDRAW, AFFILIATE_FEE, SOLVER_FEE, PLATFORM_FEE, PREMIUM, REALIZED_PNL, CONFISCATE, LIQUIDATION, EXTERNAL_TRANSFER`.
--   Subgraph: paired with `IncreaseBalance`, these are the only reliable source of fine-grained ledger replay because facet-level `Deposit` / `Allocate` events do not break out fee splits.
+- Decl: `LibScheduledReleaseBalance.sol:40-47`
+- Emit: lines 143, 168, 190, 201, 212
+- Fired on every debit. `DecreaseBalanceReason`: `WITHDRAW, INTERNAL_TRANSFER, EXPRESS_WITHDRAW, AFFILIATE_FEE, SOLVER_FEE, PLATFORM_FEE, PREMIUM, REALIZED_PNL, CONFISCATE, LIQUIDATION, EXTERNAL_TRANSFER`.
+- Subgraph: paired with `IncreaseBalance`, these are the only reliable source of fine-grained ledger replay because facet-level `Deposit` / `Allocate` events do not break out fee splits.
 
 ### `SyncBalance`
 
 `SyncBalance(address indexed user, address indexed counterParty, address indexed collateral)`
 
--   Decl: line 49
--   Emit: lines 328, 365
--   Marker that scheduled-release balances were drained into spendable. Fires whenever `_syncBalance` actually advances the cursor.
+- Decl: line 49
+- Emit: lines 328, 365
+- Marker that scheduled-release balances were drained into spendable. Fires whenever `_syncBalance` actually advances the cursor.
 
 ### `LockBalance` / `UnlockBalance`
 
 `LockBalance(address indexed user, address indexed collateral, uint256 amount, MarginType marginType)`
 `UnlockBalance(address indexed user, address indexed collateral, uint256 amount, MarginType marginType)`
 
--   Decl: lines 51, 53
--   Emit: 431, 443 (lock isolated/cross), 437, 450 (unlock isolated/cross)
--   Tracks reservation of balance for pending intents, fees, premium, or margin. Note `counterParty` is not on the signature — the binding is implied by call context (locks are not cross-counterparty-keyed).
+- Decl: lines 51, 53
+- Emit: 431, 443 (lock isolated/cross), 437, 450 (unlock isolated/cross)
+- Tracks reservation of balance for pending intents, fees, premium, or margin. Note `counterParty` is not on the signature — the binding is implied by call context (locks are not cross-counterparty-keyed).
 
 ---
 
@@ -556,22 +556,22 @@ The following events exist in interfaces but no contract currently emits them. I
 
 ### Nonces
 
--   The Diamond uses bilateral `nonces[partyA][partyB][collateral]` for cross-margin actions, but does not emit a dedicated nonce event — clients read the post-state from facet calls or the `ViewFacet`.
--   `InstantLayer.NonceIncremented` is the only on-chain nonce event and only fires when the operation uses ordered-nonce mode (`nonce != 0`); salt-only mode is silent.
--   `BindToPartyB` / `Initiate|Complete|CancelUnbindingFromPartyB` define when a bilateral relation exists, which is the base for nonce-keyed off-chain signing.
+- The Diamond uses bilateral `nonces[partyA][partyB][collateral]` for cross-margin actions, but does not emit a dedicated nonce event — clients read the post-state from facet calls or the `ViewFacet`.
+- `InstantLayer.NonceIncremented` is the only on-chain nonce event and only fires when the operation uses ordered-nonce mode (`nonce != 0`); salt-only mode is silent.
+- `BindToPartyB` / `Initiate|Complete|CancelUnbindingFromPartyB` define when a bilateral relation exists, which is the base for nonce-keyed off-chain signing.
 
 ### Intent IDs vs Trade IDs
 
--   `intentId` is the primary key for `OpenIntent` and `CloseIntent` lifecycles. Carriers: `SendOpenIntent`, `LockOpenIntent`, `UnlockOpenIntent`, `AcceptCancelOpenIntent`, `CancelOpenIntent`, `ExpireOpenIntent`, `ForceCancelOpenIntent`, `SendCloseIntent`, `FillCloseIntent`, `CancelCloseIntent`, `ExpireCloseIntent`, `ForceCancelCloseIntent`, `AcceptCancelCloseIntent`, `CancelOpenIntentsForLiquidation`, `CancelCloseIntentsForLiquidation`.
--   `tradeId` is the primary key for `Trade`. Carriers: `FillOpenIntent` (creates), `SendCloseIntent` (references), `TransferTradeByPartyA`, `TradeNFTMinted`, `TradeNFTTransferred`, `ExecuteTrades`, `CloseTradesForLiquidation`. `tokenId` on TradeNFT events equals `tradeId`.
--   `liquidationId` joins all clearing-house events (`Confiscate`, `LiquidateCrossPartyA`, `DistributeCollateral`, `CloseTradesForLiquidation`, `AllocateFromReserveToCross` derived from context, `CancelOpenIntentsForLiquidation`, `CancelCloseIntentsForLiquidation`).
--   `withdrawId` (`uint256 id` in `InitiateWithdraw`/`InitiateExpressWithdraw`) is the key for the withdrawal lifecycle.
+- `intentId` is the primary key for `OpenIntent` and `CloseIntent` lifecycles. Carriers: `SendOpenIntent`, `LockOpenIntent`, `UnlockOpenIntent`, `AcceptCancelOpenIntent`, `CancelOpenIntent`, `ExpireOpenIntent`, `ForceCancelOpenIntent`, `SendCloseIntent`, `FillCloseIntent`, `CancelCloseIntent`, `ExpireCloseIntent`, `ForceCancelCloseIntent`, `AcceptCancelCloseIntent`, `CancelOpenIntentsForLiquidation`, `CancelCloseIntentsForLiquidation`.
+- `tradeId` is the primary key for `Trade`. Carriers: `FillOpenIntent` (creates), `SendCloseIntent` (references), `TransferTradeByPartyA`, `TradeNFTMinted`, `TradeNFTTransferred`, `ExecuteTrades`, `CloseTradesForLiquidation`. `tokenId` on TradeNFT events equals `tradeId`.
+- `liquidationId` joins all clearing-house events (`Confiscate`, `LiquidateCrossPartyA`, `DistributeCollateral`, `CloseTradesForLiquidation`, `AllocateFromReserveToCross` derived from context, `CancelOpenIntentsForLiquidation`, `CancelCloseIntentsForLiquidation`).
+- `withdrawId` (`uint256 id` in `InitiateWithdraw`/`InitiateExpressWithdraw`) is the key for the withdrawal lifecycle.
 
 ### Off-chain replay and state reconstruction
 
--   `SendOpenIntent` is the canonical "create" event for intents (covers both fresh creation in `PartyAOpenFacet` and residual creation inside `PartyBOpenFacet.fillOpenIntent`). Indexers must subscribe to both source files.
--   `LibScheduledReleaseBalance.IncreaseBalance` / `DecreaseBalance` / `SyncBalance` together are the authoritative ledger for ScheduledReleaseBalance; facet-level `Deposit`, `Allocate`, etc. are coarser and can be cross-checked against them.
--   `TransferTradeByPartyA` is fired in two places: direct `transferTrade` and the NFT callback `transferTradeFromNFT`. Pair with `TradeNFTTransferred` to disambiguate the source.
--   `ExecuteTrades` carries arrays — split per index for per-trade indexing; align `tradeIds[i]` with `exercised[i]` and `expired[i]`.
--   Pause/unpause events from `ControlFacet` are the only on-chain signal of operational state; they're flag-style with no payload, so indexers must maintain a running stack from each pair.
--   `DiamondCut` fully describes facet topology changes; replaying it from genesis reproduces the current selector → facet routing.
+- `SendOpenIntent` is the canonical "create" event for intents (covers both fresh creation in `PartyAOpenFacet` and residual creation inside `PartyBOpenFacet.fillOpenIntent`). Indexers must subscribe to both source files.
+- `LibScheduledReleaseBalance.IncreaseBalance` / `DecreaseBalance` / `SyncBalance` together are the authoritative ledger for ScheduledReleaseBalance; facet-level `Deposit`, `Allocate`, etc. are coarser and can be cross-checked against them.
+- `TransferTradeByPartyA` is fired in two places: direct `transferTrade` and the NFT callback `transferTradeFromNFT`. Pair with `TradeNFTTransferred` to disambiguate the source.
+- `ExecuteTrades` carries arrays — split per index for per-trade indexing; align `tradeIds[i]` with `exercised[i]` and `expired[i]`.
+- Pause/unpause events from `ControlFacet` are the only on-chain signal of operational state; they're flag-style with no payload, so indexers must maintain a running stack from each pair.
+- `DiamondCut` fully describes facet topology changes; replaying it from genesis reproduces the current selector → facet routing.

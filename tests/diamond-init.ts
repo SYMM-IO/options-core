@@ -1,5 +1,5 @@
-import { e } from "../utils/e"
-import { RunContext } from "./run-context"
+import { e } from "../utils/e.js"
+import { RunContext } from "./run-context.js"
 
 export async function diamondInitialize(context: RunContext): Promise<RunContext> {
 	await context.controlFacet.connect(context.signers.admin).unpauseGlobal()

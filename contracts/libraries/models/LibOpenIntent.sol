@@ -17,27 +17,11 @@ import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason }
 import { ValidationErrors } from "../../errors/ValidationErrors.sol";
 import { IntentErrors } from "../../errors/IntentErrors.sol";
 
+import { IPartiesEvents } from "../../interfaces/IPartiesEvents.sol";
+
 library LibOpenIntentOps {
 	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibParty for address;
-
-	event LockOpenIntentEscrow(
-		uint256 indexed intentId,
-		address indexed partyA,
-		address indexed collateral,
-		uint256 mm,
-		address feeToken,
-		uint256 feeLockAmount
-	);
-	event ReleaseOpenIntentEscrow(
-		uint256 indexed intentId,
-		address indexed partyA,
-		address indexed collateral,
-		uint256 mm,
-		address feeToken,
-		uint256 feeLockAmount
-	);
-	event ConsumeOpenIntentEscrow(uint256 indexed intentId, uint256 indexed tradeId, address indexed partyB, uint256 mmConsumed, uint256 feeConsumed);
 
 	function calculateFeeForQuantity(OpenIntent memory self, uint256 quantity, uint256 rate, uint256 price) internal pure returns (uint256) {
 		return (quantity * price * rate) / (self.feeStructure.tokenPriceInCollateral * 1e18);
@@ -159,7 +143,7 @@ library LibOpenIntentOps {
 			consumed: false
 		});
 
-		emit LockOpenIntentEscrow(self.id, self.partyA, symbol.collateral, mm, self.feeStructure.feeToken, feeLockAmount);
+		emit IPartiesEvents.LockOpenIntentEscrow(self.id, self.partyA, symbol.collateral, mm, self.feeStructure.feeToken, feeLockAmount);
 	}
 
 	function releaseDeferredSellEscrow(uint256 intentId) internal {
@@ -172,7 +156,7 @@ library LibOpenIntentOps {
 		escrow.partyA.balanceOf(escrow.collateral).isolatedUnlock(escrow.mm);
 		escrow.partyA.balanceOf(escrow.feeToken).isolatedUnlock(escrow.feeLockAmount);
 
-		emit ReleaseOpenIntentEscrow(intentId, escrow.partyA, escrow.collateral, escrow.mm, escrow.feeToken, escrow.feeLockAmount);
+		emit IPartiesEvents.ReleaseOpenIntentEscrow(intentId, escrow.partyA, escrow.collateral, escrow.mm, escrow.feeToken, escrow.feeLockAmount);
 
 		delete openIntentLayout.openIntentEscrows[intentId];
 	}
@@ -191,9 +175,10 @@ library LibOpenIntentOps {
 		if (!escrow.exists) revert IntentErrors.MissingOpenIntentEscrow(self.id);
 		if (escrow.consumed) revert IntentErrors.OpenIntentEscrowAlreadyConsumed(self.id);
 
-		uint256 feeLockConsumed = filledQuantity == self.tradeAgreements.quantity
-			? escrow.feeLockAmount
-			: calculateOpenFeeAmountForQuantity(self, filledQuantity, self.price);
+		uint256 feeLockConsumed =
+			filledQuantity == self.tradeAgreements.quantity
+				? escrow.feeLockAmount
+				: calculateOpenFeeAmountForQuantity(self, filledQuantity, self.price);
 		uint256 actualFeeAmount = calculateOpenFeeAmountForQuantity(self, filledQuantity, fillPrice);
 
 		escrow.partyA.balanceOf(escrow.collateral).isolatedUnlock(consumedMM);
@@ -204,7 +189,7 @@ library LibOpenIntentOps {
 
 		escrow.mm -= consumedMM;
 		escrow.feeLockAmount -= feeLockConsumed;
-		emit ConsumeOpenIntentEscrow(self.id, tradeId, partyB, consumedMM, actualFeeAmount);
+		emit IPartiesEvents.ConsumeOpenIntentEscrow(self.id, tradeId, partyB, consumedMM, actualFeeAmount);
 
 		if (escrow.mm == 0 && escrow.feeLockAmount == 0) {
 			escrow.consumed = true;

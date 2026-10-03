@@ -128,9 +128,10 @@ library LibPartyBClose {
 			address feeToken = intent.feeStructure.feeToken;
 
 			// Determine affiliate fee collector (use default if none specified)
-			address affiliateFeeCollector = feeLayout.affiliateFeeCollector[trade.affiliate] == address(0)
-				? feeLayout.defaultFeeCollector
-				: feeLayout.affiliateFeeCollector[trade.affiliate];
+			address affiliateFeeCollector =
+				feeLayout.affiliateFeeCollector[trade.affiliate] == address(0)
+					? feeLayout.defaultFeeCollector
+					: feeLayout.affiliateFeeCollector[trade.affiliate];
 
 			// Pay platform fees
 			ScheduledReleaseBalance storage defaultFeeCollectorBalance = feeLayout.defaultFeeCollector.balanceOf(feeToken);

@@ -1,10 +1,9 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers"
-import { RunContext } from "../run-context"
-import { runTx } from "../../utils/tx"
-import { ethers } from "hardhat"
+import { ethers, networkHelpers } from "../connection.js"
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types"
+import { RunContext } from "../run-context.js"
+import { runTx } from "../../utils/tx.js"
 import { BigNumberish, BytesLike } from "ethers"
-import { setBalance } from "@nomicfoundation/hardhat-network-helpers"
-import { FakeStablecoin } from "../../types"
+import { FakeStablecoin } from "../../types/index.js"
 
 export class PartyEntity {
 	constructor(
@@ -26,7 +25,7 @@ export class PartyEntity {
 	}
 
 	public async setNativeBalance(amount: bigint) {
-		await setBalance(this.signer.address, amount)
+		await networkHelpers.setBalance(this.signer.address, amount)
 	}
 
 	public get getSigner() {

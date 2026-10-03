@@ -1,16 +1,17 @@
 ---
 title: Account & Balance Flows
 aliases:
-  - Balances
-  - Deposit
-  - Withdraw
-  - Allocation
-  - Reserve Balance
+    - Balances
+    - Deposit
+    - Withdraw
+    - Allocation
+    - Reserve Balance
 tags:
-  - symmio
-  - options-core
-  - flow
+    - symmio
+    - options-core
+    - flow
 ---
+
 # Account And Balance Flows
 
 `AccountFacet` is the only public surface for moving collateral into, around, and out of the Diamond. Every `(user, collateral)` pair is backed by a single `ScheduledReleaseBalance` slot in `AccountStorage.balances`. All numbers in storage are normalized to 18 decimals; only deposits and withdrawals translate between collateral-token decimals and the internal representation through `LibDecimals`.
@@ -53,22 +54,22 @@ flowchart LR
 
 `ScheduledReleaseBalance` is defined in `contracts/types/BalanceTypes.sol:46` and is mutated exclusively through `ScheduledReleaseBalanceOps` (`contracts/libraries/models/LibScheduledReleaseBalance.sol`).
 
-| Field | Type | Units | Default | Writers | Readers |
-| --- | --- | --- | --- | --- | --- |
-| `collateral` | `address` | n/a | `address(0)` | `setup` on first credit | All ops via `checkSetup` |
-| `user` | `address` | n/a | `address(0)` | `setup` on first credit | All ops via `checkSetup` |
-| `isolatedBalance` | `uint256` | 18d | `0` | `instantIsolatedAdd`, `isolatedSub`, `subForCounterParty`, `allocateBalance`, `deallocateBalance`, `_sync`, reserve ops | Every facet that needs a free-balance check |
-| `isolatedLockedBalance` | `uint256` | 18d | `0` | `isolatedLock`, `isolatedUnlock` | Open/close intent fee/premium locks |
-| `reserveBalance` | `uint256` | 18d | `0` | `allocateToReserveBalance`, `deallocateFromReserveBalance`, `LibClearingHouse.allocateFromReserveToCross` | Solvency views, clearing-house consumption |
-| `crossBalance[cp].balance` | `int256` | 18d | `0` | `allocateBalance`, `deallocateBalance`, `subForCounterParty`, `scheduledAdd` (CROSS) | All cross-margin solvency math |
-| `crossBalance[cp].locked` | `uint256` | 18d | `0` | `crossLock`, `crossUnlock` | Open intent margin locking |
-| `crossBalance[cp].totalMM` | `uint256` | 18d | `0` | `increaseMM`, `decreaseMM` | Maintenance-margin tracking for Party A short positions |
-| `counterPartySchedules[cp].releaseInterval` | `uint256` | seconds | `0` | `addCounterParty`, `_sync` reinit | `_sync` |
-| `counterPartySchedules[cp].transitioning` | `uint256` | 18d | `0` | `_sync`, `subForCounterParty` | `inTransitionBalance`, `counterPartyBalance` |
-| `counterPartySchedules[cp].scheduled` | `uint256` | 18d | `0` | `scheduledAdd`, `_sync`, `subForCounterParty` | `inTransitionBalance`, `counterPartyBalance` |
-| `counterPartySchedules[cp].lastTransitionTimestamp` | `uint256` | seconds | `0` | `addCounterParty`, `_sync` | `_sync` |
-| `counterPartyAddresses` | `address[]` | n/a | empty | `addCounterParty`, `tryRemoveCounterParty` | `syncAll` |
-| `counterPartyIndexes[cp]` | `uint256` | 1-based | `0` | `addCounterParty`, `tryRemoveCounterParty` | `addCounterParty` membership check |
+| Field                                               | Type        | Units   | Default      | Writers                                                                                                                 | Readers                                                 |
+| --------------------------------------------------- | ----------- | ------- | ------------ | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `collateral`                                        | `address`   | n/a     | `address(0)` | `setup` on first credit                                                                                                 | All ops via `checkSetup`                                |
+| `user`                                              | `address`   | n/a     | `address(0)` | `setup` on first credit                                                                                                 | All ops via `checkSetup`                                |
+| `isolatedBalance`                                   | `uint256`   | 18d     | `0`          | `instantIsolatedAdd`, `isolatedSub`, `subForCounterParty`, `allocateBalance`, `deallocateBalance`, `_sync`, reserve ops | Every facet that needs a free-balance check             |
+| `isolatedLockedBalance`                             | `uint256`   | 18d     | `0`          | `isolatedLock`, `isolatedUnlock`                                                                                        | Open/close intent fee/premium locks                     |
+| `reserveBalance`                                    | `uint256`   | 18d     | `0`          | `allocateToReserveBalance`, `deallocateFromReserveBalance`, `LibClearingHouse.allocateFromReserveToCross`               | Solvency views, clearing-house consumption              |
+| `crossBalance[cp].balance`                          | `int256`    | 18d     | `0`          | `allocateBalance`, `deallocateBalance`, `subForCounterParty`, `scheduledAdd` (CROSS)                                    | All cross-margin solvency math                          |
+| `crossBalance[cp].locked`                           | `uint256`   | 18d     | `0`          | `crossLock`, `crossUnlock`                                                                                              | Open intent margin locking                              |
+| `crossBalance[cp].totalMM`                          | `uint256`   | 18d     | `0`          | `increaseMM`, `decreaseMM`                                                                                              | Maintenance-margin tracking for Party A short positions |
+| `counterPartySchedules[cp].releaseInterval`         | `uint256`   | seconds | `0`          | `addCounterParty`, `_sync` reinit                                                                                       | `_sync`                                                 |
+| `counterPartySchedules[cp].transitioning`           | `uint256`   | 18d     | `0`          | `_sync`, `subForCounterParty`                                                                                           | `inTransitionBalance`, `counterPartyBalance`            |
+| `counterPartySchedules[cp].scheduled`               | `uint256`   | 18d     | `0`          | `scheduledAdd`, `_sync`, `subForCounterParty`                                                                           | `inTransitionBalance`, `counterPartyBalance`            |
+| `counterPartySchedules[cp].lastTransitionTimestamp` | `uint256`   | seconds | `0`          | `addCounterParty`, `_sync`                                                                                              | `_sync`                                                 |
+| `counterPartyAddresses`                             | `address[]` | n/a     | empty        | `addCounterParty`, `tryRemoveCounterParty`                                                                              | `syncAll`                                               |
+| `counterPartyIndexes[cp]`                           | `uint256`   | 1-based | `0`          | `addCounterParty`, `tryRemoveCounterParty`                                                                              | `addCounterParty` membership check                      |
 
 Free isolated balance available to the user is always `isolatedBalance - isolatedLockedBalance` (not the raw value). The locked portion exists so that intent creation can reserve funds without removing them from the global accounting.
 
@@ -78,11 +79,11 @@ Free isolated balance available to the user is always `isolatedBalance - isolate
 
 There are three entry points, all routed through `LibBalanceOperations._deposit` (`contracts/libraries/core/LibBalanceOperations.sol:40`):
 
-| Function | Caller | Role | Actually transfers ERC20? |
-| --- | --- | --- | --- |
-| `deposit(collateral, amount)` | anyone | none | yes, from `msg.sender` |
-| `depositFor(collateral, user, amount)` | anyone | none | yes, from `msg.sender` |
-| `virtualDepositFor(collateral, user, amount)` | privileged | `VIRTUAL_DEPOSITOR_ROLE` | no |
+| Function                                      | Caller     | Role                     | Actually transfers ERC20? |
+| --------------------------------------------- | ---------- | ------------------------ | ------------------------- |
+| `deposit(collateral, amount)`                 | anyone     | none                     | yes, from `msg.sender`    |
+| `depositFor(collateral, user, amount)`        | anyone     | none                     | yes, from `msg.sender`    |
+| `virtualDepositFor(collateral, user, amount)` | privileged | `VIRTUAL_DEPOSITOR_ROLE` | no                        |
 
 `amount` is in **collateral-token decimals** at the public boundary; it is normalized to 18 decimals via `LibDecimals.normalizeAmount` before crediting `isolatedBalance`.
 
@@ -117,11 +118,11 @@ sequenceDiagram
 - `whenPartyNotPaused`: rejects with `SystemErrors.PartyAActionsPaused` / `SystemErrors.PartyBActionsPaused` based on `LibParty.isPartyB`.
 - `nonReentrant` on `deposit` and `depositFor` (the ERC20 transfer crosses a trust boundary). `virtualDepositFor` skips reentrancy because no external call is made.
 - Inside `_deposit`:
-  - `ValidationErrors.CollateralNotWhitelisted` if `AppStorage.whiteListedCollateral[collateral]` is false.
-  - `ValidationErrors.ZeroAmount` if `amount == 0`.
-  - `ValidationErrors.ZeroAddress("user")` if `user == address(0)`.
-  - `requireSolvent(user, address(0), collateral, ISOLATED)`: rejects with `BalanceErrors.NotSolvent` if a Party A is in isolated liquidation, or if a Party B has any active isolated liquidation (`LibParty.isSolvent`, `contracts/libraries/models/LibParty.sol:21`).
-  - `BalanceErrors.BalanceLimitExceeded` for non-Party B users when the post-credit isolated balance would breach `appLayout.balanceLimitPerUser[collateral]`.
+    - `ValidationErrors.CollateralNotWhitelisted` if `AppStorage.whiteListedCollateral[collateral]` is false.
+    - `ValidationErrors.ZeroAmount` if `amount == 0`.
+    - `ValidationErrors.ZeroAddress("user")` if `user == address(0)`.
+    - `requireSolvent(user, address(0), collateral, ISOLATED)`: rejects with `BalanceErrors.NotSolvent` if a Party A is in isolated liquidation, or if a Party B has any active isolated liquidation (`LibParty.isSolvent`, `contracts/libraries/models/LibParty.sol:21`).
+    - `BalanceErrors.BalanceLimitExceeded` for non-Party B users when the post-credit isolated balance would breach `appLayout.balanceLimitPerUser[collateral]`.
 
 ### Events
 
@@ -194,10 +195,10 @@ Both go through `LibBalanceOperations.initiateWithdraw` (`contracts/libraries/co
 - Availability check uses `isolatedBalance - isolatedLockedBalance`; shortfall reverts `BalanceErrors.InsufficientBalance`.
 - Solvency: `requireSolvent(sender, address(0), collateral, ISOLATED)` — both Party A and Party B must be free of isolated liquidations.
 - For express withdraws (`provider != address(0)`):
-  - `accountLayout.expressWithdrawProviderConfigs[provider][collateral].isActive` must be true, else `BalanceErrors.ExpressWithdrawProviderNotActive`.
-  - `providerConfig.receiver != address(0)`, else `ValidationErrors.ZeroAddress("receiver")`.
-  - The provider's `IExpressWithdrawProvider.validateWithdraw(sender, collateral, amount, to, userData)` must return `(true, _)`. A failure reverts `BalanceErrors.ExpressWithdrawRejectedByProvider(provider, reason)`.
-  - `isVirtual` on the request is taken from `providerConfig.isVirtual`. A virtual express withdraw never moves ERC20 on completion — it only flips state.
+    - `accountLayout.expressWithdrawProviderConfigs[provider][collateral].isActive` must be true, else `BalanceErrors.ExpressWithdrawProviderNotActive`.
+    - `providerConfig.receiver != address(0)`, else `ValidationErrors.ZeroAddress("receiver")`.
+    - The provider's `IExpressWithdrawProvider.validateWithdraw(sender, collateral, amount, to, userData)` must return `(true, _)`. A failure reverts `BalanceErrors.ExpressWithdrawRejectedByProvider(provider, reason)`.
+    - `isVirtual` on the request is taken from `providerConfig.isVirtual`. A virtual express withdraw never moves ERC20 on completion — it only flips state.
 - The library debits `isolatedSub(amount, WITHDRAW)`, increments `lastWithdrawId`, and stores a `Withdraw` struct keyed by id.
 
 ```mermaid
@@ -261,9 +262,9 @@ sequenceDiagram
 
 - `suspendWithdraw(id)` is gated on `SUSPENDER_ROLE` (`contracts/utils/Accessibility.sol:36`). It flips status to `SUSPENDED` and prevents `complete`/`cancel` until restored. It does **not** refund any balance.
 - `restoreWithdraw(id, validAmount)` is gated on `DISPUTER_ROLE`. Preconditions:
-  - Status must be `SUSPENDED`.
-  - `accountLayout.invalidWithdrawalsAmountsPool` must be set, else `ValidationErrors.ZeroAddress("invalidWithdrawalsAmountsPool")`.
-  - `validAmount <= withdrawal.amount`, else `BalanceErrors.ValidAmountExceedsOriginal`.
+    - Status must be `SUSPENDED`.
+    - `accountLayout.invalidWithdrawalsAmountsPool` must be set, else `ValidationErrors.ZeroAddress("invalidWithdrawalsAmountsPool")`.
+    - `validAmount <= withdrawal.amount`, else `BalanceErrors.ValidAmountExceedsOriginal`.
 - The difference `(withdrawal.amount - validAmount)` is normalized again (via `LibDecimals.normalizeAmount`) and credited to the configured pool's isolated balance with reason `INVALID_WITHDRAWAL`. **Note:** this re-normalizes an already-normalized value, which double-applies the decimal scaling. Operators must understand this when configuring the pool address.
 - Status returns to `INITIATED` and `withdrawal.amount` is overwritten with `validAmount` so a subsequent `completeWithdraw` only releases the validated portion.
 
@@ -302,8 +303,8 @@ Express withdrawals provide a cooldown-respecting fast-payout path managed by an
 - `isPartyB` is a self-declaration that must match `msg.sender`'s actual side; the validator paths use it to choose which oracle id (`partyBConfigs[msg.sender|counterParty].oracleId`) to feed `LibMuon.verifyUpnlSig`.
 - `LibMuon.verifyUpnlSig` (`contracts/libraries/services/LibMuon.sol:59`) hashes `(reqId, diamond, "verifyUpnlSig", party, counterParty, partyUpnl, counterPartyUpnl, collateral, collateralPrice, nonces[party][counterParty], timestamp, chainId)` and calls `IMuonOracle.verifyTSSAndGW`. Expired or replayed signatures revert via `ValidationErrors.ExpiredSignature` or the underlying oracle.
 - Path split:
-  - `isPartyB = false` (Party A caller) → `deallocateForPartyAValidation`. Computes `partyAReadyToDeallocate = min(crossBalance, balance + uPnL_in_collateral - totalMM - locked)`. If Party B's available balance after uPnL is negative, Party A must "cover the debt" — the deallocation is rejected if `partyAReadyToDeallocate - amount < -debt`. Loss coverage uses `partyBConfigs[counterParty].lossCoverage` when Party B's uPnL is negative. After validation, an isolated balance limit check applies for non-Party A→Party B pairs (it always applies because Party A is never Party B here).
-  - `isPartyB = true` (Party B caller) → `deallocateForPartyBValidation`. Requires Party A to be solvent (`partyA cross balance + uPnL ≥ totalMM`). Then either bounds Party B by `min(balance, balance + uPnL)` when uPnL is non-negative, or by the loss-coverage requirement when uPnL is negative.
+    - `isPartyB = false` (Party A caller) → `deallocateForPartyAValidation`. Computes `partyAReadyToDeallocate = min(crossBalance, balance + uPnL_in_collateral - totalMM - locked)`. If Party B's available balance after uPnL is negative, Party A must "cover the debt" — the deallocation is rejected if `partyAReadyToDeallocate - amount < -debt`. Loss coverage uses `partyBConfigs[counterParty].lossCoverage` when Party B's uPnL is negative. After validation, an isolated balance limit check applies for non-Party A→Party B pairs (it always applies because Party A is never Party B here).
+    - `isPartyB = true` (Party B caller) → `deallocateForPartyBValidation`. Requires Party A to be solvent (`partyA cross balance + uPnL ≥ totalMM`). Then either bounds Party B by `min(balance, balance + uPnL)` when uPnL is non-negative, or by the loss-coverage requirement when uPnL is negative.
 - Both paths re-check `requireSolvent` for both `ISOLATED` and `CROSS` after validation.
 - `ScheduledReleaseBalanceOps.deallocateBalance` decrements `crossBalance[cp].balance` (note: this can drive `balance` below zero for Party A shorts paying realized PnL, but never as a direct effect of deallocation since deallocation requires positive headroom).
 - Facet modifiers: same as `allocate`.
@@ -339,10 +340,10 @@ Cross-margin balances are defined as the bilateral state between one Party A (ta
 
 Reserve balance is a third pool that sits next to isolated and cross. It exists so a Party B (typically) can pre-fund headroom that the clearing house can pull into a cross slot during a liquidation cascade without requiring new signatures.
 
-| Function | Direction | Caller |
-| --- | --- | --- |
-| `allocateToReserveBalance(collateral, amount)` | isolated → reserve | the user |
-| `deallocateFromReserveBalance(collateral, amount)` | reserve → isolated | the user |
+| Function                                                                                 | Direction                   | Caller                |
+| ---------------------------------------------------------------------------------------- | --------------------------- | --------------------- |
+| `allocateToReserveBalance(collateral, amount)`                                           | isolated → reserve          | the user              |
+| `deallocateFromReserveBalance(collateral, amount)`                                       | reserve → isolated          | the user              |
 | `ClearingHouseFacet.allocateFromReserveToCross(party, counterParty, collateral, amount)` | reserve → cross (scheduled) | `CLEARING_HOUSE_ROLE` |
 
 `LibAllocationOperations.allocateToReserveBalance` (`contracts/libraries/core/LibAllocationOperations.sol:67`):
@@ -381,10 +382,10 @@ flowchart LR
 - `value == 0` is a no-op.
 - `MarginType.CROSS` ⇒ instantly mutates `crossBalance[counterParty].balance += value` and emits `IncreaseBalance(..., isInstant=true, CROSS)`. This is how every cross-margin credit (PnL settlement, fees to a cross collector, reserve→cross promotion) lands without delay.
 - `MarginType.ISOLATED`:
-  1. If `accountLayout.manualSync[self.user]` is false, ensure `counterParty` is tracked via `addCounterParty`. Adding fails if `counterPartyAddresses.length == maxConnectedCounterParties` and a `syncAll()` did not free a slot — `BalanceErrors.MaxCounterPartyConnectionsReached`.
-  2. Run `_sync(counterParty)` first to realize anything mature.
-  3. If `counterParty.getReleaseInterval() == 0`, fall back to `instantIsolatedAdd` (no scheduling at all).
-  4. Otherwise increment `entry.scheduled += value`.
+    1. If `accountLayout.manualSync[self.user]` is false, ensure `counterParty` is tracked via `addCounterParty`. Adding fails if `counterPartyAddresses.length == maxConnectedCounterParties` and a `syncAll()` did not free a slot — `BalanceErrors.MaxCounterPartyConnectionsReached`.
+    2. Run `_sync(counterParty)` first to realize anything mature.
+    3. If `counterParty.getReleaseInterval() == 0`, fall back to `instantIsolatedAdd` (no scheduling at all).
+    4. Otherwise increment `entry.scheduled += value`.
 
 ### `_sync`
 
@@ -392,14 +393,14 @@ flowchart LR
 
 1. If `counterParty` is not solvent (via `isSolvent(counterParty, self.user, collateral, ISOLATED)`), the function returns early — **scheduled funds stay frozen** until the counterparty's liquidation clears. This is critical: it prevents Party A from harvesting premium before Party B's exposure to that Party A is settled.
 2. If the user-specific or default release interval has changed since `entry.releaseInterval` was last set, the function re-initializes:
-   - Aligns `lastTransitionTimestamp` to the new interval boundary.
-   - If the new interval is zero, drains both buckets into `isolatedBalance` immediately.
-   - Otherwise merges `transitioning` into `scheduled` (because the two-bus geometry only makes sense relative to the active interval).
+    - Aligns `lastTransitionTimestamp` to the new interval boundary.
+    - If the new interval is zero, drains both buckets into `isolatedBalance` immediately.
+    - Otherwise merges `transitioning` into `scheduled` (because the two-bus geometry only makes sense relative to the active interval).
 3. With `releaseInterval == 0` and no change, returns.
 4. Computes `intervals = (block.timestamp - lastTransitionTimestamp) / releaseInterval`. If zero, returns.
 5. Bus advancement:
-   - If two buses have passed (`block.timestamp >= thisTransitionTimestamp + interval`), both buckets flush to `isolatedBalance`.
-   - Else if one bus has passed, `transitioning` flushes and `scheduled` is promoted into `transitioning`.
+    - If two buses have passed (`block.timestamp >= thisTransitionTimestamp + interval`), both buckets flush to `isolatedBalance`.
+    - Else if one bus has passed, `transitioning` flushes and `scheduled` is promoted into `transitioning`.
 6. Re-aligns `lastTransitionTimestamp` to the current interval start.
 7. Calls `tryRemoveCounterParty` to free the slot if both buckets are empty and there are no active trades for the pair (`TradeStorage.activeTradesOfPartyAWithPartyBCount`).
 
@@ -434,9 +435,9 @@ When `accountLayout.manualSync[user]` is true (set automatically for Party B in 
 
 - The nonce for `(party, counterParty)` is mixed into `LibMuon.verifyUpnlSig` (`contracts/libraries/services/LibMuon.sol:85`) so a single `UpnlSig` is bound to the exact pair-state at signing time.
 - Both directions are incremented after balance-affecting trade actions, ensuring signatures issued before the action become invalid for either side:
-  - Open intent fill by Party B: `LibPartyBOpen.sol:365-366`.
-  - Close intent fill by Party B: `LibPartyBClose.sol:170-171`.
-  - Settlement execution: `LibTradeOperations.sol:233-234`.
+    - Open intent fill by Party B: `LibPartyBOpen.sol:365-366`.
+    - Close intent fill by Party B: `LibPartyBClose.sol:170-171`.
+    - Settlement execution: `LibTradeOperations.sol:233-234`.
 - `ViewFacet` exposes `getNonce(party, counterParty)` (`contracts/facets/View/ViewFacet.sol:200`) so off-chain signers can fetch the value before requesting a Muon signature.
 
 Off-chain implications: any service producing a `UpnlSig` for a Party A↔Party B pair must read the on-chain nonce for `(party, counterParty)` and include it in the Muon request payload. Stale signatures cannot be reused for any subsequent action against the same pair.
@@ -445,60 +446,60 @@ Off-chain implications: any service producing a `UpnlSig` for a Party A↔Party 
 
 Every error this facet surface can throw, with cause:
 
-| Error | Source | Cause |
-| --- | --- | --- |
-| `ValidationErrors.CollateralNotWhitelisted(collateral)` | `LibBalanceOperations._deposit` | Collateral not in `AppStorage.whiteListedCollateral` |
-| `ValidationErrors.ZeroAmount()` | deposit, transfer, withdraw, initiate | `amount == 0` |
-| `ValidationErrors.ZeroAddress(prop)` | many | `user`, `to`, `target`, `counterParty`, `receiver`, `invalidWithdrawalsAmountsPool` is zero |
-| `ValidationErrors.ExternalTransferTargetNotWhitelisted(target, collateral)` | `externalTransfer` | Target not in `accountLayout.externalTransferTargets` |
-| `ValidationErrors.CooldownNotOver("withdraw", now, due)` | `completeWithdraw` | Called before `partyA/BDeallocateCooldown` elapsed |
-| `ValidationErrors.InvalidState("WithdrawStatus", current, [expected])` | `completeWithdraw`, `cancelWithdraw`, `suspendWithdraw`, `restoreWithdraw` | Status not as required by `requireStatus` |
-| `ValidationErrors.ExpiredSignature(now, t, valid, expiry)` | `LibMuon.verifyUpnlSig` | uPnL signature older than `appLayout.upnlSigValidTime` |
-| `ValidationErrors.MissingRole(sender, role)` | `virtualDepositFor`, `suspendWithdraw`, `restoreWithdraw` | Caller lacks `VIRTUAL_DEPOSITOR_ROLE`, `SUSPENDER_ROLE`, or `DISPUTER_ROLE` |
-| `ValidationErrors.PartyBUser(user)` | `internalTransfer` | Sender is a Party B (blocked by `onlyNotPartyB`) |
-| `BalanceErrors.InsufficientBalance(user, token, requested, available)` | `internalTransfer`, `initiateWithdraw`, `allocateBalance`, `subForCounterParty`, reserve ops, `isolatedSub` | Free isolated < requested, or reserve < requested |
-| `BalanceErrors.InsufficientIntBalance(user, token, requested, available)` | `deallocateForPartyAValidation`, `deallocateForPartyBValidation`, `confiscate` | Cross headroom (signed) less than requested |
-| `BalanceErrors.InsufficientLockedBalance(token, requested, balance)` | `isolatedUnlock`, `crossUnlock` | Unlock more than was locked |
-| `BalanceErrors.InsufficientMMBalance(token, requested, balance)` | `decreaseMM` | Decrement more MM than tracked |
-| `BalanceErrors.BalanceLimitExceeded(balance, amount, limit)` | deposit, internal transfer, allocate, deallocate, reserve, cancel | Non-Party B post-credit would exceed `balanceLimitPerUser` |
-| `BalanceErrors.MaxCounterPartyConnectionsReached(current, max)` | `addCounterParty` | Tracked-counterparty count at cap and `syncAll` could not free a slot |
-| `BalanceErrors.InvalidSyncTimestamp(now, last)` | `_sync` | Clock skew (should be unreachable in production) |
-| `BalanceErrors.BalanceSetupRequired()` | any op gated by `checkSetup` | Slot mutated before `setup` initialized `user`/`collateral` |
-| `BalanceErrors.InvalidCounterParty(party, counterParty)` | `allocate` | Pair not exactly one Party B |
-| `BalanceErrors.InsufficientDebtCoverage(party, cp, ready, amount, debt)` | `deallocateForPartyAValidation` | Party A leaving would leave Party B insolvent post-loss-coverage |
-| `BalanceErrors.NotSolvent(user, cp, collateral, marginType)` | `requireSolvent`, `deallocateForPartyBValidation` | Active liquidation id present, or post-deallocation solvency fails |
-| `BalanceErrors.InvalidWithdrawalId(id)` | `completeWithdraw`, `cancelWithdraw` | `id > lastWithdrawId` |
-| `BalanceErrors.ExpressWithdrawCancellationNotAllowed(provider)` | `cancelWithdraw` | Express withdraws are non-cancellable |
-| `BalanceErrors.ExpressWithdrawProviderNotActive(provider)` | `initiateExpressWithdraw` | Provider config inactive |
-| `BalanceErrors.ExpressWithdrawProviderReceiverNotSet(provider)` | (declared, used by configuration paths) | Receiver missing |
-| `BalanceErrors.ExpressWithdrawRejectedByProvider(provider, reason)` | `initiateExpressWithdraw` | `validateWithdraw` returned false |
-| `BalanceErrors.ValidAmountExceedsOriginal(given, original)` | `restoreWithdraw` | Disputer attempted to restore more than the original amount |
-| `SystemErrors.GlobalPaused / DepositingPaused / WithdrawingPaused / InternalTransferPaused / ExternalTransferPaused / ExpressWithdrawPaused / PartyAActionsPaused / PartyBActionsPaused` | `Pausable` modifiers | Global or scoped pause active |
-| `SystemErrors.UserSuspended(user)` | `whenNotSuspended`, `whenWithdrawalNotSuspended` | Sender, recipient, or withdrawal participant suspended |
-| `SystemErrors.WithdrawalSuspended(id)` | `whenWithdrawalNotSuspended` | Withdrawal flagged by `suspendWithdraw` |
-| `PartyRelationsErrors.InstantModeActive(sender)` | `whenInstantModeIsNotActive` | Sender is in instant-action mode and call is not from `InstantLayer` |
+| Error                                                                                                                                                                                    | Source                                                                                                      | Cause                                                                                       |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `ValidationErrors.CollateralNotWhitelisted(collateral)`                                                                                                                                  | `LibBalanceOperations._deposit`                                                                             | Collateral not in `AppStorage.whiteListedCollateral`                                        |
+| `ValidationErrors.ZeroAmount()`                                                                                                                                                          | deposit, transfer, withdraw, initiate                                                                       | `amount == 0`                                                                               |
+| `ValidationErrors.ZeroAddress(prop)`                                                                                                                                                     | many                                                                                                        | `user`, `to`, `target`, `counterParty`, `receiver`, `invalidWithdrawalsAmountsPool` is zero |
+| `ValidationErrors.ExternalTransferTargetNotWhitelisted(target, collateral)`                                                                                                              | `externalTransfer`                                                                                          | Target not in `accountLayout.externalTransferTargets`                                       |
+| `ValidationErrors.CooldownNotOver("withdraw", now, due)`                                                                                                                                 | `completeWithdraw`                                                                                          | Called before `partyA/BDeallocateCooldown` elapsed                                          |
+| `ValidationErrors.InvalidState("WithdrawStatus", current, [expected])`                                                                                                                   | `completeWithdraw`, `cancelWithdraw`, `suspendWithdraw`, `restoreWithdraw`                                  | Status not as required by `requireStatus`                                                   |
+| `ValidationErrors.ExpiredSignature(now, t, valid, expiry)`                                                                                                                               | `LibMuon.verifyUpnlSig`                                                                                     | uPnL signature older than `appLayout.upnlSigValidTime`                                      |
+| `ValidationErrors.MissingRole(sender, role)`                                                                                                                                             | `virtualDepositFor`, `suspendWithdraw`, `restoreWithdraw`                                                   | Caller lacks `VIRTUAL_DEPOSITOR_ROLE`, `SUSPENDER_ROLE`, or `DISPUTER_ROLE`                 |
+| `ValidationErrors.PartyBUser(user)`                                                                                                                                                      | `internalTransfer`                                                                                          | Sender is a Party B (blocked by `onlyNotPartyB`)                                            |
+| `BalanceErrors.InsufficientBalance(user, token, requested, available)`                                                                                                                   | `internalTransfer`, `initiateWithdraw`, `allocateBalance`, `subForCounterParty`, reserve ops, `isolatedSub` | Free isolated < requested, or reserve < requested                                           |
+| `BalanceErrors.InsufficientIntBalance(user, token, requested, available)`                                                                                                                | `deallocateForPartyAValidation`, `deallocateForPartyBValidation`, `confiscate`                              | Cross headroom (signed) less than requested                                                 |
+| `BalanceErrors.InsufficientLockedBalance(token, requested, balance)`                                                                                                                     | `isolatedUnlock`, `crossUnlock`                                                                             | Unlock more than was locked                                                                 |
+| `BalanceErrors.InsufficientMMBalance(token, requested, balance)`                                                                                                                         | `decreaseMM`                                                                                                | Decrement more MM than tracked                                                              |
+| `BalanceErrors.BalanceLimitExceeded(balance, amount, limit)`                                                                                                                             | deposit, internal transfer, allocate, deallocate, reserve, cancel                                           | Non-Party B post-credit would exceed `balanceLimitPerUser`                                  |
+| `BalanceErrors.MaxCounterPartyConnectionsReached(current, max)`                                                                                                                          | `addCounterParty`                                                                                           | Tracked-counterparty count at cap and `syncAll` could not free a slot                       |
+| `BalanceErrors.InvalidSyncTimestamp(now, last)`                                                                                                                                          | `_sync`                                                                                                     | Clock skew (should be unreachable in production)                                            |
+| `BalanceErrors.BalanceSetupRequired()`                                                                                                                                                   | any op gated by `checkSetup`                                                                                | Slot mutated before `setup` initialized `user`/`collateral`                                 |
+| `BalanceErrors.InvalidCounterParty(party, counterParty)`                                                                                                                                 | `allocate`                                                                                                  | Pair not exactly one Party B                                                                |
+| `BalanceErrors.InsufficientDebtCoverage(party, cp, ready, amount, debt)`                                                                                                                 | `deallocateForPartyAValidation`                                                                             | Party A leaving would leave Party B insolvent post-loss-coverage                            |
+| `BalanceErrors.NotSolvent(user, cp, collateral, marginType)`                                                                                                                             | `requireSolvent`, `deallocateForPartyBValidation`                                                           | Active liquidation id present, or post-deallocation solvency fails                          |
+| `BalanceErrors.InvalidWithdrawalId(id)`                                                                                                                                                  | `completeWithdraw`, `cancelWithdraw`                                                                        | `id > lastWithdrawId`                                                                       |
+| `BalanceErrors.ExpressWithdrawCancellationNotAllowed(provider)`                                                                                                                          | `cancelWithdraw`                                                                                            | Express withdraws are non-cancellable                                                       |
+| `BalanceErrors.ExpressWithdrawProviderNotActive(provider)`                                                                                                                               | `initiateExpressWithdraw`                                                                                   | Provider config inactive                                                                    |
+| `BalanceErrors.ExpressWithdrawProviderReceiverNotSet(provider)`                                                                                                                          | (declared, used by configuration paths)                                                                     | Receiver missing                                                                            |
+| `BalanceErrors.ExpressWithdrawRejectedByProvider(provider, reason)`                                                                                                                      | `initiateExpressWithdraw`                                                                                   | `validateWithdraw` returned false                                                           |
+| `BalanceErrors.ValidAmountExceedsOriginal(given, original)`                                                                                                                              | `restoreWithdraw`                                                                                           | Disputer attempted to restore more than the original amount                                 |
+| `SystemErrors.GlobalPaused / DepositingPaused / WithdrawingPaused / InternalTransferPaused / ExternalTransferPaused / ExpressWithdrawPaused / PartyAActionsPaused / PartyBActionsPaused` | `Pausable` modifiers                                                                                        | Global or scoped pause active                                                               |
+| `SystemErrors.UserSuspended(user)`                                                                                                                                                       | `whenNotSuspended`, `whenWithdrawalNotSuspended`                                                            | Sender, recipient, or withdrawal participant suspended                                      |
+| `SystemErrors.WithdrawalSuspended(id)`                                                                                                                                                   | `whenWithdrawalNotSuspended`                                                                                | Withdrawal flagged by `suspendWithdraw`                                                     |
+| `PartyRelationsErrors.InstantModeActive(sender)`                                                                                                                                         | `whenInstantModeIsNotActive`                                                                                | Sender is in instant-action mode and call is not from `InstantLayer`                        |
 
 ## Related Code Map
 
-| Concern | File | Line range |
-| --- | --- | --- |
-| Public surface | `contracts/facets/Account/AccountFacet.sol` | 36–328 |
-| Interface and events | `contracts/facets/Account/IAccountFacet.sol`, `IAccountEvents.sol` | full |
-| Deposit/withdraw/transfer logic | `contracts/libraries/core/LibBalanceOperations.sol` | 32–244 |
-| Allocation/deallocation logic | `contracts/libraries/core/LibAllocationOperations.sol` | 23–149 |
-| Balance struct + ops | `contracts/libraries/models/LibScheduledReleaseBalance.sol` | 25–462 |
-| Account storage layout | `contracts/storages/AccountStorage.sol` | 13–35 |
-| Balance/withdraw types | `contracts/types/BalanceTypes.sol`, `contracts/types/WithdrawTypes.sol` | full |
-| Party helpers + solvency | `contracts/libraries/models/LibParty.sol` | 17–43 |
-| Decimal normalization | `contracts/libraries/utils/LibDecimals.sol` | 13–21 |
-| Pause and access modifiers | `contracts/utils/Pausable.sol`, `contracts/utils/Accessibility.sol` | full |
-| Express withdraw / external transfer interfaces | `contracts/interfaces/IExpressWithdrawProvider.sol`, `IExternalTransferTarget.sol` | full |
-| Muon uPnL verification | `contracts/libraries/services/LibMuon.sol` | 59–92 |
-| Reserve→cross promotion | `contracts/libraries/core/LibClearingHouse.sol` | 249–254 |
-| Cross-margin nonce increments | `LibPartyBOpen.sol:365`, `LibPartyBClose.sol:170`, `LibTradeOperations.sol:233` | n/a |
-| Withdraw cooldown configuration | `contracts/facets/Control/ControlFacet.sol` | 152–188 |
-| Release-interval / manual-sync setup | `contracts/facets/Control/ControlFacet.sol` | 297–321, 397 |
-| Express withdraw / external transfer config | `contracts/facets/Control/ControlFacet.sol` | 887–917 |
+| Concern                                         | File                                                                               | Line range   |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------- | ------------ |
+| Public surface                                  | `contracts/facets/Account/AccountFacet.sol`                                        | 36–328       |
+| Interface and events                            | `contracts/facets/Account/IAccountFacet.sol`, `IAccountEvents.sol`                 | full         |
+| Deposit/withdraw/transfer logic                 | `contracts/libraries/core/LibBalanceOperations.sol`                                | 32–244       |
+| Allocation/deallocation logic                   | `contracts/libraries/core/LibAllocationOperations.sol`                             | 23–149       |
+| Balance struct + ops                            | `contracts/libraries/models/LibScheduledReleaseBalance.sol`                        | 25–462       |
+| Account storage layout                          | `contracts/storages/AccountStorage.sol`                                            | 13–35        |
+| Balance/withdraw types                          | `contracts/types/BalanceTypes.sol`, `contracts/types/WithdrawTypes.sol`            | full         |
+| Party helpers + solvency                        | `contracts/libraries/models/LibParty.sol`                                          | 17–43        |
+| Decimal normalization                           | `contracts/libraries/utils/LibDecimals.sol`                                        | 13–21        |
+| Pause and access modifiers                      | `contracts/utils/Pausable.sol`, `contracts/utils/Accessibility.sol`                | full         |
+| Express withdraw / external transfer interfaces | `contracts/interfaces/IExpressWithdrawProvider.sol`, `IExternalTransferTarget.sol` | full         |
+| Muon uPnL verification                          | `contracts/libraries/services/LibMuon.sol`                                         | 59–92        |
+| Reserve→cross promotion                         | `contracts/libraries/core/LibClearingHouse.sol`                                    | 249–254      |
+| Cross-margin nonce increments                   | `LibPartyBOpen.sol:365`, `LibPartyBClose.sol:170`, `LibTradeOperations.sol:233`    | n/a          |
+| Withdraw cooldown configuration                 | `contracts/facets/Control/ControlFacet.sol`                                        | 152–188      |
+| Release-interval / manual-sync setup            | `contracts/facets/Control/ControlFacet.sol`                                        | 297–321, 397 |
+| Express withdraw / external transfer config     | `contracts/facets/Control/ControlFacet.sol`                                        | 887–917      |
 
 ## Worked Example
 
@@ -546,12 +547,12 @@ A settlement at expiry runs through `LibTradeOperations.settle`. Realized PnL of
 
 - `verifyUpnlSig` passes (signature time within `upnlSigValidTime`, nonce matches).
 - `deallocateForPartyAValidation`:
-  - `partyACrossEntry.balance = ~800e18 - premium - solverFee + 50e18`. Assume net `+830e18`.
-  - `partyAAvailableBalance = 830e18 + 0 - 0 - 0 = 830e18`.
-  - `partyAReadyToDeallocate = min(830e18, 830e18) = 830e18`.
-  - `partyBCrossEntry.balance = -50e18` (after PnL transfer to Party A).
-  - `partyBAvailableBalance = -50e18 + (-10e18) = -60e18 < 0`, `counterPartyUpnl < 0` ⇒ `collateralMustHave = 10e18 * 1.1e18 / 1e18 = 11e18`. `debt = 11e18 - (-50e18) = 61e18`.
-  - Headroom check: `830e18 - 700e18 = 130e18`, must be `≥ -debt = -61e18` ⇒ passes.
+    - `partyACrossEntry.balance = ~800e18 - premium - solverFee + 50e18`. Assume net `+830e18`.
+    - `partyAAvailableBalance = 830e18 + 0 - 0 - 0 = 830e18`.
+    - `partyAReadyToDeallocate = min(830e18, 830e18) = 830e18`.
+    - `partyBCrossEntry.balance = -50e18` (after PnL transfer to Party A).
+    - `partyBAvailableBalance = -50e18 + (-10e18) = -60e18 < 0`, `counterPartyUpnl < 0` ⇒ `collateralMustHave = 10e18 * 1.1e18 / 1e18 = 11e18`. `debt = 11e18 - (-50e18) = 61e18`.
+    - Headroom check: `830e18 - 700e18 = 130e18`, must be `≥ -debt = -61e18` ⇒ passes.
 - Limit check on isolated: `200e18 + 700e18 ≤ balanceLimitPerUser` ⇒ passes.
 - `deallocateBalance(partyB, 700e18)`: `crossBalance[partyB].balance -= 700e18`, `isolatedBalance += 700e18`.
 

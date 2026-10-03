@@ -11,20 +11,20 @@ tags:
 
 # Architecture
 
-SYMM Options Core is an EIP-2535 Diamond options-trading protocol implemented in Solidity 0.8.19. State and behavior are split across a small set of facets sharing a single delegatecall context (`contracts/Diamond.sol`). All persistent state lives in domain-scoped diamond storage libraries; control flow is mediated by layered libraries (core, services, models, utils). This document is the entry point and orientation map for the codebase. Per-selector behavior, per-storage layout, role/pause matrices, event/error catalogs, and end-to-end flows live in the dedicated reference documents linked throughout.
+SYMM Options Core is an EIP-2535 Diamond options-trading protocol implemented in Solidity. The contracts compile with solc 0.8.25 (`evmVersion: cancun`, `viaIR`). State and behavior are split across a small set of facets sharing a single delegatecall context (`contracts/Diamond.sol`). All persistent state lives in domain-scoped diamond storage libraries; control flow is mediated by layered libraries (core, services, models, utils). This document is the entry point and orientation map for the codebase. Per-selector behavior, per-storage layout, role/pause matrices, event/error catalogs, and end-to-end flows live in the dedicated reference documents linked throughout.
 
 Companion documents:
 
--   [[facets]] — per-facet, per-selector reference
--   [[types-and-storage]] — storage layouts, structs, enums, slot computation
--   [[roles-and-pauses]] — role catalog, pause flag matrix, modifiers
--   [[events]] — event catalog
--   [[errors]] — error catalog
--   [flows/](./flows) — deposit, intent, fill, settle, liquidate, withdraw end-to-end traces
--   [concepts/](./concepts) — domain concept primers (intents, trades, accounts, fees, oracles)
--   [[security]] — invariants, trust assumptions, audit-relevant notes
--   [[testing]] — test layout and execution
--   [[deployment-and-operations]] — deployment scripts and operational playbook
+- [[facets]] — per-facet, per-selector reference
+- [[types-and-storage]] — storage layouts, structs, enums, slot computation
+- [[roles-and-pauses]] — role catalog, pause flag matrix, modifiers
+- [[events]] — event catalog
+- [[errors]] — error catalog
+- [flows/](./flows) — deposit, intent, fill, settle, liquidate, withdraw end-to-end traces
+- [concepts/](./concepts) — domain concept primers (intents, trades, accounts, fees, oracles)
+- [[security]] — invariants, trust assumptions, audit-relevant notes
+- [[testing]] — test layout and execution
+- [[deployment-and-operations]] — deployment scripts and operational playbook
 
 ---
 
@@ -74,10 +74,10 @@ The constructor (`contracts/Diamond.sol:17`) sets the contract owner via `LibDia
 
 `LibDiamond` defines `DiamondStorage` (`contracts/libraries/core/LibDiamond.sol:20`) holding:
 
--   `mapping(bytes4 => FacetAddressAndSelectorPosition)` — primary selector dispatch table.
--   `bytes4[] selectors` — flat enumeration used by Loupe and removal bookkeeping.
--   `mapping(bytes4 => bool) supportedInterfaces` — ERC-165 advertisement.
--   `address contractOwner; address pendingOwner` — two-step ownership.
+- `mapping(bytes4 => FacetAddressAndSelectorPosition)` — primary selector dispatch table.
+- `bytes4[] selectors` — flat enumeration used by Loupe and removal bookkeeping.
+- `mapping(bytes4 => bool) supportedInterfaces` — ERC-165 advertisement.
+- `address contractOwner; address pendingOwner` — two-step ownership.
 
 Ownership transfer is two-step: `transferOwnership` sets `pendingOwner` and emits `OwnershipTransferStarted`; `acceptOwnership` (called by the pending account) finalizes and emits `OwnershipTransferred`. Only `enforceIsContractOwner()` may invoke `diamondCut`. Cut helpers `addFunctions` / `replaceFunctions` / `removeFunctions` enforce: no zero facet address (Add/Replace), zero facet address required (Remove), no overwriting an existing selector with Add, no replace into the Diamond itself (immutable functions), and no replace with the same facet. After the selector mutations, `initializeDiamondCut(_init,_calldata)` runs the optional initializer via `delegatecall` so that initialization can write the Diamond's storage slots; init failure bubbles up the inner revert string or surfaces `SystemErrors.InitFunctionReverted`.
 
@@ -135,18 +135,18 @@ sequenceDiagram
 
 Notes on the cut semantics:
 
--   **Add** requires `facetAddress != 0`, requires the facet to have code, and rejects adding an already-registered selector (`CannotAddExistingFunction`).
--   **Replace** requires the new facet address to differ from the current one (`IdenticalReplace`), forbids replacing immutable functions defined on the Diamond itself (`ImmutableReplace`), and requires the selector to already exist (`NoReplaceTarget`).
--   **Remove** requires `facetAddress == address(0)` (`InvalidRemoveFacetAddress`) and uses swap-and-pop on the `selectors` array.
--   The optional `_init` runs as a `delegatecall` so it shares the Diamond's storage. Pass `_init=address(0)` and empty calldata to skip; pass either both empty or both nonzero — the mismatched cases revert `ZeroAddressWithNonemptyCalldata` / `NonZeroAddressWithEmptyCalldata`.
+- **Add** requires `facetAddress != 0`, requires the facet to have code, and rejects adding an already-registered selector (`CannotAddExistingFunction`).
+- **Replace** requires the new facet address to differ from the current one (`IdenticalReplace`), forbids replacing immutable functions defined on the Diamond itself (`ImmutableReplace`), and requires the selector to already exist (`NoReplaceTarget`).
+- **Remove** requires `facetAddress == address(0)` (`InvalidRemoveFacetAddress`) and uses swap-and-pop on the `selectors` array.
+- The optional `_init` runs as a `delegatecall` so it shares the Diamond's storage. Pass `_init=address(0)` and empty calldata to skip; pass either both empty or both nonzero — the mismatched cases revert `ZeroAddressWithNonemptyCalldata` / `NonZeroAddressWithEmptyCalldata`.
 
 ### Upgrade risks
 
--   **Storage layout drift**: every storage library uses an explicit named slot, so adding a facet does not collide. Adding/removing fields inside a `Layout` struct must respect the existing tail order, since each `Layout` occupies sequential slots starting from a single base. Initializer scripts must migrate any field that changes type or interpretation.
--   **Selector ownership**: a single selector can only be served by one facet. Renames of a Solidity function silently change the selector and orphan the old one; deployment scripts must compare against the current dispatch table.
--   **Init script idempotency**: an init script that double-flips a one-shot flag will brick subsequent cuts. Initializers should be designed for the specific cut they accompany and never reused blindly.
--   **`AppStorage.version`**: bumped on every cut; downstream off-chain consumers can watch this for cache invalidation.
--   **Owner key**: the contract owner is an unchecked single key; protect via multisig/timelock at deployment.
+- **Storage layout drift**: every storage library uses an explicit named slot, so adding a facet does not collide. Adding/removing fields inside a `Layout` struct must respect the existing tail order, since each `Layout` occupies sequential slots starting from a single base. Initializer scripts must migrate any field that changes type or interpretation.
+- **Selector ownership**: a single selector can only be served by one facet. Renames of a Solidity function silently change the selector and orphan the old one; deployment scripts must compare against the current dispatch table.
+- **Init script idempotency**: an init script that double-flips a one-shot flag will brick subsequent cuts. Initializers should be designed for the specific cut they accompany and never reused blindly.
+- **`AppStorage.version`**: bumped on every cut; downstream off-chain consumers can watch this for cache invalidation.
+- **Owner key**: the contract owner is an unchecked single key; protect via multisig/timelock at deployment.
 
 See also [[deployment-and-operations]] for the operational checklist.
 
@@ -380,11 +380,11 @@ flowchart TD
 
 Step-by-step traces:
 
--   Deposit / allocate / withdraw: [[account-balances]]
--   Open intent → lock → fill: [[open-intents]]
--   Close intent → fill: [[close-and-settlement]]
--   Settlement at expiry: [[close-and-settlement]]
--   Liquidation: [[liquidation-and-force-actions]]
+- Deposit / allocate / withdraw: [[account-balances]]
+- Open intent → lock → fill: [[open-intents]]
+- Close intent → fill: [[close-and-settlement]]
+- Settlement at expiry: [[close-and-settlement]]
+- Liquidation: [[liquidation-and-force-actions]]
 
 ---
 
@@ -425,10 +425,10 @@ Off-chain:
 
 ## 12. Compilation and Build Context
 
--   **Solidity**: `0.8.19`. The version pin appears at the top of every source file as `pragma solidity >=0.8.19;`. Built-in checked arithmetic is relied upon; no SafeMath wrappers are used inside the protocol.
--   **License headers**: Diamond-pattern files inherited from Nick Mudge are `GPL-3.0-or-later` or `MIT`; protocol-original files use `SYMM-Core-Business-Source-License-1.1`. New files must carry an SPDX header consistent with the directory's existing files.
--   **Compiler settings**: optimizer is enabled with `viaIR` for the Diamond build to fit the facet code below the contract size limit; check `hardhat.config.ts` (or `foundry.toml` if present) before changing settings, since cut-generation tooling depends on stable selector and bytecode output.
--   **Toolchain**: Hardhat-based, with TypeScript scripts under `scripts/` and `common/`; see [[deployment-and-operations]] for build/deploy commands and [[testing]] for running tests.
+- **Solidity**: the contracts compile with solc `0.8.25` (`evmVersion: cancun`, `viaIR`), pinned in `hardhat.config.ts`. Source files declare a floor pragma (`pragma solidity >=0.8.19;`), and the pinned compiler is higher because the OpenZeppelin 5.6.1 imports need `>=0.8.24`. Built-in checked arithmetic is relied upon; no SafeMath wrappers are used inside the protocol.
+- **License headers**: Diamond-pattern files inherited from Nick Mudge are `GPL-3.0-or-later` or `MIT`; protocol-original files use `SYMM-Core-Business-Source-License-1.1`. New files must carry an SPDX header consistent with the directory's existing files.
+- **Compiler settings**: optimizer is enabled with `viaIR` for the Diamond build to fit the facet code below the contract size limit; check `hardhat.config.ts` (or `foundry.toml` if present) before changing settings, since cut-generation tooling depends on stable selector and bytecode output.
+- **Toolchain**: Hardhat-based, with TypeScript scripts under `scripts/` and `common/`; see [[deployment-and-operations]] for build/deploy commands and [[testing]] for running tests.
 
 ---
 
@@ -436,16 +436,16 @@ Off-chain:
 
 These are bounded protocol-wide guarantees that auditors and integrators should treat as load-bearing.
 
--   **Per-Party-A trade cap**: `AppStorage.maxTradePerPartyA` bounds the count of active trades a Party A may simultaneously hold. Hitting the cap blocks new fills until existing trades close or transfer away. Designed to bound iteration cost over `TradeStorage.partyATradeIds[]`.
--   **Max close orders cap**: `AppStorage.maxCloseOrdersLength` bounds the count of simultaneous open close intents per trade. Designed to bound iteration cost over `CloseIntentStorage.tradeCloseIntentIds[trade]`.
--   **Per-user balance limit**: `AppStorage.balanceLimitPerUser[collateral]` may cap any single user's normalized balance per collateral. `0` means unlimited. Enforced inside `deposit` paths.
--   **Cooldowns and timing windows**: `partyADeallocateCooldown`, `partyBDeallocateCooldown`, `forceCancelOpenIntentTimeout`, `forceCancelCloseIntentTimeout`, `partyBExclusiveWindow`, `settlementPriceSigValidTime`, `upnlSigValidTime` — all governed via `SETTER_ROLE`. Misconfiguration directly weakens liveness or safety.
--   **Single contract owner**: `LibDiamond.contractOwner` is a single key with two-step transfer. It alone may invoke `diamondCut`. Operationally must be a multisig or timelock.
--   **Oracle / signature trust roots**: `priceOracleAddress`, `signatureVerifier`, `tradeNftAddress`, and the Muon verifier are unilaterally settable. Compromise or misconfiguration of any of them undermines accounting integrity.
--   **Selector immutability for the Diamond itself**: functions defined directly on `Diamond.sol` (currently none beyond `fallback`/`receive`) are not replaceable via `diamondCut`. Adding a function to the Diamond contract makes it permanently uncuttable.
--   **Bilateral-nonce monotonicity**: every accounting-affecting flow must increment the (Party A, Party B) nonce. New facets that mutate balances without doing so create signature replay windows.
--   **18-decimal invariant**: any path that writes to balance state without first normalizing through `DecimalsLib` corrupts accounting silently. Do not bypass `AccountFacet` for token movement.
--   **Reentrancy boundary**: every external token transfer is wrapped in `nonReentrant`; any new facet selector that performs external calls must follow suit.
--   **Pause coverage**: every state-mutating selector must respect at minimum `globalPaused`. New selectors should be added to the matrix in [[roles-and-pauses]] at the same time as they are added to the dispatch.
+- **Per-Party-A trade cap**: `AppStorage.maxTradePerPartyA` bounds the count of active trades a Party A may simultaneously hold. Hitting the cap blocks new fills until existing trades close or transfer away. Designed to bound iteration cost over `TradeStorage.partyATradeIds[]`.
+- **Max close orders cap**: `AppStorage.maxCloseOrdersLength` bounds the count of simultaneous open close intents per trade. Designed to bound iteration cost over `CloseIntentStorage.tradeCloseIntentIds[trade]`.
+- **Per-user balance limit**: `AppStorage.balanceLimitPerUser[collateral]` may cap any single user's normalized balance per collateral. `0` means unlimited. Enforced inside `deposit` paths.
+- **Cooldowns and timing windows**: `partyADeallocateCooldown`, `partyBDeallocateCooldown`, `forceCancelOpenIntentTimeout`, `forceCancelCloseIntentTimeout`, `partyBExclusiveWindow`, `settlementPriceSigValidTime`, `upnlSigValidTime` — all governed via `SETTER_ROLE`. Misconfiguration directly weakens liveness or safety.
+- **Single contract owner**: `LibDiamond.contractOwner` is a single key with two-step transfer. It alone may invoke `diamondCut`. Operationally must be a multisig or timelock.
+- **Oracle / signature trust roots**: `priceOracleAddress`, `signatureVerifier`, `tradeNftAddress`, and the Muon verifier are unilaterally settable. Compromise or misconfiguration of any of them undermines accounting integrity.
+- **Selector immutability for the Diamond itself**: functions defined directly on `Diamond.sol` (currently none beyond `fallback`/`receive`) are not replaceable via `diamondCut`. Adding a function to the Diamond contract makes it permanently uncuttable.
+- **Bilateral-nonce monotonicity**: every accounting-affecting flow must increment the (Party A, Party B) nonce. New facets that mutate balances without doing so create signature replay windows.
+- **18-decimal invariant**: any path that writes to balance state without first normalizing through `DecimalsLib` corrupts accounting silently. Do not bypass `AccountFacet` for token movement.
+- **Reentrancy boundary**: every external token transfer is wrapped in `nonReentrant`; any new facet selector that performs external calls must follow suit.
+- **Pause coverage**: every state-mutating selector must respect at minimum `globalPaused`. New selectors should be added to the matrix in [[roles-and-pauses]] at the same time as they are added to the dispatch.
 
 For the full set of invariants, trust assumptions, and known-acceptable risks see [[security]].

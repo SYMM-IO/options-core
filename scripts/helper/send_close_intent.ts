@@ -1,4 +1,4 @@
-import { run } from "hardhat"
+import hre from "hardhat"
 
 async function main() {
 	const tradeId = "1"
@@ -6,7 +6,7 @@ async function main() {
 	const price = "1000"
 	const deadline = "1700000000"
 
-	await run("send-close-intent", {
+	await hre.tasks.getTask("send-close-intent").run({
 		tradeid: tradeId,
 		quantity: quantity,
 		price: price,

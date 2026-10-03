@@ -1,22 +1,22 @@
-import { task } from "hardhat/config"
-import { loadAddresses } from "../../scripts/utils/file"
-import { HardhatRuntimeEnvironment } from "hardhat/types"
+import type { HardhatRuntimeEnvironment } from "hardhat/types/hre"
+import { loadAddresses } from "../../scripts/utils/file.js"
+import { requireArg } from "../utils/args.js"
 
-task("send-close-intent", "Calls sendCloseIntent on the contract")
-	.addParam("tradeid", "ID of the tradeId")
-	.addParam("quantity", "Quantity of the quantity")
-	.addParam("price", "Price of the price")
-	.addParam("deadline", "deadline parameter")
-	.setAction(async (args, hre: HardhatRuntimeEnvironment) => {
-		const { ethers } = hre
-		const admin = (await ethers.getSigners())[0]
-		const symmioAddress = loadAddresses().symmioAddress
+export default async function (
+	{ tradeid, quantity, price, deadline }: { tradeid: string; quantity: string; price: string; deadline: string },
+	hre: HardhatRuntimeEnvironment,
+) {
+	// Validate before connecting, so a missing option never reaches a live network or a keystore prompt.
+	const tradeId = BigInt(requireArg(tradeid, "tradeid"))
+	const closeQuantity = BigInt(requireArg(quantity, "quantity"))
+	const closePrice = BigInt(requireArg(price, "price"))
+	const closeDeadline = BigInt(requireArg(deadline, "deadline"))
 
-		const partyACloseFacet = (await ethers.getContractAt("PartyACloseFacet", String(symmioAddress))).connect(admin)
-		const { tradeid, quantity, price, deadline } = args
-
-		const tx = await partyACloseFacet.sendCloseIntent(BigInt(tradeid), BigInt(quantity), BigInt(price), BigInt(deadline))
-		console.log("Transaction sent:", tx.hash)
-		await tx.wait()
-		console.log("Transaction confirmed.")
-	})
+	const { ethers } = await hre.network.getOrCreate()
+	const [admin] = await ethers.getSigners()
+	const partyACloseFacet = (await ethers.getContractAt("PartyACloseFacet", String(loadAddresses().symmioAddress))).connect(admin)
+	const tx = await partyACloseFacet.sendCloseIntent(tradeId, closeQuantity, closePrice, closeDeadline)
+	console.log("Transaction sent:", tx.hash)
+	await tx.wait()
+	console.log("Transaction confirmed.")
+}

@@ -68,8 +68,6 @@ library LibDiamond {
 		if (msg.sender != diamondStorage().contractOwner) revert SystemErrors.NotContractOwner(msg.sender, diamondStorage().contractOwner);
 	}
 
-	event DiamondCut(IDiamondCut.FacetCut[] _diamondCut, address _init, bytes _calldata);
-
 	// Internal function version of diamondCut
 	function diamondCut(IDiamondCut.FacetCut[] memory _diamondCut, address _init, bytes memory _calldata) internal {
 		for (uint256 facetIndex; facetIndex < _diamondCut.length; facetIndex++) {
@@ -84,7 +82,7 @@ library LibDiamond {
 				revert SystemErrors.IncorrectFacetCutAction(uint8(action));
 			}
 		}
-		emit DiamondCut(_diamondCut, _init, _calldata);
+		emit IDiamondCut.DiamondCut(_diamondCut, _init, _calldata);
 		initializeDiamondCut(_init, _calldata);
 	}
 

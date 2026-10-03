@@ -22,7 +22,6 @@ pragma solidity ^0.8.19;
  */
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { Counters } from "@openzeppelin/contracts/utils/Counters.sol";
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { ERC721Enumerable } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
@@ -44,8 +43,6 @@ interface ISymmio {
 }
 
 contract TradeNFT is ERC721Enumerable, Ownable {
-	using Counters for Counters.Counter;
-
 	/* ──────────────────────── Storage Variables ──────────────────────── */
 
 	/// @notice Symmio contract instance for synchronizing trade ownership state.
@@ -85,7 +82,7 @@ contract TradeNFT is ERC721Enumerable, Ownable {
 	 * @dev Reverts if `symmio_` is the zero address. NFTs use token IDs that
 	 *      correspond directly to trade IDs in the Symmio protocol.
 	 */
-	constructor(address symmio_) ERC721("Trade Ownership NFT", "TRNFT") {
+	constructor(address symmio_) ERC721("Trade Ownership NFT", "TRNFT") Ownable(msg.sender) {
 		if (symmio_ == address(0)) revert InvalidSymmioAddress();
 		symmio = ISymmio(symmio_);
 	}
@@ -114,7 +111,7 @@ contract TradeNFT is ERC721Enumerable, Ownable {
 	 *      during Symmio-initiated transfers.
 	 */
 	function transferTradeNFT(address from, address to, uint256 tradeId) external onlySymmio {
-		if (!_exists(tradeId)) return;
+		if (_ownerOf(tradeId) == address(0)) return;
 		transferInitiatedInSymmio = true;
 		_transfer(from, to, tradeId);
 		transferInitiatedInSymmio = false;
@@ -138,25 +135,27 @@ contract TradeNFT is ERC721Enumerable, Ownable {
 	/* ───────────────────────── Internal Functions ───────────────────────── */
 
 	/**
-	 * @dev Hook called before any token transfer, including minting and burning.
-	 *      Synchronizes trade ownership with Symmio protocol during user-initiated transfers.
+	 * @dev OpenZeppelin 5 transfer hook. Runs on mint, transfer and burn.
+	 *      Synchronizes trade ownership with Symmio during user-initiated transfers.
 	 *
-	 * @param from      Address currently owning the token (zero during minting).
-	 * @param to        Address receiving the token (zero during burning).
-	 * @param tokenId   Unique identifier of the token being transferred.
-	 * @param batchSize Number of tokens being transferred (typically 1).
+	 * @param to      Address receiving the token (zero during burning).
+	 * @param tokenId Unique identifier of the token being transferred.
+	 * @param auth    Caller to authorize, or zero for internal transfers that skip the check.
 	 *
-	 * @dev When both `from` and `to` are non-zero and the transfer was not initiated
-	 *      by Symmio, calls `symmio.transferTradeFromNFT` to update trade ownership
-	 *      and emits TradeNFTTransferred event.
+	 * @dev Authorization is checked before calling Symmio so an unauthorized caller never reaches
+	 *      `symmio.transferTradeFromNFT`, matching the OpenZeppelin 4 ordering. The callback runs
+	 *      before ownership moves, so Symmio still sees `from` as the owner.
 	 */
-	function _beforeTokenTransfer(address from, address to, uint256 tokenId, uint256 batchSize) internal override {
-		super._beforeTokenTransfer(from, to, tokenId, batchSize);
+	function _update(address to, uint256 tokenId, address auth) internal override returns (address) {
+		address from = _ownerOf(tokenId);
 
 		if (from != address(0) && to != address(0) && !transferInitiatedInSymmio) {
+			if (auth != address(0)) _checkAuthorized(from, auth, tokenId);
 			symmio.transferTradeFromNFT(from, to, tokenId);
 			emit TradeNFTTransferred(tokenId, from, to);
 		}
+
+		return super._update(to, tokenId, auth);
 	}
 
 	/* ─────────────────────────────── Modifiers ─────────────────────────────── */

@@ -1,4 +1,6 @@
-import { ethers } from "hardhat"
+import { network } from "hardhat"
+
+const { ethers } = await network.getOrCreate()
 
 async function main() {
 	let symmioAddress = "0xF606cccF372683Cf7295726B20cf81552B5af6e1"

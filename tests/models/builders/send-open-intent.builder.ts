@@ -1,9 +1,9 @@
 import { Builder } from "builder-pattern"
 import { AddressLike, BigNumberish, BytesLike, encodeBytes32String, ZeroAddress } from "ethers"
-import { e } from "../../../utils/e"
-import { ExerciseFeeStruct, FeeStruct } from "../../../types/contracts/interfaces/ISymmio"
-import { FeeStructureStruct } from "../../../types/contracts/facets/View/IViewFacet"
-import { MarginType, TradeSide } from "../../option-enums"
+import { e } from "../../../utils/e.js"
+import { ExerciseFeeStruct, FeeStruct } from "../../../types/interfaces/ISymmio.js"
+import { FeeStructureStruct } from "../../../types/facets/View/IViewFacet.js"
+import { MarginType, TradeSide } from "../../option-enums.js"
 
 export interface OpenIntent {
 	partyBsWhiteList: AddressLike[]

@@ -1,19 +1,18 @@
-import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers"
+import { ethers, networkHelpers } from "../connection.js"
 import { expect, use } from "chai"
-import { initializeTestFixture } from "../initialize-test.fixture"
-import { PartyA } from "../models/partyA.model"
-import { RunContext } from "../run-context"
-import { IntentStatus, TradeSide } from "../option-enums"
-import { OpenIntent, openIntentRequestBuilder } from "../models/builders/send-open-intent.builder"
-import { PartyB } from "../models/partyB.model"
-import { ethers, network } from "hardhat"
-import { e } from "../../utils/e"
+import { initializeTestFixture } from "../initialize-test.fixture.js"
+import { PartyA } from "../models/partyA.model.js"
+import { RunContext } from "../run-context.js"
+import { IntentStatus, TradeSide } from "../option-enums.js"
+import { OpenIntent, openIntentRequestBuilder } from "../models/builders/send-open-intent.builder.js"
+import { PartyB } from "../models/partyB.model.js"
+import { e } from "../../utils/e.js"
 import { AbiCoder, encodeBytes32String, InterfaceAbi, ZeroAddress, AddressLike, toUtf8Bytes } from "ethers"
 
-import { MarginType } from "../option-enums"
-import { getLatestBlockTime } from "../../utils/time"
-import { InstantLayer, MultiAccount } from "../../types"
-import { OpenIntentStruct } from "../../types/contracts/interfaces/ISymmio"
+import { MarginType } from "../option-enums.js"
+import { getLatestBlockTime } from "../utils/time.js"
+import { InstantLayer, MultiAccount } from "../../types/index.js"
+import { OpenIntentStruct } from "../../types/interfaces/ISymmio.js"
 
 export function shouldBehaveLikeMultiAccount(): void {
 	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyB1: PartyB, partyB2: PartyB
@@ -28,7 +27,7 @@ export function shouldBehaveLikeMultiAccount(): void {
 	let request: OpenIntent
 
 	beforeEach(async function () {
-		context = await loadFixture(initializeTestFixture)
+		context = await networkHelpers.loadFixture(initializeTestFixture)
 		partyA1 = new PartyA(context, context.signers.partyA1)
 		partyA2 = new PartyA(context, context.signers.partyA2)
 		partyB1 = new PartyB(context, context.signers.partyB1)
@@ -89,13 +88,13 @@ export function shouldBehaveLikeMultiAccount(): void {
 		lockIntentCallData = partyBOpenFacet.interface.encodeFunctionData("lockOpenIntent", [1])
 		fillIntentCallData = partyBOpenFacet.interface.encodeFunctionData("fillOpenIntent", [1, e(100), 7])
 
-		await expect(context.multiAccount.connect(partyA1.getSigner).addAccount("testAccount")).not.to.reverted
+		await expect(context.multiAccount.connect(partyA1.getSigner).addAccount("testAccount")).not.to.revert(ethers)
 		accounts = await context.multiAccount.getAccounts(partyA1.address, 0, 100)
 	})
 
 	describe("Add Account Function", async function () {
 		it("should Add Account for msg sender", async () => {
-			await expect(context.multiAccount.connect(partyA2.getSigner).addAccount("testAccount2")).not.to.reverted
+			await expect(context.multiAccount.connect(partyA2.getSigner).addAccount("testAccount2")).not.to.revert(ethers)
 			let accountsLocal: MultiAccount.AccountStruct[] = await context.multiAccount.getAccounts(partyA2.address, 0, 100)
 
 			expect(accountsLocal.length).to.be.equal(1)
@@ -103,7 +102,7 @@ export function shouldBehaveLikeMultiAccount(): void {
 		})
 
 		it("should keep account ownership scoped to the creating signer", async () => {
-			await expect(context.multiAccount.connect(partyA2.getSigner).addAccount("partyA2Account")).not.to.reverted
+			await expect(context.multiAccount.connect(partyA2.getSigner).addAccount("partyA2Account")).not.to.revert(ethers)
 
 			const partyA1Accounts: MultiAccount.AccountStruct[] = await context.multiAccount.getAccounts(partyA1.address, 0, 100)
 			const partyA2Accounts: MultiAccount.AccountStruct[] = await context.multiAccount.getAccounts(partyA2.address, 0, 100)
@@ -117,7 +116,7 @@ export function shouldBehaveLikeMultiAccount(): void {
 				.to.be.revertedWithCustomError(context.multiAccount, "NotOwnerOfAccount")
 				.withArgs(partyA2.address, partyA1Accounts[0].account, partyA1.address)
 
-			await expect(context.multiAccount.connect(partyA1.getSigner).editAccountName(partyA1Accounts[0].account, "renamed")).not.to.reverted
+			await expect(context.multiAccount.connect(partyA1.getSigner).editAccountName(partyA1Accounts[0].account, "renamed")).not.to.revert(ethers)
 			const renamedAccounts: MultiAccount.AccountStruct[] = await context.multiAccount.getAccounts(partyA1.address, 0, 100)
 			expect(renamedAccounts[0].name).to.equal("renamed")
 		})
@@ -125,9 +124,9 @@ export function shouldBehaveLikeMultiAccount(): void {
 
 	describe("_call Function", async function () {
 		beforeEach(async function () {
-			await expect(context.collateral.connect(partyA1.getSigner).approve(context.common.diamondAddress, ethers.MaxUint256)).not.reverted
-			await expect(context.collateral.connect(partyA1.getSigner).mint(accounts[0].account, e(30))).to.not.reverted
-			await expect(context.collateralNL.connect(partyA1.getSigner).mint(accounts[0].account, e(30))).to.not.reverted
+			await expect(context.collateral.connect(partyA1.getSigner).approve(context.common.diamondAddress, ethers.MaxUint256)).not.to.revert(ethers)
+			await expect(context.collateral.connect(partyA1.getSigner).mint(accounts[0].account, e(30))).not.to.revert(ethers)
+			await expect(context.collateralNL.connect(partyA1.getSigner).mint(accounts[0].account, e(30))).not.to.revert(ethers)
 			await context.accountFacet.connect(partyA1.getSigner).depositFor(await context.collateral.getAddress(), accounts[0].account, e(20))
 			await context.accountFacet.connect(partyA1.getSigner).depositFor(await context.collateralNL.getAddress(), accounts[0].account, e(20))
 		})
@@ -152,7 +151,7 @@ export function shouldBehaveLikeMultiAccount(): void {
 			console.log("User Collateral Balance in Symmio:", await context.viewFacet.getIsolatedBalance(partyA1.address, context.collateral))
 			console.log("PartyA Collateral Balance in Symmio:", await context.viewFacet.getIsolatedBalance(accounts[0].account, context.collateral))
 
-			await expect(context.multiAccount.connect(partyA1.getSigner)._call(accounts[0].account, [openIntentCallData])).not.to.reverted
+			await expect(context.multiAccount.connect(partyA1.getSigner)._call(accounts[0].account, [openIntentCallData])).not.to.revert(ethers)
 			// try{
 			// 	await context.multiAccount.connect(partyA1.getSigner)._call(accounts[0].account, [openIntentCallData])
 			// } catch (error: any) {
@@ -173,7 +172,7 @@ export function shouldBehaveLikeMultiAccount(): void {
 		})
 
 		it("CallData should Have the expected Effect", async () => {
-			await expect(context.multiAccount.connect(partyA1.getSigner)._call(accounts[0].account, [openIntentCallData])).not.to.reverted
+			await expect(context.multiAccount.connect(partyA1.getSigner)._call(accounts[0].account, [openIntentCallData])).not.to.revert(ethers)
 
 			let intent: OpenIntentStruct = await context.viewFacet.getOpenIntent(1)
 			expect(intent.price).to.be.equal(request.price)

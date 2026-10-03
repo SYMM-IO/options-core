@@ -16,21 +16,21 @@ This document is written for auditors and integrators. It describes the trust as
 
 ## Table of Contents
 
--   [1. Threat Model Overview](#1-threat-model-overview)
--   [2. Trust Assumptions](#2-trust-assumptions)
--   [3. Attack Surface Map](#3-attack-surface-map)
--   [4. Key Invariants](#4-key-invariants)
--   [5. Reentrancy Posture](#5-reentrancy-posture)
--   [6. Pause Model](#6-pause-model)
--   [7. Suspension Model](#7-suspension-model)
--   [8. Emergency States](#8-emergency-states)
--   [9. Upgradeability Surface](#9-upgradeability-surface)
--   [10. Signature Schemes Risk](#10-signature-schemes-risk)
--   [11. Decimal Normalization](#11-decimal-normalization)
--   [12. Known Limitations and By-Design Oddities](#12-known-limitations-and-by-design-oddities)
--   [13. Operational Checklist for Production Deploy](#13-operational-checklist-for-production-deploy)
--   [14. Auditor's Quick Map](#14-auditors-quick-map)
--   [15. Reporting and Responsible Disclosure](#15-reporting-and-responsible-disclosure)
+- [1. Threat Model Overview](#1-threat-model-overview)
+- [2. Trust Assumptions](#2-trust-assumptions)
+- [3. Attack Surface Map](#3-attack-surface-map)
+- [4. Key Invariants](#4-key-invariants)
+- [5. Reentrancy Posture](#5-reentrancy-posture)
+- [6. Pause Model](#6-pause-model)
+- [7. Suspension Model](#7-suspension-model)
+- [8. Emergency States](#8-emergency-states)
+- [9. Upgradeability Surface](#9-upgradeability-surface)
+- [10. Signature Schemes Risk](#10-signature-schemes-risk)
+- [11. Decimal Normalization](#11-decimal-normalization)
+- [12. Known Limitations and By-Design Oddities](#12-known-limitations-and-by-design-oddities)
+- [13. Operational Checklist for Production Deploy](#13-operational-checklist-for-production-deploy)
+- [14. Auditor's Quick Map](#14-auditors-quick-map)
+- [15. Reporting and Responsible Disclosure](#15-reporting-and-responsible-disclosure)
 
 ## 1. Threat Model Overview
 
@@ -133,15 +133,15 @@ These are the invariants an auditor should attempt to break. Each row cites the 
 
 ## 5. Reentrancy Posture
 
--   The guard sits in `contracts/utils/ReentrancyGuard.sol:14`, backed by `AccessControlStorage.reentrancyGuardStatus`. Reverts with `ReentrancyGuardErrors.ReentrantCall`.
--   `nonReentrant` is applied to every call that performs an external token transfer or external contract call back to a mutable counterparty contract:
-    -   `AccountFacet.deposit` / `depositFor` / `externalTransfer` / `initiateExpressWithdraw` / `completeWithdraw` (`contracts/facets/Account/AccountFacet.sol:39, 74, 132, 182, 223`).
-    -   `TradeFacet.transferTrade` / `mintNFTForTrade` (`contracts/facets/Trade/TradeFacet.sol:32, 71`).
--   **Not** guarded:
-    -   `PartyB*Facet` and `PartyA*Facet` entrypoints (no external call out beyond storage).
-    -   `ClearingHouseFacet` (operator-only; no external calls).
-    -   `TradeFacet.executeTrades` and `transferTradeFromNFT` (they read state and mutate; settlement does not call out to user-controlled contracts directly, but `transferTradeFromNFT` can only be invoked by the configured TradeNFT and so reentrancy depends on TradeNFT correctness).
--   The guard storage is shared across the diamond (single slot in `AccessControlStorage`), so re-entry between facets is also blocked while one guard is held.
+- The guard sits in `contracts/utils/ReentrancyGuard.sol:14`, backed by `AccessControlStorage.reentrancyGuardStatus`. Reverts with `ReentrancyGuardErrors.ReentrantCall`.
+- `nonReentrant` is applied to every call that performs an external token transfer or external contract call back to a mutable counterparty contract:
+    - `AccountFacet.deposit` / `depositFor` / `externalTransfer` / `initiateExpressWithdraw` / `completeWithdraw` (`contracts/facets/Account/AccountFacet.sol:39, 74, 132, 182, 223`).
+    - `TradeFacet.transferTrade` / `mintNFTForTrade` (`contracts/facets/Trade/TradeFacet.sol:32, 71`).
+- **Not** guarded:
+    - `PartyB*Facet` and `PartyA*Facet` entrypoints (no external call out beyond storage).
+    - `ClearingHouseFacet` (operator-only; no external calls).
+    - `TradeFacet.executeTrades` and `transferTradeFromNFT` (they read state and mutate; settlement does not call out to user-controlled contracts directly, but `transferTradeFromNFT` can only be invoked by the configured TradeNFT and so reentrancy depends on TradeNFT correctness).
+- The guard storage is shared across the diamond (single slot in `AccessControlStorage`), so re-entry between facets is also blocked while one guard is held.
 
 ## 6. Pause Model
 
@@ -149,28 +149,28 @@ Defense-in-depth is provided by twelve independent pause flags in `StateControlS
 
 Operational implications:
 
--   `pauseGlobal` is the broadest stop-loss; all pause unwinds require `UNPAUSER_ROLE`, which should be a more conservative key than `PAUSER_ROLE`.
--   Per-domain pauses (deposit, withdraw, internal/external transfer, express withdraw, party A actions, party B actions, third-party actions, liquidating, instant layer) let an incident response halt one bug class without freezing the whole protocol.
--   Pause does not move balances. Funds locked at the time of pause stay locked under their normal release model.
+- `pauseGlobal` is the broadest stop-loss; all pause unwinds require `UNPAUSER_ROLE`, which should be a more conservative key than `PAUSER_ROLE`.
+- Per-domain pauses (deposit, withdraw, internal/external transfer, express withdraw, party A actions, party B actions, third-party actions, liquidating, instant layer) let an incident response halt one bug class without freezing the whole protocol.
+- Pause does not move balances. Funds locked at the time of pause stay locked under their normal release model.
 
 ## 7. Suspension Model
 
 Suspension is per-address or per-withdrawal and is **not** the same as pause or liquidation flagging. See [[roles-and-pauses#Part 4 — Suspension and Emergency]].
 
--   **Address suspension** (`suspendedAddresses[user]`) blocks the user from initiating deposits, transfers, withdrawals, allocations, deallocations, and trade transfers (full list at `contracts/utils/Accessibility.sol:53-69`). Suspended users can still be liquidated.
--   **Withdrawal suspension** (`suspendedWithdrawal[withdrawId]`) freezes one specific pending withdrawal so it can be reviewed before completion or cancellation.
--   Suspender flow: `SUSPENDER_ROLE` flips the flag (`AccountFacet.suspendWithdraw` at `:200`, `ControlFacet.suspendWithdrawal` at `:665`).
--   Disputer flow: `DISPUTER_ROLE` calls `AccountFacet.restoreWithdraw(id, validAmount)` at `:211`. This clears the suspended flag and **rewrites** `Withdraw.amount` to `validAmount`. The difference between the original and `validAmount` is routed to `getInvalidWithdrawalsPool` (`contracts/facets/View/ViewFacet.sol:144`). The disputer is the only role that can reduce a withdrawal's claimable amount; the suspender can only freeze/unfreeze.
--   The suspender alone cannot redirect funds. The disputer can redirect a portion to the invalid pool but not to an arbitrary address.
+- **Address suspension** (`suspendedAddresses[user]`) blocks the user from initiating deposits, transfers, withdrawals, allocations, deallocations, and trade transfers (full list at `contracts/utils/Accessibility.sol:53-69`). Suspended users can still be liquidated.
+- **Withdrawal suspension** (`suspendedWithdrawal[withdrawId]`) freezes one specific pending withdrawal so it can be reviewed before completion or cancellation.
+- Suspender flow: `SUSPENDER_ROLE` flips the flag (`AccountFacet.suspendWithdraw` at `:200`, `ControlFacet.suspendWithdrawal` at `:665`).
+- Disputer flow: `DISPUTER_ROLE` calls `AccountFacet.restoreWithdraw(id, validAmount)` at `:211`. This clears the suspended flag and **rewrites** `Withdraw.amount` to `validAmount`. The difference between the original and `validAmount` is routed to `getInvalidWithdrawalsPool` (`contracts/facets/View/ViewFacet.sol:144`). The disputer is the only role that can reduce a withdrawal's claimable amount; the suspender can only freeze/unfreeze.
+- The suspender alone cannot redirect funds. The disputer can redirect a portion to the invalid pool but not to an arbitrary address.
 
 ## 8. Emergency States
 
 Party B emergency mode is a focused freeze on opening new exposure with a problematic Party B. See [[roles-and-pauses#Party B emergency mode]].
 
--   Two storage levels: `partyBsEmergencyMode` (global) and `partyBEmergencyMode[partyB]` (single Party B), at `contracts/storages/StateControlStorage.sol:23-24`.
--   Both are checked inside `LibPartyBOpen` lock (`:51-52`) and fill (`:184-185`). Reverts with `PartyBInEmergencyMode(partyB)` or `PartyBsInEmergencyMode()`.
--   Emergency mode does **not** block close-side flows, withdrawals, or liquidation. It is specifically meant to stop a Party B from accepting new positions while still letting existing positions wind down.
--   Activated by `PAUSER_ROLE`, deactivated by `UNPAUSER_ROLE`. Distinct from `pausePartyBActions`, which freezes every Party B for every action.
+- Two storage levels: `partyBsEmergencyMode` (global) and `partyBEmergencyMode[partyB]` (single Party B), at `contracts/storages/StateControlStorage.sol:23-24`.
+- Both are checked inside `LibPartyBOpen` lock (`:51-52`) and fill (`:184-185`). Reverts with `PartyBInEmergencyMode(partyB)` or `PartyBsInEmergencyMode()`.
+- Emergency mode does **not** block close-side flows, withdrawals, or liquidation. It is specifically meant to stop a Party B from accepting new positions while still letting existing positions wind down.
+- Activated by `PAUSER_ROLE`, deactivated by `UNPAUSER_ROLE`. Distinct from `pausePartyBActions`, which freezes every Party B for every action.
 
 ## 9. Upgradeability Surface
 
@@ -187,22 +187,24 @@ Party B emergency mode is a focused freeze on opening new exposure with a proble
 
 For deeper recap see `docs/concepts/oracle-and-signatures.md` (planned). Three independent signature schemes are in use:
 
--   **Muon TSS** for `UpnlSig` and `SettlementPriceSig` (`contracts/libraries/services/LibMuon.sol`, verified through `MuonOracle.sol:38-43` which combines a Schnorr signature with a gateway ECDSA signature). Risks: TSS quorum compromise, gateway compromise (gateway alone cannot forge), expired signatures (`ExpiredSignature` at `LibMuon.sol:32,66`), and replay (settlement-side replay blocked by `isSigUsed`; uPnL replay blocked by bilateral nonce — `LibMuon.sol:85`).
--   **EIP-712 / EIP-1271** for `InstantLayer` signed operations (`contracts/helpers/InstantLayer.sol`). Risks: signer key compromise, deadline expiry (`DeadlineExpired` at `:387`), nonce/salt collisions (replay blocked at `:401-402`, ordering at `:410`).
--   **EOA / ERC-1271** general signatures via `SignatureVerifier` and `LibSignature`. Risks: a compromised contract signer (notably MultiAccount-owned SymmioPartyA, which delegates ERC-1271 back to MultiAccount); `SignatureVerifier` replacement by `SETTER_ROLE`.
+- **Muon TSS** for `UpnlSig` and `SettlementPriceSig` (`contracts/libraries/services/LibMuon.sol`, verified through `MuonOracle.sol:38-43` which combines a Schnorr signature with a gateway ECDSA signature). Risks: TSS quorum compromise, gateway compromise (gateway alone cannot forge), expired signatures (`ExpiredSignature` at `LibMuon.sol:32,66`), and replay (settlement-side replay blocked by `isSigUsed`; uPnL replay blocked by bilateral nonce — `LibMuon.sol:85`).
+- **EIP-712 / EIP-1271** for `InstantLayer` signed operations (`contracts/helpers/InstantLayer.sol`). Risks: signer key compromise, deadline expiry (`DeadlineExpired` at `:387`), nonce/salt collisions (replay blocked at `:401-402`, ordering at `:410`).
+- **EOA / ERC-1271** general signatures via `SignatureVerifier` (backed by `LibSignatureChecker`) and `LibSignature`. Risks: a compromised contract signer (notably MultiAccount-owned SymmioPartyA, which delegates ERC-1271 back to MultiAccount); `SignatureVerifier` replacement by `SETTER_ROLE`.
+
+Signature checks deliberately keep OpenZeppelin 4 semantics through `contracts/libraries/utils/LibSignatureChecker.sol`: ECDSA `tryRecover` first, then ERC-1271. This lets an EIP-7702-delegated EOA, which has code, still sign with its own key. OpenZeppelin 5's stock `SignatureChecker` routes on `signer.code.length` and would reject those signatures, so `LibSignatureChecker` must not be replaced with it without an explicit decision.
 
 ## 11. Decimal Normalization
 
 `LibDecimals` (`contracts/libraries/utils/LibDecimals.sol`) is the single source of normalization. All deposits and withdrawals normalize/denormalize between collateral decimals and the protocol's 1e18 internal precision:
 
--   `normalizeAmount(token, amount) = (amount * 1e18) / 10**decimals` (`LibDecimals.sol:13-16`)
--   `denormalizeAmount(token, amount) = (amount * 10**decimals) / 1e18` (`LibDecimals.sol:18-21`)
+- `normalizeAmount(token, amount) = (amount * 1e18) / 10**decimals` (`LibDecimals.sol:13-16`)
+- `denormalizeAmount(token, amount) = (amount * 10**decimals) / 1e18` (`LibDecimals.sol:18-21`)
 
 Both use Solidity 0.8.19 integer division and **truncate**. Known consequences:
 
--   A withdrawal of less than `10**(18-decimals)` of a low-decimal token (e.g. USDC at 6 decimals: `10**12` units of internal value) denormalizes to zero — the user effectively forfeits dust on withdrawal.
--   A deposit-then-withdraw round trip is not amount-preserving for amounts below the granularity of the token; this is a property of any fixed-precision normalization.
--   All other internal math (premium, fee, MM) is in 1e18 collateral units; reads via `IERC20Metadata(token).decimals()` are made every call (no decimals cache), trusting the token to report a stable value.
+- A withdrawal of less than `10**(18-decimals)` of a low-decimal token (e.g. USDC at 6 decimals: `10**12` units of internal value) denormalizes to zero — the user effectively forfeits dust on withdrawal.
+- A deposit-then-withdraw round trip is not amount-preserving for amounts below the granularity of the token; this is a property of any fixed-precision normalization.
+- All other internal math (premium, fee, MM) is in 1e18 collateral units; reads via `IERC20Metadata(token).decimals()` are made every call (no decimals cache), trusting the token to report a stable value.
 
 ## 12. Known Limitations and By-Design Oddities
 

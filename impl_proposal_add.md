@@ -183,13 +183,13 @@ where:
 
 ```solidity
 function unlockForCancelOrExpire(OpenIntent storage intent) internal {
-    if (intent.isDeferredPartyBSellIntent()) {
-        releaseDeferredSellEscrow(intent.id);
-    } else {
-        intent.unlockFees();
-        intent.unlockPremiumIfBuy();
-        intent.unlockMMIfSell();
-    }
+	if (intent.isDeferredPartyBSellIntent()) {
+		releaseDeferredSellEscrow(intent.id);
+	} else {
+		intent.unlockFees();
+		intent.unlockPremiumIfBuy();
+		intent.unlockMMIfSell();
+	}
 }
 ```
 
@@ -314,15 +314,15 @@ but the core contract should keep one cancellation path.
 Update these files to use the deferred-aware unlock helper:
 
 1. `contracts/libraries/core/LibPartyAOpen.sol`
-   - `cancelOpenIntent`
+    - `cancelOpenIntent`
 2. `contracts/libraries/models/LibOpenIntent.sol`
-   - `expire`
+    - `expire`
 3. `contracts/libraries/core/LibPartyBOpen.sol`
-   - `acceptCancelOpenIntent`
+    - `acceptCancelOpenIntent`
 4. `contracts/libraries/core/LibForceActions.sol`
-   - `forceCancelOpenIntent`
+    - `forceCancelOpenIntent`
 5. `contracts/libraries/core/LibClearingHouse.sol`
-   - `cancelOpenIntents`
+    - `cancelOpenIntents`
 
 The important invariant:
 
