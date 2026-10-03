@@ -50,6 +50,41 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 		formatter = new Intl.NumberFormat("en-US", {})
 	})
 
+	async function makePartyBInIsolatedLiquidation() {
+		await context.controlFacet.setPartyBConfig(context.signers.partyB2, {
+			isActive: true,
+			lossCoverage: e(1),
+			oracleId: 1,
+		})
+		await context.clearingHouse.connect(context.signers.clearingHouse).flagIsolatedPartyBLiquidation(partyB2.address, context.collateral.getAddress())
+		await context.clearingHouse
+			.connect(context.signers.clearingHouse)
+			.liquidateIsolatedPartyB(partyB2.address, context.collateral.getAddress(), e(-1200000), e(10))
+	}
+
+	async function makePartyAInCrossLiquidation() {
+		await context.controlFacet.setPartyBConfig(context.signers.partyB2, {
+			isActive: true,
+			lossCoverage: e(1),
+			oracleId: 1,
+		})
+		await context.clearingHouse
+			.connect(context.signers.clearingHouse)
+			.flagPartyALiquidation(partyA2.address, partyB2.address, context.collateral.getAddress())
+		const liquidationId = await context.viewFacet.getLastLiquidationId()
+		await context.clearingHouse
+			.connect(context.signers.clearingHouse)
+			.liquidateCrossPartyA(liquidationId, partyA2.address, partyB2.address, context.collateral.getAddress(), e(-1200000), e(10))
+	}
+
+	// Sum of the platform, affiliate and solver open fees locked for an intent (in fee token units)
+	async function openFees(intentId: number): Promise<bigint> {
+		const intent = await context.viewFacet.getOpenIntent(intentId)
+		const solverFee =
+			(intent.tradeAgreements.quantity * intent.price * intent.feeStructure.solverFee.openFee) / (intent.feeStructure.tokenPriceInCollateral * e(1))
+		return (await context.viewFacet.getOpenIntentPlatformFee(intentId)) + (await context.viewFacet.getOpenIntentAffiliateFee(intentId)) + solverFee
+	}
+
 	describe("Isolated BUY liquidation", async function () {
 		it("Should be failed when Globally Paused", async () => {
 			// Globally Pause the System
@@ -375,6 +410,42 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			const liquidationId = await context.viewFacet.getInProgressLiquidationId(ZeroAddress, partyB2.address, await context.collateral.getAddress())
 
 			expect((await context.viewFacet.getLiquidationDetail(liquidationId)).status).to.be.equal(LiquidationStatus.IN_PROGRESS)
+		})
+
+		it("Should be able to unflag an IN_PROGRESS liquidation of party B in ISOLATED BUY", async () => {
+			const request1 = openIntentRequestBuilder()
+				.partyBsWhiteList([partyB2.address])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateralNL)
+				.symbolId(2)
+				.deadline((await getLatestBlockTime()) + 140)
+				.expirationTimestamp((await getLatestBlockTime()) + 150)
+				.exerciseFee({ cap: e(0.002), rate: e(0.0002) })
+				.quantity(e(50))
+				.strikePrice(e(10000))
+				.price(e(10))
+				.mm(0)
+				.tradeSide(TradeSide.BUY)
+				.marginType(MarginType.ISOLATED)
+				.build()
+
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
+			await partyA2.sendOpenIntent(request1)
+			await partyB2.lockOpenIntent(1)
+			await partyB2.fillOpenIntent(1, e(50), e(10))
+
+			await makePartyBInIsolatedLiquidation()
+			const liquidationId = await context.viewFacet.getInProgressLiquidationId(ZeroAddress, partyB2.address, await context.collateral.getAddress())
+			expect((await context.viewFacet.getLiquidationDetail(liquidationId)).status).to.be.equal(LiquidationStatus.IN_PROGRESS)
+
+			await expect(
+				context.clearingHouse
+					.connect(context.signers.clearingHouse)
+					.unflagIsolatedPartyBLiquidation(partyB2.address, context.collateral.getAddress()),
+			).not.to.revert(ethers)
+
+			expect((await context.viewFacet.getLiquidationDetail(liquidationId)).status).to.be.equal(LiquidationStatus.CANCELLED)
+			expect(await context.viewFacet.getInProgressLiquidationId(ZeroAddress, partyB2.address, await context.collateral.getAddress())).to.be.equal(0)
 		})
 	})
 
@@ -2823,256 +2894,24 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 		})
 	})
 
-	// describe("Confiscate Collateral", async function () {
-	// 	it("Should fail to distribute collateral after confiscate party B when liquidating in ISOLATED BUY because of mismatching inputs", async () => {
-	// 		const request1 = openIntentRequestBuilder()
-	// 			.partyBsWhiteList([partyB2.getSigner])
-	// 			.affiliate(context.signers.affiliate1)
-	// 			.feeToken(context.collateralNL)
-	// 			.symbolId(2)
-	// 			.deadline((await getLatestBlockTime()) + 140)
-	// 			.expirationTimestamp((await getLatestBlockTime()) + 150)
-	// 			.exerciseFee({ cap: e(0.002), rate: e(0.0002) })
-	// 			.quantity(e(50))
-	// 			.strikePrice(e(10000))
-	// 			.price(e(10))
-	// 			.mm(0)
-	// 			.tradeSide(TradeSide.BUY)
-	// 			.marginType(MarginType.ISOLATED)
-	// 			.build()
-
-	// 		const openIntentId1 = 1
-	// 		await partyA2.setBalances(context.collateral, e(10000), e(1000))
-	// 		await partyA2.sendOpenIntent(request1)
-	// 		await partyB2.lockOpenIntent(openIntentId1)
-	// 		await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
-
-	// 		// TODO: if the contract changed to one-time setting config this transaction should be removed
-	// 		await context.controlFacet.setPartyBConfig(context.signers.partyB2, {
-	// 			isActive: true,
-	// 			lossCoverage: e(1),
-	// 			oracleId: 1,
-	// 		})
-
-	// 		expect(
-	// 			await context.clearingHouse
-	// 				.connect(context.signers.clearingHouse)
-	// 				.flagIsolatedPartyBLiquidation(partyB2.getSigner.getAddress(), context.collateral.getAddress()),
-	// 		).not.to.revert(ethers)
-
-	// 		expect(
-	// 			await context.clearingHouse
-	// 				.connect(context.signers.clearingHouse)
-	// 				.liquidateIsolatedPartyB(partyB2.address, context.collateral.getAddress(), e(-1200000), e(10)),
-	// 		).not.to.revert(ethers)
-
-	// 		const liquidationId = await context.viewFacet.getInProgressLiquidationId(ZeroAddress, partyB2.address, await context.collateral.getAddress())
-
-	// 		const liquidationAmount = e(30000)
-
-	// 		// expect(
-	// 		// 	await context.clearingHouse
-	// 		// 		.connect(context.signers.clearingHouse)
-	// 		// 		.confiscate(liquidationId, liquidationAmount, partyB2.address, partyA2.address, MarginType.ISOLATED),
-	// 		// ).not.to.revert(ethers)
-
-	// 		// await expect(
-	// 		// 	context.clearingHouse
-	// 		// 		.connect(context.signers.clearingHouse)
-	// 		// 		.distributeCollateral(
-	// 		// 			liquidationId,
-	// 		// 			partyB2.address,
-	// 		// 			context.collateral.getAddress(),
-	// 		// 			MarginType.ISOLATED,
-	// 		// 			[partyA2.address],
-	// 		// 			[e(10000), e(20000)],
-	// 		// 		),
-	// 		// ).to.be.revertedWithCustomError(context.clearingHouse, "MismatchedArrayLengths")
-	// 		//TODO Failed no clear reason
-	// 	})
-
-	// 	it("Should fail to distribute collateral after confiscate party B when liquidating in ISOLATED BUY because of invalid state", async () => {
-	// 		const request1 = openIntentRequestBuilder()
-	// 			.partyBsWhiteList([partyB2.getSigner])
-	// 			.affiliate(context.signers.affiliate1)
-	// 			.feeToken(context.collateralNL)
-	// 			.symbolId(2)
-	// 			.deadline((await getLatestBlockTime()) + 140)
-	// 			.expirationTimestamp((await getLatestBlockTime()) + 150)
-	// 			.exerciseFee({ cap: e(0.002), rate: e(0.0002) })
-	// 			.quantity(e(50))
-	// 			.strikePrice(e(10000))
-	// 			.price(e(10))
-	// 			.mm(0)
-	// 			.tradeSide(TradeSide.BUY)
-	// 			.marginType(MarginType.ISOLATED)
-	// 			.build()
-
-	// 		const openIntentId1 = 1
-	// 		await partyA2.setBalances(context.collateral, e(10000), e(1000))
-	// 		await partyA2.sendOpenIntent(request1)
-	// 		await partyB2.lockOpenIntent(openIntentId1)
-	// 		await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
-
-	// 		// TODO: if the contract changed to one-time setting config this transaction should be removed
-	// 		await context.controlFacet.setPartyBConfig(context.signers.partyB2, {
-	// 			isActive: true,
-	// 			lossCoverage: e(1),
-	// 			oracleId: 1,
-	// 		})
-
-	// 		expect(
-	// 			await context.clearingHouse
-	// 				.connect(context.signers.clearingHouse)
-	// 				.flagIsolatedPartyBLiquidation(partyB2.getSigner.getAddress(), context.collateral.getAddress()),
-	// 		).not.to.revert(ethers)
-
-	// 		const liquidationId = await context.viewFacet.getInProgressLiquidationId(ZeroAddress, partyB2.address, await context.collateral.getAddress())
-
-	// 		await expect(
-	// 			context.clearingHouse
-	// 				.connect(context.signers.clearingHouse)
-	// 				.distributeCollateral(liquidationId, partyB2.address, context.collateral.getAddress(), MarginType.ISOLATED, [partyA2.address], [e(30000)]),
-	// 		).to.be.revertedWithCustomError(context.clearingHouse, "InvalidState")
-	// 	})
-
-	// 	it("Should fail to distribute collateral after confiscate party B when liquidating in ISOLATED BUY because of exceeding amount from confiscated amount", async () => {
-	// 		const request1 = openIntentRequestBuilder()
-	// 			.partyBsWhiteList([partyB2.getSigner])
-	// 			.affiliate(context.signers.affiliate1)
-	// 			.feeToken(context.collateralNL)
-	// 			.symbolId(2)
-	// 			.deadline((await getLatestBlockTime()) + 140)
-	// 			.expirationTimestamp((await getLatestBlockTime()) + 150)
-	// 			.exerciseFee({ cap: e(0.002), rate: e(0.0002) })
-	// 			.quantity(e(50))
-	// 			.strikePrice(e(10000))
-	// 			.price(e(10))
-	// 			.mm(0)
-	// 			.tradeSide(TradeSide.BUY)
-	// 			.marginType(MarginType.ISOLATED)
-	// 			.build()
-
-	// 		const openIntentId1 = 1
-	// 		await partyA2.setBalances(context.collateral, e(10000), e(1000))
-	// 		await partyA2.sendOpenIntent(request1)
-	// 		await partyB2.lockOpenIntent(openIntentId1)
-	// 		await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
-
-	// 		// TODO: if the contract changed to one-time setting config this transaction should be removed
-	// 		await context.controlFacet.setPartyBConfig(context.signers.partyB2, {
-	// 			isActive: true,
-	// 			lossCoverage: e(1),
-	// 			oracleId: 1,
-	// 		})
-
-	// 		expect(
-	// 			await context.clearingHouse
-	// 				.connect(context.signers.clearingHouse)
-	// 				.flagIsolatedPartyBLiquidation(partyB2.getSigner.getAddress(), context.collateral.getAddress()),
-	// 		).not.to.revert(ethers)
-
-	// 		expect(
-	// 			await context.clearingHouse
-	// 				.connect(context.signers.clearingHouse)
-	// 				.liquidateIsolatedPartyB(partyB2.address, context.collateral.getAddress(), e(-1200000), e(10)),
-	// 		).not.to.revert(ethers)
-
-	// 		const liquidationId = await context.viewFacet.getInProgressLiquidationId(ZeroAddress, partyB2.address, await context.collateral.getAddress())
-
-	// 		const liquidationAmount = e(30000)
-
-	// 		// expect(
-	// 		// 	await context.clearingHouse
-	// 		// 		.connect(context.signers.clearingHouse)
-	// 		// 		.confiscate(liquidationId, liquidationAmount, partyB2.address, partyA2.address, MarginType.ISOLATED),
-	// 		// ).not.to.revert(ethers)
-
-	// 		// await expect(
-	// 		// 	context.clearingHouse
-	// 		// 		.connect(context.signers.clearingHouse)
-	// 		// 		.distributeCollateral(liquidationId, partyB2.address, context.collateral.getAddress(), MarginType.ISOLATED, [partyA2.address], [e(40000)]),
-	// 		// ).to.be.revertedWithCustomError(context.clearingHouse, "DistributedAmountExceedsConfiscatedAmount")
-	// 		//TODO Failed no clear reason
-	// 	})
-
-	// 	it("Should distribute collateral after confiscate party B when liquidating in ISOLATED BUY", async () => {
-	// 		const request1 = openIntentRequestBuilder()
-	// 			.partyBsWhiteList([partyB2.address])
-	// 			.affiliate(context.signers.affiliate1)
-	// 			.feeToken(context.collateral.getAddress())
-	// 			.symbolId(2)
-	// 			.deadline((await getLatestBlockTime()) + 140)
-	// 			.expirationTimestamp((await getLatestBlockTime()) + 150)
-	// 			.exerciseFee({ cap: e(0.002), rate: e(0.0002) })
-	// 			.quantity(e(50))
-	// 			.strikePrice(e(10000))
-	// 			.price(e(10))
-	// 			.mm(0)
-	// 			.tradeSide(TradeSide.BUY)
-	// 			.marginType(MarginType.ISOLATED)
-	// 			.build()
-
-	// 		const openIntentId1 = 1
-	// 		await partyA2.setBalances(context.collateral, e(10000), e(1000))
-	// 		await partyA2.sendOpenIntent(request1)
-	// 		await partyB2.lockOpenIntent(openIntentId1)
-	// 		await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
-
-	// 		// TODO: if the contract changed to one-time setting config this transaction should be removed
-	// 		await context.controlFacet.setPartyBConfig(context.signers.partyB2, {
-	// 			isActive: true,
-	// 			lossCoverage: e(1),
-	// 			oracleId: 1,
-	// 		})
-
-	// 		expect(
-	// 			await context.clearingHouse
-	// 				.connect(context.signers.clearingHouse)
-	// 				.flagIsolatedPartyBLiquidation(partyB2.getSigner.getAddress(), context.collateral.getAddress()),
-	// 		).not.to.revert(ethers)
-
-	// 		expect(
-	// 			await context.clearingHouse
-	// 				.connect(context.signers.clearingHouse)
-	// 				.liquidateIsolatedPartyB(partyB2.address, context.collateral.getAddress(), e(-1200000), e(10)),
-	// 		).not.to.revert(ethers)
-
-	// 		const liquidationId = await context.viewFacet.getInProgressLiquidationId(ZeroAddress, partyB2.address, await context.collateral.getAddress())
-
-	// 		const liquidationAmount = e(30000)
-
-	// 		// expect(
-	// 		// 	await context.clearingHouse
-	// 		// 		.connect(context.signers.clearingHouse)
-	// 		// 		.confiscate(liquidationId, liquidationAmount, partyB2.address, partyA2.address, MarginType.ISOLATED),
-	// 		// ).not.to.revert(ethers)
-
-	// 		// expect(
-	// 		// 	await context.clearingHouse
-	// 		// 		.connect(context.signers.clearingHouse)
-	// 		// 		.distributeCollateral(
-	// 		// 			liquidationId,
-	// 		// 			partyB2.address,
-	// 		// 			context.collateral.getAddress(),
-	// 		// 			MarginType.ISOLATED,
-	// 		// 			[partyA2.address],
-	// 		// 			[liquidationAmount],
-	// 		// 		),
-	// 		// ).not.to.revert(ethers)
-
-	// 		// const partyAScheduledBalance = (
-	// 		// 	await context.viewFacet.getScheduledReleaseEntry(partyA2.address, context.collateral.getAddress(), partyB2.address)
-	// 		// ).scheduled
-
-	// 		// expect(partyAScheduledBalance).be.equal(liquidationAmount)
-	// 		//TODO Failed no clear reason
-	// 	})
-	// })
-
 	describe("Cancel Open Intents", async function () {
-		it("Should fail to cancel open intents when open intent is filled", async () => {
-			const request1 = openIntentRequestBuilder()
+		function cancelRequest(overrides: { whiteList?: string[]; tradeSide?: TradeSide; marginType?: MarginType; mm?: bigint; deadline?: number }) {
+			return openIntentRequestBuilder()
+				.partyBsWhiteList(overrides.whiteList ?? [partyB2.address])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateralNL.getAddress())
+				.symbolId(2)
+				.exerciseFee({ cap: e(0.002), rate: e(0.0002) })
+				.quantity(e(50))
+				.strikePrice(e(10000))
+				.price(e(10))
+				.mm(overrides.mm ?? 0n)
+				.tradeSide(overrides.tradeSide ?? TradeSide.BUY)
+				.marginType(overrides.marginType ?? MarginType.ISOLATED)
+		}
+
+		it("Should enforce onlyRole(CLEARING_HOUSE_ROLE)", async () => {
+			const req = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.address])
 				.affiliate(context.signers.affiliate1)
 				.feeToken(context.collateral.getAddress())
@@ -3088,16 +2927,91 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.marginType(MarginType.ISOLATED)
 				.build()
 
-			const openIntentId1 = 1
+			const CLEARING_HOUSE_ROLE = ethers.id("CLEARING_HOUSE_ROLE")
 			await partyA2.setBalances(context.collateral, e(10000), e(1000))
+			await partyA2.sendOpenIntent(req)
+			const id = 1
+			await partyB2.lockOpenIntent(id)
+
+			await makePartyBInIsolatedLiquidation()
+
+			const unauthorized = context.signers.affiliate1
+			await expect(context.clearingHouse.connect(unauthorized).cancelOpenIntents([id]))
+				.to.be.revertedWithCustomError(context.clearingHouse, "MissingRole")
+				.withArgs(await unauthorized.getAddress(), CLEARING_HOUSE_ROLE)
+
+			await expect(context.clearingHouse.connect(context.signers.clearingHouse).cancelOpenIntents([id]))
+				.to.emit(context.clearingHouse, "CancelOpenIntentsForLiquidation")
+				.withArgs(context.signers.clearingHouse.address, [id])
+		})
+
+		it("Should expire a pending open intent if deadline passed (and party is in liquidation)", async () => {
+			const now = await getLatestBlockTime()
+			const req = openIntentRequestBuilder()
+				.partyBsWhiteList([partyB2.address])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateral.getAddress())
+				.symbolId(2)
+				.deadline(now + 40)
+				.expirationTimestamp(now + 150)
+				.exerciseFee({ cap: e(0.002), rate: e(0.0002) })
+				.quantity(e(50))
+				.strikePrice(e(10000))
+				.price(e(10))
+				.mm(0)
+				.tradeSide(TradeSide.BUY)
+				.marginType(MarginType.ISOLATED)
+				.build()
+
+			const id = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
+			await partyA2.sendOpenIntent(req)
+			await partyB2.lockOpenIntent(id)
+
+			await makePartyBInIsolatedLiquidation()
+			await moveTime(60)
+
+			await expect(context.clearingHouse.connect(context.signers.clearingHouse).cancelOpenIntents([id])).not.to.revert(ethers)
+
+			expect((await context.viewFacet.getOpenIntent(id)).status).to.equal(IntentStatus.EXPIRED)
+		})
+
+		it("Should fail to cancel open intents when open intent is filled", async () => {
+			const request1 = openIntentRequestBuilder()
+				.partyBsWhiteList([partyB2.address])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateralNL.getAddress())
+				.symbolId(2)
+				.deadline((await getLatestBlockTime()) + 140)
+				.expirationTimestamp((await getLatestBlockTime()) + 150)
+				.exerciseFee({ cap: e(0.002), rate: e(0.0002) })
+				.quantity(e(50))
+				.strikePrice(e(10000))
+				.price(e(10))
+				.mm(0)
+				.tradeSide(TradeSide.BUY)
+				.marginType(MarginType.ISOLATED)
+				.build()
+
+			const openIntentId1 = 1
+			const openIntentId2 = 2
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
+			await partyA2.setBalances(context.collateralNL, e(100), e(10))
+			await partyA2.sendOpenIntent(request1)
 			await partyA2.sendOpenIntent(request1)
 			await partyB2.lockOpenIntent(openIntentId1)
+			await partyB2.lockOpenIntent(openIntentId2)
 			await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
+
+			await makePartyBInIsolatedLiquidation()
 
 			await expect(context.clearingHouse.connect(context.signers.clearingHouse).cancelOpenIntents([openIntentId1])).to.be.revertedWithCustomError(
 				context.clearingHouse,
 				"InvalidState",
 			)
+
+			await expect(context.clearingHouse.connect(context.signers.clearingHouse).cancelOpenIntents([openIntentId2])).not.to.revert(ethers)
+			expect((await context.viewFacet.getOpenIntent(openIntentId2)).status).to.equal(IntentStatus.CANCELED)
 		})
 
 		it("Should fail to cancel open intents when party is not in liquidation", async () => {
@@ -3128,21 +3042,10 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			)
 		})
 
-		it("Should cancel open intents", async () => {
-			const request1 = openIntentRequestBuilder()
-				.partyBsWhiteList([partyB2.address])
-				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateralNL.getAddress())
-				.symbolId(2)
+		it("Should cancel open intents,Update state to Canceled", async () => {
+			const request1 = cancelRequest({})
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
-				.exerciseFee({ cap: e(0.002), rate: e(0.0002) })
-				.quantity(e(50))
-				.strikePrice(e(10000))
-				.price(e(10))
-				.mm(0)
-				.tradeSide(TradeSide.BUY)
-				.marginType(MarginType.ISOLATED)
 				.build()
 
 			const openIntentId1 = 1
@@ -3151,22 +3054,249 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			await partyB2.lockOpenIntent(openIntentId1)
 			await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
 
-			// TODO: if the contract changed to one-time setting config this transaction should be removed
+			const openIntentId2 = 2
+			await partyA2.sendOpenIntent(request1)
+			await partyB2.lockOpenIntent(openIntentId2)
+
+			await makePartyBInIsolatedLiquidation()
+			await expect(context.clearingHouse.connect(context.signers.clearingHouse).cancelOpenIntents([openIntentId2])).not.to.revert(ethers)
+
+			expect((await context.viewFacet.getOpenIntent(openIntentId2)).status).to.be.equal(IntentStatus.CANCELED)
+		})
+
+		it("Should cancel open intents,Unlock Fees", async () => {
+			const request1 = cancelRequest({})
+				.deadline((await getLatestBlockTime()) + 140)
+				.expirationTimestamp((await getLatestBlockTime()) + 150)
+				.build()
+
+			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
+			await partyA2.sendOpenIntent(request1)
+			await partyB2.lockOpenIntent(openIntentId1)
+			await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
+
+			const openIntentId2 = 2
+			await partyA2.sendOpenIntent(request1)
+			await partyB2.lockOpenIntent(openIntentId2)
+
+			await makePartyBInIsolatedLiquidation()
+
+			const fees = await openFees(openIntentId2)
+			expect(fees).to.be.greaterThan(0n)
+			const lockedBefore = await context.viewFacet.getIsolatedLockedBalance(partyA2.address, context.collateralNL.getAddress())
+
+			await expect(context.clearingHouse.connect(context.signers.clearingHouse).cancelOpenIntents([openIntentId2])).not.to.revert(ethers)
+
+			expect((await context.viewFacet.getOpenIntent(openIntentId2)).status).to.be.equal(IntentStatus.CANCELED)
+			const lockedAfter = await context.viewFacet.getIsolatedLockedBalance(partyA2.address, context.collateralNL.getAddress())
+			expect(lockedBefore - lockedAfter).to.be.equal(fees)
+		})
+
+		it("Should cancel open intents,Unlock Fees in Cross Margin", async () => {
+			const request1 = cancelRequest({ tradeSide: TradeSide.SELL, marginType: MarginType.CROSS })
+				.deadline((await getLatestBlockTime()) + 140)
+				.expirationTimestamp((await getLatestBlockTime()) + 150)
+				.build()
+
+			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
+			await partyA2.sendOpenIntent(request1)
+			await partyB2.lockOpenIntent(openIntentId1)
+			await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
+
+			const openIntentId2 = 2
+			await partyA2.sendOpenIntent(request1)
+			await partyB2.lockOpenIntent(openIntentId2)
+
+			await makePartyAInCrossLiquidation()
+
+			const fees = await openFees(openIntentId2)
+			expect(fees).to.be.greaterThan(0n)
+			const crossBefore = await context.viewFacet.getCrossBalance(partyA2.address, context.collateralNL.getAddress(), partyB2.address)
+
+			await expect(context.clearingHouse.connect(context.signers.clearingHouse).cancelOpenIntents([openIntentId2])).not.to.revert(ethers)
+
+			expect((await context.viewFacet.getOpenIntent(openIntentId2)).status).to.be.equal(IntentStatus.CANCELED)
+			const crossAfter = await context.viewFacet.getCrossBalance(partyA2.address, context.collateralNL.getAddress(), partyB2.address)
+			expect(crossBefore.locked - crossAfter.locked).to.be.equal(fees)
+		})
+
+		it("Should set open intents as Pending, in Buy Trade Isolated, more than One Party B whitelisted", async () => {
+			const request1 = cancelRequest({ whiteList: [partyB2.address, partyB1.address] })
+				.deadline((await getLatestBlockTime()) + 140)
+				.expirationTimestamp((await getLatestBlockTime()) + 150)
+				.build()
+
+			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
+			await partyA2.sendOpenIntent(request1)
+			await partyB2.lockOpenIntent(openIntentId1)
+			await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
+
+			const openIntentId2 = 2
+			await partyA2.sendOpenIntent(request1)
+			await partyB2.lockOpenIntent(openIntentId2)
+
+			await makePartyBInIsolatedLiquidation()
+
+			const lockedBefore = await context.viewFacet.getIsolatedLockedBalance(partyA2.address, context.collateral.getAddress())
+			const feesLockedBefore = await context.viewFacet.getIsolatedLockedBalance(partyA2.address, context.collateralNL.getAddress())
+
+			await expect(context.clearingHouse.connect(context.signers.clearingHouse).cancelOpenIntents([openIntentId2])).not.to.revert(ethers)
+
+			const intent = await context.viewFacet.getOpenIntent(openIntentId2)
+			expect(intent.status).to.be.equal(IntentStatus.PENDING)
+			expect(intent.partyB).to.be.equal(ZeroAddress)
+			// Premium and fees stay locked: the intent is still live for the other whitelisted Party B
+			expect(await context.viewFacet.getIsolatedLockedBalance(partyA2.address, context.collateral.getAddress())).to.be.equal(lockedBefore)
+			expect(await context.viewFacet.getIsolatedLockedBalance(partyA2.address, context.collateralNL.getAddress())).to.be.equal(feesLockedBefore)
+
+			await expect(partyB1.lockOpenIntent(openIntentId2)).not.to.revert(ethers)
+			await expect(partyB1.fillOpenIntent(openIntentId2, request1.quantity, request1.price)).not.to.revert(ethers)
+		})
+
+		it("should be LOCKed by another PartyB in case state Changed to Pending", async () => {
+			const request1 = cancelRequest({ whiteList: [partyB2.address, partyB1.address] })
+				.deadline((await getLatestBlockTime()) + 140)
+				.expirationTimestamp((await getLatestBlockTime()) + 150)
+				.build()
+
+			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
+			await partyA2.sendOpenIntent(request1)
+			await partyB2.lockOpenIntent(openIntentId1)
+			await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
+
+			const openIntentId2 = 2
+			await partyA2.sendOpenIntent(request1)
+			await partyB2.lockOpenIntent(openIntentId2)
+
+			await makePartyBInIsolatedLiquidation()
+
+			await expect(context.clearingHouse.connect(context.signers.clearingHouse).cancelOpenIntents([openIntentId2])).not.to.revert(ethers)
+			expect((await context.viewFacet.getOpenIntent(openIntentId2)).status).to.be.equal(IntentStatus.PENDING)
+
+			await partyB1.lockOpenIntent(openIntentId2)
+
+			const intent = await context.viewFacet.getOpenIntent(openIntentId2)
+			expect(intent.status).to.be.equal(IntentStatus.LOCKED)
+			expect(intent.partyB).to.be.equal(partyB1.address)
+		})
+
+		it("Should Cancel open intents, in Buy Trade Isolated, with One Party B whitelisted", async () => {
+			const request1 = cancelRequest({})
+				.deadline((await getLatestBlockTime()) + 140)
+				.expirationTimestamp((await getLatestBlockTime()) + 150)
+				.build()
+
+			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
+			await partyA2.sendOpenIntent(request1)
+			await partyB2.lockOpenIntent(openIntentId1)
+			await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
+
+			const openIntentId2 = 2
+			await partyA2.sendOpenIntent(request1)
+			await partyB2.lockOpenIntent(openIntentId2)
+
+			await makePartyBInIsolatedLiquidation()
+
+			const premium = await context.viewFacet.getOpenIntentPremium(openIntentId2)
+			expect(premium).to.be.greaterThan(0n)
+			const lockedBefore = await context.viewFacet.getIsolatedLockedBalance(partyA2.address, context.collateral.getAddress())
+
+			await expect(context.clearingHouse.connect(context.signers.clearingHouse).cancelOpenIntents([openIntentId2])).not.to.revert(ethers)
+
+			expect((await context.viewFacet.getOpenIntent(openIntentId2)).status).to.be.equal(IntentStatus.CANCELED)
+			const lockedAfter = await context.viewFacet.getIsolatedLockedBalance(partyA2.address, context.collateral.getAddress())
+			expect(lockedBefore - lockedAfter).to.be.equal(premium)
+		})
+
+		it("Should cancel open intents,Unlock Premium in Buy Trade Cross", async () => {
+			const request1 = cancelRequest({ marginType: MarginType.CROSS })
+				.deadline((await getLatestBlockTime()) + 140)
+				.expirationTimestamp((await getLatestBlockTime()) + 150)
+				.build()
+
+			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
+			await partyA2.sendOpenIntent(request1)
+			await partyB2.lockOpenIntent(openIntentId1)
+			await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
+
+			const openIntentId2 = 2
+			await partyA2.sendOpenIntent(request1)
+			await partyB2.lockOpenIntent(openIntentId2)
+
 			await context.controlFacet.setPartyBConfig(context.signers.partyB2, {
 				isActive: true,
 				lossCoverage: e(1),
 				oracleId: 1,
 			})
+			await context.clearingHouse
+				.connect(context.signers.clearingHouse)
+				.flagCrossPartyBLiquidation(partyB2.address, partyA2.address, context.collateral.getAddress())
+			await context.clearingHouse
+				.connect(context.signers.clearingHouse)
+				.liquidateCrossPartyB(partyB2.address, partyA2.address, context.collateral.getAddress(), e(-1200000), e(10))
 
-			const request2 = openIntentRequestBuilder()
-				.partyBsWhiteList([partyB2.address])
-				.affiliate(context.signers.affiliate1)
-				.feeToken(context.collateralNL.getAddress())
-				.symbolId(1)
+			const detail = await context.viewFacet.getLiquidationDetail(await context.viewFacet.getLastLiquidationId())
+			expect(detail.partyA).to.equal(partyA2.address)
+			expect(detail.partyB).to.equal(partyB2.address)
+			expect(detail.status).to.equal(LiquidationStatus.IN_PROGRESS)
+
+			const premium = await context.viewFacet.getOpenIntentPremium(openIntentId2)
+			expect(premium).to.be.greaterThan(0n)
+			const crossBefore = await context.viewFacet.getCrossBalance(partyA2.address, context.collateral.getAddress(), partyB2.address)
+
+			await expect(context.clearingHouse.connect(context.signers.clearingHouse).cancelOpenIntents([openIntentId2])).not.to.revert(ethers)
+
+			expect((await context.viewFacet.getOpenIntent(openIntentId2)).status).to.be.equal(IntentStatus.CANCELED)
+			const crossAfter = await context.viewFacet.getCrossBalance(partyA2.address, context.collateral.getAddress(), partyB2.address)
+			expect(crossBefore.locked - crossAfter.locked).to.be.equal(premium)
+		})
+
+		it("Should cancel open intents,Unlock MM in Sell Trade Cross", async () => {
+			const mm = e(300)
+			const request1 = cancelRequest({ tradeSide: TradeSide.SELL, marginType: MarginType.CROSS, mm })
 				.deadline((await getLatestBlockTime()) + 140)
 				.expirationTimestamp((await getLatestBlockTime()) + 150)
+				.build()
+
+			const openIntentId1 = 1
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
+			await partyA2.sendOpenIntent(request1)
+			await partyB2.lockOpenIntent(openIntentId1)
+			await partyB2.fillOpenIntent(openIntentId1, e(50), e(10))
+
+			const openIntentId2 = 2
+			await partyA2.sendOpenIntent(request1)
+			await partyB2.lockOpenIntent(openIntentId2)
+
+			await makePartyAInCrossLiquidation()
+
+			const crossBefore = await context.viewFacet.getCrossBalance(partyA2.address, context.collateral.getAddress(), partyB2.address)
+
+			await expect(context.clearingHouse.connect(context.signers.clearingHouse).cancelOpenIntents([openIntentId2])).not.to.revert(ethers)
+
+			expect((await context.viewFacet.getOpenIntent(openIntentId2)).status).to.be.equal(IntentStatus.CANCELED)
+			const crossAfter = await context.viewFacet.getCrossBalance(partyA2.address, context.collateral.getAddress(), partyB2.address)
+			expect(crossBefore.locked - crossAfter.locked).to.be.equal(mm)
+		})
+	})
+
+	describe("Cancel Close Intents", async function () {
+		it("Should be callable only by CLEARING_HOUSE_ROLE and emit CancelCloseIntentsForLiquidation", async () => {
+			const req = openIntentRequestBuilder()
+				.partyBsWhiteList([partyB2.address])
+				.affiliate(context.signers.affiliate1)
+				.feeToken(context.collateral.getAddress())
+				.symbolId(2)
+				.deadline((await getLatestBlockTime()) + 2000)
+				.expirationTimestamp((await getLatestBlockTime()) + 3000)
 				.exerciseFee({ cap: e(0.002), rate: e(0.0002) })
-				.quantity(e(50))
+				.quantity(e(5))
 				.strikePrice(e(10000))
 				.price(e(10))
 				.mm(0)
@@ -3174,26 +3304,25 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				.marginType(MarginType.ISOLATED)
 				.build()
 
-			const openIntentId2 = 2
-			// await partyA2.setBalances(context.collateral, e(10000), e(1000))
-			await partyA2.sendOpenIntent(request2)
-			await partyB2.lockOpenIntent(openIntentId2)
+			await partyA2.setBalances(context.collateral, e(10000), e(1000))
+			await partyB2.setBalances(context.collateral, e(10000), e(1000))
+			await partyA2.sendOpenIntent(req)
+			await partyB2.lockOpenIntent(1)
+			await partyB2.fillOpenIntent(1, e(5), e(10))
 
-			expect(
-				await context.clearingHouse
-					.connect(context.signers.clearingHouse)
-					.flagIsolatedPartyBLiquidation(partyB2.getSigner.getAddress(), context.collateral.getAddress()),
-			).not.to.revert(ethers)
+			await partyA2.sendCloseIntent(1, e(3), e(12), (await getLatestBlockTime()) + 2000)
+			const closeIntentId = 1
 
-			expect(
-				await context.clearingHouse
-					.connect(context.signers.clearingHouse)
-					.liquidateIsolatedPartyB(partyB2.address, context.collateral.getAddress(), e(-1200000), e(10)),
-			).not.to.revert(ethers)
+			await makePartyBInIsolatedLiquidation()
 
-			expect(await context.clearingHouse.connect(context.signers.clearingHouse).cancelOpenIntents([openIntentId2])).not.to.revert(ethers)
+			await expect(context.clearingHouse.connect(context.signers.partyA2).cancelCloseIntents([closeIntentId])).to.be.revertedWithCustomError(
+				context.clearingHouse,
+				"MissingRole",
+			)
 
-			expect((await context.viewFacet.getOpenIntent(openIntentId2)).status).to.be.equal(IntentStatus.CANCELED)
+			await expect(context.clearingHouse.connect(context.signers.clearingHouse).cancelCloseIntents([closeIntentId]))
+				.to.emit(context.clearingHouse, "CancelCloseIntentsForLiquidation")
+				.withArgs(context.signers.clearingHouse.address, [closeIntentId])
 		})
 
 		it("Should fail to cancel close intents when close intent is filled", async () => {
@@ -3230,7 +3359,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			)
 		})
 
-		it("Should fail to cancel open intents when party is not in liquidation", async () => {
+		it("Should fail to cancel Close intents when party is not in liquidation", async () => {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.address])
 				.affiliate(context.signers.affiliate1)
@@ -3261,9 +3390,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				"PartiesNotInLiquidation",
 			)
 		})
-	})
 
-	describe("Cancel Open Intents", async function () {
 		it("Should cancel close intents", async () => {
 			const request1 = openIntentRequestBuilder()
 				.partyBsWhiteList([partyB2.address])
