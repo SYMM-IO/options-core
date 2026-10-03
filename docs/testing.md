@@ -64,7 +64,7 @@ The `npm test` / `npm run compile` scripts rely on the SymSec CLI; without it, d
 | `tests/helpers/multi-account.behavior.ts` | `MultiAccount` deploy/forward, ERC-1271, InstantLayer routing.                                                                                                          | `flows/instant-actions.md`               |
 | `tests/helpers/symmio-partyb.behavior.ts` | `SymmioPartyB` selector restrictions, multicast, approvals.                                                                                                             | `flows/instant-actions.md`               |
 
-Top-level `tests/main.ts` registers every group under the `UNIT_TEST` branch. There is no `describe.only`; CI sets `CI=true`, and Mocha then enables `--forbid-only`, so a stray `.only` fails the run.
+Top-level `tests/main.ts` registers every group under the `UNIT_TEST` branch. There is no `describe.only`. `hardhat.config.ts` sets `test.mocha.forbidOnly` to `!!process.env.CI`, so when `CI` is set a stray `.only` fails the run.
 
 ## The Central Fixture
 

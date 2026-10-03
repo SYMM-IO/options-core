@@ -140,7 +140,10 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 
 			const closeIntent = await context.viewFacet.getCloseIntent(1)
 			expect(closeIntent.status).to.be.equal(CloseIntentStatus.CANCELED)
-			expect(partyB1.fillCloseIntent(1, closeIntent.quantity, closeIntent.price)).to.revertedWithCustomError(context.partyACloseFacet, "InvalidState")
+			await expect(partyB1.fillCloseIntent(1, closeIntent.quantity, closeIntent.price)).to.revertedWithCustomError(
+				context.partyACloseFacet,
+				"InvalidState",
+			)
 		})
 
 		it("Should Update Timestamp on Cancel Close Intent", async function () {

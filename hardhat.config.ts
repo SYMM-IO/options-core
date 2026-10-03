@@ -34,7 +34,7 @@ export default defineConfig({
 			type: "edr-simulated",
 			chainType: "l1",
 			// allowUnlimitedContractSize is left unset on purpose: it defaults to false, and leaving it unset lets
-			// `hardhat test --coverage` lift the limit for instrumented bytecode. Setting it explicitly disables that.
+			// `hardhat test --coverage` lift the limit for instrumented bytecode. Setting it to `false` explicitly disables that.
 		},
 		polygon: {
 			type: "http",
@@ -62,6 +62,8 @@ export default defineConfig({
 	test: {
 		mocha: {
 			timeout: 100000000,
+			// Fail the run if a stray `.only` is committed. Mocha does not enable this from CI on its own here.
+			forbidOnly: !!process.env.CI,
 		},
 	},
 	typechain: {
