@@ -167,36 +167,30 @@ export enum TestModeEnum {
 
 Higher-level wrappers for protocol actors and request-shape builders.
 
-| File                                                                 | Purpose                                                                                                                                                                                                                                                                   |
-| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tests/models/partyEntitiy.ts:9`                                     | Base class. `setBalances(collateral?, mintAmount?, depositAmount?)` mints + approves + deposits. `setNativeBalance`, `sign`.                                                                                                                                              |
-| `tests/models/partyA.model.ts:8`                                     | Party A actions: `sendOpenIntent`, `sendCancelOpenIntent`, `expireOpenIntent`, `sendCloseIntent`, `sendCancelCloseIntent`, `expireCloseIntent`, binding (`bindToCounterParty`, `initiateUnbindingFromPartyB`, ...), `activateInstantActionMode`, `forceCancelOpenIntent`. |
-| `tests/models/partyB.model.ts:7`                                     | Party B actions: `lockOpenIntent`, `unlockOpenIntent`, `fillOpenIntent`, `acceptCancelOpenIntent`, `acceptCancelCloseIntent`, `fillCloseIntent`.                                                                                                                          |
-| `tests/models/builders/send-open-intent.builder.ts:50`               | `openIntentRequestBuilder()` — default `OpenIntent` (symbolId 1, price `e(10)`, qty `e(1)`, `BUY`, `ISOLATED`, ZeroAddress affiliate/feeToken).                                                                                                                           |
-| `tests/models/builders/close-intent.builder.ts:33`                   | `closeIntentBuilder()` for `CloseIntentStruct` (storage shape).                                                                                                                                                                                                           |
-| `tests/models/builders/trade.builder.ts:51`                          | `tradeBuilder()` for `TradeStruct` (used by `lib-closeIntent.behavior.ts`).                                                                                                                                                                                               |
-| `tests/models/builders/settlement.builder.ts:20`                     | `settlementSigBuilder()` for `SettlementPriceSigStruct`.                                                                                                                                                                                                                  |
-| `tests/models/builders/signed-open-intent.builder.ts:28`             | `signedOpenIntentBuilder()` for `SignedOpenIntentStruct` (instant actions).                                                                                                                                                                                               |
-| `tests/models/builders/signed-close-intent.builder.ts:15`            | `SignedCloseIntentBuilder()` for `SignedCloseIntentStruct`.                                                                                                                                                                                                               |
-| `tests/models/builders/signed-fill-intent.builder.ts:15`             | `signedFillIntentBuilder()` for `SignedFillIntentStruct` (by intent hash).                                                                                                                                                                                                |
-| `tests/models/builders/signed-fill-close-intent-by-id.builder.ts:15` | `SignedFillIntentByIdBuilder()` for `SignedFillIntentByIdStruct`.                                                                                                                                                                                                         |
-| `tests/models/builders/signed-simple-action-intent.builder.ts:12`    | `signedSimpleActionIntentBuilder()` for cancel / accept-cancel signed actions.                                                                                                                                                                                            |
+| File                                                   | Purpose                                                                                                                                                                                                                                                                   |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tests/models/partyEntitiy.ts:9`                       | Base class. `setBalances(collateral?, mintAmount?, depositAmount?)` mints + approves + deposits. `setNativeBalance`, `sign`.                                                                                                                                              |
+| `tests/models/partyA.model.ts:8`                       | Party A actions: `sendOpenIntent`, `sendCancelOpenIntent`, `expireOpenIntent`, `sendCloseIntent`, `sendCancelCloseIntent`, `expireCloseIntent`, binding (`bindToCounterParty`, `initiateUnbindingFromPartyB`, ...), `activateInstantActionMode`, `forceCancelOpenIntent`. |
+| `tests/models/partyB.model.ts:7`                       | Party B actions: `lockOpenIntent`, `unlockOpenIntent`, `fillOpenIntent`, `acceptCancelOpenIntent`, `acceptCancelCloseIntent`, `fillCloseIntent`.                                                                                                                          |
+| `tests/models/builders/send-open-intent.builder.ts:50` | `openIntentRequestBuilder()` — default `OpenIntent` (symbolId 1, price `e(10)`, qty `e(1)`, `BUY`, `ISOLATED`, ZeroAddress affiliate/feeToken).                                                                                                                           |
+| `tests/models/builders/close-intent.builder.ts:33`     | `closeIntentBuilder()` for `CloseIntentStruct` (storage shape).                                                                                                                                                                                                           |
+| `tests/models/builders/trade.builder.ts:51`            | `tradeBuilder()` for `TradeStruct` (used by `lib-closeIntent.behavior.ts`).                                                                                                                                                                                               |
+| `tests/models/builders/settlement.builder.ts:20`       | `settlementSigBuilder()` for `SettlementPriceSigStruct`.                                                                                                                                                                                                                  |
 
 All builders use `builder-pattern`'s `Builder(defaults)` so `.field(value).build()` chains return a fully typed struct.
 
 ## tests/utils/
 
-| File                     | Helpers                                                                                                                                                                                                                     |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tests/utils/hash.ts:28` | EIP-712-like prefixed `keccak256` encoders for every signed action: open, close, fill open/close (by hash and by id), cancel/accept-cancel open/close, lock/unlock. Each takes the struct, `chainId`, and `diamondAddress`. |
-| `tests/utils/log.ts:1`   | `logger` — toggleable wrapper around `console.log` (`disable()` / `enable()`).                                                                                                                                              |
+| File                   | Helpers                                                                        |
+| ---------------------- | ------------------------------------------------------------------------------ |
+| `tests/utils/log.ts:1` | `logger` — toggleable wrapper around `console.log` (`disable()` / `enable()`). |
 
-Top-level `utils/` is also used heavily from tests:
+Top-level `utils/` (plus `tests/utils/time.ts`) is also used heavily from tests:
 
 | File                           | Helpers                                                                                   |
 | ------------------------------ | ----------------------------------------------------------------------------------------- |
 | `utils/e.ts:3`                 | `e(value)` → `ethers.parseEther(value)`. Universal "to 18 decimals" helper.               |
-| `utils/time.ts:4`              | `getLatestBlockTime()`, `moveTime(seconds)` (uses `evm_setNextBlockTimestamp`).           |
+| `tests/utils/time.ts`          | `getLatestBlockTime()`, `moveTime(seconds)` (uses `evm_setNextBlockTimestamp`).           |
 | `utils/tx.ts:1`                | `runTx(promise)` — awaits the tx and `.wait()`s; used by every `PartyA/PartyB` method.    |
 | `utils/runTest.sh:1`           | Disables in-contract signature checks via `update_sig_checks.py 1`, runs tests, restores. |
 | `utils/update_sig_checks.py:5` | Toggles `// == SignatureCheck( ==` … `// == ) ==` blocks in Solidity sources.             |
@@ -313,36 +307,32 @@ The fixture deploys all four through dedicated tasks (`deploy:stablecoin`, `depl
 
 ## Code Map
 
-| File                                                  | Purpose                                                                                  |
-| ----------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `tests/main.ts`                                       | Mocha entry. Registers every behavior group under `TEST_MODE=UNIT_TEST`.                 |
-| `tests/initialize-test.fixture.ts`                    | Composes diamond, helpers, roles, oracle, symbols, fees, verifier into a `RunContext`.   |
-| `tests/run-context.ts`                                | `RunContext` class + `createRunContext` (signers, contract handles, helper deploys).     |
-| `tests/diamond-init.ts`                               | Post-deploy parameter setup (cooldowns, limits, fee collector, release interval).        |
-| `tests/granting-roles.ts`                             | Grants every operational role to admin + `CLEARING_HOUSE_ROLE` to clearing-house signer. |
-| `tests/option-enums.ts`                               | TS mirrors of on-chain enums (`IntentStatus`, `TradeStatus`, `MarginType`, etc.).        |
-| `tests/account-facet.behavior.ts`                     | `AccountFacet` deposit/withdraw/allocate behavior.                                       |
-| `tests/partyA-open-facet.behavior.ts`                 | Open-intent creation/cancellation by Party A.                                            |
-| `tests/partyB-open-facet.behavior.ts`                 | Lock/unlock/fill/cancel-accept by Party B.                                               |
-| `tests/partyA-close-facet.behavior.ts`                | Close-intent creation/cancellation by Party A.                                           |
-| `tests/partyB-close-facet.behavior.ts`                | Close-intent fills and accept-cancel by Party B.                                         |
-| `tests/lib-closeIntent.behavior.ts`                   | Direct `LibCloseIntent` storage operations through `CloseIntentOpsMock`.                 |
-| `tests/trade-settlement.ts`                           | `TradeFacet` settlement, exercise, expiry, NFT sync.                                     |
-| `tests/force-action.behavior.ts`                      | `ForceActionsFacet` timeout-based forced cancellations.                                  |
-| `tests/clearing-house.ts`                             | `ClearingHouseFacet` liquidation lifecycle.                                              |
-| `tests/bridge-facet.behavior.ts`                      | Bridge transfer windows.                                                                 |
-| `tests/instant-action-open.behavior.ts`               | Instant create-and-fill open paths.                                                      |
-| `tests/instant-action-close.behavior.ts`              | Instant create-and-fill close paths.                                                     |
-| `tests/instant-actions-partyb-open-facet.behavior.ts` | Party B-signed instant fills (by id and by hash).                                        |
-| `tests/helpers/instant-layer.behavior.ts`             | `InstantLayer` operation/template execution and signature handling.                      |
-| `tests/helpers/multi-account.behavior.ts`             | `MultiAccount` account routing and ERC-1271.                                             |
-| `tests/helpers/symmio-partyb.behavior.ts`             | `SymmioPartyB` selector restrictions, multicast, ERC-1271.                               |
-| `tests/models/partyEntitiy.ts`                        | Base wrapper: balances, signing.                                                         |
-| `tests/models/partyA.model.ts`                        | Party A method shortcuts.                                                                |
-| `tests/models/partyB.model.ts`                        | Party B method shortcuts.                                                                |
-| `tests/models/builders/*.ts`                          | `builder-pattern` defaults for every request/struct shape.                               |
-| `tests/utils/hash.ts`                                 | EIP-712-like keccak encoders for signed actions.                                         |
-| `tests/utils/log.ts`                                  | Toggleable logger.                                                                       |
-| `utils/e.ts`, `utils/time.ts`, `utils/tx.ts`          | Shared math, timing, and tx-await helpers used by tests.                                 |
-| `utils/runTest.sh`, `utils/update_sig_checks.py`      | Signature-check toggle wrapper for `npm run test`.                                       |
-| `contracts/mocks/*`, `contracts/libraries/mocks/*`    | Solidity mocks consumed by the fixture.                                                  |
+| File                                               | Purpose                                                                                  |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `tests/main.ts`                                    | Mocha entry. Registers every behavior group under `TEST_MODE=UNIT_TEST`.                 |
+| `tests/initialize-test.fixture.ts`                 | Composes diamond, helpers, roles, oracle, symbols, fees, verifier into a `RunContext`.   |
+| `tests/run-context.ts`                             | `RunContext` class + `createRunContext` (signers, contract handles, helper deploys).     |
+| `tests/diamond-init.ts`                            | Post-deploy parameter setup (cooldowns, limits, fee collector, release interval).        |
+| `tests/granting-roles.ts`                          | Grants every operational role to admin + `CLEARING_HOUSE_ROLE` to clearing-house signer. |
+| `tests/option-enums.ts`                            | TS mirrors of on-chain enums (`IntentStatus`, `TradeStatus`, `MarginType`, etc.).        |
+| `tests/account-facet.behavior.ts`                  | `AccountFacet` deposit/withdraw/allocate behavior.                                       |
+| `tests/partyA-open-facet.behavior.ts`              | Open-intent creation/cancellation by Party A.                                            |
+| `tests/partyB-open-facet.behavior.ts`              | Lock/unlock/fill/cancel-accept by Party B.                                               |
+| `tests/partyA-close-facet.behavior.ts`             | Close-intent creation/cancellation by Party A.                                           |
+| `tests/partyB-close-facet.behavior.ts`             | Close-intent fills and accept-cancel by Party B.                                         |
+| `tests/lib-closeIntent.behavior.ts`                | Direct `LibCloseIntent` storage operations through `CloseIntentOpsMock`.                 |
+| `tests/trade-settlement.ts`                        | `TradeFacet` settlement, exercise, expiry, NFT sync.                                     |
+| `tests/force-action.behavior.ts`                   | `ForceActionsFacet` timeout-based forced cancellations.                                  |
+| `tests/clearing-house.ts`                          | `ClearingHouseFacet` liquidation lifecycle.                                              |
+| `tests/bridge-facet.behavior.ts`                   | Bridge transfer windows.                                                                 |
+| `tests/helpers/instant-layer.behavior.ts`          | `InstantLayer` operation/template execution and signature handling.                      |
+| `tests/helpers/multi-account.behavior.ts`          | `MultiAccount` account routing and ERC-1271.                                             |
+| `tests/helpers/symmio-partyb.behavior.ts`          | `SymmioPartyB` selector restrictions, multicast, ERC-1271.                               |
+| `tests/models/partyEntitiy.ts`                     | Base wrapper: balances, signing.                                                         |
+| `tests/models/partyA.model.ts`                     | Party A method shortcuts.                                                                |
+| `tests/models/partyB.model.ts`                     | Party B method shortcuts.                                                                |
+| `tests/models/builders/*.ts`                       | `builder-pattern` defaults for every request/struct shape.                               |
+| `tests/utils/log.ts`                               | Toggleable logger.                                                                       |
+| `utils/e.ts`, `tests/utils/time.ts`, `utils/tx.ts` | Shared math, timing, and tx-await helpers used by tests.                                 |
+| `utils/runTest.sh`, `utils/update_sig_checks.py`   | Signature-check toggle wrapper for `npm run test`.                                       |
+| `contracts/mocks/*`, `contracts/libraries/mocks/*` | Solidity mocks consumed by the fixture.                                                  |
