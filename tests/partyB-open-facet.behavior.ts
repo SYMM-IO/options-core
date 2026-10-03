@@ -260,7 +260,9 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 			await context.controlFacet.setPartyBSupportedSymbolTypes(partyA1.address, [0], [true])
 
-			await expect(context.partyBOpenFacet.connect(partyA1.getSigner).lockOpenIntent(await context.viewFacet.getLastOpenIntentId())).not.to.revert(ethers)
+			await expect(context.partyBOpenFacet.connect(partyA1.getSigner).lockOpenIntent(await context.viewFacet.getLastOpenIntentId())).not.to.revert(
+				ethers,
+			)
 		})
 
 		it("should revert when partB symbol type mismatch intent symbol type", async () => {

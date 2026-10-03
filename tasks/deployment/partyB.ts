@@ -5,5 +5,10 @@ import { deploySymmioPartyB } from "./deploy-lib.js"
 
 export default async function ({ symmioaddress, admin }: { symmioaddress: string; admin: string }, hre: HardhatRuntimeEnvironment) {
 	const connection = await hre.network.getOrCreate()
-	return deploySymmioPartyB(connection.ethers, await upgrades(hre, connection), requireArg(symmioaddress, "symmioaddress"), requireArg(admin, "admin"))
+	return deploySymmioPartyB(
+		connection.ethers,
+		await upgrades(hre, connection),
+		requireArg(symmioaddress, "symmioaddress"),
+		requireArg(admin, "admin"),
+	)
 }

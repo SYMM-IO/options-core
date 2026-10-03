@@ -839,9 +839,9 @@ export function shouldBehaveLikeInstantLayer(): void {
 			// Granting Roles
 			await context.instantLayer.registerPartyB(symmioPartyB) // Admin with SETTER Role, grants OPERATOR_ROLE to the us
 			await context.instantLayer.registerMultiAccount(multiAccount) // Admin with SETTER Role, grants OPERATOR_ROLE to the user
-			
+
 			await context.symmioPartyB.setSigner(partyB1.getSigner) // Admin with SETTER Role
-			
+
 			await context.controlFacet.grantRole(context.instantLayer, ethers.keccak256(toUtf8Bytes("INSTANT_LAYER_ROLE"))) // to call Control faucet
 
 			await context.controlFacet.setPartyBConfig(context.symmioPartyB.getAddress(), {
@@ -851,7 +851,6 @@ export function shouldBehaveLikeInstantLayer(): void {
 				oracleId: 1,
 			})
 			await context.controlFacet.setPartyBSupportedSymbolTypes(context.symmioPartyB.getAddress(), [0], [true])
-
 
 			//Sign using getOperationHash
 			const opOpenAHash1 = await instantLayer.getOperationHash(opOpenA1)
@@ -890,7 +889,6 @@ export function shouldBehaveLikeInstantLayer(): void {
 				return false
 			}
 
-
 			const tempID = (await context.instantLayer.getLastTemplateID()) - 1n
 			const signedOps: InstantLayer.SignedOperationStruct[] = [opOpenA1, opOpenA2, opLockB1, opFillB1]
 
@@ -902,7 +900,7 @@ export function shouldBehaveLikeInstantLayer(): void {
 			// }
 
 			let intent: OpenIntentStruct = await context.viewFacet.getOpenIntent(1)
-			console.log("Intent Status:", intent.status == IntentStatus.FILLED?"Filled":intent.status)
+			console.log("Intent Status:", intent.status == IntentStatus.FILLED ? "Filled" : intent.status)
 			expect(intent.price).to.be.equal(request.price)
 			expect(intent.tradeAgreements.quantity).to.be.equal(request.quantity)
 		})

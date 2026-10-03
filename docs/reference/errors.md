@@ -15,16 +15,16 @@ Every revert path in Options Core uses a typed custom error. Errors are grouped 
 
 ## Contents
 
--   [Balance Errors](#balance-errors)
--   [Intent Errors](#intent-errors)
--   [Trade Errors](#trade-errors)
--   [Liquidation Errors](#liquidation-errors)
--   [Party Relations Errors](#party-relations-errors)
--   [Validation Errors](#validation-errors)
--   [System Errors](#system-errors)
--   [Reentrancy Guard Errors](#reentrancy-guard-errors)
--   [Inline Helper Errors](#inline-helper-errors)
--   [Common Triage Patterns](#common-triage-patterns)
+- [Balance Errors](#balance-errors)
+- [Intent Errors](#intent-errors)
+- [Trade Errors](#trade-errors)
+- [Liquidation Errors](#liquidation-errors)
+- [Party Relations Errors](#party-relations-errors)
+- [Validation Errors](#validation-errors)
+- [System Errors](#system-errors)
+- [Reentrancy Guard Errors](#reentrancy-guard-errors)
+- [Inline Helper Errors](#inline-helper-errors)
+- [Common Triage Patterns](#common-triage-patterns)
 
 ## Balance Errors
 

@@ -306,8 +306,8 @@ Only `intent.partyB` may call. Status must be `LOCKED`. Sender must be solvent v
 
 Branching:
 
--   `block.timestamp > intent.deadline`: calls `intent.expire()` (status becomes `EXPIRED`, all locks released, intent removed from both parties' active lists). Facet emits `ExpireOpenIntent`.
--   Otherwise: status reverts to `PENDING`, `intent.unregister(true)` removes the intent from Party B's active list only (Party A's entry is preserved), then `partyB` is cleared. Facet emits `UnlockOpenIntent`.
+- `block.timestamp > intent.deadline`: calls `intent.expire()` (status becomes `EXPIRED`, all locks released, intent removed from both parties' active lists). Facet emits `ExpireOpenIntent`.
+- Otherwise: status reverts to `PENDING`, `intent.unregister(true)` removes the intent from Party B's active list only (Party A's entry is preserved), then `partyB` is cleared. Facet emits `UnlockOpenIntent`.
 
 ## fillOpenIntent
 
@@ -328,18 +328,18 @@ Entry point: `PartyBOpenFacet.fillOpenIntent` (`contracts/facets/PartyBOpen/Part
 
 ### Numeric examples for price favorability
 
--   Party A `BUY` with `intent.price = 100e18`: a fill at `98e18` is accepted (better for buyer); a fill at `101e18` reverts `InvalidOpenPrice(101e18, 100e18)`.
--   Party A `SELL` with `intent.price = 100e18`: a fill at `101e18` is accepted (better for seller); a fill at `99e18` reverts `InvalidOpenPrice(99e18, 100e18)`.
+- Party A `BUY` with `intent.price = 100e18`: a fill at `98e18` is accepted (better for buyer); a fill at `101e18` reverts `InvalidOpenPrice(101e18, 100e18)`.
+- Party A `SELL` with `intent.price = 100e18`: a fill at `101e18` is accepted (better for seller); a fill at `99e18` reverts `InvalidOpenPrice(99e18, 100e18)`.
 
 ### State transition and trade creation
 
 `LibPartyBOpen.sol:225-252` allocates a new `Trade` with:
 
--   `id = ++TradeStorage.lastTradeId`.
--   `openIntentId = intentId`.
--   `quantity = quantity` (the fill amount).
--   `mm = intent.mm * quantity / intent.quantity` (proportional).
--   `openedPrice = price`, `status = OPENED`, `feeStructure` and `affiliate` inherited.
+- `id = ++TradeStorage.lastTradeId`.
+- `openIntentId = intentId`.
+- `quantity = quantity` (the fill amount).
+- `mm = intent.mm * quantity / intent.quantity` (proportional).
+- `openedPrice = price`, `status = OPENED`, `feeStructure` and `affiliate` inherited.
 
 Normal intent locks are released first (`unlockFees`, `unlockPremiumIfBuy`, `unlockMMIfSell`). Deferred Party B sells instead consume escrow: the filled slice of Party A's isolated `mm` lock is unlocked and allocated into Party A's cross bucket against the selected Party B; the filled slice of the isolated fee lock is unlocked and the actual fill-price fee amount is allocated into the same Party B cross fee-token bucket. This makes the subsequent cross fee debit and `increaseMM` path run through the same accounting as a normal single-Party-B cross sell. The intent is then marked `FILLED`, `tradeId` is set, and `intent.unregister(false)` removes it from both parties' active lists. The new trade is pushed into `activeTradesOfPartyA[partyA]` and `activeTradesOfPartyB[partyB][collateral]` via `LibTradeOps.register` (`LibTrade.sol:64-85`), which enforces `maxTradePerPartyA` and adds Party B as a counterparty on Party A's balance.
 
@@ -357,8 +357,8 @@ Normal intent locks are released first (`unlockFees`, `unlockPremiumIfBuy`, `unl
 
 After fees are settled and the trade is registered (`LibPartyBOpen.sol:353-360`):
 
--   `BUY`: `partyA.balanceOf(collateral).subForCounterParty(partyB, premium, marginType, PREMIUM)` where `premium = quantity * openedPrice / 1e18` (`LibTrade.sol:46-48`). Premium moves from Party A's locked-or-cross balance to Party B's scheduled-add channel internally.
--   `SELL`: `partyA.balanceOf(collateral).increaseMM(partyB, trade.mm)`, then `partyB.balanceOf(collateral).subForCounterParty(partyA, premium, marginType, PREMIUM)`, then `partyA.balanceOf(collateral).scheduledAdd(partyB, premium, marginType, PREMIUM)`. `totalMM` (`CrossEntry.totalMM`, `LibScheduledReleaseBalance.sol:453-456`) tracks Party A's accumulated maintenance margin against this Party B for liquidation accounting.
+- `BUY`: `partyA.balanceOf(collateral).subForCounterParty(partyB, premium, marginType, PREMIUM)` where `premium = quantity * openedPrice / 1e18` (`LibTrade.sol:46-48`). Premium moves from Party A's locked-or-cross balance to Party B's scheduled-add channel internally.
+- `SELL`: `partyA.balanceOf(collateral).increaseMM(partyB, trade.mm)`, then `partyB.balanceOf(collateral).subForCounterParty(partyA, premium, marginType, PREMIUM)`, then `partyA.balanceOf(collateral).scheduledAdd(partyB, premium, marginType, PREMIUM)`. `totalMM` (`CrossEntry.totalMM`, `LibScheduledReleaseBalance.sol:453-456`) tracks Party A's accumulated maintenance margin against this Party B for liquidation accounting.
 
 ### Cross-margin nonce increment
 
@@ -368,10 +368,10 @@ When `marginType == CROSS`, both `nonces[partyA][partyB]` and `nonces[partyB][pa
 
 Open intents may be partially filled. Deferred Party B sells use the same child-intent model, with an escrow-specific rollover:
 
--   The filled slice consumes `trade.mm = intent.mm * filled / originalQuantity`.
--   The filled slice unlocks the matching estimated fee lock at the intent limit price and allocates the actual fill-price fee amount into the selected Party B cross bucket.
--   The child intent receives the remaining `quantity`, remaining `mm`, empty whitelist, `parentId = original.id`, and the remaining escrow record.
--   If the original intent was already `CANCEL_PENDING`, the residual child is created as `CANCELED`; for deferred sells, the remaining escrow is released immediately instead of being moved to that canceled child.
+- The filled slice consumes `trade.mm = intent.mm * filled / originalQuantity`.
+- The filled slice unlocks the matching estimated fee lock at the intent limit price and allocates the actual fill-price fee amount into the selected Party B cross bucket.
+- The child intent receives the remaining `quantity`, remaining `mm`, empty whitelist, `parentId = original.id`, and the remaining escrow record.
+- If the original intent was already `CANCEL_PENDING`, the residual child is created as `CANCELED`; for deferred sells, the remaining escrow is released immediately instead of being moved to that canceled child.
 
 When `quantity < intent.tradeAgreements.quantity`:
 
@@ -424,9 +424,9 @@ Function summary:
 
 `expireOpenIntent` (`PartyAOpenFacet.sol:112-119`) is gated only by `whenPartyNotPaused(msg.sender)`; it can be called by any address (the modifier checks the caller's pause state, not Party A's). Each id is processed independently via `intent.expire()`:
 
--   Reverts `IntentErrors.IntentNotExpired(intentId, now, deadline)` if `block.timestamp <= deadline` (`LibOpenIntent.sol:123-124`).
--   Reverts `ValidationErrors.InvalidState` if status is not `PENDING`, `LOCKED`, or `CANCEL_PENDING` (`LibOpenIntent.sol:126-133`).
--   Otherwise sets status to `EXPIRED`, releases normal locks or deferred escrow via `unlockForCancelOrExpire`, and unregisters from both parties' active lists.
+- Reverts `IntentErrors.IntentNotExpired(intentId, now, deadline)` if `block.timestamp <= deadline` (`LibOpenIntent.sol:123-124`).
+- Reverts `ValidationErrors.InvalidState` if status is not `PENDING`, `LOCKED`, or `CANCEL_PENDING` (`LibOpenIntent.sol:126-133`).
+- Otherwise sets status to `EXPIRED`, releases normal locks or deferred escrow via `unlockForCancelOrExpire`, and unregisters from both parties' active lists.
 
 Party A's `cancelOpenIntent` and Party B's `unlockOpenIntent` also invoke `intent.expire()` when called past the deadline, producing the same effect plus the corresponding `ExpireOpenIntent` event.
 
@@ -497,24 +497,24 @@ Every revert reachable from `sendOpenIntent`, `lockOpenIntent`, `unlockOpenInten
 
 Setup (all amounts in 18-decimal collateral; assume `feeToken == collateral` so `tokenPriceInCollateral = 1e18`):
 
--   Party A balance: `2_000e18` collateral, free, isolated.
--   Party A is unbound, not suspended; Party B `B1` is active, supports the symbol type, has matching oracle id, is solvent, and is the sole whitelist entry.
--   Symbol: `symbolId = 7`, valid, expiration `T+30d`.
--   Intent params: `tradeSide = BUY`, `marginType = ISOLATED`, `quantity = 5e18` (5 contracts), `price = 100e18`, `mm = 0`, `exerciseFee = (rate=0, cap=0)`, `solverFee = (openFee=1e16, closeFee=0)`, platform `openFee = 5e15`, affiliate inactive (`affiliate = address(0)` -> `affiliateFee = 0`).
+- Party A balance: `2_000e18` collateral, free, isolated.
+- Party A is unbound, not suspended; Party B `B1` is active, supports the symbol type, has matching oracle id, is solvent, and is the sole whitelist entry.
+- Symbol: `symbolId = 7`, valid, expiration `T+30d`.
+- Intent params: `tradeSide = BUY`, `marginType = ISOLATED`, `quantity = 5e18` (5 contracts), `price = 100e18`, `mm = 0`, `exerciseFee = (rate=0, cap=0)`, `solverFee = (openFee=1e16, closeFee=0)`, platform `openFee = 5e15`, affiliate inactive (`affiliate = address(0)` -> `affiliateFee = 0`).
 
 ### Submission: `sendOpenIntent`
 
 Locks computed at `intent.price = 100e18`:
 
--   Premium lock: `5e18 * 100e18 / 1e18 = 500e18` collateral (BUY), isolated lock.
--   Platform fee lock: `5e18 * 100e18 * 5e15 / (1e18 * 1e18) = 2.5e15` -> `2_500_000_000_000_000` (`0.0025` units), isolated lock on feeToken (== collateral here).
--   Affiliate fee lock: `0`.
--   Solver fee lock: `5e18 * 100e18 * 1e16 / (1e18 * 1e18) = 5e15` (`0.005`), isolated lock.
+- Premium lock: `5e18 * 100e18 / 1e18 = 500e18` collateral (BUY), isolated lock.
+- Platform fee lock: `5e18 * 100e18 * 5e15 / (1e18 * 1e18) = 2.5e15` -> `2_500_000_000_000_000` (`0.0025` units), isolated lock on feeToken (== collateral here).
+- Affiliate fee lock: `0`.
+- Solver fee lock: `5e18 * 100e18 * 1e16 / (1e18 * 1e18) = 5e15` (`0.005`), isolated lock.
 
 Party A isolated balance state after submission:
 
--   Free: `2_000e18 - 500e18 - 0.0025 - 0.005 = 1_499.9925e18`.
--   Locked: `500.0075e18`.
+- Free: `2_000e18 - 500e18 - 0.0025 - 0.005 = 1_499.9925e18`.
+- Locked: `500.0075e18`.
 
 Intent stored with `id = N`, `status = PENDING`, `partyB = 0x0`, `userData` suffixed with counter `0`.
 
@@ -528,34 +528,34 @@ Favorability: `98e18 <= 100e18` so accepted for BUY.
 
 Trade created:
 
--   `id = M`, `quantity = 3e18`, `mm = 0 * 3 / 5 = 0`, `openedPrice = 98e18`, `feeStructure` and `affiliate` inherited.
+- `id = M`, `quantity = 3e18`, `mm = 0 * 3 / 5 = 0`, `openedPrice = 98e18`, `feeStructure` and `affiliate` inherited.
 
 All original intent locks released (`unlockFees`, `unlockPremiumIfBuy`, `unlockMMIfSell`):
 
--   Free += `500e18 + 0.0025 + 0.005 = 500.0075e18`. Balance: free `2_000e18`, locked `0`.
+- Free += `500e18 + 0.0025 + 0.005 = 500.0075e18`. Balance: free `2_000e18`, locked `0`.
 
 Child intent `N+1` is created (because `5e18 > 3e18`):
 
--   `quantity = 5e18 - 3e18 = 2e18`, `mm = 0`, `parentId = N`, `partyB = 0x0`, `status = PENDING`, `userData` counter `1`.
--   New locks at `intent.price = 100e18`:
-    -   Premium lock: `2e18 * 100e18 / 1e18 = 200e18`.
-    -   Platform fee lock: `2e18 * 100e18 * 5e15 / 1e36 = 1e15` (`0.001`).
-    -   Solver fee lock: `2e18 * 100e18 * 1e16 / 1e36 = 2e15` (`0.002`).
+- `quantity = 5e18 - 3e18 = 2e18`, `mm = 0`, `parentId = N`, `partyB = 0x0`, `status = PENDING`, `userData` counter `1`.
+- New locks at `intent.price = 100e18`:
+    - Premium lock: `2e18 * 100e18 / 1e18 = 200e18`.
+    - Platform fee lock: `2e18 * 100e18 * 5e15 / 1e36 = 1e15` (`0.001`).
+    - Solver fee lock: `2e18 * 100e18 * 1e16 / 1e36 = 2e15` (`0.002`).
 
 Original intent's `tradeAgreements.quantity` overwritten to `3e18`; status set to `FILLED`; `tradeId = M`; unregistered from active lists.
 
 Open fees from Party A computed at fill price `98e18` for the filled `quantity = 3e18`:
 
--   Platform fee: `3e18 * 98e18 * 5e15 / 1e36 = 1.47e15` (`0.00147`) -> credited to `defaultFeeCollector` (`PLATFORM_FEE`).
--   Affiliate fee: `0` -> credited to `defaultFeeCollector` (`affiliateFeeCollector[address(0)]` is `address(0)`, so falls back to default).
--   Solver fee: `3e18 * 98e18 * 1e16 / 1e36 = 2.94e15` (`0.00294`) -> isolated-credited to `B1` (because intent is `ISOLATED`).
+- Platform fee: `3e18 * 98e18 * 5e15 / 1e36 = 1.47e15` (`0.00147`) -> credited to `defaultFeeCollector` (`PLATFORM_FEE`).
+- Affiliate fee: `0` -> credited to `defaultFeeCollector` (`affiliateFeeCollector[address(0)]` is `address(0)`, so falls back to default).
+- Solver fee: `3e18 * 98e18 * 1e16 / 1e36 = 2.94e15` (`0.00294`) -> isolated-credited to `B1` (because intent is `ISOLATED`).
 
 Premium transfer: `partyA.subForCounterParty(B1, 3e18 * 98e18 / 1e18 = 294e18, ISOLATED, PREMIUM)`.
 
 Final Party A balance state:
 
--   Free: `2_000e18 - 0.00147 - 0 - 0.00294 - 294e18 = 1_705.99559e18`, of which `200e18 + 0.001 + 0.002 = 200.003e18` is locked under the child intent `N+1`.
--   Counterparties on Party A's `collateral` balance now include `B1` (via `LibTradeOps.register` -> `addCounterParty`).
+- Free: `2_000e18 - 0.00147 - 0 - 0.00294 - 294e18 = 1_705.99559e18`, of which `200e18 + 0.001 + 0.002 = 200.003e18` is locked under the child intent `N+1`.
+- Counterparties on Party A's `collateral` balance now include `B1` (via `LibTradeOps.register` -> `addCounterParty`).
 
 Trade `M` is now `OPENED` and active for both parties; child intent `N+1` is the residual `PENDING` intent that any whitelisted Party B (still `[B1]`, inherited) can lock and fill independently.
 

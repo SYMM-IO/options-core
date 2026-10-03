@@ -1524,7 +1524,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			let scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA2.address, symbol.collateral, partyB2.address)
 
 			const tradePremiumSettled = (tradePremium * openAmount) / BigInt(trade.tradeAgreements.quantity)
-			const totalMM = openAmount * BigInt(trade.tradeAgreements.mm) / BigInt(trade.tradeAgreements.quantity)
+			const totalMM = (openAmount * BigInt(trade.tradeAgreements.mm)) / BigInt(trade.tradeAgreements.quantity)
 			const pnl = await context.viewFacet.getTradePnl(tradeID, priceSig.settlementPrice, openAmount)
 			const exerciseFee = await context.viewFacet.getTradeExerciseFee(tradeID, priceSig.settlementPrice, pnl)
 			const capFee = (BigInt(trade.tradeAgreements.exerciseFee.cap) * pnl) / parseUnits("1", 18)
@@ -1663,23 +1663,22 @@ export function shouldBehaveLikeSettlementFacet(): void {
 				await context.collateral.getAddress(),
 				partyA2.address,
 			)
-			console.log("Party B Balance Befor Settlement:\n",partyBBalanceBeforeSettlement)
-			
+			console.log("Party B Balance Befor Settlement:\n", partyBBalanceBeforeSettlement)
+
 			//Execute Trade
 			await moveTime(timeAfterExpire)
 			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).not.to.revert(ethers)
-			
+
 			trade = await context.viewFacet.getTrade(tradeID)
 			expect(trade.status).to.be.equal(TradeStatus.EXERCISED)
-			
+
 			const partyBBalanceAfterSettlementSchedule = await context.viewFacet.getCrossBalance(partyB2.address, context.collateral, partyA2.address)
 			const balanceDiff = partyBBalanceAfterSettlementSchedule.balance - partyBBalanceBeforeSettlement.balance
-			console.log("Party B Balance After Settlement:\n",partyBBalanceAfterSettlementSchedule)
+			console.log("Party B Balance After Settlement:\n", partyBBalanceAfterSettlementSchedule)
 			console.log("Balance Diff when PNL in Positive:", balanceDiff)
 
 			expect(balanceDiff).to.be.equal(pnl - exerciseFee)
 		})
-
 	})
 	describe("Transfer Trade", async function () {
 		it("Should Fail to transfer trade because of global pause", async () => {

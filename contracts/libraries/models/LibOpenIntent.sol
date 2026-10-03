@@ -175,9 +175,10 @@ library LibOpenIntentOps {
 		if (!escrow.exists) revert IntentErrors.MissingOpenIntentEscrow(self.id);
 		if (escrow.consumed) revert IntentErrors.OpenIntentEscrowAlreadyConsumed(self.id);
 
-		uint256 feeLockConsumed = filledQuantity == self.tradeAgreements.quantity
-			? escrow.feeLockAmount
-			: calculateOpenFeeAmountForQuantity(self, filledQuantity, self.price);
+		uint256 feeLockConsumed =
+			filledQuantity == self.tradeAgreements.quantity
+				? escrow.feeLockAmount
+				: calculateOpenFeeAmountForQuantity(self, filledQuantity, self.price);
 		uint256 actualFeeAmount = calculateOpenFeeAmountForQuantity(self, filledQuantity, fillPrice);
 
 		escrow.partyA.balanceOf(escrow.collateral).isolatedUnlock(consumedMM);

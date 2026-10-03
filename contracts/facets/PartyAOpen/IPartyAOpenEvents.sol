@@ -6,5 +6,4 @@ pragma solidity >=0.8.19;
 
 import { IPartiesEvents } from "../../interfaces/IPartiesEvents.sol";
 
-interface IPartyAOpenEvents is IPartiesEvents {
-}
+interface IPartyAOpenEvents is IPartiesEvents {}

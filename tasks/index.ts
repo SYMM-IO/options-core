@@ -11,12 +11,18 @@ export const tasks = [
 		.addFlag({ name: "skipLog", description: "Do not write the deployed addresses to tasks/data/deployed.json" })
 		.setAction(() => import("./deployment/diamond-deploy.task.js"))
 		.build(),
-	task("deploy:mocks", "Deploys the Mock contract").setAction(() => import("./deployment/deploy-lib-mocks.task.js")).build(),
+	task("deploy:mocks", "Deploys the Mock contract")
+		.setAction(() => import("./deployment/deploy-lib-mocks.task.js"))
+		.build(),
 	task("deploy:SignatureVerifier", "Deploys the SignatureVerifier contract")
 		.setAction(() => import("./deployment/deploy-signature-verifier.task.js"))
 		.build(),
-	task("deploy:oracle", "Deploys the FakeOracle").setAction(() => import("./deployment/oracle.task.js")).build(),
-	task("deploy:hookHandler", "Deploys the Hook Handler").setAction(() => import("./deployment/hook-handler.task.js")).build(),
+	task("deploy:oracle", "Deploys the FakeOracle")
+		.setAction(() => import("./deployment/oracle.task.js"))
+		.build(),
+	task("deploy:hookHandler", "Deploys the Hook Handler")
+		.setAction(() => import("./deployment/hook-handler.task.js"))
+		.build(),
 	task("deploy:stablecoin", "Deploys the FakeStablecoin")
 		.addOption(option("name", "The token's name"))
 		.addOption(option("symbol", "The token's symbol"))
@@ -38,8 +44,12 @@ export const tasks = [
 		.addOption(option("admin", "The admin address"))
 		.setAction(() => import("./deployment/partyB.js"))
 		.build(),
-	task("deploy:deploy", "Deploy and verify the diamond and its facets").setAction(() => import("./deployment/deploy.task.js")).build(),
-	task("verify:deployment", "Verifies the deployed contracts").setAction(() => import("./verify/verify.js")).build(),
+	task("deploy:deploy", "Deploy and verify the diamond and its facets")
+		.setAction(() => import("./deployment/deploy.task.js"))
+		.build(),
+	task("verify:deployment", "Verifies the deployed contracts")
+		.setAction(() => import("./verify/verify.js"))
+		.build(),
 	task("send-open-intent", "Calls sendOpenIntent on the contract")
 		.addOption(option("symbolid", "ID of the symbol"))
 		.addOption(option("price", "Price of the trade"))

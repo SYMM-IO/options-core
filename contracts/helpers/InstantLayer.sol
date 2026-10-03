@@ -73,8 +73,9 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuardTransient, EIP7
 	/* ────────────────────── EIP-712 Configuration ────────────────────── */
 
 	/// @notice EIP-712 type hash for signed operations with salt-based uniqueness.
-	bytes32 public constant OPERATION_TYPEHASH =
-		keccak256("SignedOperation(address accountSource,address signer,bytes callData,uint256 nonce,bytes32 salt,uint256 deadline)");
+	bytes32 public constant OPERATION_TYPEHASH = keccak256(
+		"SignedOperation(address accountSource,address signer,bytes callData,uint256 nonce,bytes32 salt,uint256 deadline)"
+	);
 
 	/* ──────────────────────── Storage Variables ──────────────────────── */
 

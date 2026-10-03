@@ -1,15 +1,16 @@
 ---
 title: Instant Actions Flow
 aliases:
-  - InstantLayer
-  - MultiAccount
-  - SymmioPartyB
-  - EIP-712 Batches
+    - InstantLayer
+    - MultiAccount
+    - SymmioPartyB
+    - EIP-712 Batches
 tags:
-  - symmio
-  - options-core
-  - flow
+    - symmio
+    - options-core
+    - flow
 ---
+
 # Instant Actions Flow
 
 Instant actions let Party A and Party B coordinate state changes through off-chain EIP-712 signed operations executed by a trusted operator (the InstantLayer). Instead of each party submitting its own transaction, both sides sign the calldata they want executed, hand the signatures to the operator, and the operator atomically batches them into a single transaction against the Diamond.
@@ -54,10 +55,10 @@ flowchart TD
 
 Two execution channels exist for every party:
 
-| Party | Direct channel | Instant channel |
-| ----- | -------------- | --------------- |
-| Party A | Owner EOA -> `MultiAccount._call` -> `SymmioPartyA.call` -> Diamond | Operator -> `InstantLayer.executeBatch` -> `MultiAccount._call` -> `SymmioPartyA.call` -> Diamond |
-| Party B | Authorised role on `SymmioPartyB` -> `SymmioPartyB._call` -> Diamond | Operator -> `InstantLayer.executeBatch` -> `SymmioPartyB._call` -> Diamond |
+| Party   | Direct channel                                                       | Instant channel                                                                                   |
+| ------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Party A | Owner EOA -> `MultiAccount._call` -> `SymmioPartyA.call` -> Diamond  | Operator -> `InstantLayer.executeBatch` -> `MultiAccount._call` -> `SymmioPartyA.call` -> Diamond |
+| Party B | Authorised role on `SymmioPartyB` -> `SymmioPartyB._call` -> Diamond | Operator -> `InstantLayer.executeBatch` -> `SymmioPartyB._call` -> Diamond                        |
 
 The Diamond does not see the operator directly. It sees calls coming from `SymmioPartyA` (Party A's account) or `SymmioPartyB` (Party B's contract), exactly like the direct channel. The only protocol-level distinguishing fact is that the boolean `callFromInstantLayer` is set to `true` on the Diamond for the duration of the batch.
 
@@ -78,23 +79,23 @@ stateDiagram-v2
 
 All transitions are driven by `CounterPartyRelationsFacet` and the supporting library at `contracts/libraries/core/LibCounterPartyRelations.sol`. State is held in `CounterPartyRelationsStorage.Layout`:
 
-| Field | Purpose |
-| ----- | ------- |
-| `boundPartyB[partyA]` | The bound Party B, or `address(0)` when unbound. |
-| `unbindingRequestTime[partyA]` | Timestamp when `initiateUnbindingFromPartyB` was called, or `0` when no unbinding is in progress. |
-| `unbindingCooldown` | Required wait between initiation and completion. |
-| `instantActionsMode[partyA]` | Whether instant action mode is currently active. |
+| Field                                      | Purpose                                                                                                         |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| `boundPartyB[partyA]`                      | The bound Party B, or `address(0)` when unbound.                                                                |
+| `unbindingRequestTime[partyA]`             | Timestamp when `initiateUnbindingFromPartyB` was called, or `0` when no unbinding is in progress.               |
+| `unbindingCooldown`                        | Required wait between initiation and completion.                                                                |
+| `instantActionsMode[partyA]`               | Whether instant action mode is currently active.                                                                |
 | `instantActionsModeDeactivateTime[partyA]` | Earliest timestamp at which `deactivateInstantActionMode` will succeed, or `0` when no deactivation is pending. |
-| `deactiveInstantActionModeCooldown` | Required wait between proposing and finalising deactivation. |
+| `deactiveInstantActionModeCooldown`        | Required wait between proposing and finalising deactivation.                                                    |
 
 ### Transitions
 
-| Function | Pre-condition | Effect | Reverts with |
-| -------- | ------------- | ------ | ------------ |
-| `bindToPartyB(partyB)` | `boundPartyB[msg.sender] == address(0)` and `partyB.isPartyB()` | `boundPartyB[msg.sender] = partyB` | `PartyBNotActive`, `BoundedToAnotherPartyB` |
+| Function                        | Pre-condition                                                                            | Effect                                               | Reverts with                                                               |
+| ------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------- |
+| `bindToPartyB(partyB)`          | `boundPartyB[msg.sender] == address(0)` and `partyB.isPartyB()`                          | `boundPartyB[msg.sender] = partyB`                   | `PartyBNotActive`, `BoundedToAnotherPartyB`                                |
 | `initiateUnbindingFromPartyB()` | A bound Party B exists, instant mode is **not** active, no unbinding already in progress | `unbindingRequestTime[msg.sender] = block.timestamp` | `BoundedPartyBNotFound`, `InstantModeActive`, `UnbindingAlreadyInProgress` |
-| `cancelUnbindingFromPartyB()` | Unbinding in progress | Clears `unbindingRequestTime` | `UnbindingNotInitiated` |
-| `completeUnbindingFromPartyB()` | Unbinding in progress and `block.timestamp >= unbindingRequestTime + unbindingCooldown` | Deletes `boundPartyB` and `unbindingRequestTime` | `BoundedPartyBNotFound`, `UnbindingNotInitiated`, `CooldownNotOver` |
+| `cancelUnbindingFromPartyB()`   | Unbinding in progress                                                                    | Clears `unbindingRequestTime`                        | `UnbindingNotInitiated`                                                    |
+| `completeUnbindingFromPartyB()` | Unbinding in progress and `block.timestamp >= unbindingRequestTime + unbindingCooldown`  | Deletes `boundPartyB` and `unbindingRequestTime`     | `BoundedPartyBNotFound`, `UnbindingNotInitiated`, `CooldownNotOver`        |
 
 ### Effects of binding
 
@@ -118,11 +119,11 @@ stateDiagram-v2
 
 ### Transitions
 
-| Function | Pre-condition | Effect | Reverts with |
-| -------- | ------------- | ------ | ------------ |
-| `activateInstantActionMode()` | A Party B is bound, instant mode currently inactive | `instantActionsMode[msg.sender] = true` | `BoundedPartyBNotFound`, `whenInstantModeIsNotActive` modifier |
-| `proposeToDeactivateInstantActionMode()` | Instant mode active | `instantActionsModeDeactivateTime[msg.sender] = block.timestamp + deactiveInstantActionModeCooldown` | `whenInstantModeIsActive` modifier |
-| `deactivateInstantActionMode()` | Deactivation proposed and cooldown elapsed | Clears `instantActionsMode` and `instantActionsModeDeactivateTime` | `DeactivationNotProposed`, `CooldownNotOver` |
+| Function                                 | Pre-condition                                       | Effect                                                                                               | Reverts with                                                   |
+| ---------------------------------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `activateInstantActionMode()`            | A Party B is bound, instant mode currently inactive | `instantActionsMode[msg.sender] = true`                                                              | `BoundedPartyBNotFound`, `whenInstantModeIsNotActive` modifier |
+| `proposeToDeactivateInstantActionMode()` | Instant mode active                                 | `instantActionsModeDeactivateTime[msg.sender] = block.timestamp + deactiveInstantActionModeCooldown` | `whenInstantModeIsActive` modifier                             |
+| `deactivateInstantActionMode()`          | Deactivation proposed and cooldown elapsed          | Clears `instantActionsMode` and `instantActionsModeDeactivateTime`                                   | `DeactivationNotProposed`, `CooldownNotOver`                   |
 
 All three are only callable by Party A (`onlyNotPartyB(msg.sender)`) and respect `whenPartyNotPaused`.
 
@@ -190,21 +191,21 @@ Each entry in `_callDatas` is forwarded to `SymmioPartyA(account).call(callData)
 
 ### Owner-only utilities
 
-| Function | Caller | Effect |
-| -------- | ------ | ------ |
-| `editAccountName(account, name)` | `owners[account]` | Updates display name. |
-| `transferTradeNFT(account, to, tokenId)` | `owners[account]` | Calls `SymmioPartyA.transferTradeNFT(tradeNFTAddress, to, tokenId)`. |
-| `verifySignatureOfAccount(account, hash, sig)` | anyone (view) | Returns the EIP-1271 magic value if `sig` is a valid signature by `owners[account]` over `hash`. |
+| Function                                       | Caller            | Effect                                                                                           |
+| ---------------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------ |
+| `editAccountName(account, name)`               | `owners[account]` | Updates display name.                                                                            |
+| `transferTradeNFT(account, to, tokenId)`       | `owners[account]` | Calls `SymmioPartyA.transferTradeNFT(tradeNFTAddress, to, tokenId)`.                             |
+| `verifySignatureOfAccount(account, hash, sig)` | anyone (view)     | Returns the EIP-1271 magic value if `sig` is a valid signature by `owners[account]` over `hash`. |
 
 ### Admin paths
 
-| Function | Role | Effect |
-| -------- | ---- | ------ |
-| `setAccountImplementation(bytes)` | `SETTER_ROLE` | Updates bytecode used for new accounts. |
-| `setSymmioAddress(addr)` | `SETTER_ROLE` | Re-points future deployments and authorisation checks. |
-| `setTradeNFTAddress(addr)` | `SETTER_ROLE` | Updates NFT contract address. |
-| `adminCallPartyA(partyA, data)` | `SETTER_ROLE` | Arbitrary low-level call into a `SymmioPartyA`; rethrows on failure. |
-| `pause()` / `unpause()` | `PAUSER_ROLE` / `UNPAUSER_ROLE` | Pauses non-view functions. |
+| Function                          | Role                            | Effect                                                               |
+| --------------------------------- | ------------------------------- | -------------------------------------------------------------------- |
+| `setAccountImplementation(bytes)` | `SETTER_ROLE`                   | Updates bytecode used for new accounts.                              |
+| `setSymmioAddress(addr)`          | `SETTER_ROLE`                   | Re-points future deployments and authorisation checks.               |
+| `setTradeNFTAddress(addr)`        | `SETTER_ROLE`                   | Updates NFT contract address.                                        |
+| `adminCallPartyA(partyA, data)`   | `SETTER_ROLE`                   | Arbitrary low-level call into a `SymmioPartyA`; rethrows on failure. |
+| `pause()` / `unpause()`           | `PAUSER_ROLE` / `UNPAUSER_ROLE` | Pauses non-view functions.                                           |
 
 ### ERC-1271 chain
 
@@ -225,7 +226,7 @@ This means signatures attributed to a Party A account are validated against the 
 
 ```solidity
 function call(bytes memory callData) external onlyMultiAccount returns (bool, bytes memory) {
-    return symmioAddress.call{ value: 0 }(callData);
+	return symmioAddress.call{ value: 0 }(callData);
 }
 ```
 
@@ -246,13 +247,13 @@ The Diamond therefore sees `msg.sender == SymmioPartyA` for every Party A call r
 
 ### Roles
 
-| Role | Purpose |
-| ---- | ------- |
-| `DEFAULT_ADMIN_ROLE` | Updates Symmio address, manages restricted selectors. |
-| `SETTER_ROLE` | Updates the EIP-1271 signer address. |
-| `MANAGER_ROLE` | May call restricted selectors on the Diamond, manage the multicast whitelist, withdraw ERC-20s. |
-| `TRUSTED_ROLE` | May call non-restricted selectors on the Diamond, approve tokens, perform multicast calls to whitelisted external contracts. |
-| `PAUSER_ROLE` / `UNPAUSER_ROLE` | Pause / unpause non-view operations. |
+| Role                            | Purpose                                                                                                                      |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `DEFAULT_ADMIN_ROLE`            | Updates Symmio address, manages restricted selectors.                                                                        |
+| `SETTER_ROLE`                   | Updates the EIP-1271 signer address.                                                                                         |
+| `MANAGER_ROLE`                  | May call restricted selectors on the Diamond, manage the multicast whitelist, withdraw ERC-20s.                              |
+| `TRUSTED_ROLE`                  | May call non-restricted selectors on the Diamond, approve tokens, perform multicast calls to whitelisted external contracts. |
+| `PAUSER_ROLE` / `UNPAUSER_ROLE` | Pause / unpause non-view operations.                                                                                         |
 
 ### Call execution
 
@@ -267,11 +268,11 @@ function _multicastCall(address[] calldata destAddresses, bytes[] calldata _call
 
 For each call the contract dispatches to `_executeCall`, which encapsulates the access logic:
 
-| Target | Selector | Required caller |
-| ------ | -------- | --------------- |
-| `symmioAddress` | `restrictedSelectors[selector] == true` | `MANAGER_ROLE` |
-| `symmioAddress` | non-restricted | `MANAGER_ROLE` or `TRUSTED_ROLE` or `ISymmio.isCallFromInstantLayer() == true` |
-| not `symmioAddress` | any | `multicastWhitelist[dest] == true` and `TRUSTED_ROLE` |
+| Target              | Selector                                | Required caller                                                                |
+| ------------------- | --------------------------------------- | ------------------------------------------------------------------------------ |
+| `symmioAddress`     | `restrictedSelectors[selector] == true` | `MANAGER_ROLE`                                                                 |
+| `symmioAddress`     | non-restricted                          | `MANAGER_ROLE` or `TRUSTED_ROLE` or `ISymmio.isCallFromInstantLayer() == true` |
+| not `symmioAddress` | any                                     | `multicastWhitelist[dest] == true` and `TRUSTED_ROLE`                          |
 
 The Diamond's `callFromInstantLayer` flag is the third admit path for Symmio-bound calls. This is what lets the InstantLayer push Party B calldata through `SymmioPartyB._call` without holding a Party B role on the contract: while the flag is set, anyone can invoke `_call` with non-restricted selectors. Restricted selectors (configured by Party B's admin) remain reachable only through `MANAGER_ROLE`, even from the InstantLayer, which prevents the operator from invoking sensitive admin-style selectors via signed operations.
 
@@ -279,10 +280,10 @@ Failures are rethrown verbatim (`revert(add(_resultData, 32), mload(_resultData)
 
 ### Token plumbing
 
-| Function | Role | Purpose |
-| -------- | ---- | ------- |
-| `_approve(token, amount)` | `TRUSTED_ROLE` | Approves Symmio to spend Party B's tokens. |
-| `withdrawERC20(token, amount)` | `MANAGER_ROLE` | Sweeps tokens to the caller. |
+| Function                       | Role           | Purpose                                    |
+| ------------------------------ | -------------- | ------------------------------------------ |
+| `_approve(token, amount)`      | `TRUSTED_ROLE` | Approves Symmio to spend Party B's tokens. |
+| `withdrawERC20(token, amount)` | `MANAGER_ROLE` | Sweeps tokens to the caller.               |
 
 ### ERC-1271
 
@@ -298,13 +299,13 @@ Returns the magic value when `signature` is a valid signature by the configured 
 
 ### Roles
 
-| Role | Purpose |
-| ---- | ------- |
-| `SETTER_ROLE` | Register / unregister Party Bs and MultiAccounts; add / activate templates. |
-| `OPERATOR_ROLE` | Call `executeBatch` and `executeTemplate`. Granted automatically to every registered Party B address. |
-| `MANAGER_ROLE` | Manager-level admin. |
-| `TRUSTED_ROLE` | Trusted-level admin. |
-| `DEFAULT_ADMIN_ROLE` | Role administration. |
+| Role                 | Purpose                                                                                               |
+| -------------------- | ----------------------------------------------------------------------------------------------------- |
+| `SETTER_ROLE`        | Register / unregister Party Bs and MultiAccounts; add / activate templates.                           |
+| `OPERATOR_ROLE`      | Call `executeBatch` and `executeTemplate`. Granted automatically to every registered Party B address. |
+| `MANAGER_ROLE`       | Manager-level admin.                                                                                  |
+| `TRUSTED_ROLE`       | Trusted-level admin.                                                                                  |
+| `DEFAULT_ADMIN_ROLE` | Role administration.                                                                                  |
 
 All five are granted to the constructor `_admin` argument.
 
@@ -350,15 +351,15 @@ keccak256(abi.encode(
 
 The signed digest is `_hashTypedDataV4(structHash)`, exposed as `getOperationHash`.
 
-| Field | Meaning |
-| ----- | ------- |
-| `accountSource` | `address(0)` for a Party B operation, or the registered `MultiAccount` for a Party A operation. Selects the dispatch path. |
-| `signer` | Party A operations: the `SymmioPartyA` account address (the on-chain identity that the Diamond sees as `msg.sender`). Party B operations: the `SymmioPartyB` address. In both cases the actual ECDSA signature is checked against this address using `SignatureChecker.isValidSignatureNow`, which falls through to ERC-1271 because both addresses are contracts. The chains are described in sections 4 and 6. |
-| `callData` | The raw calldata to send to the Diamond. It is included in the typed-data hash via `keccak256(callData)`, so any modification invalidates the signature. (The single exception: `executeTemplate` mutates a working copy of `callData` for return-data injection; the signature is still verified against the original `callData` because verification happens before the copy is mutated.) |
-| `nonce` | If `0`, only salt-based replay protection applies. If non-zero, must equal `nonces[signer] + 1`; on success the value is written and `nonces[signer]++` is emitted. |
-| `salt` | An arbitrary 32-byte value the signer chooses. It guarantees that two operations with otherwise identical fields hash differently. Required even when `nonce != 0`. |
-| `deadline` | Unix timestamp after which the operation is rejected with `DeadlineExpired`. |
-| `signature` | ECDSA or ERC-1271 signature over `getOperationHash(...)`. ECDSA is verified with `ECDSA.toEthSignedMessageHash(hash)` (i.e. the `\x19Ethereum Signed Message:\n32` prefix), since `SignatureChecker.isValidSignatureNow` is invoked on that prefixed hash. |
+| Field           | Meaning                                                                                                                                                                                                                                                                                                                                                                                                          |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `accountSource` | `address(0)` for a Party B operation, or the registered `MultiAccount` for a Party A operation. Selects the dispatch path.                                                                                                                                                                                                                                                                                       |
+| `signer`        | Party A operations: the `SymmioPartyA` account address (the on-chain identity that the Diamond sees as `msg.sender`). Party B operations: the `SymmioPartyB` address. In both cases the actual ECDSA signature is checked against this address using `SignatureChecker.isValidSignatureNow`, which falls through to ERC-1271 because both addresses are contracts. The chains are described in sections 4 and 6. |
+| `callData`      | The raw calldata to send to the Diamond. It is included in the typed-data hash via `keccak256(callData)`, so any modification invalidates the signature. (The single exception: `executeTemplate` mutates a working copy of `callData` for return-data injection; the signature is still verified against the original `callData` because verification happens before the copy is mutated.)                      |
+| `nonce`         | If `0`, only salt-based replay protection applies. If non-zero, must equal `nonces[signer] + 1`; on success the value is written and `nonces[signer]++` is emitted.                                                                                                                                                                                                                                              |
+| `salt`          | An arbitrary 32-byte value the signer chooses. It guarantees that two operations with otherwise identical fields hash differently. Required even when `nonce != 0`.                                                                                                                                                                                                                                              |
+| `deadline`      | Unix timestamp after which the operation is rejected with `DeadlineExpired`.                                                                                                                                                                                                                                                                                                                                     |
+| `signature`     | ECDSA or ERC-1271 signature over `getOperationHash(...)`. ECDSA is verified with `ECDSA.toEthSignedMessageHash(hash)` (i.e. the `\x19Ethereum Signed Message:\n32` prefix), since `SignatureChecker.isValidSignatureNow` is invoked on that prefixed hash.                                                                                                                                                       |
 
 ### Replay protection
 
@@ -373,12 +374,12 @@ Both modes rely on `usedOperationHashes` to prevent re-execution. `salt` is the 
 
 ### Registration model
 
-| Function | Role | Effect |
-| -------- | ---- | ------ |
-| `registerPartyB(addr)` / `registerPartyBBatch([addr])` | `SETTER_ROLE` | Sets `registeredPartyBs[addr] = true`. **Also grants `OPERATOR_ROLE` to `addr`**, so registered Party Bs can submit their own batches. |
-| `unregisterPartyB(addr)` | `SETTER_ROLE` | Clears the flag and revokes `OPERATOR_ROLE`. |
-| `registerMultiAccount(addr)` / `registerMultiAccountBatch([addr])` | `SETTER_ROLE` | Sets `registeredMultiAccounts[addr] = true`. **Does not** grant `OPERATOR_ROLE` to the `MultiAccount`. |
-| `unregisterMultiAccount(addr)` | `SETTER_ROLE` | Clears the flag. |
+| Function                                                           | Role          | Effect                                                                                                                                 |
+| ------------------------------------------------------------------ | ------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `registerPartyB(addr)` / `registerPartyBBatch([addr])`             | `SETTER_ROLE` | Sets `registeredPartyBs[addr] = true`. **Also grants `OPERATOR_ROLE` to `addr`**, so registered Party Bs can submit their own batches. |
+| `unregisterPartyB(addr)`                                           | `SETTER_ROLE` | Clears the flag and revokes `OPERATOR_ROLE`.                                                                                           |
+| `registerMultiAccount(addr)` / `registerMultiAccountBatch([addr])` | `SETTER_ROLE` | Sets `registeredMultiAccounts[addr] = true`. **Does not** grant `OPERATOR_ROLE` to the `MultiAccount`.                                 |
+| `unregisterMultiAccount(addr)`                                     | `SETTER_ROLE` | Clears the flag.                                                                                                                       |
 
 `_verifyOperation` enforces:
 
@@ -453,14 +454,14 @@ A `Template` is a fixed sequence of `Operation` records added by `SETTER_ROLE`:
 
 ```solidity
 struct Operation {
-    uint256[] insertionPoints;
-    uint256[] sourceIndices;
+	uint256[] insertionPoints;
+	uint256[] sourceIndices;
 }
 
 struct Template {
-    string name;
-    Operation[] operations;
-    bool active;
+	string name;
+	Operation[] operations;
+	bool active;
 }
 ```
 
@@ -486,19 +487,19 @@ A typical template flow: operation 0 creates an open intent and returns its `int
 
 ### Failure modes
 
-| Stage | Error | Notes |
-| ----- | ----- | ----- |
-| `executeBatch` entry | `EmptyBatch` | Empty array. |
-| `executeTemplate` entry | `InvalidTemplate(id)` | `id >= nextTemplateId`. |
-| `executeTemplate` entry | `TemplateNotActive(id)` | Active flag false. |
-| `executeTemplate` entry | `ArrayLengthMismatch` | `signedOps.length != template.operations.length`. |
-| `_verifyOperation` | `DeadlineExpired(deadline)` | `deadline < block.timestamp`. |
-| `_verifyOperation` | `UnregisteredPartyB(signer)` / `UnregisteredMultiAccount(accountSource)` | Registration check. |
-| `_verifyOperation` | `OperationAlreadyExecuted(hash)` | Replay. |
-| `_verifyOperation` | `InvalidSignature(signer)` | Signature did not validate. |
-| `_verifyOperation` | `InvalidNonce(signer, expected, provided)` | Ordered-nonce mismatch. |
-| `_executeOperationSafe` | `OperationFailed(i, revertData)` | The downstream call reverted; raw revert data is included. |
-| Constructor / admin | OZ access control errors | Role gate failures. |
+| Stage                   | Error                                                                    | Notes                                                      |
+| ----------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| `executeBatch` entry    | `EmptyBatch`                                                             | Empty array.                                               |
+| `executeTemplate` entry | `InvalidTemplate(id)`                                                    | `id >= nextTemplateId`.                                    |
+| `executeTemplate` entry | `TemplateNotActive(id)`                                                  | Active flag false.                                         |
+| `executeTemplate` entry | `ArrayLengthMismatch`                                                    | `signedOps.length != template.operations.length`.          |
+| `_verifyOperation`      | `DeadlineExpired(deadline)`                                              | `deadline < block.timestamp`.                              |
+| `_verifyOperation`      | `UnregisteredPartyB(signer)` / `UnregisteredMultiAccount(accountSource)` | Registration check.                                        |
+| `_verifyOperation`      | `OperationAlreadyExecuted(hash)`                                         | Replay.                                                    |
+| `_verifyOperation`      | `InvalidSignature(signer)`                                               | Signature did not validate.                                |
+| `_verifyOperation`      | `InvalidNonce(signer, expected, provided)`                               | Ordered-nonce mismatch.                                    |
+| `_executeOperationSafe` | `OperationFailed(i, revertData)`                                         | The downstream call reverted; raw revert data is included. |
+| Constructor / admin     | OZ access control errors                                                 | Role gate failures.                                        |
 
 Because every helper rethrows downstream revert data, the `revertData` field in `OperationFailed` typically encodes a Diamond error (e.g. `MarginInsufficient`, `IntentNotFound`).
 
@@ -523,12 +524,12 @@ The flag is a single boolean, not a stack: nested or reentrant `executeBatch` ca
 
 ## 9. Signature Schemes Summary
 
-| Surface | Signer | Hash computation | Verifier | Caller-visible error |
-| ------- | ------ | ---------------- | -------- | -------------------- |
-| `InstantLayer` operation | EOA owning a Party A account (via ERC-1271 through `SymmioPartyA` -> `MultiAccount`) | `EIP712("SymmioInstantLayer","1")` over `OPERATION_TYPEHASH` | `SignatureChecker.isValidSignatureNow(signer, ECDSA.toEthSignedMessageHash(hash), sig)` | `InvalidSignature(signer)` |
-| `InstantLayer` operation | EOA configured as `signer` on `SymmioPartyB` (via ERC-1271 through `SymmioPartyB`) | same | same | `InvalidSignature(signer)` |
-| Direct ERC-1271 query on `SymmioPartyA` | `owners[account]` | hash supplied by caller | `SignatureChecker.isValidSignatureNow(owners[account], hash, sig)` | returns `0xffffffff` |
-| Direct ERC-1271 query on `SymmioPartyB` | `signer` | hash supplied by caller | same with `signer` | returns `0xffffffff` |
+| Surface                                 | Signer                                                                               | Hash computation                                             | Verifier                                                                                | Caller-visible error       |
+| --------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------ | --------------------------------------------------------------------------------------- | -------------------------- |
+| `InstantLayer` operation                | EOA owning a Party A account (via ERC-1271 through `SymmioPartyA` -> `MultiAccount`) | `EIP712("SymmioInstantLayer","1")` over `OPERATION_TYPEHASH` | `SignatureChecker.isValidSignatureNow(signer, ECDSA.toEthSignedMessageHash(hash), sig)` | `InvalidSignature(signer)` |
+| `InstantLayer` operation                | EOA configured as `signer` on `SymmioPartyB` (via ERC-1271 through `SymmioPartyB`)   | same                                                         | same                                                                                    | `InvalidSignature(signer)` |
+| Direct ERC-1271 query on `SymmioPartyA` | `owners[account]`                                                                    | hash supplied by caller                                      | `SignatureChecker.isValidSignatureNow(owners[account], hash, sig)`                      | returns `0xffffffff`       |
+| Direct ERC-1271 query on `SymmioPartyB` | `signer`                                                                             | hash supplied by caller                                      | same with `signer`                                                                      | returns `0xffffffff`       |
 
 `SignatureChecker.isValidSignatureNow` first attempts `ECDSA.recover`; if that fails or the recovered address has code, it falls through to calling `IERC1271.isValidSignature` on the address. This is what enables both EOA owners and contract-based signers (e.g. multisigs) to act as the `signer` field of a `SignedOperation`.
 
@@ -593,75 +594,75 @@ Observations:
 
 ### `InstantLayer`
 
-| Error | Condition |
-| ----- | --------- |
-| `InvalidSignature(signer)` | `SignatureChecker` returned false. |
-| `DeadlineExpired(deadline)` | `deadline < block.timestamp`. |
-| `InvalidNonce(user, expected, provided)` | `nonce != 0` and `nonce != nonces[signer] + 1`. |
-| `TemplateNotActive(templateId)` | Template flagged inactive. |
-| `InvalidTemplate(templateId)` | Template id never minted. |
-| `OperationFailed(opIndex, revertData)` | The dispatched call reverted; `revertData` is the downstream payload. |
-| `ArrayLengthMismatch` | `signedOps.length != template.operations.length`. |
-| `UnregisteredMultiAccount(addr)` | `accountSource` not registered. |
-| `UnregisteredPartyB(addr)` | `signer` not registered as Party B. |
-| `OperationAlreadyExecuted(hash)` | Replay of a previously consumed operation. |
-| `EmptyBatch` | `executeBatch` called with zero ops. |
+| Error                                    | Condition                                                             |
+| ---------------------------------------- | --------------------------------------------------------------------- |
+| `InvalidSignature(signer)`               | `SignatureChecker` returned false.                                    |
+| `DeadlineExpired(deadline)`              | `deadline < block.timestamp`.                                         |
+| `InvalidNonce(user, expected, provided)` | `nonce != 0` and `nonce != nonces[signer] + 1`.                       |
+| `TemplateNotActive(templateId)`          | Template flagged inactive.                                            |
+| `InvalidTemplate(templateId)`            | Template id never minted.                                             |
+| `OperationFailed(opIndex, revertData)`   | The dispatched call reverted; `revertData` is the downstream payload. |
+| `ArrayLengthMismatch`                    | `signedOps.length != template.operations.length`.                     |
+| `UnregisteredMultiAccount(addr)`         | `accountSource` not registered.                                       |
+| `UnregisteredPartyB(addr)`               | `signer` not registered as Party B.                                   |
+| `OperationAlreadyExecuted(hash)`         | Replay of a previously consumed operation.                            |
+| `EmptyBatch`                             | `executeBatch` called with zero ops.                                  |
 
 ### `MultiAccount`
 
-| Error | Condition |
-| ----- | --------- |
-| `NotOwnerOfAccount(sender, account, owner)` | Owner-only call from non-owner. |
-| `ContractDeploymentFailed` | CREATE2 returned `address(0)`. |
-| `PartyACallFailed(returnData)` | `adminCallPartyA` call reverted. |
-| `InvalidCallData(callData)` | Reserved for downstream guards. |
+| Error                                           | Condition                                                       |
+| ----------------------------------------------- | --------------------------------------------------------------- |
+| `NotOwnerOfAccount(sender, account, owner)`     | Owner-only call from non-owner.                                 |
+| `ContractDeploymentFailed`                      | CREATE2 returned `address(0)`.                                  |
+| `PartyACallFailed(returnData)`                  | `adminCallPartyA` call reverted.                                |
+| `InvalidCallData(callData)`                     | Reserved for downstream guards.                                 |
 | `UnauthorizedAccess(account, sender, selector)` | `_call` rejected: not the owner and instant-layer flag not set. |
 
 ### `SymmioPartyA`
 
-| Error | Condition |
-| ----- | --------- |
+| Error                                | Condition                                                                                |
+| ------------------------------------ | ---------------------------------------------------------------------------------------- |
 | `OnlyMultiAccount(sender, expected)` | `call` / `transferTradeNFT` invoked by anyone other than the originating `MultiAccount`. |
-| `NFTTransferFailed` | `safeTransferFrom` reverted. |
+| `NFTTransferFailed`                  | `safeTransferFrom` reverted.                                                             |
 
 ### `SymmioPartyB`
 
-| Error | Condition |
-| ----- | --------- |
-| `InvalidTargetAddress(self)` | Multicast whitelist tried to add `address(this)`. |
-| `TokenNotApproved(token, spender, amount)` | ERC-20 `approve` returned false. |
-| `TokenNotTransferred(token, recipient, amount)` | ERC-20 `transfer` returned false. |
-| `ArrayLengthMismatch(destLen, callLen)` | Multicast arrays mismatched. |
-| `InvalidAddress(addr)` | `_executeCall` saw `address(0)` destination. |
-| `InvalidCallData(len)` | Calldata shorter than 4 bytes. |
-| `InsufficientPermissions(sender, selector)` | Caller lacks `MANAGER_ROLE` / `TRUSTED_ROLE` and instant-layer flag is false. |
-| `DestinationNotWhitelisted(dest)` | Multicast destination not whitelisted. |
+| Error                                           | Condition                                                                     |
+| ----------------------------------------------- | ----------------------------------------------------------------------------- |
+| `InvalidTargetAddress(self)`                    | Multicast whitelist tried to add `address(this)`.                             |
+| `TokenNotApproved(token, spender, amount)`      | ERC-20 `approve` returned false.                                              |
+| `TokenNotTransferred(token, recipient, amount)` | ERC-20 `transfer` returned false.                                             |
+| `ArrayLengthMismatch(destLen, callLen)`         | Multicast arrays mismatched.                                                  |
+| `InvalidAddress(addr)`                          | `_executeCall` saw `address(0)` destination.                                  |
+| `InvalidCallData(len)`                          | Calldata shorter than 4 bytes.                                                |
+| `InsufficientPermissions(sender, selector)`     | Caller lacks `MANAGER_ROLE` / `TRUSTED_ROLE` and instant-layer flag is false. |
+| `DestinationNotWhitelisted(dest)`               | Multicast destination not whitelisted.                                        |
 
 ### `LibCounterPartyRelations` (via `PartyRelationsErrors` / `ValidationErrors`)
 
-| Error | Condition |
-| ----- | --------- |
-| `BoundedPartyBNotFound(partyA)` | Operation requires a binding that does not exist. |
-| `BoundedToAnotherPartyB(partyA, current)` | `bindToPartyB` while already bound. |
-| `PartyBNotActive(partyB)` | `bindToPartyB` target not registered as Party B. |
-| `InstantModeActive(partyA)` | `initiateUnbindingFromPartyB` while instant mode is on. |
-| `UnbindingAlreadyInProgress(partyA, requestedAt)` | Re-entry into `initiateUnbindingFromPartyB`. |
-| `UnbindingNotInitiated(partyA)` | `cancelUnbindingFromPartyB` / `completeUnbindingFromPartyB` with no pending unbind. |
-| `DeactivationNotProposed(partyA)` | `deactivateInstantActionMode` without `proposeToDeactivateInstantActionMode`. |
-| `CooldownNotOver(label, now, until)` | Generic timed-release gate. |
+| Error                                             | Condition                                                                           |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `BoundedPartyBNotFound(partyA)`                   | Operation requires a binding that does not exist.                                   |
+| `BoundedToAnotherPartyB(partyA, current)`         | `bindToPartyB` while already bound.                                                 |
+| `PartyBNotActive(partyB)`                         | `bindToPartyB` target not registered as Party B.                                    |
+| `InstantModeActive(partyA)`                       | `initiateUnbindingFromPartyB` while instant mode is on.                             |
+| `UnbindingAlreadyInProgress(partyA, requestedAt)` | Re-entry into `initiateUnbindingFromPartyB`.                                        |
+| `UnbindingNotInitiated(partyA)`                   | `cancelUnbindingFromPartyB` / `completeUnbindingFromPartyB` with no pending unbind. |
+| `DeactivationNotProposed(partyA)`                 | `deactivateInstantActionMode` without `proposeToDeactivateInstantActionMode`.       |
+| `CooldownNotOver(label, now, until)`              | Generic timed-release gate.                                                         |
 
 ## 12. Code Map
 
-| Path | Role |
-| ---- | ---- |
-| `contracts/helpers/InstantLayer.sol` | EIP-712 verifier + executor; templates; replay/nonce; flag toggling. |
-| `contracts/helpers/MultiAccount.sol` | Per-owner registry of Party A accounts; CREATE2 deployer; owner / instant-layer dispatch; ERC-1271 root for Party A. |
-| `contracts/helpers/SymmioPartyA.sol` | Per-account forwarder to the Diamond; NFT custody; ERC-1271 delegate. |
-| `contracts/helpers/SymmioPartyB.sol` | Per-Party-B forwarder; role-gated dispatch; multicast whitelist; ERC-1271 against configured signer. |
-| `contracts/helpers/SignatureVerifier.sol` | Shared `SignatureChecker` wrapper used by `MultiAccount` and `SymmioPartyB`. |
-| `contracts/facets/CounterPartyRelations/CounterPartyRelationsFacet.sol` | External entry points for binding and instant-mode lifecycle. |
-| `contracts/libraries/core/LibCounterPartyRelations.sol` | Internal logic and storage mutation for binding and instant-mode lifecycle. |
-| `contracts/storages/CounterPartyRelationsStorage.sol` | Diamond storage for the relations and instant-mode state. |
-| `contracts/interfaces/ISymmio.sol` | Includes `setCallFromInstantLayer` and `isCallFromInstantLayer`. |
-| `contracts/interfaces/IMultiAccount.sol` | External shape consumed by `InstantLayer._executeOperationSafe`. |
-| `contracts/interfaces/ISymmioPartyA.sol` | External shape consumed by `MultiAccount.innerCall`. |
+| Path                                                                    | Role                                                                                                                 |
+| ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `contracts/helpers/InstantLayer.sol`                                    | EIP-712 verifier + executor; templates; replay/nonce; flag toggling.                                                 |
+| `contracts/helpers/MultiAccount.sol`                                    | Per-owner registry of Party A accounts; CREATE2 deployer; owner / instant-layer dispatch; ERC-1271 root for Party A. |
+| `contracts/helpers/SymmioPartyA.sol`                                    | Per-account forwarder to the Diamond; NFT custody; ERC-1271 delegate.                                                |
+| `contracts/helpers/SymmioPartyB.sol`                                    | Per-Party-B forwarder; role-gated dispatch; multicast whitelist; ERC-1271 against configured signer.                 |
+| `contracts/helpers/SignatureVerifier.sol`                               | Shared `SignatureChecker` wrapper used by `MultiAccount` and `SymmioPartyB`.                                         |
+| `contracts/facets/CounterPartyRelations/CounterPartyRelationsFacet.sol` | External entry points for binding and instant-mode lifecycle.                                                        |
+| `contracts/libraries/core/LibCounterPartyRelations.sol`                 | Internal logic and storage mutation for binding and instant-mode lifecycle.                                          |
+| `contracts/storages/CounterPartyRelationsStorage.sol`                   | Diamond storage for the relations and instant-mode state.                                                            |
+| `contracts/interfaces/ISymmio.sol`                                      | Includes `setCallFromInstantLayer` and `isCallFromInstantLayer`.                                                     |
+| `contracts/interfaces/IMultiAccount.sol`                                | External shape consumed by `InstantLayer._executeOperationSafe`.                                                     |
+| `contracts/interfaces/ISymmioPartyA.sol`                                | External shape consumed by `MultiAccount.innerCall`.                                                                 |

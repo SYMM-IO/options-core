@@ -1,14 +1,15 @@
 ---
 title: Deployment & Operations
 aliases:
-  - Deployment
-  - Ops
-  - Hardhat Tasks
+    - Deployment
+    - Ops
+    - Hardhat Tasks
 tags:
-  - symmio
-  - options-core
-  - operations
+    - symmio
+    - options-core
+    - operations
 ---
+
 # Deployment And Operations
 
 This repo is a Hardhat project using Solidity `0.8.25` (`evmVersion: cancun`), Hardhat 3, Node 24, OpenZeppelin 5.6.1, TypeChain for ethers v6 (generated on compile), and the OpenZeppelin upgrades plugin for helper contracts.
@@ -82,24 +83,24 @@ npx hardhat deploy:symmioPartyB --symmioaddress <diamond> --admin <admin>
 
 There are two setup config shapes in the repo:
 
--   `tasks/config/_sample.config.json` and `tasks/config/config.interface.ts` describe a task-oriented config structure.
--   `scripts/config/setup.example.json` is consumed by `scripts/symmSetup.ts`, which expects `scripts/config/setup.json` and reads the Diamond address from `output/addresses.json`.
+- `tasks/config/_sample.config.json` and `tasks/config/config.interface.ts` describe a task-oriented config structure.
+- `scripts/config/setup.example.json` is consumed by `scripts/symmSetup.ts`, which expects `scripts/config/setup.json` and reads the Diamond address from `output/addresses.json`.
 
 The setup script configures items such as:
 
--   Admin and role grants/revokes.
--   Whitelisted collateral.
--   Max close orders, max trades per Party A, and balance limits.
--   Timing parameters.
--   Party B release interval and default release interval.
--   Default fee collector.
--   Oracles, price oracle address, and symbols.
--   Party B config and supported symbol types.
--   Affiliates and affiliate fees.
--   Signature verifier.
--   Express withdraw provider config.
--   Invalid withdrawal amount pool.
--   External transfer target validation.
+- Admin and role grants/revokes.
+- Whitelisted collateral.
+- Max close orders, max trades per Party A, and balance limits.
+- Timing parameters.
+- Party B release interval and default release interval.
+- Default fee collector.
+- Oracles, price oracle address, and symbols.
+- Party B config and supported symbol types.
+- Affiliates and affiliate fees.
+- Signature verifier.
+- Express withdraw provider config.
+- Invalid withdrawal amount pool.
+- External transfer target validation.
 
 ## Minimal Post-Deploy Checklist
 
@@ -120,11 +121,11 @@ flowchart TD
 
 The `tasks/helper` folder registers manual tasks:
 
--   `send-open-intent`
--   `lock-open-intent`
--   `fill-open-intent`
--   `send-close-intent`
--   `fill-close-intent`
+- `send-open-intent`
+- `lock-open-intent`
+- `fill-open-intent`
+- `send-close-intent`
+- `fill-close-intent`
 
 These are useful for testing a deployed Diamond from the command line. Check each file in `tasks/helper` for exact parameters before running.
 
@@ -132,17 +133,17 @@ These are useful for testing a deployed Diamond from the command line. Check eac
 
 The behavior tests are split by protocol area:
 
--   `tests/account-facet.behavior.ts`
--   `tests/partyA-open-facet.behavior.ts`
--   `tests/partyB-open-facet.behavior.ts`
--   `tests/partyA-close-facet.behavior.ts`
--   `tests/partyB-close-facet.behavior.ts`
--   `tests/trade-settlement.ts`
--   `tests/force-action.behavior.ts`
--   `tests/clearing-house.ts`
--   `tests/helpers/instant-layer.behavior.ts`
--   `tests/helpers/multi-account.behavior.ts`
--   `tests/helpers/symmio-partyb.behavior.ts`
+- `tests/account-facet.behavior.ts`
+- `tests/partyA-open-facet.behavior.ts`
+- `tests/partyB-open-facet.behavior.ts`
+- `tests/partyA-close-facet.behavior.ts`
+- `tests/partyB-close-facet.behavior.ts`
+- `tests/trade-settlement.ts`
+- `tests/force-action.behavior.ts`
+- `tests/clearing-house.ts`
+- `tests/helpers/instant-layer.behavior.ts`
+- `tests/helpers/multi-account.behavior.ts`
+- `tests/helpers/symmio-partyb.behavior.ts`
 
 Run the whole suite with:
 
@@ -160,9 +161,9 @@ npx hardhat test tests/partyB-open-facet.behavior.ts
 
 `hardhat.config.ts` defines:
 
--   `default`: in-process local network (`edr-simulated`). It is used when `--network` is omitted.
--   `polygon`: `https://polygon-rpc.com`.
--   `base`: `https://mainnet.base.org`.
+- `default`: in-process local network (`edr-simulated`). It is used when `--network` is omitted.
+- `polygon`: `https://polygon-rpc.com`.
+- `base`: `https://mainnet.base.org`.
 
 `PRIVATE_KEY` and `ETHERSCAN_API_KEY` are Hardhat config variables, read only when a network or verify command needs them. Set them in `.env`/symsec or with `npx hardhat keystore set`.
 

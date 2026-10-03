@@ -209,9 +209,10 @@ library LibTradeOperations {
 					/* ---------------------------------------- PAY FEES ---------------------------------------- */
 
 					// Determine affiliate fee collector (use default if none specified)
-					address affiliateFeeCollector = feeLayout.affiliateFeeCollector[trade.affiliate] == address(0)
-						? feeLayout.defaultFeeCollector
-						: feeLayout.affiliateFeeCollector[trade.affiliate];
+					address affiliateFeeCollector =
+						feeLayout.affiliateFeeCollector[trade.affiliate] == address(0)
+							? feeLayout.defaultFeeCollector
+							: feeLayout.affiliateFeeCollector[trade.affiliate];
 
 					// Pay affiliate fees
 					ScheduledReleaseBalance storage affiliateFeeCollectorBalance = affiliateFeeCollector.balanceOf(s.feeToken);

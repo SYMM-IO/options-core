@@ -746,7 +746,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				partyB1.address,
 			)
 			console.log("Balance loced:", crossBalance)
-			expect(crossBalance.locked).to.be.equal(await context.viewFacet.getOpenIntentPremium(intent.id) * intentCount)
+			expect(crossBalance.locked).to.be.equal((await context.viewFacet.getOpenIntentPremium(intent.id)) * intentCount)
 		})
 
 		it("Should Successfully Lock Premium in Cross Margin, Sell Trade", async function () {

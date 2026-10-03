@@ -30,8 +30,9 @@ export function shouldGuardSymmioPartyBAgainstReentrancy(): void {
 	it("rejects a callee that re-enters _call during _multicastCall", async function () {
 		const callee = await ethers.getContractAt("MockReentrantCallee", calleeAddress)
 		await callee.setReenter(true)
-		await expect(
-			context.symmioPartyB.connect(context.signers.admin)._multicastCall([calleeAddress], [pingCallData]),
-		).to.be.revertedWithCustomError(context.symmioPartyB, "ReentrancyGuardReentrantCall")
+		await expect(context.symmioPartyB.connect(context.signers.admin)._multicastCall([calleeAddress], [pingCallData])).to.be.revertedWithCustomError(
+			context.symmioPartyB,
+			"ReentrancyGuardReentrantCall",
+		)
 	})
 }

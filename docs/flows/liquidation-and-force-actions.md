@@ -67,17 +67,17 @@ Source: `LibForceActions.forceCancelOpenIntent` (`libraries/core/LibForceActions
 
 Preconditions:
 
--   Open intent status must be `CANCEL_PENDING` (else `ValidationErrors.InvalidState`).
--   `block.timestamp > statusModifyTimestamp + forceCancelOpenIntentTimeout` (else `ValidationErrors.CooldownNotOver`).
+- Open intent status must be `CANCEL_PENDING` (else `ValidationErrors.InvalidState`).
+- `block.timestamp > statusModifyTimestamp + forceCancelOpenIntentTimeout` (else `ValidationErrors.CooldownNotOver`).
 
 State effects:
 
--   `status` becomes `CANCELED`.
--   `statusModifyTimestamp = block.timestamp`.
--   Fees previously locked at intent creation are released through `unlockFees` (`libraries/models/LibOpenIntent.sol:189`).
--   BUY-side premium is released to Party A through `unlockPremiumIfBuy` (`libraries/models/LibOpenIntent.sol:121`).
--   SELL-side maintenance margin is released through `unlockMMIfSell` (`libraries/models/LibOpenIntent.sol:130`).
--   The intent is removed from active indexes via `unregister(false)` (`libraries/models/LibOpenIntent.sol:55`).
+- `status` becomes `CANCELED`.
+- `statusModifyTimestamp = block.timestamp`.
+- Fees previously locked at intent creation are released through `unlockFees` (`libraries/models/LibOpenIntent.sol:189`).
+- BUY-side premium is released to Party A through `unlockPremiumIfBuy` (`libraries/models/LibOpenIntent.sol:121`).
+- SELL-side maintenance margin is released through `unlockMMIfSell` (`libraries/models/LibOpenIntent.sol:130`).
+- The intent is removed from active indexes via `unregister(false)` (`libraries/models/LibOpenIntent.sol:55`).
 
 Event: `ForceCancelOpenIntent(intentId)` (`facets/ForceActions/ForceActionsFacetEvents.sol:8`).
 
@@ -96,13 +96,13 @@ Source: `LibForceActions.forceCancelCloseIntent` (`libraries/core/LibForceAction
 
 Preconditions:
 
--   Close intent status must be `CANCEL_PENDING`.
--   `block.timestamp > statusModifyTimestamp + forceCancelCloseIntentTimeout`.
+- Close intent status must be `CANCEL_PENDING`.
+- `block.timestamp > statusModifyTimestamp + forceCancelCloseIntentTimeout`.
 
 State effects:
 
--   `status` becomes `CANCELED`, `statusModifyTimestamp = block.timestamp`.
--   The intent is removed from the parent trade's `activeCloseIntentIds` via `unregister` (`libraries/models/LibCloseIntent.sol:62`). No balances move; close intents do not lock funds.
+- `status` becomes `CANCELED`, `statusModifyTimestamp = block.timestamp`.
+- The intent is removed from the parent trade's `activeCloseIntentIds` via `unregister` (`libraries/models/LibCloseIntent.sol:62`). No balances move; close intents do not lock funds.
 
 Event: `ForceCancelCloseIntent(intentId)`.
 
@@ -169,14 +169,14 @@ Used when Party B's **isolated** balance for a collateral is insolvent. Party A 
 
 Functions on `IClearingHouseFacet`:
 
--   `flagIsolatedPartyBLiquidation(partyB, collateral)` — `ClearingHouseFacet.sol:26`
--   `unflagIsolatedPartyBLiquidation(partyB, collateral)` — `ClearingHouseFacet.sol:39`
--   `liquidateIsolatedPartyB(partyB, collateral, upnl, collateralPrice)` — `ClearingHouseFacet.sol:54`
+- `flagIsolatedPartyBLiquidation(partyB, collateral)` — `ClearingHouseFacet.sol:26`
+- `unflagIsolatedPartyBLiquidation(partyB, collateral)` — `ClearingHouseFacet.sol:39`
+- `liquidateIsolatedPartyB(partyB, collateral, upnl, collateralPrice)` — `ClearingHouseFacet.sol:54`
 
 Flag preconditions (`LibClearingHouse.sol:99-104`):
 
--   `partyBConfigs[partyB].lossCoverage` must be non-zero, else `ZeroLossCoverage(partyB)`.
--   `partyB.requireSolvent(address(0), collateral, ISOLATED)` must hold (no existing active id), else `BalanceErrors.NotSolvent`.
+- `partyBConfigs[partyB].lossCoverage` must be non-zero, else `ZeroLossCoverage(partyB)`.
+- `partyB.requireSolvent(address(0), collateral, ISOLATED)` must hold (no existing active id), else `BalanceErrors.NotSolvent`.
 
 Liquidate insolvency check (`LibClearingHouse.sol:110-122`):
 
@@ -197,14 +197,14 @@ Used when Party B's **cross** balance against a specific Party A is insolvent.
 
 Functions:
 
--   `flagCrossPartyBLiquidation(partyB, partyA, collateral)` — `ClearingHouseFacet.sol:92`
--   `unflagCrossPartyBLiquidation(partyB, partyA, collateral)` — `ClearingHouseFacet.sol:101`
--   `liquidateCrossPartyB(partyB, partyA, collateral, upnl, collateralPrice)` — `ClearingHouseFacet.sol:110`
+- `flagCrossPartyBLiquidation(partyB, partyA, collateral)` — `ClearingHouseFacet.sol:92`
+- `unflagCrossPartyBLiquidation(partyB, partyA, collateral)` — `ClearingHouseFacet.sol:101`
+- `liquidateCrossPartyB(partyB, partyA, collateral, upnl, collateralPrice)` — `ClearingHouseFacet.sol:110`
 
 Flag preconditions (`LibClearingHouse.sol:128-133`):
 
--   Non-zero `partyBConfigs[partyB].lossCoverage`.
--   `partyB.requireSolvent(partyA, collateral, CROSS)` — no existing active id for the tuple.
+- Non-zero `partyBConfigs[partyB].lossCoverage`.
+- `partyB.requireSolvent(partyA, collateral, CROSS)` — no existing active id for the tuple.
 
 Liquidate insolvency check (`LibClearingHouse.sol:139-149`) operates on the `CrossEntry` for `partyA`:
 
@@ -217,9 +217,9 @@ require crossBalance.balance + (effectiveUpnl * 1e18) / int256(collateralPrice) 
 
 State effects on liquidate (`LibClearingHouse.sol:151-160`):
 
--   If `crossBalance.balance > 0`, the **positive** balance is transferred to Party A using `subForCounterParty(partyA, balance, CROSS, LIQUIDATION)` on Party B and `scheduledAdd(partyB, balance, CROSS, LIQUIDATION)` on Party A. Party A receives this through the standard scheduled-release model so it cannot front-run the rest of the liquidation.
--   `crossBalance.balance`, `.locked`, and `.totalMM` are all set to zero, regardless of sign.
--   `_beginLiquidation` flips status to `IN_PROGRESS` and stores `collateralPrice`.
+- If `crossBalance.balance > 0`, the **positive** balance is transferred to Party A using `subForCounterParty(partyA, balance, CROSS, LIQUIDATION)` on Party B and `scheduledAdd(partyB, balance, CROSS, LIQUIDATION)` on Party A. Party A receives this through the standard scheduled-release model so it cannot front-run the rest of the liquidation.
+- `crossBalance.balance`, `.locked`, and `.totalMM` are all set to zero, regardless of sign.
+- `_beginLiquidation` flips status to `IN_PROGRESS` and stores `collateralPrice`.
 
 The transfer-positive-balance-to-counterparty mechanic ensures Party A is not penalized by Party B's liquidation: any free cross collateral Party B held against Party A goes back to Party A before the position is wound down.
 
@@ -229,13 +229,13 @@ Used when Party A's cross balance against a specific Party B is insolvent.
 
 Functions:
 
--   `flagPartyALiquidation(partyA, partyB, collateral)` — `ClearingHouseFacet.sol:121`
--   `unflagPartyALiquidation(partyA, partyB, collateral)` — `ClearingHouseFacet.sol:130`
--   `liquidateCrossPartyA(liquidationId, partyA, partyB, collateral, upnl, collateralPrice)` — `ClearingHouseFacet.sol:139`
+- `flagPartyALiquidation(partyA, partyB, collateral)` — `ClearingHouseFacet.sol:121`
+- `unflagPartyALiquidation(partyA, partyB, collateral)` — `ClearingHouseFacet.sol:130`
+- `liquidateCrossPartyA(liquidationId, partyA, partyB, collateral, upnl, collateralPrice)` — `ClearingHouseFacet.sol:139`
 
 Flag preconditions (`LibClearingHouse.sol:167-170`):
 
--   `partyA.requireSolvent(partyB, collateral, CROSS)` — no existing active id. Notably, **no `lossCoverage` check** applies because `lossCoverage` is a Party B parameter.
+- `partyA.requireSolvent(partyB, collateral, CROSS)` — no existing active id. Notably, **no `lossCoverage` check** applies because `lossCoverage` is a Party B parameter.
 
 Liquidate insolvency check (`LibClearingHouse.sol:176-185`). The Party A path is asymmetric: it subtracts maintenance margin and uses the **raw** uPnL (no loss-coverage scaling):
 
@@ -248,9 +248,9 @@ require (crossBalance.balance - int256(crossBalance.totalMM))
 
 State effects on liquidate (`LibClearingHouse.sol:187-198`) mirror the Party B cross path but in reverse direction:
 
--   If `crossBalance.balance > 0`, transfer it to Party B via `subForCounterParty` / `scheduledAdd` with `LIQUIDATION` reasons.
--   Zero out `balance`, `locked`, and `totalMM`.
--   Status → `IN_PROGRESS`, `collateralPrice` stored.
+- If `crossBalance.balance > 0`, transfer it to Party B via `subForCounterParty` / `scheduledAdd` with `LIQUIDATION` reasons.
+- Zero out `balance`, `locked`, and `totalMM`.
+- Status → `IN_PROGRESS`, `collateralPrice` stored.
 
 Notice that the facet entry takes `(liquidationId, partyA, partyB, collateral, ...)` but the library only consumes `liquidationId` (`LibClearingHouse.sol:147`); the additional parameters are emitted in the event but not validated against the stored detail. The liquidation id authoritatively identifies the entry.
 
@@ -266,18 +266,18 @@ The `upnl` and `collateralPrice` arguments to every `liquidate*` are off-chain v
 
 Preconditions:
 
--   `tradeIds.length == prices.length`, else `MismatchedArrayLengths`.
--   The liquidation entry must be `IN_PROGRESS`.
--   For each trade:
-    -   `trade.status == OPENED` (else `ValidationErrors.InvalidState`).
-    -   The trade must belong to the tuple. Specifically: if `detail.partyA != address(0)`, then `trade.partyA == detail.partyA` is required; if `detail.partyB != address(0)`, then `trade.partyB == detail.partyB` is required. Otherwise reverts with `TradeNotInLiquidation(liquidationId, tradeId)`. The `address(0)` slack accommodates the isolated Party B case where `detail.partyA` is zero.
+- `tradeIds.length == prices.length`, else `MismatchedArrayLengths`.
+- The liquidation entry must be `IN_PROGRESS`.
+- For each trade:
+    - `trade.status == OPENED` (else `ValidationErrors.InvalidState`).
+    - The trade must belong to the tuple. Specifically: if `detail.partyA != address(0)`, then `trade.partyA == detail.partyA` is required; if `detail.partyB != address(0)`, then `trade.partyB == detail.partyB` is required. Otherwise reverts with `TradeNotInLiquidation(liquidationId, tradeId)`. The `address(0)` slack accommodates the isolated Party B case where `detail.partyA` is zero.
 
 Per-trade effects (`LibClearingHouse.sol:223-246`):
 
--   For Party A `BUY` trades: the proportional remaining premium for the open amount is credited to Party B. Isolated trades use `instantIsolatedAdd(..., PREMIUM)`; cross trades use `scheduledAdd(partyA, ..., PREMIUM)`.
--   For Party A `SELL` trades: the proportional remaining maintenance margin is released from Party A's cross slot using `decreaseMM(partyB, ...)` (`libraries/models/LibScheduledReleaseBalance.sol:458`).
--   `trade.settledPrice = price`.
--   `trade.close(TradeStatus.LIQUIDATED, CloseIntentStatus.CANCELED)` (`libraries/models/LibTrade.sol:112-123`) cancels every active close intent on the trade and unregisters the trade from active indexes.
+- For Party A `BUY` trades: the proportional remaining premium for the open amount is credited to Party B. Isolated trades use `instantIsolatedAdd(..., PREMIUM)`; cross trades use `scheduledAdd(partyA, ..., PREMIUM)`.
+- For Party A `SELL` trades: the proportional remaining maintenance margin is released from Party A's cross slot using `decreaseMM(partyB, ...)` (`libraries/models/LibScheduledReleaseBalance.sol:458`).
+- `trade.settledPrice = price`.
+- `trade.close(TradeStatus.LIQUIDATED, CloseIntentStatus.CANCELED)` (`libraries/models/LibTrade.sol:112-123`) cancels every active close intent on the trade and unregisters the trade from active indexes.
 
 Event: `CloseTradesForLiquidation(operator, liquidationId, tradeIds, prices)`.
 
@@ -291,9 +291,9 @@ Three functions cooperate to drain the liquidating party and pay out the counter
 
 Preconditions:
 
--   `party` must be `detail.partyA` or `detail.partyB`, else `PartyNotInLiquidation(party, partyA, partyB, collateral)`.
--   The party's `counterPartyBalance(counterParty, marginType)` must be ≥ `amount`, else `BalanceErrors.InsufficientIntBalance`.
--   The liquidation must be `IN_PROGRESS`.
+- `party` must be `detail.partyA` or `detail.partyB`, else `PartyNotInLiquidation(party, partyA, partyB, collateral)`.
+- The party's `counterPartyBalance(counterParty, marginType)` must be ≥ `amount`, else `BalanceErrors.InsufficientIntBalance`.
+- The liquidation must be `IN_PROGRESS`.
 
 State effect: `subForCounterParty(counterParty, amount, marginType, CONFISCATE)` removes the funds from accounting, and `detail.confiscatedAmount += amount` records the running total. Funds leave the user's balance into the protocol's confiscated pool — they are not yet attributable to any beneficiary.
 
@@ -305,7 +305,7 @@ Event: `Confiscate(operator, party, counterParty, liquidationId, amount, marginT
 
 Preconditions:
 
--   `withdrawal.status == INITIATED` (else `ValidationErrors.InvalidState`).
+- `withdrawal.status == INITIATED` (else `ValidationErrors.InvalidState`).
 
 State effect: status flips to `CANCELED` and the amount is added back to the user's isolated balance via `instantIsolatedAdd(amount, DEPOSIT)`. The clearing house can then `confiscate` it like any other balance. Note the function does not consult `LiquidationDetail` — it is callable by the clearing house at any time on any `INITIATED` withdrawal.
 
@@ -317,8 +317,8 @@ Event: `ConfiscateWithdrawal(operator, withdrawId)`.
 
 Preconditions:
 
--   `partyAs.length == amounts.length`, else `MismatchedArrayLengths`.
--   Liquidation must be `IN_PROGRESS`.
+- `partyAs.length == amounts.length`, else `MismatchedArrayLengths`.
+- Liquidation must be `IN_PROGRESS`.
 
 State effects per row: `partyA.balanceOf(collateral).scheduledAdd(partyB, amount, marginType, LIQUIDATION)` plus `detail.distributedAmount += amount`. After the loop, **`distributedAmount > confiscatedAmount` reverts with `DistributedAmountExceedsConfiscatedAmount(liquidationId)`** — this is the conservation invariant that prevents the clearing house from minting collateral.
 
@@ -332,12 +332,12 @@ Event: `DistributeCollateral(operator, partyB, collateral, liquidationId, partyA
 
 Preconditions:
 
--   `party.balanceOf(collateral).reserveBalance >= amount`, else `BalanceErrors.InsufficientBalance`.
+- `party.balanceOf(collateral).reserveBalance >= amount`, else `BalanceErrors.InsufficientBalance`.
 
 State effects:
 
--   `reserveBalance -= amount`.
--   `scheduledAdd(counterParty, amount, CROSS, ALLOCATE_FROM_RESERVE)` on the same party.
+- `reserveBalance -= amount`.
+- `scheduledAdd(counterParty, amount, CROSS, ALLOCATE_FROM_RESERVE)` on the same party.
 
 The headroom is paid by the party itself out of their own reserve — the clearing house simply has the authority to forcibly route reserve to cross. Event: `AllocateFromReserveToCross(operator, party, counterParty, collateral, amount)`.
 
@@ -349,12 +349,12 @@ These two functions sweep out pending intents for parties whose tuple is in liqu
 
 `cancelOpenIntents(intentIds)` (`LibClearingHouse.sol:308-340`):
 
--   For each `intentId`:
-    -   Status must be `PENDING` or `LOCKED`, else `ValidationErrors.InvalidState`.
-    -   At least one of `partyA.isSolvent(...)` or `partyB.isSolvent(...)` must be **false**, else `PartiesNotInLiquidation(partyA, partyB, collateral)`.
-    -   If `block.timestamp > intent.deadline`: the intent is `expire()`d (`libraries/models/LibOpenIntent.sol:78`).
-    -   Otherwise: status → `CANCELED`, then release normal locks (`unlockFees` + `unlockPremiumIfBuy` + `unlockMMIfSell`) or deferred Party B sell escrow via `unlockForCancelOrExpire`, then `unregister(false)`.
-    -   `statusModifyTimestamp = block.timestamp`.
+- For each `intentId`:
+    - Status must be `PENDING` or `LOCKED`, else `ValidationErrors.InvalidState`.
+    - At least one of `partyA.isSolvent(...)` or `partyB.isSolvent(...)` must be **false**, else `PartiesNotInLiquidation(partyA, partyB, collateral)`.
+    - If `block.timestamp > intent.deadline`: the intent is `expire()`d (`libraries/models/LibOpenIntent.sol:78`).
+    - Otherwise: status → `CANCELED`, then release normal locks (`unlockFees` + `unlockPremiumIfBuy` + `unlockMMIfSell`) or deferred Party B sell escrow via `unlockForCancelOrExpire`, then `unregister(false)`.
+    - `statusModifyTimestamp = block.timestamp`.
 
 For deferred Party B sells, this means liquidation cancel first returns the isolated escrow to Party A's account. The clearing house can then use the normal liquidation/confiscation functions against Party A's available balance if that amount should be seized. The cancel path itself does not silently transfer escrow into a liquidation pool.
 
@@ -362,10 +362,10 @@ For deferred Party B sells, this means liquidation cancel first returns the isol
 
 `cancelCloseIntents(intentIds)` (`LibClearingHouse.sol:342-367`):
 
--   Status must be `PENDING`, else `ValidationErrors.InvalidState`.
--   At least one of `partyA.isSolvent(...)` or `partyB.isSolvent(...)` must be false for the trade's tuple.
--   If past deadline: `intent.expire()` (`libraries/models/LibCloseIntent.sol:68`).
--   Otherwise: status → `CANCELED`, `statusModifyTimestamp = block.timestamp`, `unregister()` from the trade.
+- Status must be `PENDING`, else `ValidationErrors.InvalidState`.
+- At least one of `partyA.isSolvent(...)` or `partyB.isSolvent(...)` must be false for the trade's tuple.
+- If past deadline: `intent.expire()` (`libraries/models/LibCloseIntent.sol:68`).
+- Otherwise: status → `CANCELED`, `statusModifyTimestamp = block.timestamp`, `unregister()` from the trade.
 
 Both functions emit `CancelOpenIntentsForLiquidation` / `CancelCloseIntentsForLiquidation`.
 
@@ -387,9 +387,9 @@ function isSolvent(self, counterParty, collateral, marginType) -> bool {
 
 In other words, **`isSolvent` only looks at whether the party is currently flagged or being liquidated**. It does not look at any balance, uPnL, MM, or oracle data. This is the check you see in:
 
--   `flag*Liquidation` — to refuse re-flagging an already-flagged or in-progress tuple.
--   `cancelOpenIntents` / `cancelCloseIntents` — to require that one side is in liquidation for the tuple before sweeping.
--   All non-liquidation flows that gate on `requireSolvent(...)` to refuse touching balances mid-liquidation.
+- `flag*Liquidation` — to refuse re-flagging an already-flagged or in-progress tuple.
+- `cancelOpenIntents` / `cancelCloseIntents` — to require that one side is in liquidation for the tuple before sweeping.
+- All non-liquidation flows that gate on `requireSolvent(...)` to refuse touching balances mid-liquidation.
 
 The **economic** insolvency check (`balance + uPnL_adjusted < 0`) lives only inside `liquidateIsolatedPartyB`, `liquidateCrossPartyB`, and `liquidateCrossPartyA`. A party can be economically underwater for hours before anyone calls `flag*`; conversely, a flagged party that has since recovered will revert from `liquidate*` with `PartyASolvent` / `PartyBSolvent`, allowing the operator to `unflag*`.
 
@@ -436,11 +436,11 @@ Source files: `errors/LiquidationErrors.sol`, `errors/BalanceErrors.sol`, `error
 
 Setup:
 
--   Party B `B` is configured with `lossCoverage = 1.2e18` and `isActive = true`.
--   `B` holds cross positions against Party A `A1` and Party A `A2` in collateral `USDC`.
--   `B`'s position against `A1` has balance `+1000`, locked `200`, totalMM `0`. The position is deeply underwater on its open trades.
--   `B`'s position against `A2` is healthy.
--   `B` also has `300` of `reserveBalance` for `USDC`.
+- Party B `B` is configured with `lossCoverage = 1.2e18` and `isActive = true`.
+- `B` holds cross positions against Party A `A1` and Party A `A2` in collateral `USDC`.
+- `B`'s position against `A1` has balance `+1000`, locked `200`, totalMM `0`. The position is deeply underwater on its open trades.
+- `B`'s position against `A2` is healthy.
+- `B` also has `300` of `reserveBalance` for `USDC`.
 
 Step-by-step:
 

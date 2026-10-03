@@ -1,14 +1,15 @@
 ---
 title: Scheduled Release Model
 aliases:
-  - Sync
-  - manualSync
-  - Release Buckets
+    - Sync
+    - manualSync
+    - Release Buckets
 tags:
-  - symmio
-  - options-core
-  - concept
+    - symmio
+    - options-core
+    - concept
 ---
+
 # Scheduled Release
 
 The scheduled release model is a per-counterparty delay applied to isolated balance credits that originate from a counterparty (premium, realized PnL, fees, liquidation distributions, reserve→cross promotions on the isolated path). Funds wait two `releaseInterval` boundaries before they are spendable. Cross-margin credits are exempt: they land instantly.
@@ -31,11 +32,11 @@ Cross balances are deliberately not delayed: they remain bilateral and cannot be
 
 A credit moves through three positions over time:
 
-| Bucket | Stored in | Spendable? |
-| --- | --- | --- |
-| Scheduled | `counterPartySchedules[cp].scheduled` | No |
-| Transitioning | `counterPartySchedules[cp].transitioning` | No |
-| Free | `isolatedBalance` | Yes (minus `isolatedLockedBalance`) |
+| Bucket        | Stored in                                 | Spendable?                          |
+| ------------- | ----------------------------------------- | ----------------------------------- |
+| Scheduled     | `counterPartySchedules[cp].scheduled`     | No                                  |
+| Transitioning | `counterPartySchedules[cp].transitioning` | No                                  |
+| Free          | `isolatedBalance`                         | Yes (minus `isolatedLockedBalance`) |
 
 Each `_sync` call (`contracts/libraries/models/LibScheduledReleaseBalance.sol:302`) computes how many `releaseInterval` boundaries have crossed `entry.lastTransitionTimestamp` and advances the buckets accordingly:
 
@@ -54,9 +55,9 @@ Timestamps and intervals:
 - `releaseInterval` is in **seconds**, copied at `addCounterParty` time from `counterParty.getReleaseInterval()` (per-user override or default).
 - `lastTransitionTimestamp` is **always aligned** to the start of the current interval: `(block.timestamp / releaseInterval) * releaseInterval`. Adding new credits never moves it.
 - Sync logic, `LibScheduledReleaseBalance.sol:339`:
-  - `intervals = (block.timestamp - lastTransitionTimestamp) / releaseInterval`. Zero ⇒ no-op.
-  - `intervals == 1` (one boundary crossed): drain `transitioning` to free, promote `scheduled` to `transitioning`. The credit added during this interval starts in `scheduled`.
-  - `intervals >= 2` (two or more boundaries crossed): drain both buckets to free.
+    - `intervals = (block.timestamp - lastTransitionTimestamp) / releaseInterval`. Zero ⇒ no-op.
+    - `intervals == 1` (one boundary crossed): drain `transitioning` to free, promote `scheduled` to `transitioning`. The credit added during this interval starts in `scheduled`.
+    - `intervals >= 2` (two or more boundaries crossed): drain both buckets to free.
 - After advancement, `lastTransitionTimestamp` is re-aligned to the current interval start so subsequent adds queue correctly.
 
 Worst-case wait for a brand-new credit is `~2 * releaseInterval`; best case is just over `releaseInterval` (credit lands one block before the boundary). Average is `~1.5 * releaseInterval`.
@@ -67,15 +68,15 @@ The "two-bus" name in the source comments mirrors this geometry: the scheduled b
 
 Subset of `ScheduledReleaseBalance` (`contracts/types/BalanceTypes.sol:46`) relevant to the scheduled release model. See `docs/flows/account-balances.md` for the complete table.
 
-| Field | Type | Units | Purpose |
-| --- | --- | --- | --- |
-| `isolatedBalance` | `uint256` | 18d | Free isolated funds. Sink for matured scheduled releases. |
-| `counterPartySchedules[cp].releaseInterval` | `uint256` | seconds | Active interval used for bucket advancement. |
-| `counterPartySchedules[cp].transitioning` | `uint256` | 18d | Funds maturing on the next boundary. |
-| `counterPartySchedules[cp].scheduled` | `uint256` | 18d | Funds maturing on the boundary after next. |
-| `counterPartySchedules[cp].lastTransitionTimestamp` | `uint256` | seconds (aligned) | Anchor for interval math. |
-| `counterPartyAddresses` | `address[]` | n/a | Iteration list for `syncAll`. |
-| `counterPartyIndexes[cp]` | `uint256` | 1-based | O(1) presence check (0 ⇒ not present). |
+| Field                                               | Type        | Units             | Purpose                                                   |
+| --------------------------------------------------- | ----------- | ----------------- | --------------------------------------------------------- |
+| `isolatedBalance`                                   | `uint256`   | 18d               | Free isolated funds. Sink for matured scheduled releases. |
+| `counterPartySchedules[cp].releaseInterval`         | `uint256`   | seconds           | Active interval used for bucket advancement.              |
+| `counterPartySchedules[cp].transitioning`           | `uint256`   | 18d               | Funds maturing on the next boundary.                      |
+| `counterPartySchedules[cp].scheduled`               | `uint256`   | 18d               | Funds maturing on the boundary after next.                |
+| `counterPartySchedules[cp].lastTransitionTimestamp` | `uint256`   | seconds (aligned) | Anchor for interval math.                                 |
+| `counterPartyAddresses`                             | `address[]` | n/a               | Iteration list for `syncAll`.                             |
+| `counterPartyIndexes[cp]`                           | `uint256`   | 1-based           | O(1) presence check (0 ⇒ not present).                    |
 
 `crossBalance[cp]` is **not** affected by the scheduled release model; cross credits move directly via `crossBalance[cp].balance += int256(value)`.
 
@@ -117,10 +118,10 @@ Iteration cost:
 
 `getReleaseInterval()` on an address consults two sources from `AccountStorage` (`contracts/storages/AccountStorage.sol:13`):
 
-| Storage | Set by | Effect |
-| --- | --- | --- |
+| Storage                  | Set by            | Effect                                          |
+| ------------------------ | ----------------- | ----------------------------------------------- |
 | `releaseIntervals[user]` | per-user override | Used when `hasConfiguredInterval[user] == true` |
-| `defaultReleaseInterval` | global | Fallback when no override |
+| `defaultReleaseInterval` | global            | Fallback when no override                       |
 
 The override takes precedence over the default. The interval read inside `scheduledAdd` and `_sync` is always the counterparty's interval (the user issuing the credit), not the recipient's. A Party A receiving a credit from Party B uses Party B's release interval.
 
@@ -205,55 +206,55 @@ Events:
 
 State trace:
 
-| Event | `lastTransitionTimestamp` | `scheduled` | `transitioning` | `isolatedBalance` |
-| --- | --- | --- | --- | --- |
-| Initial | 0 | 0 | 0 | 0 |
-| `addCounterParty` at `t0` | `t0` | 0 | 0 | 0 |
-| `_sync` at `t0` (intervals=0) | `t0` | 0 | 0 | 0 |
-| `entry.scheduled += 100` | `t0` | 100 | 0 | 0 |
-| `sync(cp)` at `t0 + I` (intervals=1) | `t0 + I` | 0 | 100 | 0 |
-| `sync(cp)` at `t0 + 2I` (intervals=1 since last) | `t0 + 2I` | 0 | 0 | 100 |
+| Event                                            | `lastTransitionTimestamp` | `scheduled` | `transitioning` | `isolatedBalance` |
+| ------------------------------------------------ | ------------------------- | ----------- | --------------- | ----------------- |
+| Initial                                          | 0                         | 0           | 0               | 0                 |
+| `addCounterParty` at `t0`                        | `t0`                      | 0           | 0               | 0                 |
+| `_sync` at `t0` (intervals=0)                    | `t0`                      | 0           | 0               | 0                 |
+| `entry.scheduled += 100`                         | `t0`                      | 100         | 0               | 0                 |
+| `sync(cp)` at `t0 + I` (intervals=1)             | `t0 + I`                  | 0           | 100             | 0                 |
+| `sync(cp)` at `t0 + 2I` (intervals=1 since last) | `t0 + 2I`                 | 0           | 0               | 100               |
 
 If the keeper had skipped the `t0 + I` call and synced once at `t0 + 2I`:
 
-| Event | `lastTransitionTimestamp` | `scheduled` | `transitioning` | `isolatedBalance` |
-| --- | --- | --- | --- | --- |
-| `entry.scheduled += 100` at `t0` | `t0` | 100 | 0 | 0 |
-| `sync(cp)` at `t0 + 2I` (intervals=2) | `t0 + 2I` | 0 | 0 | 100 |
+| Event                                 | `lastTransitionTimestamp` | `scheduled` | `transitioning` | `isolatedBalance` |
+| ------------------------------------- | ------------------------- | ----------- | --------------- | ----------------- |
+| `entry.scheduled += 100` at `t0`      | `t0`                      | 100         | 0               | 0                 |
+| `sync(cp)` at `t0 + 2I` (intervals=2) | `t0 + 2I`                 | 0           | 0               | 100               |
 
 Same end state — the schedule is idempotent under sync frequency once the boundaries have passed. The keeper schedule only affects the timestamp of free-balance availability **within** the interval after the second boundary.
 
 If a second credit lands at `t0 + 0.5I` and a single sync happens at `t0 + 2.5I`:
 
-| Event | `lastTransitionTimestamp` | `scheduled` | `transitioning` | `isolatedBalance` |
-| --- | --- | --- | --- | --- |
-| Credit 100 at `t0` | `t0` | 100 | 0 | 0 |
-| `scheduledAdd` 50 at `t0 + 0.5I` (auto-`_sync`, intervals=0) | `t0` | 150 | 0 | 0 |
-| `sync(cp)` at `t0 + 2.5I` (intervals=2) | `t0 + 2I` | 0 | 0 | 150 |
+| Event                                                        | `lastTransitionTimestamp` | `scheduled` | `transitioning` | `isolatedBalance` |
+| ------------------------------------------------------------ | ------------------------- | ----------- | --------------- | ----------------- |
+| Credit 100 at `t0`                                           | `t0`                      | 100         | 0               | 0                 |
+| `scheduledAdd` 50 at `t0 + 0.5I` (auto-`_sync`, intervals=0) | `t0`                      | 150         | 0               | 0                 |
+| `sync(cp)` at `t0 + 2.5I` (intervals=2)                      | `t0 + 2I`                 | 0           | 0               | 150               |
 
 Both credits matured together because both sat in `scheduled` when the two-boundary advancement collapsed the pipeline. A credit added at `t0 + 1.5I` instead would only have crossed one boundary by `t0 + 2.5I` and would land in `transitioning`, not free.
 
 ## 11. Code Map
 
-| Concern | File | Line |
-| --- | --- | --- |
-| Two-bucket entry struct | `contracts/types/BalanceTypes.sol` | 24 |
-| Balance container | `contracts/types/BalanceTypes.sol` | 46 |
-| `scheduledAdd` (entry/branching) | `contracts/libraries/models/LibScheduledReleaseBalance.sol` | 91 |
-| `instantIsolatedAdd` | `contracts/libraries/models/LibScheduledReleaseBalance.sol` | 128 |
-| `subForCounterParty` (drain order) | `contracts/libraries/models/LibScheduledReleaseBalance.sol` | 151 |
-| `_sync` (core logic) | `contracts/libraries/models/LibScheduledReleaseBalance.sol` | 302 |
-| `syncAll` (reverse iteration) | `contracts/libraries/models/LibScheduledReleaseBalance.sol` | 287 |
-| `addCounterParty` (cap + reinit) | `contracts/libraries/models/LibScheduledReleaseBalance.sol` | 375 |
-| `tryRemoveCounterParty` (open-trade gate) | `contracts/libraries/models/LibScheduledReleaseBalance.sol` | 400 |
-| `manualSync` storage | `contracts/storages/AccountStorage.sol` | 19 |
-| `releaseIntervals` / `defaultReleaseInterval` | `contracts/storages/AccountStorage.sol` | 16-17 |
-| `maxConnectedCounterParties` | `contracts/storages/AccountStorage.sol` | 18 |
-| `syncAll` from `internalTransfer` | `contracts/libraries/core/LibBalanceOperations.sol` | 73 |
-| `syncAll` from `initiateWithdraw` (gated by `manualSync`) | `contracts/libraries/core/LibBalanceOperations.sol` | 119 |
-| `cancelWithdraw` re-credits as `DEPOSIT` | `contracts/libraries/core/LibBalanceOperations.sol` | 239 |
-| `syncBalances` public surface | `contracts/facets/Account/AccountFacet.sol` | 252 |
-| `allocateBalance` (free balance only) | `contracts/libraries/models/LibScheduledReleaseBalance.sol` | 249 |
-| `deallocateBalance` (cross → free) | `contracts/libraries/models/LibScheduledReleaseBalance.sol` | 264 |
-| Party B `manualSync` auto-set | `contracts/facets/Control/ControlFacet.sol` | 397 |
-| Counterparty solvency helper | `contracts/libraries/models/LibParty.sol` | n/a |
+| Concern                                                   | File                                                        | Line  |
+| --------------------------------------------------------- | ----------------------------------------------------------- | ----- |
+| Two-bucket entry struct                                   | `contracts/types/BalanceTypes.sol`                          | 24    |
+| Balance container                                         | `contracts/types/BalanceTypes.sol`                          | 46    |
+| `scheduledAdd` (entry/branching)                          | `contracts/libraries/models/LibScheduledReleaseBalance.sol` | 91    |
+| `instantIsolatedAdd`                                      | `contracts/libraries/models/LibScheduledReleaseBalance.sol` | 128   |
+| `subForCounterParty` (drain order)                        | `contracts/libraries/models/LibScheduledReleaseBalance.sol` | 151   |
+| `_sync` (core logic)                                      | `contracts/libraries/models/LibScheduledReleaseBalance.sol` | 302   |
+| `syncAll` (reverse iteration)                             | `contracts/libraries/models/LibScheduledReleaseBalance.sol` | 287   |
+| `addCounterParty` (cap + reinit)                          | `contracts/libraries/models/LibScheduledReleaseBalance.sol` | 375   |
+| `tryRemoveCounterParty` (open-trade gate)                 | `contracts/libraries/models/LibScheduledReleaseBalance.sol` | 400   |
+| `manualSync` storage                                      | `contracts/storages/AccountStorage.sol`                     | 19    |
+| `releaseIntervals` / `defaultReleaseInterval`             | `contracts/storages/AccountStorage.sol`                     | 16-17 |
+| `maxConnectedCounterParties`                              | `contracts/storages/AccountStorage.sol`                     | 18    |
+| `syncAll` from `internalTransfer`                         | `contracts/libraries/core/LibBalanceOperations.sol`         | 73    |
+| `syncAll` from `initiateWithdraw` (gated by `manualSync`) | `contracts/libraries/core/LibBalanceOperations.sol`         | 119   |
+| `cancelWithdraw` re-credits as `DEPOSIT`                  | `contracts/libraries/core/LibBalanceOperations.sol`         | 239   |
+| `syncBalances` public surface                             | `contracts/facets/Account/AccountFacet.sol`                 | 252   |
+| `allocateBalance` (free balance only)                     | `contracts/libraries/models/LibScheduledReleaseBalance.sol` | 249   |
+| `deallocateBalance` (cross → free)                        | `contracts/libraries/models/LibScheduledReleaseBalance.sol` | 264   |
+| Party B `manualSync` auto-set                             | `contracts/facets/Control/ControlFacet.sol`                 | 397   |
+| Counterparty solvency helper                              | `contracts/libraries/models/LibParty.sol`                   | n/a   |

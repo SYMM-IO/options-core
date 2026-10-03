@@ -219,8 +219,10 @@ export function shouldBehaveLikeControlFacet(): void {
 		expect(storedConfig.oracleId).to.equal(activeConfig.oracleId)
 		expect(await context.viewFacet.isManualSync(partyB.address)).to.equal(true)
 
-		await expect(context.controlFacet.setPartyBSupportedSymbolTypes(partyB.address, [1, 2], [true]))
-			.to.be.revertedWithCustomError(context.controlFacet, "MismatchedLengths")
+		await expect(context.controlFacet.setPartyBSupportedSymbolTypes(partyB.address, [1, 2], [true])).to.be.revertedWithCustomError(
+			context.controlFacet,
+			"MismatchedLengths",
+		)
 		await expect(context.controlFacet.setPartyBSupportedSymbolTypes(partyB.address, [1, 2], [true, false]))
 			.to.emit(context.controlFacet, "PartyBSupportedSymbolTypesUpdated")
 			.withArgs(partyB.address, 1, true)
@@ -239,8 +241,10 @@ export function shouldBehaveLikeControlFacet(): void {
 		await expect(context.controlFacet.connect(suspender).suspendAddresses([user1.address], [true]))
 			.to.be.revertedWithCustomError(context.controlFacet, "MissingRole")
 			.withArgs(suspender.address, role("SUSPENDER_ROLE"))
-		await expect(context.controlFacet.suspendAddresses([user1.address, user2.address], [true]))
-			.to.be.revertedWithCustomError(context.controlFacet, "MismatchedLengths")
+		await expect(context.controlFacet.suspendAddresses([user1.address, user2.address], [true])).to.be.revertedWithCustomError(
+			context.controlFacet,
+			"MismatchedLengths",
+		)
 		await expect(context.controlFacet.suspendAddresses([user1.address, ZeroAddress], [true, false]))
 			.to.be.revertedWithCustomError(context.controlFacet, "ZeroAddress")
 			.withArgs("user")
@@ -250,9 +254,7 @@ export function shouldBehaveLikeControlFacet(): void {
 			.withArgs(user1.address, true)
 			.and.to.emit(context.controlFacet, "AddressSuspended")
 			.withArgs(user2.address, false)
-		await expect(context.controlFacet.suspendWithdrawal(44, true))
-			.to.emit(context.controlFacet, "WithdrawalSuspended")
-			.withArgs(44, true)
+		await expect(context.controlFacet.suspendWithdrawal(44, true)).to.emit(context.controlFacet, "WithdrawalSuspended").withArgs(44, true)
 
 		expect(await context.viewFacet.isAddressSuspended(user1.address)).to.equal(true)
 		expect(await context.viewFacet.isAddressSuspended(user2.address)).to.equal(false)

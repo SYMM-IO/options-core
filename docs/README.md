@@ -33,10 +33,10 @@ flowchart LR
 
 > [!tip] Pick your path
 >
-> -   **First-time reader** → start with [[architecture]], then walk one [[open-intents|flow]] end to end.
-> -   **Integrator / SDK author** → [[facets]] and [[events]].
-> -   **Auditor** → [[security]] alongside the per-flow docs.
-> -   **Operator** → [[deployment-and-operations]] and [[roles-and-pauses]].
+> - **First-time reader** → start with [[architecture]], then walk one [[open-intents|flow]] end to end.
+> - **Integrator / SDK author** → [[facets]] and [[events]].
+> - **Auditor** → [[security]] alongside the per-flow docs.
+> - **Operator** → [[deployment-and-operations]] and [[roles-and-pauses]].
 
 ## Top-Level Documents
 
@@ -56,7 +56,7 @@ End-to-end walkthroughs of each major lifecycle, with state machines, sequence d
 | [[account-balances]]              | Deposits, withdrawals (express, virtual, suspended), internal/external transfers, allocation, reserve.           |
 | [[open-intents]]                  | Party A intent creation, Party B lock/fill, deferred Party B sell escrow, partial fills, fees, premium, cancels. |
 | [[close-and-settlement]]          | Close intents, fills, settlement (PnL + exercise fees), trade NFTs, transfers.                                   |
-| [[instant-actions]]               | Party A↔Party B binding, instant action mode, MultiAccount, SymmioPartyA/B, InstantLayer EIP-712 batches.       |
+| [[instant-actions]]               | Party A↔Party B binding, instant action mode, MultiAccount, SymmioPartyA/B, InstantLayer EIP-712 batches.        |
 | [[liquidation-and-force-actions]] | Force cancellations, flag/liquidate flows, confiscation/distribution, intent cancellation in liquidation.        |
 
 ## Concepts (cross-cutting deep dives)
@@ -81,12 +81,12 @@ End-to-end walkthroughs of each major lifecycle, with state machines, sequence d
 
 ## Core Actors
 
--   **Party A** — the trader who owns open intents and trades. Either an EOA or a `SymmioPartyA` account managed by `MultiAccount`.
--   **Party B** — an active market maker / solver address configured through `ControlFacet.setPartyBConfig`.
--   **Clearing house** — address holding `CLEARING_HOUSE_ROLE` that drives liquidation flows.
--   **Admin & managers** — role bearers that configure collateral, symbols, oracles, fees, pauses, Party B settings, and emergency controls. See [[roles-and-pauses]].
--   **InstantLayer operator** — address with `OPERATOR_ROLE` on `InstantLayer` that executes signed Party A and Party B operations.
--   **Affiliates** — registered addresses that receive a configurable share of fees on intents that name them.
+- **Party A** — the trader who owns open intents and trades. Either an EOA or a `SymmioPartyA` account managed by `MultiAccount`.
+- **Party B** — an active market maker / solver address configured through `ControlFacet.setPartyBConfig`.
+- **Clearing house** — address holding `CLEARING_HOUSE_ROLE` that drives liquidation flows.
+- **Admin & managers** — role bearers that configure collateral, symbols, oracles, fees, pauses, Party B settings, and emergency controls. See [[roles-and-pauses]].
+- **InstantLayer operator** — address with `OPERATOR_ROLE` on `InstantLayer` that executes signed Party A and Party B operations.
+- **Affiliates** — registered addresses that receive a configurable share of fees on intents that name them.
 
 ## High-Level Map
 
@@ -131,8 +131,8 @@ The repository-root `README.md` is intentionally minimal — detailed behavior l
 
 ## Quick Links
 
--   Facet selectors and upgrade flow: [[architecture#3. Upgrades|Architecture — Upgrades]]
--   Trust assumptions and invariants: [[security]]
--   Adding a new symbol or oracle: [[facets]] (`ControlFacet`)
--   Tracing a settlement: [[close-and-settlement]] → [[oracle-and-signatures]]
--   Writing a behavior test: [[testing]]
+- Facet selectors and upgrade flow: [[architecture#3. Upgrades|Architecture — Upgrades]]
+- Trust assumptions and invariants: [[security]]
+- Adding a new symbol or oracle: [[facets]] (`ControlFacet`)
+- Tracing a settlement: [[close-and-settlement]] → [[oracle-and-signatures]]
+- Writing a behavior test: [[testing]]

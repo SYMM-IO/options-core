@@ -16,33 +16,33 @@ This document is the canonical reference for every Solidity struct and enum defi
 
 ## Contents
 
--   [Types](#types)
-    -   [BaseTypes](#basetypes)
-    -   [BalanceTypes](#balancetypes)
-    -   [IntentTypes](#intenttypes)
-    -   [TradeTypes](#tradetypes)
-    -   [SymbolTypes](#symboltypes)
-    -   [LiquidationTypes](#liquidationtypes)
-    -   [WithdrawTypes](#withdrawtypes)
-    -   [MuonTypes](#muontypes)
-    -   [Trade ↔ Intent Relationships](#trade--intent-relationships)
--   [Storage](#storage)
-    -   [AppStorage](#appstorage)
-    -   [AccountStorage](#accountstorage)
-    -   [OpenIntentStorage](#openintentstorage)
-    -   [CloseIntentStorage](#closeintentstorage)
-    -   [TradeStorage](#tradestorage)
-    -   [SymbolStorage](#symbolstorage)
-    -   [FeeManagementStorage](#feemanagementstorage)
-    -   [LiquidationStorage](#liquidationstorage)
-    -   [CounterPartyRelationsStorage](#counterpartyrelationsstorage)
-    -   [StateControlStorage](#statecontrolstorage)
-    -   [AccessControlStorage](#accesscontrolstorage)
--   [Conventions](#conventions)
-    -   [Decimal Normalization](#decimal-normalization)
-    -   [Time Units](#time-units)
-    -   [Price, Quantity, Premium, Margin](#price-quantity-premium-margin)
-    -   [Identifier Counters](#identifier-counters)
+- [Types](#types)
+    - [BaseTypes](#basetypes)
+    - [BalanceTypes](#balancetypes)
+    - [IntentTypes](#intenttypes)
+    - [TradeTypes](#tradetypes)
+    - [SymbolTypes](#symboltypes)
+    - [LiquidationTypes](#liquidationtypes)
+    - [WithdrawTypes](#withdrawtypes)
+    - [MuonTypes](#muontypes)
+    - [Trade ↔ Intent Relationships](#trade--intent-relationships)
+- [Storage](#storage)
+    - [AppStorage](#appstorage)
+    - [AccountStorage](#accountstorage)
+    - [OpenIntentStorage](#openintentstorage)
+    - [CloseIntentStorage](#closeintentstorage)
+    - [TradeStorage](#tradestorage)
+    - [SymbolStorage](#symbolstorage)
+    - [FeeManagementStorage](#feemanagementstorage)
+    - [LiquidationStorage](#liquidationstorage)
+    - [CounterPartyRelationsStorage](#counterpartyrelationsstorage)
+    - [StateControlStorage](#statecontrolstorage)
+    - [AccessControlStorage](#accesscontrolstorage)
+- [Conventions](#conventions)
+    - [Decimal Normalization](#decimal-normalization)
+    - [Time Units](#time-units)
+    - [Price, Quantity, Premium, Margin](#price-quantity-premium-margin)
+    - [Identifier Counters](#identifier-counters)
 
 ## Types
 
@@ -725,27 +725,27 @@ Readers: every facet via `Accessibility` modifiers, plus `ViewFacet`.
 
 ### Decimal Normalization
 
--   Internal accounting is denominated in 18 decimals across balances, prices, premiums, maintenance margin, fees and PnL.
--   Conversion happens at protocol I/O boundaries through `LibDecimals` (`contracts/libraries/utils/LibDecimals.sol`):
-    -   `normalizeAmount(token, amount)` — multiplies by `1e18` and divides by `10**token.decimals()` when funds enter the system (deposits, signature payloads denominated in token units, etc.).
-    -   `denormalizeAmount(token, amount)` — inverse, used when funds leave (withdrawals, ERC-20 transfers).
--   Fee fractions inside `Fee.openFee` / `Fee.closeFee` and `ExerciseFee.rate` are expressed as 1e18-scaled fractions (with `1e18` representing 100%; `ExerciseFee.cap` is in absolute collateral, 18 decimals).
+- Internal accounting is denominated in 18 decimals across balances, prices, premiums, maintenance margin, fees and PnL.
+- Conversion happens at protocol I/O boundaries through `LibDecimals` (`contracts/libraries/utils/LibDecimals.sol`):
+    - `normalizeAmount(token, amount)` — multiplies by `1e18` and divides by `10**token.decimals()` when funds enter the system (deposits, signature payloads denominated in token units, etc.).
+    - `denormalizeAmount(token, amount)` — inverse, used when funds leave (withdrawals, ERC-20 transfers).
+- Fee fractions inside `Fee.openFee` / `Fee.closeFee` and `ExerciseFee.rate` are expressed as 1e18-scaled fractions (with `1e18` representing 100%; `ExerciseFee.cap` is in absolute collateral, 18 decimals).
 
 ### Time Units
 
--   All timestamps are unix seconds (`block.timestamp`).
--   Duration parameters in `AppStorage` (`partyADeallocateCooldown`, `partyBDeallocateCooldown`, `forceCancelOpenIntentTimeout`, `forceCancelCloseIntentTimeout`, `partyBExclusiveWindow`, `settlementPriceSigValidTime`, `upnlSigValidTime`) and in `CounterPartyRelationsStorage` (`unbindingCooldown`, `deactiveInstantActionModeCooldown`) are in seconds.
--   `ScheduledReleaseEntry.releaseInterval` is in seconds; `lastTransitionTimestamp` is interval-aligned.
--   Validity windows for Muon payloads compare `block.timestamp - sig.timestamp` against the configured window.
+- All timestamps are unix seconds (`block.timestamp`).
+- Duration parameters in `AppStorage` (`partyADeallocateCooldown`, `partyBDeallocateCooldown`, `forceCancelOpenIntentTimeout`, `forceCancelCloseIntentTimeout`, `partyBExclusiveWindow`, `settlementPriceSigValidTime`, `upnlSigValidTime`) and in `CounterPartyRelationsStorage` (`unbindingCooldown`, `deactiveInstantActionModeCooldown`) are in seconds.
+- `ScheduledReleaseEntry.releaseInterval` is in seconds; `lastTransitionTimestamp` is interval-aligned.
+- Validity windows for Muon payloads compare `block.timestamp - sig.timestamp` against the configured window.
 
 ### Price, Quantity, Premium, Margin
 
--   `OpenIntent.price`, `CloseIntent.price`, `Trade.openedPrice` and `Trade.settledPrice` are premium prices per quantity unit, denominated in collateral (18 decimals).
--   `TradeAgreements.strikePrice` is in collateral (18 decimals).
--   `TradeAgreements.quantity` is the option contract size in 18-decimal base units; partial fills track `filledAmount` and may produce a child `OpenIntent` with `parentId` set.
--   `TradeAgreements.mm` is the maintenance margin per quantity unit; for SELL trades it is locked into the seller's `CrossEntry.totalMM` against the chosen Party B.
--   `FeeStructure.tokenPriceInCollateral` snapshots the fee-token price at intent creation and is used to convert fee-token amounts to collateral on settlement.
--   Liquidation `upnl` and `confiscatedAmount`/`distributedAmount` are 18-decimal collateral amounts; collateral USD price snapshots come from the Muon-signed payload.
+- `OpenIntent.price`, `CloseIntent.price`, `Trade.openedPrice` and `Trade.settledPrice` are premium prices per quantity unit, denominated in collateral (18 decimals).
+- `TradeAgreements.strikePrice` is in collateral (18 decimals).
+- `TradeAgreements.quantity` is the option contract size in 18-decimal base units; partial fills track `filledAmount` and may produce a child `OpenIntent` with `parentId` set.
+- `TradeAgreements.mm` is the maintenance margin per quantity unit; for SELL trades it is locked into the seller's `CrossEntry.totalMM` against the chosen Party B.
+- `FeeStructure.tokenPriceInCollateral` snapshots the fee-token price at intent creation and is used to convert fee-token amounts to collateral on settlement.
+- Liquidation `upnl` and `confiscatedAmount`/`distributedAmount` are 18-decimal collateral amounts; collateral USD price snapshots come from the Muon-signed payload.
 
 ### Identifier Counters
 

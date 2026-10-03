@@ -17,18 +17,18 @@ Three fee events run during a trade's lifecycle in Options Core: an **open fee**
 
 ## Contents
 
--   [Overview](#overview)
--   [FeeStructure Type](#feestructure-type)
--   [Fee Token Vs Collateral Token](#fee-token-vs-collateral-token)
--   [Open Fee](#open-fee)
--   [Close Fee](#close-fee)
--   [Exercise Fee](#exercise-fee)
--   [Affiliate Model](#affiliate-model)
--   [Solver Fee](#solver-fee)
--   [Default Fee Collector Lifecycle](#default-fee-collector-lifecycle)
--   [Numeric Example](#numeric-example)
--   [Errors Reference](#errors-reference)
--   [Related Code Map](#related-code-map)
+- [Overview](#overview)
+- [FeeStructure Type](#feestructure-type)
+- [Fee Token Vs Collateral Token](#fee-token-vs-collateral-token)
+- [Open Fee](#open-fee)
+- [Close Fee](#close-fee)
+- [Exercise Fee](#exercise-fee)
+- [Affiliate Model](#affiliate-model)
+- [Solver Fee](#solver-fee)
+- [Default Fee Collector Lifecycle](#default-fee-collector-lifecycle)
+- [Numeric Example](#numeric-example)
+- [Errors Reference](#errors-reference)
+- [Related Code Map](#related-code-map)
 
 ## Overview
 
@@ -119,8 +119,8 @@ Normal fee locks are released by `unlockFees()` on cancel, expire, and immediate
 
 For normal intents, `fillOpenIntent` first calls `intent.unlockFees()` and then `intent.getFeesFromUser(price)`. `getFeesFromUser` runs `_handleFees(self, FeeOp.Subtract, price)`, which subtracts each component from Party A's `feeToken` balance using:
 
--   `subForCounterParty(partyB, fee, marginType, reason)` for cross or for isolated with a single-Party-B whitelist;
--   `isolatedSub(fee, reason)` for isolated with multi-Party-B whitelist (`contracts/libraries/models/LibOpenIntent.sol:308-314`).
+- `subForCounterParty(partyB, fee, marginType, reason)` for cross or for isolated with a single-Party-B whitelist;
+- `isolatedSub(fee, reason)` for isolated with multi-Party-B whitelist (`contracts/libraries/models/LibOpenIntent.sol:308-314`).
 
 Deferred Party B sells first consume escrow for the filled slice: the pro-rata isolated fee lock is unlocked, and the actual fill-price open fee amount is allocated into Party A's cross `feeToken` bucket against the selected Party B. Then `getFeesFromUser(price)` subtracts the fees from that cross bucket like any other cross fill. If the fill is partial, the residual child keeps the remaining `OpenIntentEscrow.feeLockAmount`; if the original intent was already `CANCEL_PENDING`, the residual child is `CANCELED` and the remaining escrow is released immediately.
 
@@ -150,9 +150,9 @@ where `rate_i ∈ { feeStructure.platformFee.openFee, feeStructure.affiliateFee.
 
 Any path that ends a normal intent without a fill calls `unlockFees()`:
 
--   Party-A cancel of a `PENDING` intent (`contracts/libraries/core/LibPartyAOpen.sol:135`).
--   Party-B accepting a `CANCEL_PENDING` intent (`contracts/libraries/core/LibPartyBOpen.sol:155`).
--   `expire()` from a Party A cancel after deadline, a Party B unlock after deadline, or a force-cancel (`contracts/libraries/models/LibOpenIntent.sol:93`).
+- Party-A cancel of a `PENDING` intent (`contracts/libraries/core/LibPartyAOpen.sol:135`).
+- Party-B accepting a `CANCEL_PENDING` intent (`contracts/libraries/core/LibPartyBOpen.sol:155`).
+- `expire()` from a Party A cancel after deadline, a Party B unlock after deadline, or a force-cancel (`contracts/libraries/models/LibOpenIntent.sol:93`).
 
 `unlockFees` reverses the original `_lock` calls one-for-one, so no fee leaks into a collector on these paths.
 
@@ -193,8 +193,8 @@ function calculateExerciseFee(Trade memory self, uint256 settlementPrice, uint25
 
 The fee is the **smaller** of:
 
--   `cap * pnl / 1e18` — fraction of realized PnL.
--   `rate * settlementPrice * openAmount / 1e36` — fraction of notional at settlement.
+- `cap * pnl / 1e18` — fraction of realized PnL.
+- `rate * settlementPrice * openAmount / 1e36` — fraction of notional at settlement.
 
 Validation at intent creation enforces `exerciseFee.cap ≤ 1e18` (`contracts/libraries/core/LibPartyAOpen.sol:62`); there is no on-chain bound on `rate`.
 
@@ -230,8 +230,8 @@ The fee subtraction uses `subForCounterParty`, which enforces a non-negative res
 
 Two roles guard affiliate state (`contracts/libraries/core/LibAccessibility.sol:17-18`):
 
--   `AFFILIATE_MANAGER_ROLE` — toggles `affiliateStatus[affiliate]` and sets `affiliateFeeCollector[affiliate]` (`contracts/facets/Control/ControlFacet.sol:344-358`).
--   `AFFILIATE_FEE_MANAGER_ROLE` (or the affiliate itself) — sets `affiliateFees[affiliate][symbolId]` via `setAffiliateFees`, gated additionally by `SETTER_ROLE` (`contracts/facets/Control/ControlFacet.sol:366-381`).
+- `AFFILIATE_MANAGER_ROLE` — toggles `affiliateStatus[affiliate]` and sets `affiliateFeeCollector[affiliate]` (`contracts/facets/Control/ControlFacet.sol:344-358`).
+- `AFFILIATE_FEE_MANAGER_ROLE` (or the affiliate itself) — sets `affiliateFees[affiliate][symbolId]` via `setAffiliateFees`, gated additionally by `SETTER_ROLE` (`contracts/facets/Control/ControlFacet.sol:366-381`).
 
 An open intent passes validation iff `affiliateStatus[affiliate] || affiliate == address(0)` (`contracts/libraries/core/LibPartyAOpen.sol:68`).
 
@@ -274,8 +274,8 @@ solverFeeCollectorBalance.setup(intent.partyB, feeToken);
 
 ### Isolated vs cross routing
 
--   `MarginType.ISOLATED` — credited via `instantIsolatedAdd(fee, SOLVER_FEE)`. The amount is immediately spendable from Party B's isolated balance for that token.
--   `MarginType.CROSS` — credited via `scheduledAdd(intent.partyA, fee, CROSS, SOLVER_FEE)`. The amount enters Party B's cross schedule against Party A and clears through the standard scheduled-release pipeline.
+- `MarginType.ISOLATED` — credited via `instantIsolatedAdd(fee, SOLVER_FEE)`. The amount is immediately spendable from Party B's isolated balance for that token.
+- `MarginType.CROSS` — credited via `scheduledAdd(intent.partyA, fee, CROSS, SOLVER_FEE)`. The amount enters Party B's cross schedule against Party A and clears through the standard scheduled-release pipeline.
 
 ### Composition with regular Party B balance
 
@@ -295,13 +295,13 @@ Updating the address mid-protocol redirects all **future** fee credits. Already-
 
 Assume an isolated CALL trade with these inputs:
 
--   `symbol.collateral = USDC`, `feeToken = SYMM` (different tokens).
--   `tokenPriceInCollateral = 0.5e18` (1 SYMM = 0.5 USDC at intent creation).
--   `quantity = 10e18`, intent `price = 100e18` (premium per unit).
--   `platformFee.openFee = 0.001e18`, `affiliateFee.openFee = 0.0005e18`, `solverFee.openFee = 0.002e18`.
--   Same close-fee rates.
--   `exerciseFee.cap = 0.05e18`, `exerciseFee.rate = 0.0001e18`.
--   Settlement `settlementPrice = 110e18`, `strikePrice = 100e18`, `collateralPrice = 1e18`.
+- `symbol.collateral = USDC`, `feeToken = SYMM` (different tokens).
+- `tokenPriceInCollateral = 0.5e18` (1 SYMM = 0.5 USDC at intent creation).
+- `quantity = 10e18`, intent `price = 100e18` (premium per unit).
+- `platformFee.openFee = 0.001e18`, `affiliateFee.openFee = 0.0005e18`, `solverFee.openFee = 0.002e18`.
+- Same close-fee rates.
+- `exerciseFee.cap = 0.05e18`, `exerciseFee.rate = 0.0001e18`.
+- Settlement `settlementPrice = 110e18`, `strikePrice = 100e18`, `collateralPrice = 1e18`.
 
 ### Open fee at fill (full quantity, fillPrice = 100e18)
 

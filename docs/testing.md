@@ -18,10 +18,10 @@ This guide describes the Hardhat test suite under `tests/`. It explains how the 
 
 The suite is organized as Mocha behavior groups (`shouldBehaveLike...`) registered from `tests/main.ts:17`. Each group:
 
--   Loads the same fixture (`initializeTestFixture`) through `networkHelpers.loadFixture` (from `tests/connection.ts`), so each `it` starts from a deterministic snapshot.
--   Builds typed `PartyA` / `PartyB` model wrappers around signers (`tests/models/partyA.model.ts`, `tests/models/partyB.model.ts`).
--   Calls facets through the wrapper or directly, then asserts state using `ViewFacet` getters or `revertedWithCustomError` matchers.
--   Composes inputs through `builder-pattern` builders under `tests/models/builders/`.
+- Loads the same fixture (`initializeTestFixture`) through `networkHelpers.loadFixture` (from `tests/connection.ts`), so each `it` starts from a deterministic snapshot.
+- Builds typed `PartyA` / `PartyB` model wrappers around signers (`tests/models/partyA.model.ts`, `tests/models/partyB.model.ts`).
+- Calls facets through the wrapper or directly, then asserts state using `ViewFacet` getters or `revertedWithCustomError` matchers.
+- Composes inputs through `builder-pattern` builders under `tests/models/builders/`.
 
 There are no integration tests against live Muon/oracle infrastructure; signature checks are stubbed via the `FakeOracle` and the `update_sig_checks.py` toggle (see `utils/runTest.sh:1`).
 
@@ -32,37 +32,37 @@ There are no integration tests against live Muon/oracle infrastructure; signatur
 | `npx hardhat test`                                        | Full suite. Reads `TEST_MODE` from env; must equal `UNIT_TEST` (`tests/main.ts:18`).                                                              |
 | `npx hardhat test tests/partyB-open-facet.behavior.ts`    | Single file.                                                                                                                                      |
 | `npx hardhat test tests/deferred-partyb-sell.behavior.ts` | Deferred Party B sell escrow behavior.                                                                                                            |
-| `npx hardhat test --coverage`                              | Built-in Hardhat 3 coverage. Output: `coverage/lcov.info` and `coverage/html`.                                                                    |
-| `npm test`                                                 | Wraps `npx hardhat test` inside `symsec --project options-core run`.                                                                              |
-| `npm run coverage`                                         | Same as `npx hardhat test --coverage`.                                                                                                            |
+| `npx hardhat test --coverage`                             | Built-in Hardhat 3 coverage. Output: `coverage/lcov.info` and `coverage/html`.                                                                    |
+| `npm test`                                                | Wraps `npx hardhat test` inside `symsec --project options-core run`.                                                                              |
+| `npm run coverage`                                        | Same as `npx hardhat test --coverage`.                                                                                                            |
 | `./utils/runTest.sh`                                      | Toggles in-contract `// == SignatureCheck( ==` blocks off, runs `npm test`, restores them (`utils/runTest.sh:1`, `utils/update_sig_checks.py:5`). |
 
 Environment requirements:
 
--   `TEST_MODE=UNIT_TEST` — only mode currently defined in `common/test-mode.enum.ts:1`.
--   `PRIVATE_KEY` is read for non-local networks only; the default in-process network (`default`) does not need it.
--   Mocha timeout is 100,000,000 ms (`hardhat.config.ts`) so long fixture chains do not time out.
+- `TEST_MODE=UNIT_TEST` — only mode currently defined in `common/test-mode.enum.ts:1`.
+- `PRIVATE_KEY` is read for non-local networks only; the default in-process network (`default`) does not need it.
+- Mocha timeout is 100,000,000 ms (`hardhat.config.ts`) so long fixture chains do not time out.
 
 The `npm test` / `npm run compile` scripts rely on the SymSec CLI; without it, drop the wrapper and call `npx hardhat ...` directly. TypeChain runs on compile, so there is no separate typechain script.
 
 ## Test Layout
 
-| Test file                                             | Protocol area                                                                                                                                                           | Flow doc                                 |
-| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| `tests/account-facet.behavior.ts`                     | Deposits, withdrawals, allocations, cross balances, suspension.                                                                                                         | `flows/account-balances.md`              |
-| `tests/partyA-open-facet.behavior.ts`                 | `sendOpenIntent`, `cancelOpenIntent`, `expireOpenIntent`.                                                                                                               | `flows/open-intents.md`                  |
-| `tests/partyB-open-facet.behavior.ts`                 | `lockOpenIntent`, `unlockOpenIntent`, `fillOpenIntent`, `acceptCancelOpenIntent`.                                                                                       | `flows/open-intents.md`                  |
-| `tests/deferred-partyb-sell.behavior.ts`              | Deferred Party B sell escrow: isolated lock, fill conversion to cross, partial fills with residual escrow, cancel/expire/force-cancel release, bound-Party-A rejection. | `flows/open-intents.md`                  |
-| `tests/partyA-close-facet.behavior.ts`                | `sendCloseIntent`, `cancelCloseIntent`, `expireCloseIntent`.                                                                                                            | `flows/close-and-settlement.md`          |
-| `tests/partyB-close-facet.behavior.ts`                | `fillCloseIntent`, `acceptCancelCloseIntent`.                                                                                                                           | `flows/close-and-settlement.md`          |
-| `tests/lib-closeIntent.behavior.ts`                   | `LibCloseIntent` storage operations through `CloseIntentOpsMock`.                                                                                                       | `flows/close-and-settlement.md`          |
-| `tests/trade-settlement.ts`                           | `TradeFacet` settlement, exercise, expiry, NFT sync.                                                                                                                    | `flows/close-and-settlement.md`          |
-| `tests/force-action.behavior.ts`                      | `ForceActionsFacet.forceCancelOpenIntent` and timeouts.                                                                                                                 | `flows/liquidation-and-force-actions.md` |
-| `tests/clearing-house.ts`                             | `ClearingHouseFacet` flagging, liquidation, confiscation.                                                                                                               | `flows/liquidation-and-force-actions.md` |
-| `tests/bridge-facet.behavior.ts`                      | Bridge transfer windows, allowance checks.                                                                                                                              | `flows/account-balances.md`              |
-| `tests/helpers/instant-layer.behavior.ts`             | `InstantLayer` template/batch execution, signed operations.                                                                                                             | `flows/instant-actions.md`               |
-| `tests/helpers/multi-account.behavior.ts`             | `MultiAccount` deploy/forward, ERC-1271, InstantLayer routing.                                                                                                          | `flows/instant-actions.md`               |
-| `tests/helpers/symmio-partyb.behavior.ts`             | `SymmioPartyB` selector restrictions, multicast, approvals.                                                                                                             | `flows/instant-actions.md`               |
+| Test file                                 | Protocol area                                                                                                                                                           | Flow doc                                 |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `tests/account-facet.behavior.ts`         | Deposits, withdrawals, allocations, cross balances, suspension.                                                                                                         | `flows/account-balances.md`              |
+| `tests/partyA-open-facet.behavior.ts`     | `sendOpenIntent`, `cancelOpenIntent`, `expireOpenIntent`.                                                                                                               | `flows/open-intents.md`                  |
+| `tests/partyB-open-facet.behavior.ts`     | `lockOpenIntent`, `unlockOpenIntent`, `fillOpenIntent`, `acceptCancelOpenIntent`.                                                                                       | `flows/open-intents.md`                  |
+| `tests/deferred-partyb-sell.behavior.ts`  | Deferred Party B sell escrow: isolated lock, fill conversion to cross, partial fills with residual escrow, cancel/expire/force-cancel release, bound-Party-A rejection. | `flows/open-intents.md`                  |
+| `tests/partyA-close-facet.behavior.ts`    | `sendCloseIntent`, `cancelCloseIntent`, `expireCloseIntent`.                                                                                                            | `flows/close-and-settlement.md`          |
+| `tests/partyB-close-facet.behavior.ts`    | `fillCloseIntent`, `acceptCancelCloseIntent`.                                                                                                                           | `flows/close-and-settlement.md`          |
+| `tests/lib-closeIntent.behavior.ts`       | `LibCloseIntent` storage operations through `CloseIntentOpsMock`.                                                                                                       | `flows/close-and-settlement.md`          |
+| `tests/trade-settlement.ts`               | `TradeFacet` settlement, exercise, expiry, NFT sync.                                                                                                                    | `flows/close-and-settlement.md`          |
+| `tests/force-action.behavior.ts`          | `ForceActionsFacet.forceCancelOpenIntent` and timeouts.                                                                                                                 | `flows/liquidation-and-force-actions.md` |
+| `tests/clearing-house.ts`                 | `ClearingHouseFacet` flagging, liquidation, confiscation.                                                                                                               | `flows/liquidation-and-force-actions.md` |
+| `tests/bridge-facet.behavior.ts`          | Bridge transfer windows, allowance checks.                                                                                                                              | `flows/account-balances.md`              |
+| `tests/helpers/instant-layer.behavior.ts` | `InstantLayer` template/batch execution, signed operations.                                                                                                             | `flows/instant-actions.md`               |
+| `tests/helpers/multi-account.behavior.ts` | `MultiAccount` deploy/forward, ERC-1271, InstantLayer routing.                                                                                                          | `flows/instant-actions.md`               |
+| `tests/helpers/symmio-partyb.behavior.ts` | `SymmioPartyB` selector restrictions, multicast, approvals.                                                                                                             | `flows/instant-actions.md`               |
 
 Top-level `tests/main.ts` registers every group under the `UNIT_TEST` branch. There is no `describe.only`; CI sets `CI=true`, and Mocha then enables `--forbid-only`, so a stray `.only` fails the run.
 
@@ -149,7 +149,7 @@ Defined in `tests/run-context.ts:29`. Tests destructure the fields they need; co
 | `oracle`                                                                   | `FakeOracle`; `getPrice` returns `1e18`, `verifyTSSAndGW` is a no-op.                                 |
 | `mocks.libCloseIntentMock`                                                 | `CloseIntentOpsMock` for direct library testing (`contracts/libraries/mocks/LibCloseIntentMock.sol`). |
 | `signatureVerifier`                                                        | `SignatureVerifier` registered with the diamond.                                                      |
-| `common.chainId`, `common.diamondAddress`                                  | Chain id and diamond address for the test environment.                                    |
+| `common.chainId`, `common.diamondAddress`                                  | Chain id and diamond address for the test environment.                                                |
 
 ## test-mode.enum.ts
 
@@ -268,20 +268,20 @@ Each `it` starts from the fixture snapshot — there is no manual `snapshot()`/`
 | Balance delta       | Compare `viewFacet.getIsolatedBalance` before/after (`tests/account-facet.behavior.ts:91`).                                        |
 | ERC20 balance delta | `await context.collateral.balanceOf(addr)` before/after.                                                                           |
 | Status enum         | Compare against `IntentStatus.LOCKED`, `TradeStatus.OPENED`, `CloseIntentStatus.PENDING`, etc. from `tests/option-enums.ts:1`.     |
-| Event emission      | Use chai-matchers `.to.emit(facet, "EventName").withArgs(...)`. Note that `.to.be.reverted` is now `.to.revert(ethers)`.                                                                    |
+| Event emission      | Use chai-matchers `.to.emit(facet, "EventName").withArgs(...)`. Note that `.to.be.reverted` is now `.to.revert(ethers)`.           |
 | Time progression    | `await network.provider.send("evm_setNextBlockTimestamp", [t])` or `moveTime(seconds)`.                                            |
 
 ## Coverage
 
 `npx hardhat test --coverage` (or `npm run coverage`) runs the full suite under Hardhat 3's built-in coverage. Output:
 
--   `coverage/lcov.info` — lcov report.
--   `coverage/html` — HTML report.
+- `coverage/lcov.info` — lcov report.
+- `coverage/html` — HTML report.
 
 Gotchas:
 
--   `viaIR` is enabled (`hardhat.config.ts`) but coverage instrumentation falls back to its own pipeline; some inline-assembly branches may report as uncovered even when exercised.
--   Coverage runs are slow — the Mocha timeout is already raised globally to 100,000,000 ms.
+- `viaIR` is enabled (`hardhat.config.ts`) but coverage instrumentation falls back to its own pipeline; some inline-assembly branches may report as uncovered even when exercised.
+- Coverage runs are slow — the Mocha timeout is already raised globally to 100,000,000 ms.
 
 ## Mocks
 
@@ -298,18 +298,18 @@ The fixture deploys all four through dedicated tasks (`deploy:stablecoin`, `depl
 
 ## Known Gaps
 
--   **No fuzz / property-based tests** (no Foundry, no Echidna). Every test is example-based.
--   **No integration with real Muon TSS/gateway**. `FakeOracle.verifyTSSAndGW` is empty; `update_sig_checks.py` further disables in-contract signature checks during the standard run path. End-to-end signature validity is not exercised.
--   **No TradeNFT integration in the fixture**: `MultiAccount` is deployed with `tradenftaddress=ZeroAddress` (`tests/run-context.ts:147`); NFT-flow paths in `TradeFacet.transferTradeFromNFT` are not covered through the fixture.
--   **`partyA.initiateUnbindingFromPartyB` / `completeUnbindingFromPartyB` / `cancelUnbindingFromPartyB`** in `tests/models/partyA.model.ts:57` accept a `partyB` arg but call the facet without it — works because the facet is parameterless, but the API is misleading.
--   No coverage for `BridgeFacet` paths beyond the basic transfer windows.
+- **No fuzz / property-based tests** (no Foundry, no Echidna). Every test is example-based.
+- **No integration with real Muon TSS/gateway**. `FakeOracle.verifyTSSAndGW` is empty; `update_sig_checks.py` further disables in-contract signature checks during the standard run path. End-to-end signature validity is not exercised.
+- **No TradeNFT integration in the fixture**: `MultiAccount` is deployed with `tradenftaddress=ZeroAddress` (`tests/run-context.ts:147`); NFT-flow paths in `TradeFacet.transferTradeFromNFT` are not covered through the fixture.
+- **`partyA.initiateUnbindingFromPartyB` / `completeUnbindingFromPartyB` / `cancelUnbindingFromPartyB`** in `tests/models/partyA.model.ts:57` accept a `partyB` arg but call the facet without it — works because the facet is parameterless, but the API is misleading.
+- No coverage for `BridgeFacet` paths beyond the basic transfer windows.
 
 ## CI Considerations
 
--   `.husky/_/pre-commit:5` runs `npm run precommit`, which is `npm run format && npm run compile && npm test`, each wrapped in `symsec --project options-core run`. Every commit therefore re-runs the full suite.
--   `lint-staged` runs `secretlint` over staged files.
--   There is no GitHub Actions config in this repo; CI is delegated to the SymSec pipeline that owns the `symsec --project options-core` wrapper.
--   `utils/runTest.sh` is the only path that mutates Solidity sources before testing — do not invoke it from CI without ensuring the post-run `update_sig_checks.py 0` step runs even on failure.
+- `.husky/_/pre-commit:5` runs `npm run precommit`, which is `npm run format && npm run compile && npm test`, each wrapped in `symsec --project options-core run`. Every commit therefore re-runs the full suite.
+- `lint-staged` runs `secretlint` over staged files.
+- There is no GitHub Actions config in this repo; CI is delegated to the SymSec pipeline that owns the `symsec --project options-core` wrapper.
+- `utils/runTest.sh` is the only path that mutates Solidity sources before testing — do not invoke it from CI without ensuring the post-run `update_sig_checks.py 0` step runs even on failure.
 
 ## Code Map
 

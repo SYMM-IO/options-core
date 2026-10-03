@@ -2,10 +2,7 @@ import type { HardhatRuntimeEnvironment } from "hardhat/types/hre"
 import { loadAddresses } from "../../scripts/utils/file.js"
 import { requireArg } from "../utils/args.js"
 
-export default async function (
-	{ intentid, quantity, price }: { intentid: string; quantity: string; price: string },
-	hre: HardhatRuntimeEnvironment,
-) {
+export default async function ({ intentid, quantity, price }: { intentid: string; quantity: string; price: string }, hre: HardhatRuntimeEnvironment) {
 	// Validate before connecting, so a missing option never reaches a live network or a keystore prompt.
 	const intentId = BigInt(requireArg(intentid, "intentid"))
 	const fillQuantity = BigInt(requireArg(quantity, "quantity"))
