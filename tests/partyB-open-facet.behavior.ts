@@ -6,13 +6,13 @@ import { RunContext } from "./run-context"
 import { IntentStatus, TradeSide, TradeStatus } from "./option-enums"
 import { openIntentRequestBuilder } from "./models/builders/send-open-intent.builder"
 import { PartyB } from "./models/partyB.model"
-import { ethers, network } from "hardhat"
+import { ethers } from "hardhat"
 import { e } from "../utils/e"
 import { parseUnits, ZeroAddress } from "ethers"
 import { OpenIntentStruct, OpenIntentStructOutput, SymbolStruct } from "../types/contracts/interfaces/ISymmio"
 
 import { MarginType } from "./option-enums"
-import { getLatestBlockTime } from "../utils/time"
+import { getLatestBlockTime } from "./utils/time"
 
 export function shouldBehaveLikePartyBOpenFacet(): void {
 	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyA3: PartyA, partyB1: PartyB, partyB2: PartyB
@@ -172,8 +172,8 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 		it("Should failed when intent deadline reached", async () => {
 			const newBlock = (await getLatestBlockTime()) + 150
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
-			await network.provider.send("evm_mine")
+			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlock])
+			await ethers.provider.send("evm_mine")
 
 			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "IntentExpired")
 		})
@@ -205,7 +205,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		it("Should failed when intent expiration has been passed", async () => {
 			const expireTime = intentExpirationTimestamp + 100
 			const newBlock = (await getLatestBlockTime()) + expireTime
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
+			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlock])
 
 			await expect(partyB1.lockOpenIntent(1)).to.revertedWithCustomError(context.partyBOpenFacet, "ExpirationTimestampPassed")
 		})
@@ -403,16 +403,16 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 		it("Should failed when deadline passed", async () => {
 			const newBlock = (await getLatestBlockTime()) + intentDeadline + 20
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
-			await network.provider.send("evm_mine")
+			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlock])
+			await ethers.provider.send("evm_mine")
 
 			await expect(partyB1.fillOpenIntent(1, 100, 7)).to.revertedWithCustomError(context.partyBOpenFacet, "IntentExpired")
 		})
 
 		it("Should failed when expiration passed", async () => {
 			const newBlock = (await getLatestBlockTime()) + intentExpirationTimestamp + 20
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
-			await network.provider.send("evm_mine")
+			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlock])
+			await ethers.provider.send("evm_mine")
 
 			await expect(partyB1.fillOpenIntent(1, 100, 7)).to.revertedWithCustomError(context.partyBOpenFacet, "ExpirationTimestampPassed")
 		})
@@ -1053,8 +1053,8 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			await context.accountFacet.connect(partyA2.getSigner).initiateWithdraw(context.collateral, partyABalanceBefore, partyA1.address)
 
 			const newBlock = (await getLatestBlockTime()) + 130
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
-			await network.provider.send("evm_mine")
+			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlock])
+			await ethers.provider.send("evm_mine")
 
 			const targetBalanceBefore = await context.collateral.balanceOf(partyA1.address)
 
@@ -1314,7 +1314,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 		it("Should change intent status to EXPIRED when deadline reached", async () => {
 			const newBlock = (await getLatestBlockTime()) + 150
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
+			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlock])
 
 			expect(await partyB1.unlockOpenIntent(1)).to.not.reverted
 			const intent = await context.viewFacet.getOpenIntent(1)
@@ -1473,8 +1473,8 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 			// // some time elapses
 			// let newBlockTimeStamp = (await getLatestBlockTime()) + 20
-			// await network.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
-			// await network.provider.send("evm_mine")
+			// await ethers.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
+			// await ethers.provider.send("evm_mine")
 
 			// // PartyB locks
 			// // expect( await partyB1.lockOpenIntent(1)).not.to.reverted
@@ -1492,8 +1492,8 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			// let lockIsolatedBalancePartyB = await context.viewFacet.getIsolatedBalance(partyB1.getSigner, await context.collateral.getAddress())
 
 			// newBlockTimeStamp = (await getLatestBlockTime()) + 20 // Time passes
-			// await network.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
-			// await network.provider.send("evm_mine")
+			// await ethers.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
+			// await ethers.provider.send("evm_mine")
 
 			// expect(await partyA2.sendCancelOpenIntent(["2", "3"])).not.to.reverted // partyA Cancels some intent
 
@@ -1503,8 +1503,8 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			// let unlockIsolatedBalancePartyB = await context.viewFacet.getIsolatedBalance(partyB1.getSigner, await context.collateral.getAddress())
 
 			// newBlockTimeStamp = (await getLatestBlockTime()) + 20 // Time passes
-			// await network.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
-			// await network.provider.send("evm_mine")
+			// await ethers.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
+			// await ethers.provider.send("evm_mine")
 
 			// expect(await partyB1.acceptCancelOpenIntent(2)).not.to.reverted // partyB Accepts Cancel of some partyA Cancels
 			// expect(await partyB1.acceptCancelOpenIntent(3)).not.to.reverted
@@ -1538,8 +1538,8 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			// }
 
 			// newBlockTimeStamp = (await getLatestBlockTime()) + 140 // Time passes
-			// await network.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
-			// await network.provider.send("evm_mine")
+			// await ethers.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
+			// await ethers.provider.send("evm_mine")
 
 			// expect(await partyB1.unlockOpenIntent(8)).not.to.reverted // what happens to locked intents
 			// expect(await partyB1.unlockOpenIntent(9)).not.to.reverted //

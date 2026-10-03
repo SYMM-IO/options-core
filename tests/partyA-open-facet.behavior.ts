@@ -5,13 +5,13 @@ import { PartyA } from "./models/partyA.model"
 import { RunContext } from "./run-context"
 import { OpenIntent, openIntentRequestBuilder } from "./models/builders/send-open-intent.builder"
 import { PartyB } from "./models/partyB.model"
-import { ethers, network } from "hardhat"
+import { ethers } from "hardhat"
 import { e } from "../utils/e"
 import { ContractEventPayload, parseUnits, ZeroAddress } from "ethers"
 import { IntentStatus, MarginType, TradeSide } from "./option-enums"
 import { CrossEntryStruct, OpenIntentStruct, SymbolStruct } from "../types/contracts/interfaces/ISymmio"
 
-import { getLatestBlockTime } from "../utils/time"
+import { getLatestBlockTime } from "./utils/time"
 
 export function shouldBehaveLikePartyAOpenFacet(): void {
 	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyB1: PartyB, partyB2: PartyB
@@ -1035,8 +1035,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 		it("Should expire when deadline is reached", async function () {
 			let newBlockTimeStamp = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 120
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
-			await network.provider.send("evm_mine")
+			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
+			await ethers.provider.send("evm_mine")
 
 			expect(await partyA1.sendCancelOpenIntent(["1"])).not.to.be.reverted
 			let intent = await context.viewFacet.getOpenIntent(1)
@@ -1290,8 +1290,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			await partyB1.fillOpenIntent(1, e(1), 6)
 
 			let newBlockTimeStamp = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 120
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
-			await network.provider.send("evm_mine")
+			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
+			await ethers.provider.send("evm_mine")
 
 			await expect(partyA1.expireOpenIntent([1, 2, 3])).to.be.revertedWithCustomError(context.partyAOpenFacet, "InvalidState")
 		})
@@ -1300,8 +1300,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			await partyB1.lockOpenIntent(1)
 
 			let newBlockTimeStamp = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 120
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
-			await network.provider.send("evm_mine")
+			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
+			await ethers.provider.send("evm_mine")
 
 			await expect(partyA1.expireOpenIntent([1, 2, 3])).not.to.be.reverted
 
@@ -1315,8 +1315,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			let premium: BigInt = await context.viewFacet.getOpenIntentPremium(1)
 
 			let newBlockTimeStamp = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 120
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
-			await network.provider.send("evm_mine")
+			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
+			await ethers.provider.send("evm_mine")
 			expect(await partyA1.expireOpenIntent([1, 2, 3])).to.be.not.reverted
 
 			let isolatedLocketBalanceLatter = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateral.getAddress())
@@ -1333,8 +1333,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			let premium: BigInt = await context.viewFacet.getOpenIntentPremium(2)
 
 			let newBlockTimeStamp = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 120
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
-			await network.provider.send("evm_mine")
+			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
+			await ethers.provider.send("evm_mine")
 			expect(await partyA1.expireOpenIntent([1, 2])).to.be.not.reverted
 
 			let crossBalanceLatter = await context.viewFacet.getCrossBalance(partyA1.getSigner, await context.collateral.getAddress(), partyB1.address)
@@ -1350,8 +1350,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			let premium: BigInt = await context.viewFacet.getOpenIntentPremium(3)
 
 			let newBlockTimeStamp = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 120
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
-			await network.provider.send("evm_mine")
+			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
+			await ethers.provider.send("evm_mine")
 			expect(await partyA1.expireOpenIntent([1, 3])).to.be.not.reverted
 
 			const intent = await context.viewFacet.getOpenIntent(3)
@@ -1379,8 +1379,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 					parseUnits("1", 18))
 
 			let newBlockTimeStamp = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 120
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
-			await network.provider.send("evm_mine")
+			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
+			await ethers.provider.send("evm_mine")
 			expect(await partyA1.expireOpenIntent([1, 2, 3])).to.be.not.reverted
 
 			let isolatedLocketBalanceLatter = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateralNL.getAddress())
@@ -1407,8 +1407,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 					parseUnits("1", 18))
 
 			let newBlockTimeStamp = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 120
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
-			await network.provider.send("evm_mine")
+			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
+			await ethers.provider.send("evm_mine")
 			expect(await partyA1.expireOpenIntent([1, 2])).to.be.not.reverted
 
 			let crossLocketBalanceLatter = await context.viewFacet.getCrossBalance(

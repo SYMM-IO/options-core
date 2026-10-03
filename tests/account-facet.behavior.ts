@@ -4,11 +4,11 @@ import { initializeTestFixture } from "./initialize-test.fixture"
 import { PartyA } from "./models/partyA.model"
 import { RunContext } from "./run-context"
 import { toUtf8Bytes, ZeroAddress } from "ethers"
-import { ethers, network } from "hardhat"
+import { ethers } from "hardhat"
 import { PartyB } from "./models/partyB.model"
 import { WithdrawStatus } from "./option-enums"
 import { send } from "process"
-import { getLatestBlockTime } from "../utils/time"
+import { getLatestBlockTime } from "./utils/time"
 import { WithdrawStruct } from "../types/contracts/interfaces/ISymmio"
 
 export function shouldBehaveLikeAccountFacet(): void {
@@ -1077,7 +1077,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 			await context.counterPartyRelation.connect(partyA1.getSigner).initiateUnbindingFromPartyB()
 
 			const newBlock = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 120
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
+			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlock])
 
 			await context.counterPartyRelation.connect(partyA1.getSigner).completeUnbindingFromPartyB()
 
@@ -1208,7 +1208,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 
 			await context.counterPartyRelation.connect(partyA1.getSigner).proposeToDeactivateInstantActionMode()
 			const deactivateTime = await context.viewFacet.getInstantActionsModeDeactivateTime(partyA1.address)
-			await network.provider.send("evm_setNextBlockTimestamp", [Number(deactivateTime)])
+			await ethers.provider.send("evm_setNextBlockTimestamp", [Number(deactivateTime)])
 			await context.counterPartyRelation.connect(partyA1.getSigner).deactivateInstantActionMode()
 
 			const senderBalanceBefore = await context.viewFacet.getIsolatedBalance(partyA1.address, collateral)
@@ -1395,7 +1395,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 			await context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)
 			await context.counterPartyRelation.connect(partyA1.getSigner).initiateUnbindingFromPartyB()
 			const newBlock = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 120
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
+			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlock])
 			expect(await context.counterPartyRelation.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.not.reverted
 
 			expect(await context.viewFacet.getBoundPartyB(partyA1.getSigner)).to.be.equal(ZeroAddress)
@@ -1457,7 +1457,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 			await context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)
 			await context.counterPartyRelation.connect(partyA1.getSigner).initiateUnbindingFromPartyB()
 			const newBlock = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 120
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
+			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlock])
 			expect(await context.counterPartyRelation.connect(partyA1.getSigner).cancelUnbindingFromPartyB()).to.be.not.reverted
 
 			expect(await context.viewFacet.getBoundPartyB(partyA1.getSigner)).to.be.equal(context.signers.partyB1)

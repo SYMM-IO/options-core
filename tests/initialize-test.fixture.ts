@@ -1,4 +1,5 @@
-import { ethers, run } from "hardhat"
+import { ethers } from "hardhat"
+import { deployDiamond } from "../tasks/deployment/deploy-lib"
 import { Diamond, FakeOracle, FakeStablecoin, InstantLayer, SignatureVerifier } from "../types"
 import { createRunContext, RunContext } from "./run-context"
 import { e } from "../utils/e"
@@ -7,7 +8,7 @@ import { grantingRoles } from "./granting-roles"
 import { diamondInitialize } from "./diamond-init"
 
 export async function initializeTestFixture(): Promise<RunContext> {
-	const diamond: Diamond = await run("deploy:diamond", true)
+	const diamond: Diamond = await deployDiamond(ethers, false)
 
 	let context = await createRunContext(await diamond.getAddress())
 	context = await grantingRoles(context)

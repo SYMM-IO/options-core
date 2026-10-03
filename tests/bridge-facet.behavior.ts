@@ -4,10 +4,10 @@ import { initializeTestFixture } from "./initialize-test.fixture"
 import { PartyA } from "./models/partyA.model"
 import { RunContext } from "./run-context"
 import { PartyB } from "./models/partyB.model"
-import { ethers, network } from "hardhat"
+import { ethers } from "hardhat"
 import { e } from "../utils/e"
 import { toUtf8Bytes, ZeroAddress } from "ethers"
-import { moveTime } from "../utils/time"
+import { moveTime } from "./utils/time"
 
 export function shouldBehaveLikeBridgeFacet(): void {
 	let context: RunContext, partyA1: PartyA, partyB1: PartyB

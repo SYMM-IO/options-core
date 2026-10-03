@@ -6,10 +6,10 @@ import { RunContext } from "./run-context"
 import { openIntentRequestBuilder } from "./models/builders/send-open-intent.builder"
 import { PartyB } from "./models/partyB.model"
 import { CloseIntentStatus, MarginType, TradeSide, TradeStatus } from "./option-enums"
-import { ethers, network } from "hardhat"
+import { ethers } from "hardhat"
 import { e } from "../utils/e"
 import { CloseIntentStruct, SymbolStruct, TradeStruct } from "../types/contracts/interfaces/ISymmio"
-import { getLatestBlockTime } from "../utils/time"
+import { getLatestBlockTime } from "./utils/time"
 import { parseEther, parseUnits } from "ethers"
 import { closeIntentBuilder } from "./models/builders/close-intent.builder"
 import { CloseIntentOpsMock__factory } from "../types"
@@ -331,8 +331,8 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 
 		it("Should failed when Close Intent is expired", async () => {
 			const newBlock = (await getLatestBlockTime()) + 150
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
-			await network.provider.send("evm_mine")
+			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlock])
+			await ethers.provider.send("evm_mine")
 			//Close Intent Expired
 
 			await expect(partyB1.fillCloseIntent(1, 1, 7)).to.revertedWithCustomError(context.partyBCloseFacet, "IntentExpired")
@@ -364,8 +364,8 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 
 			await partyA1.sendCloseIntent(tradeId, 100, 7, newBlockTime + 180) // longer deadline than option expire
 
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTime + 12])
-			await network.provider.send("evm_mine")
+			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlockTime + 12])
+			await ethers.provider.send("evm_mine")
 
 			const lastCloseId = await context.viewFacet.getLastCloseIntentId()
 			await expect(partyB1.fillCloseIntent(lastCloseId, 1, 7)).to.revertedWithCustomError(context.partyBCloseFacet, "TradeExpired")
@@ -418,8 +418,8 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 
 			// more than 2 intervals pass for schedules
 			let newBlockTime = (await getLatestBlockTime()) + Number(releaseInterval * 2n)
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTime])
-			await network.provider.send("evm_mine")
+			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlockTime])
+			await ethers.provider.send("evm_mine")
 
 			await expect(partyB1.fillCloseIntent(closeIntentID, halfQuantity, price)).to.not.be.reverted
 
@@ -451,8 +451,8 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			expect(partyABalanceAfter - partyABalanceBefore).to.be.equal(partyAProfit / division)
 
 			newBlockTime = Number(scheduleEntry.lastTransitionTimestamp + scheduleEntry.releaseInterval)
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTime])
-			await network.provider.send("evm_mine")
+			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlockTime])
+			await ethers.provider.send("evm_mine")
 
 			expect(scheduleEntry.scheduled).to.be.equal(partyAProfit / division)
 
@@ -462,8 +462,8 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			expect(scheduleEntry.transitioning).to.be.equal(partyAProfit / division)
 
 			newBlockTime = Number(scheduleEntry.lastTransitionTimestamp + scheduleEntry.releaseInterval)
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTime])
-			await network.provider.send("evm_mine")
+			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlockTime])
+			await ethers.provider.send("evm_mine")
 
 			await context.accountFacet.syncBalances(context.collateral, partyA1.getSigner, [partyB1.getSigner])
 			partyABalanceAfter = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral)
@@ -495,8 +495,8 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 
 			// more than 2 intervals pass for schedules
 			let newBlockTime = (await getLatestBlockTime()) + 36
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlockTime])
-			await network.provider.send("evm_mine")
+			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlockTime])
+			await ethers.provider.send("evm_mine")
 
 			await expect(partyB1.fillCloseIntent(closeIntentID, halfQuantity, price)).to.not.be.reverted
 

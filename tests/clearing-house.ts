@@ -6,11 +6,11 @@ import { PartyA } from "./models/partyA.model"
 import { RunContext } from "./run-context"
 import { openIntentRequestBuilder } from "./models/builders/send-open-intent.builder"
 import { PartyB } from "./models/partyB.model"
-import { ethers, network } from "hardhat"
+import { ethers } from "hardhat"
 import { e } from "../utils/e"
 
 import { CloseIntentStruct, LiquidationDetailStruct, SettlementPriceSigStruct, TradeStruct } from "../types/contracts/interfaces/ISymmio"
-import { getLatestBlockTime, moveTime } from "../utils/time"
+import { getLatestBlockTime, moveTime } from "./utils/time"
 import { settlementSigBuilder } from "./models/builders/settlement.builder"
 // import { encodeBytes32String, ZeroAddress } from "ethers/lib.esm"
 import {
@@ -46,8 +46,8 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 		await partyA2.setBalances(context.collateralNL, e(100000), e(1000))
 
 		const newBlock = (await getLatestBlockTime()) + 170
-		await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
-		await network.provider.send("evm_mine")
+		await ethers.provider.send("evm_setNextBlockTimestamp", [newBlock])
+		await ethers.provider.send("evm_mine")
 
 		formatter = new Intl.NumberFormat("en-US", {})
 	})

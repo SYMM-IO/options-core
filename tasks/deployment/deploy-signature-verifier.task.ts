@@ -1,12 +1,4 @@
-import { task, types } from "hardhat/config"
+import { task } from "hardhat/config"
+import { deploySignatureVerifier } from "./deploy-lib"
 
-task("deploy:SignatureVerifier", "Deploys the SignatureVerifier contract").setAction(async ({}, { ethers }) => {
-	console.log("Running deploy:SignatureVerifier")
-
-	const verifierFactory = await ethers.getContractFactory("SignatureVerifier")
-	const verifier = await verifierFactory.deploy()
-	await verifier.waitForDeployment()
-
-	await verifier.deploymentTransaction()!.wait()
-	return verifier
-})
+task("deploy:SignatureVerifier", "Deploys the SignatureVerifier contract").setAction(async (_, { ethers }) => deploySignatureVerifier(ethers))

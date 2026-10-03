@@ -6,11 +6,11 @@ import { PartyA } from "./models/partyA.model"
 import { RunContext } from "./run-context"
 import { openIntentRequestBuilder } from "./models/builders/send-open-intent.builder"
 import { PartyB } from "./models/partyB.model"
-import { ethers, network } from "hardhat"
+import { ethers } from "hardhat"
 import { e } from "../utils/e"
 
 import { CloseIntentStruct, SettlementPriceSigStruct, TradeStruct } from "../types/contracts/interfaces/ISymmio"
-import { getLatestBlockTime, moveTime } from "../utils/time"
+import { getLatestBlockTime, moveTime } from "./utils/time"
 import { settlementSigBuilder } from "./models/builders/settlement.builder"
 import { parseUnits, ZeroAddress } from "ethers"
 import { CloseIntentStatus, MarginType, OptionType, TradeSide, TradeStatus } from "./option-enums"
@@ -48,8 +48,8 @@ export function shouldBehaveLikeSettlementFacet(): void {
 		await partyB1.fillOpenIntent(1, e(100), e(10))
 
 		const newBlock = (await getLatestBlockTime()) + 170
-		await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
-		await network.provider.send("evm_mine")
+		await ethers.provider.send("evm_setNextBlockTimestamp", [newBlock])
+		await ethers.provider.send("evm_mine")
 	})
 
 	describe("executeTrade", async function () {
@@ -163,8 +163,8 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			expect(closeIntentBefore.status).to.equal(CloseIntentStatus.PENDING)
 			expect(tradeBefore.closePendingAmount).to.equal(closeIntentBefore.quantity)
 
-			await network.provider.send("evm_setNextBlockTimestamp", [expirationTimestamp + 1])
-			await network.provider.send("evm_mine")
+			await ethers.provider.send("evm_setNextBlockTimestamp", [expirationTimestamp + 1])
+			await ethers.provider.send("evm_mine")
 
 			const timestamp = await getLatestBlockTime()
 			const priceSig: SettlementPriceSigStruct = {
@@ -304,8 +304,8 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			const trade: TradeStruct = await context.viewFacet.getTrade(tradeID)
 
 			let newBlock = Number(trade.tradeAgreements.expirationTimestamp) + 12
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
-			await network.provider.send("evm_mine")
+			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlock])
+			await ethers.provider.send("evm_mine")
 
 			let tradePremiumSettled = (tradePremium * openAmount) / BigInt(trade.tradeAgreements.quantity)
 
@@ -345,8 +345,8 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			console.log("Party A Balance 7", await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()))
 
 			newBlock = (await getLatestBlockTime()) + Number(releaseInterval) * 2
-			await network.provider.send("evm_setNextBlockTimestamp", [newBlock])
-			await network.provider.send("evm_mine")
+			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlock])
+			await ethers.provider.send("evm_mine")
 
 			await context.accountFacet.syncBalances(context.collateral, partyA2.address, [partyB2.address])
 

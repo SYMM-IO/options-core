@@ -7,7 +7,7 @@ import { openIntentRequestBuilder } from "./models/builders/send-open-intent.bui
 import { IntentStatus, MarginType, TradeSide } from "./option-enums"
 import { RunContext } from "./run-context"
 import { e } from "../utils/e"
-import { getLatestBlockTime } from "../utils/time"
+import { getLatestBlockTime } from "./utils/time"
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 const FIXTURE_PLATFORM_OPEN_FEE = e(0.01)

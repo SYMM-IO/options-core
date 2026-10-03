@@ -1,4 +1,4 @@
-import { ethers, run } from "hardhat"
+import { ethers, upgrades } from "hardhat"
 
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers"
 import {
@@ -25,6 +25,16 @@ import {
 	ViewFacet,
 } from "../types"
 import { ZeroAddress } from "ethers"
+import {
+	deployFakeOracle,
+	deployHookHandler,
+	deployInstantLayer,
+	deployLibMocks,
+	deployMultiAccount,
+	deploySignatureVerifier,
+	deployStablecoin,
+	deploySymmioPartyB,
+} from "../tasks/deployment/deploy-lib"
 
 export class RunContext {
 	accountFacet!: AccountFacet
@@ -91,19 +101,13 @@ export async function createRunContext(diamond: string): Promise<RunContext> {
 		others: [signers[11], signers[12]],
 	}
 
-	const mocks: Map<string, string> = await run("deploy:mocks")
-	const verifier: SignatureVerifier = await run("deploy:SignatureVerifier")
-	const oracle: FakeOracle = await run("deploy:oracle")
-	const hookHandler: MockHookHandler = await run("deploy:hookHandler")
+	const mocks = await deployLibMocks(ethers)
+	const verifier = await deploySignatureVerifier(ethers)
+	const oracle = await deployFakeOracle(ethers)
+	const hookHandler = await deployHookHandler(ethers)
 
-	const stableCoin: FakeStablecoin = await run("deploy:stablecoin", {
-		name: "MyFakeStablecoin",
-		symbol: "FUSD",
-	})
-	const stableCoinNL: FakeStablecoin = await run("deploy:stablecoin", {
-		name: "StablecoinNotListed",
-		symbol: "NLUSD",
-	})
+	const stableCoin = await deployStablecoin(ethers, "MyFakeStablecoin", "FUSD")
+	const stableCoinNL = await deployStablecoin(ethers, "StablecoinNotListed", "NLUSD")
 
 	context.collateral = stableCoin
 	context.collateralNL = stableCoinNL
@@ -136,19 +140,10 @@ export async function createRunContext(diamond: string): Promise<RunContext> {
 		diamondAddress: diamond,
 	}
 
-	const instantLayer: InstantLayer = await run("deploy:InstantLayer", {
-		symmioaddress: context.common.diamondAddress,
-		admin: context.signers.admin.address,
-	})
-	const multiAccount: MultiAccount = await run("deploy:multiAccount", {
-		symmioaddress: context.common.diamondAddress,
-		admin: context.signers.admin.address,
-		tradenftaddress: ZeroAddress,
-	})
-	const symmioPartyB: SymmioPartyB = await run("deploy:symmioPartyB", {
-		symmioaddress: context.common.diamondAddress,
-		admin: context.signers.admin.address,
-	})
+	const admin = context.signers.admin.address
+	const instantLayer = await deployInstantLayer(ethers, context.common.diamondAddress, admin)
+	const multiAccount = await deployMultiAccount(ethers, upgrades, context.common.diamondAddress, admin, ZeroAddress)
+	const symmioPartyB = await deploySymmioPartyB(ethers, upgrades, context.common.diamondAddress, admin)
 	context.multiAccount = multiAccount
 	context.instantLayer = instantLayer
 	context.symmioPartyB = symmioPartyB

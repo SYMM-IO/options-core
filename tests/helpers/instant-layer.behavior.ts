@@ -6,13 +6,13 @@ import { RunContext } from "../run-context"
 import { IntentStatus, TradeSide, TradeStatus } from "../option-enums"
 import { OpenIntent, openIntentRequestBuilder } from "../models/builders/send-open-intent.builder"
 import { PartyB } from "../models/partyB.model"
-import { ethers, network } from "hardhat"
+import { ethers } from "hardhat"
 import { e } from "../../utils/e"
 import { AbiCoder, encodeBytes32String, InterfaceAbi, ZeroAddress, AddressLike, toUtf8Bytes, EthersError, zeroPadValue } from "ethers"
 import { OpenIntentStruct, OpenIntentStructOutput, SymbolStruct, TradeStruct } from "../../types/contracts/interfaces/ISymmio"
 
 import { MarginType } from "../option-enums"
-import { getLatestBlockTime } from "../../utils/time"
+import { getLatestBlockTime } from "../utils/time"
 import { InstantLayer, MultiAccount } from "../../types"
 
 import * as diamond from "../../artifacts/contracts/Diamond.sol/Diamond.json"
@@ -343,8 +343,8 @@ export function shouldBehaveLikeInstantLayer(): void {
 
 		it("Should be failed when input Ops have passed the Deadline ", async () => {
 			const deadline = await getLatestBlockTime()
-			await network.provider.send("evm_setNextBlockTimestamp", [deadline + 24])
-			await network.provider.send("evm_mine")
+			await ethers.provider.send("evm_setNextBlockTimestamp", [deadline + 24])
+			await ethers.provider.send("evm_mine")
 
 			let saltStr: string = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 			const opOpenALocal: InstantLayer.SignedOperationStruct = {
@@ -782,8 +782,8 @@ export function shouldBehaveLikeInstantLayer(): void {
 
 		it("Should be failed when input Ops have passed the Deadline ", async () => {
 			const deadline = await getLatestBlockTime()
-			await network.provider.send("evm_setNextBlockTimestamp", [deadline + 24])
-			await network.provider.send("evm_mine")
+			await ethers.provider.send("evm_setNextBlockTimestamp", [deadline + 24])
+			await ethers.provider.send("evm_mine")
 
 			let saltStr: string = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 			const opOpenALocal: InstantLayer.SignedOperationStruct = {
