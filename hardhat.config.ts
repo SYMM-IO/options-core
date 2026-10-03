@@ -47,8 +47,9 @@ const config: HardhatUserConfig = {
 		tests: "./tests",
 	},
 	solidity: {
-		version: "0.8.19",
+		version: "0.8.25",
 		settings: {
+			evmVersion: "cancun",
 			metadata: {
 				// Not including the metadata hash
 				// https://github.com/paulrberg/hardhat-template/issues/31
