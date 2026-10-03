@@ -71,13 +71,13 @@ function rewriteTest(rel, src) {
 	}
 
 	// Property-style revert assertions become .revert(ethers). (?![A-Za-z]) keeps revertedWith* untouched.
-	const before = (src.match(/\.reverted(?![A-Za-z])/g) || []).length
-	src = src
-		.replace(/\.not\.to\.be\.reverted(?![A-Za-z])/g, ".not.to.revert(ethers)")
-		.replace(/\.to\.not\.be\.reverted(?![A-Za-z])/g, ".to.not.revert(ethers)")
-		.replace(/\.to\.be\.reverted(?![A-Za-z])/g, ".to.revert(ethers)")
-		.replace(/\.not\.reverted(?![A-Za-z])/g, ".not.to.revert(ethers)")
-	const left = (src.match(/\.reverted(?![A-Za-z])/g) || []).length
+	// One rule covers any chain of .not/.to/.be links, including chains split across lines; an odd number of
+	// `not` links negates the assertion.
+	const before = (src.match(/\.\s*reverted(?![A-Za-z])/g) || []).length
+	src = src.replace(/\.((?:\s*(?:not|to|be)\s*\.)*)\s*reverted(?![A-Za-z])/g, (_, links) =>
+		(links.match(/\bnot\b/g) || []).length % 2 ? ".not.to.revert(ethers)" : ".to.revert(ethers)",
+	)
+	const left = (src.match(/\.\s*reverted(?![A-Za-z])/g) || []).length
 	if (left) flags.push(`${rel}: ${left} ".reverted" left unconverted`)
 	if (before > left) need.add("ethers")
 
