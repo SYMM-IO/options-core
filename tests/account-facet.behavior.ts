@@ -1,21 +1,20 @@
-import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers"
+import { ethers, networkHelpers } from "./connection.js"
 import { expect } from "chai"
-import { initializeTestFixture } from "./initialize-test.fixture"
-import { PartyA } from "./models/partyA.model"
-import { RunContext } from "./run-context"
+import { initializeTestFixture } from "./initialize-test.fixture.js"
+import { PartyA } from "./models/partyA.model.js"
+import { RunContext } from "./run-context.js"
 import { toUtf8Bytes, ZeroAddress } from "ethers"
-import { ethers } from "hardhat"
-import { PartyB } from "./models/partyB.model"
-import { WithdrawStatus } from "./option-enums"
+import { PartyB } from "./models/partyB.model.js"
+import { WithdrawStatus } from "./option-enums.js"
 import { send } from "process"
-import { getLatestBlockTime } from "./utils/time"
-import { WithdrawStruct } from "../types/contracts/interfaces/ISymmio"
+import { getLatestBlockTime } from "./utils/time.js"
+import { WithdrawStruct } from "../types/interfaces/ISymmio.js"
 
 export function shouldBehaveLikeAccountFacet(): void {
 	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyB1: PartyB
 
 	beforeEach(async function () {
-		context = await loadFixture(initializeTestFixture)
+		context = await networkHelpers.loadFixture(initializeTestFixture)
 		partyA1 = new PartyA(context, context.signers.partyA1)
 		partyA2 = new PartyA(context, context.signers.partyA2)
 		partyB1 = new PartyB(context, context.signers.partyB1)
@@ -69,7 +68,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 		})
 
 		it("Should fail when Caller not Solvent", async function () {
-			await expect(context.clearingHouse.flagIsolatedPartyBLiquidation(partyB1.address, await context.collateral.getAddress())).not.to.reverted
+			await expect(context.clearingHouse.flagIsolatedPartyBLiquidation(partyB1.address, await context.collateral.getAddress())).not.to.revert(ethers)
 			await expect(
 				context.accountFacet.connect(partyB1.getSigner).deposit(await context.collateral.getAddress(), "100"),
 			).to.be.revertedWithCustomError(context.accountFacet, "NotSolvent")
@@ -89,7 +88,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 		it("Should deposit successfully to its Isolated Balance", async function () {
 			const balanceBefore = await context.viewFacet.getIsolatedBalance(partyA1.address, await context.collateral.getAddress())
 
-			expect(await context.accountFacet.connect(partyA1.getSigner).deposit(await context.collateral.getAddress(), "100")).to.be.not.reverted
+			expect(await context.accountFacet.connect(partyA1.getSigner).deposit(await context.collateral.getAddress(), "100")).not.to.revert(ethers)
 
 			const balanceAfter = await context.viewFacet.getIsolatedBalance(partyA1.address, await context.collateral.getAddress())
 			expect(balanceAfter - balanceBefore).to.be.equal("100")
@@ -98,7 +97,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 		it("Should decrease balance successfully from its Balance", async function () {
 			const balanceBefore = await context.collateral.balanceOf(partyA1.address)
 
-			await expect(context.accountFacet.connect(partyA1.getSigner).deposit(await context.collateral.getAddress(), "100")).to.be.not.reverted
+			await expect(context.accountFacet.connect(partyA1.getSigner).deposit(await context.collateral.getAddress(), "100")).not.to.revert(ethers)
 
 			const balanceAfter = await context.collateral.balanceOf(partyA1.address)
 			expect(balanceBefore - balanceAfter).to.be.equal("100")
@@ -142,7 +141,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 			const balanceBefore = await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress())
 
 			expect(await context.accountFacet.connect(partyA1.getSigner).virtualDepositFor(await context.collateral.getAddress(), partyA2.address, "100"))
-				.to.be.not.reverted
+				.not.to.revert(ethers)
 
 			const balanceAfter = await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress())
 			expect(balanceAfter - balanceBefore).to.be.equal(100)
@@ -152,7 +151,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 			const balanceBefore = await context.collateral.balanceOf(partyA1.address)
 
 			await expect(context.accountFacet.connect(partyA1.getSigner).virtualDepositFor(await context.collateral.getAddress(), partyA2.address, "100"))
-				.to.be.not.reverted
+				.not.to.revert(ethers)
 
 			const balanceAfter = await context.collateral.balanceOf(partyA1.address)
 			console.log("Balance Before:", balanceBefore)
@@ -195,8 +194,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 		it("Should depositFor successfully to Receivers Isolated Balance", async function () {
 			const balanceBefore = await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress())
 
-			expect(await context.accountFacet.connect(partyA1.getSigner).depositFor(await context.collateral.getAddress(), partyA2.address, "100")).to.be
-				.not.reverted
+			expect(await context.accountFacet.connect(partyA1.getSigner).depositFor(await context.collateral.getAddress(), partyA2.address, "100")).not.to.revert(ethers)
 
 			const balanceAfter = await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress())
 			expect(balanceAfter - balanceBefore).to.be.equal("100")
@@ -205,7 +203,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 		it("Should decrease Sender Balance successfully from its Collateral", async function () {
 			const balanceBefore = await context.collateral.balanceOf(partyA1.address)
 
-			await expect(context.accountFacet.connect(partyA1.getSigner).deposit(await context.collateral.getAddress(), "100")).to.be.not.reverted
+			await expect(context.accountFacet.connect(partyA1.getSigner).deposit(await context.collateral.getAddress(), "100")).not.to.revert(ethers)
 
 			const balanceAfter = await context.collateral.balanceOf(partyA1.address)
 			expect(balanceBefore - balanceAfter).to.be.equal("100")
@@ -216,7 +214,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 				await context.accountFacet
 					.connect(partyA1.getSigner)
 					.depositFor(await context.collateral.getAddress(), await context.signers.partyA2.getAddress(), "100"),
-			).to.be.not.reverted
+			).not.to.revert(ethers)
 
 			expect(await context.viewFacet.getIsolatedBalance(partyA1.getSigner, await context.collateral.getAddress())).to.be.equal("100")
 			expect(
@@ -349,7 +347,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 			const receiverBalanceBefore = await context.viewFacet.getIsolatedBalance(partyA2.address, context.collateral)
 
 			await expect(context.accountFacet.connect(partyA1.getSigner).internalTransfer(await context.collateral.getAddress(), partyA2.address, amount))
-				.to.be.not.reverted
+				.not.to.revert(ethers)
 
 			const senderBalanceAfter = await context.viewFacet.getIsolatedBalance(partyA1.address, context.collateral)
 			const receiverBalanceAfter = await context.viewFacet.getIsolatedBalance(partyA2.address, context.collateral)
@@ -363,7 +361,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 			const receiverBalanceBefore = await context.viewFacet.getIsolatedBalance(partyA2.address, context.collateral)
 
 			await expect(context.accountFacet.connect(partyA1.getSigner).internalTransfer(await context.collateral.getAddress(), partyA2.address, amount))
-				.to.be.not.reverted
+				.not.to.revert(ethers)
 
 			const senderBalanceAfter = await context.viewFacet.getIsolatedBalance(partyA1.address, context.collateral)
 			const receiverBalanceAfter = await context.viewFacet.getIsolatedBalance(partyA2.address, context.collateral)
@@ -487,7 +485,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 				context.accountFacet
 					.connect(partyA1.getSigner)
 					.externalTransfer(await context.collateral.getAddress(), partyA2.address, amount, await context.hookHandler.getAddress()),
-			).not.to.be.reverted
+			).not.to.revert(ethers)
 
 			const senderBalanceAfter = await context.viewFacet.getIsolatedBalance(partyA1.address, context.collateral)
 
@@ -506,7 +504,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 				context.accountFacet
 					.connect(partyA1.getSigner)
 					.externalTransfer(await context.collateral.getAddress(), partyA2.address, amount, await context.hookHandler.getAddress()),
-			).to.be.not.reverted
+			).not.to.revert(ethers)
 
 			const targetCollateralBalanceAfter = await context.collateral.balanceOf(await context.hookHandler.getAddress())
 			console.log("Target Collateral Before:", targetCollateralBalanceBefore)
@@ -529,7 +527,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 				context.accountFacet
 					.connect(partyA1.getSigner)
 					.externalTransfer(await context.collateral.getAddress(), context.common.diamondAddress, amount, await context.hookHandler.getAddress()),
-			).to.be.not.reverted
+			).not.to.revert(ethers)
 
 			const senderCollateralBalanceAfter = await context.collateral.balanceOf(context.common.diamondAddress)
 			console.log("Sender Collateral Before:", senderCollateralBalanceBefore)
@@ -644,16 +642,15 @@ export function shouldBehaveLikeAccountFacet(): void {
 		it("Should fail when Sender as Party B not Solvent", async function () {
 			await partyB1.setBalances(context.collateral, "10000", "5000")
 
-			await expect(context.clearingHouse.flagPartyALiquidation(ZeroAddress, partyB1.address, await context.collateral.getAddress())).not.to.reverted
+			await expect(context.clearingHouse.flagPartyALiquidation(ZeroAddress, partyB1.address, await context.collateral.getAddress())).not.to.revert(ethers)
 			await expect(
 				context.accountFacet.connect(partyB1.getSigner).initiateWithdraw(await context.collateral.getAddress(), "100", partyA2.address),
 			).to.be.revertedWithCustomError(context.accountFacet, "NotSolvent")
 		})
 
 		it("Should Pass when Sender as Party A No Solvency Check", async function () {
-			await expect(context.clearingHouse.flagPartyALiquidation(partyA1.address, ZeroAddress, await context.collateral.getAddress())).not.to.reverted
-			await expect(context.accountFacet.connect(partyA1.getSigner).initiateWithdraw(await context.collateral.getAddress(), "100", partyA2.address)).to
-				.not.reverted
+			await expect(context.clearingHouse.flagPartyALiquidation(partyA1.address, ZeroAddress, await context.collateral.getAddress())).not.to.revert(ethers)
+			await expect(context.accountFacet.connect(partyA1.getSigner).initiateWithdraw(await context.collateral.getAddress(), "100", partyA2.address)).not.to.revert(ethers)
 		})
 
 		it("Should Decease Sender Isolated Balance as expected", async function () {
@@ -661,7 +658,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 			const isolatedBalanceBefore = await context.viewFacet.getIsolatedBalance(partyA1.address, await context.collateral.getAddress())
 
 			await expect(context.accountFacet.connect(partyA1.getSigner).initiateWithdraw(await context.collateral.getAddress(), amount, partyA2.address))
-				.to.not.reverted
+				.not.to.revert(ethers)
 
 			const isolatedBalanceAfter = await context.viewFacet.getIsolatedBalance(partyA1.address, await context.collateral.getAddress())
 
@@ -675,14 +672,14 @@ export function shouldBehaveLikeAccountFacet(): void {
 				context.accountFacet
 					.connect(partyA1.getSigner)
 					.initiateWithdraw(await context.collateral.getAddress(), amount, await context.signers.partyA2.getAddress()),
-			).to.be.not.reverted
+			).not.to.revert(ethers)
 
 			const lastWithdraw = await context.viewFacet.getLastWithdrawalId()
 			await expect(
 				context.accountFacet
 					.connect(partyA1.getSigner)
 					.initiateWithdraw(await context.collateral.getAddress(), amount * 2, await context.signers.partyA2.getAddress()),
-			).not.to.be.reverted
+			).not.to.revert(ethers)
 
 			console.log("Last ID:", lastWithdraw)
 			const lastWithdrawAfter = await context.viewFacet.getLastWithdrawalId()
@@ -815,7 +812,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 
 		it("Should withdraw successfully", async function () {
 			const balanceBefore = await context.collateral.balanceOf(context.signers.partyA2)
-			await expect(context.accountFacet.connect(partyA1.getSigner).completeWithdraw(1)).to.be.not.reverted
+			await expect(context.accountFacet.connect(partyA1.getSigner).completeWithdraw(1)).not.to.revert(ethers)
 
 			const withdraw = await context.viewFacet.getWithdrawal(1)
 
@@ -930,7 +927,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 			const userBalance = await context.viewFacet.getIsolatedBalance(withdraw.user, withdraw.collateral)
 			await context.controlFacet.setBalanceLimitPerUser(withdraw.collateral, userBalance)
 
-			await expect(context.accountFacet.connect(partyA1.getSigner).cancelWithdraw(1)).not.to.be.reverted
+			await expect(context.accountFacet.connect(partyA1.getSigner).cancelWithdraw(1)).not.to.revert(ethers)
 		})
 
 		it("Should fail when Sender as Party B not Solvent", async function () {
@@ -940,21 +937,21 @@ export function shouldBehaveLikeAccountFacet(): void {
 				.connect(partyB1.getSigner)
 				.initiateWithdraw(await context.collateral.getAddress(), amount, await context.signers.partyA2.getAddress())
 
-			await expect(context.clearingHouse.flagIsolatedPartyBLiquidation(partyB1.address, await context.collateral.getAddress())).not.to.reverted
+			await expect(context.clearingHouse.flagIsolatedPartyBLiquidation(partyB1.address, await context.collateral.getAddress())).not.to.revert(ethers)
 			await expect(
 				context.accountFacet.connect(partyB1.getSigner).cancelWithdraw(await context.viewFacet.getLastWithdrawalId()),
 			).to.be.revertedWithCustomError(context.accountFacet, "NotSolvent")
 		})
 
 		it("Should Pass when Sender as Party A No Solvency Check", async function () {
-			await expect(context.clearingHouse.flagPartyALiquidation(partyA1.address, ZeroAddress, await context.collateral.getAddress())).not.to.reverted
-			await expect(context.accountFacet.connect(partyA1.getSigner).cancelWithdraw(await context.viewFacet.getLastWithdrawalId())).to.not.reverted
+			await expect(context.clearingHouse.flagPartyALiquidation(partyA1.address, ZeroAddress, await context.collateral.getAddress())).not.to.revert(ethers)
+			await expect(context.accountFacet.connect(partyA1.getSigner).cancelWithdraw(await context.viewFacet.getLastWithdrawalId())).not.to.revert(ethers)
 		})
 
 		it("Should cancel withdraw successfully", async function () {
 			const isolatedBalanceBefore = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral)
 
-			expect(await context.accountFacet.connect(partyA1.getSigner).cancelWithdraw(1)).to.be.not.reverted
+			expect(await context.accountFacet.connect(partyA1.getSigner).cancelWithdraw(1)).not.to.revert(ethers)
 			const withdraw = await context.viewFacet.getWithdrawal(1)
 
 			const isolatedBalanceAfter = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral)
@@ -973,7 +970,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 		})
 
 		it("Should fail when Not with Proper Role", async function () {
-			await expect(context.accountFacet.connect(partyA1.getSigner).suspendWithdraw(1)).to.be.reverted
+			await expect(context.accountFacet.connect(partyA1.getSigner).suspendWithdraw(1)).to.revert(ethers)
 		})
 
 		it("Should fail when status is wrong", async function () {
@@ -982,7 +979,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 		})
 
 		it("Should Pass ...", async function () {
-			await expect(context.accountFacet.suspendWithdraw(1)).not.to.be.reverted
+			await expect(context.accountFacet.suspendWithdraw(1)).not.to.revert(ethers)
 
 			const withdraw = await context.viewFacet.getWithdrawal(await context.viewFacet.getLastWithdrawalId())
 			expect(withdraw.status).to.equal(WithdrawStatus.SUSPENDED)
@@ -998,7 +995,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 		})
 
 		it("Should fail when Not with Proper Role", async function () {
-			await expect(context.accountFacet.connect(partyA1.getSigner).restoreWithdraw(1, 98)).to.be.reverted
+			await expect(context.accountFacet.connect(partyA1.getSigner).restoreWithdraw(1, 98)).to.revert(ethers)
 		})
 
 		it("Should fail when status is wrong", async function () {
@@ -1034,7 +1031,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 
 			await context.accountFacet.suspendWithdraw(1)
 			await context.controlFacet.setInvalidWithdrawalsAmountsPool(partyB1.address)
-			await expect(context.accountFacet.restoreWithdraw(1, withdraw.amount - surplus)).not.to.be.reverted
+			await expect(context.accountFacet.restoreWithdraw(1, withdraw.amount - surplus)).not.to.revert(ethers)
 			withdraw = await context.viewFacet.getWithdrawal(await context.viewFacet.getLastWithdrawalId())
 
 			const PoolBalanceAfter = await context.viewFacet.getIsolatedBalance(partyB1.address, context.collateral)
@@ -1103,7 +1100,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 		})
 
 		it("Should active instance mode successfully", async function () {
-			await expect(context.counterPartyRelation.connect(partyA1.getSigner).activateInstantActionMode()).to.be.not.reverted
+			await expect(context.counterPartyRelation.connect(partyA1.getSigner).activateInstantActionMode()).not.to.revert(ethers)
 			expect(await context.viewFacet.isInstantActionsModeActive(partyA1.getSigner)).to.be.equal(true)
 		})
 	})
@@ -1134,7 +1131,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 		it("Should propose to deactivate instance mode successfully", async function () {
 			await context.counterPartyRelation.connect(partyA1.getSigner).activateInstantActionMode()
 
-			await expect(context.counterPartyRelation.connect(partyA1.getSigner).proposeToDeactivateInstantActionMode()).to.be.not.reverted
+			await expect(context.counterPartyRelation.connect(partyA1.getSigner).proposeToDeactivateInstantActionMode()).not.to.revert(ethers)
 			expect(await context.viewFacet.isInstantActionsModeActive(partyA1.getSigner)).to.be.equal(true)
 
 			const latestBlock = await ethers.provider.getBlock("latest")
@@ -1187,7 +1184,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 		it("Should propose to deactivate instance mode successfully", async function () {
 			await context.counterPartyRelation.connect(partyA1.getSigner).activateInstantActionMode()
 
-			expect(await context.counterPartyRelation.connect(partyA1.getSigner).proposeToDeactivateInstantActionMode()).to.be.not.reverted
+			expect(await context.counterPartyRelation.connect(partyA1.getSigner).proposeToDeactivateInstantActionMode()).not.to.revert(ethers)
 			expect(await context.viewFacet.isInstantActionsModeActive(partyA1.getSigner)).to.be.equal(true)
 
 			const latestBlock = await ethers.provider.getBlock("latest")
@@ -1277,7 +1274,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 		})
 
 		it("Should bind successfully", async function () {
-			expect(await context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)).to.be.not.reverted
+			expect(await context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)).not.to.revert(ethers)
 
 			expect(await context.viewFacet.getBoundPartyB(partyA1.getSigner)).to.be.equal(await context.signers.partyB1.getAddress())
 		})
@@ -1335,7 +1332,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 
 		it("Should initiate Unbinding From PartyB successfully", async function () {
 			await context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(context.signers.partyB1)
-			expect(await context.counterPartyRelation.connect(partyA1.getSigner).initiateUnbindingFromPartyB()).to.be.not.reverted
+			expect(await context.counterPartyRelation.connect(partyA1.getSigner).initiateUnbindingFromPartyB()).not.to.revert(ethers)
 
 			const latestBlock = await ethers.provider.getBlock("latest")
 			expect(await context.viewFacet.getUnbindingRequestTime(partyA1.getSigner)).to.be.equal(latestBlock?.timestamp)
@@ -1396,7 +1393,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 			await context.counterPartyRelation.connect(partyA1.getSigner).initiateUnbindingFromPartyB()
 			const newBlock = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 120
 			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlock])
-			expect(await context.counterPartyRelation.connect(partyA1.getSigner).completeUnbindingFromPartyB()).to.be.not.reverted
+			expect(await context.counterPartyRelation.connect(partyA1.getSigner).completeUnbindingFromPartyB()).not.to.revert(ethers)
 
 			expect(await context.viewFacet.getBoundPartyB(partyA1.getSigner)).to.be.equal(ZeroAddress)
 			expect(await context.viewFacet.getUnbindingRequestTime(partyA1.getSigner)).to.be.equal(0)
@@ -1458,7 +1455,7 @@ export function shouldBehaveLikeAccountFacet(): void {
 			await context.counterPartyRelation.connect(partyA1.getSigner).initiateUnbindingFromPartyB()
 			const newBlock = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 120
 			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlock])
-			expect(await context.counterPartyRelation.connect(partyA1.getSigner).cancelUnbindingFromPartyB()).to.be.not.reverted
+			expect(await context.counterPartyRelation.connect(partyA1.getSigner).cancelUnbindingFromPartyB()).not.to.revert(ethers)
 
 			expect(await context.viewFacet.getBoundPartyB(partyA1.getSigner)).to.be.equal(context.signers.partyB1)
 			expect(await context.viewFacet.getUnbindingRequestTime(partyA1.getSigner)).to.be.equal(0)

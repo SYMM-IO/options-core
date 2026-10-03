@@ -1,5 +1,5 @@
 import { Builder } from "builder-pattern"
-import { CloseIntentStruct } from "../../../types/contracts/interfaces/ISymmio"
+import { CloseIntentStruct } from "../../../types/interfaces/ISymmio.js"
 import { ZeroAddress } from "ethers"
 
 const defaultCloseIntent: CloseIntentStruct = {

@@ -1,6 +1,6 @@
-import { ethers, upgrades } from "hardhat"
+import { ethers, upgradesApi as upgrades } from "./connection.js"
 
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers"
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types"
 import {
 	AccountFacet,
 	ClearingHouseFacet,
@@ -23,7 +23,7 @@ import {
 	SymmioPartyB,
 	TradeFacet,
 	ViewFacet,
-} from "../types"
+} from "../types/index.js"
 import { ZeroAddress } from "ethers"
 import {
 	deployFakeOracle,
@@ -34,7 +34,7 @@ import {
 	deploySignatureVerifier,
 	deployStablecoin,
 	deploySymmioPartyB,
-} from "../tasks/deployment/deploy-lib"
+} from "../tasks/deployment/deploy-lib.js"
 
 export class RunContext {
 	accountFacet!: AccountFacet

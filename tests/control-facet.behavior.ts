@@ -1,12 +1,11 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers"
+import { ethers, networkHelpers } from "./connection.js"
 import { expect } from "chai"
-import { ethers } from "hardhat"
 import { ZeroAddress, toUtf8Bytes } from "ethers"
-import { e } from "../utils/e"
-import { initializeTestFixture } from "./initialize-test.fixture"
-import { OptionType } from "./option-enums"
-import { PartyA } from "./models/partyA.model"
-import { RunContext } from "./run-context"
+import { e } from "../utils/e.js"
+import { initializeTestFixture } from "./initialize-test.fixture.js"
+import { OptionType } from "./option-enums.js"
+import { PartyA } from "./models/partyA.model.js"
+import { RunContext } from "./run-context.js"
 
 const role = (name: string) => ethers.keccak256(toUtf8Bytes(name))
 
@@ -14,7 +13,7 @@ export function shouldBehaveLikeControlFacet(): void {
 	let context: RunContext
 
 	beforeEach(async function () {
-		context = await loadFixture(initializeTestFixture)
+		context = await networkHelpers.loadFixture(initializeTestFixture)
 	})
 
 	it("gates role administration to DEFAULT_ADMIN_ROLE and emits role events", async function () {

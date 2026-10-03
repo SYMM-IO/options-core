@@ -1,8 +1,8 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers"
-import { RunContext } from "../run-context"
-import { runTx } from "../../utils/tx"
-import { OpenIntent, openIntentRequestBuilder } from "./builders/send-open-intent.builder"
-import { PartyEntity } from "./partyEntitiy"
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types"
+import { RunContext } from "../run-context.js"
+import { runTx } from "../../utils/tx.js"
+import { OpenIntent, openIntentRequestBuilder } from "./builders/send-open-intent.builder.js"
+import { PartyEntity } from "./partyEntitiy.js"
 import { AddressLike, BigNumberish } from "ethers"
 
 export class PartyA extends PartyEntity {

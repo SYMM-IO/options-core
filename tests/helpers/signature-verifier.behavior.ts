@@ -1,15 +1,14 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers"
+import { ethers, networkHelpers } from "../connection.js"
 import { expect } from "chai"
 import { hashMessage } from "ethers"
-import { ethers } from "hardhat"
-import { initializeTestFixture } from "../initialize-test.fixture"
-import { RunContext } from "../run-context"
+import { initializeTestFixture } from "../initialize-test.fixture.js"
+import { RunContext } from "../run-context.js"
 
 export function shouldBehaveLikeSignatureVerifier(): void {
 	let context: RunContext
 
 	beforeEach(async function () {
-		context = await loadFixture(initializeTestFixture)
+		context = await networkHelpers.loadFixture(initializeTestFixture)
 	})
 
 	it("accepts an ECDSA signature from an EOA", async function () {

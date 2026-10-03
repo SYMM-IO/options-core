@@ -1,23 +1,20 @@
-import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers"
+import { ethers, networkHelpers } from "../connection.js"
 import { expect, use } from "chai"
-import { initializeTestFixture } from "../initialize-test.fixture"
-import { PartyA } from "../models/partyA.model"
-import { RunContext } from "../run-context"
-import { IntentStatus, TradeSide, TradeStatus } from "../option-enums"
-import { OpenIntent, openIntentRequestBuilder } from "../models/builders/send-open-intent.builder"
-import { PartyB } from "../models/partyB.model"
-import { ethers } from "hardhat"
-import { e } from "../../utils/e"
+import { initializeTestFixture } from "../initialize-test.fixture.js"
+import { PartyA } from "../models/partyA.model.js"
+import { RunContext } from "../run-context.js"
+import { IntentStatus, TradeSide, TradeStatus } from "../option-enums.js"
+import { OpenIntent, openIntentRequestBuilder } from "../models/builders/send-open-intent.builder.js"
+import { PartyB } from "../models/partyB.model.js"
+import { e } from "../../utils/e.js"
 import { AbiCoder, encodeBytes32String, InterfaceAbi, ZeroAddress, AddressLike, toUtf8Bytes, zeroPadValue } from "ethers"
-import { OpenIntentStruct, OpenIntentStructOutput, SymbolStruct, TradeStruct } from "../../types/contracts/interfaces/ISymmio"
+import { OpenIntentStruct, OpenIntentStructOutput, SymbolStruct, TradeStruct } from "../../types/interfaces/ISymmio.js"
 
-import { MarginType } from "../option-enums"
-import { getLatestBlockTime } from "../utils/time"
-import { InstantLayer, MultiAccount } from "../../types"
+import { MarginType } from "../option-enums.js"
+import { getLatestBlockTime } from "../utils/time.js"
+import { InstantLayer, MultiAccount } from "../../types/index.js"
 
-import * as diamond from "../../artifacts/contracts/Diamond.sol/Diamond.json"
-// import * as partyAOpenIntent from "../artifacts/contracts/facets/PartyAOpen/PartyAOpenFacet.sol/PartyAOpenFacet.json"
-// import * as partyBOpenIntent from "../artifacts/contracts/facets/PartyBOpen/PartyBOpenFacet.sol/PartyBOpenFacet.json"
+import diamond from "../../artifacts/contracts/Diamond.sol/Diamond.json" with { type: "json" }
 
 export function shouldBehaveLikeSymmioPartyB(): void {
 	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyB1: PartyB, partyB2: PartyB
@@ -31,7 +28,7 @@ export function shouldBehaveLikeSymmioPartyB(): void {
 	let request: OpenIntent
 
 	beforeEach(async function () {
-		context = await loadFixture(initializeTestFixture)
+		context = await networkHelpers.loadFixture(initializeTestFixture)
 		partyA1 = new PartyA(context, context.signers.partyA1)
 		partyA2 = new PartyA(context, context.signers.partyA2)
 		partyB1 = new PartyB(context, context.signers.partyB1)
@@ -98,7 +95,7 @@ export function shouldBehaveLikeSymmioPartyB(): void {
 		beforeEach(async function () {})
 
 		it("should set signer", async function () {
-			await expect(context.symmioPartyB.setSigner(partyA1.getSigner)).not.reverted
+			await expect(context.symmioPartyB.setSigner(partyA1.getSigner)).not.to.revert(ethers)
 		})
 	})
 
@@ -301,7 +298,7 @@ export function shouldBehaveLikeSymmioPartyB(): void {
 		// 	// Execute the batch using 1 open Intent signed from the PartyA submitted to PartyB API
 		// 	// Accompanying with a lock and fill signed from PartyB and Finally submitted to Instant Layer
 		// 	const signedOps: InstantLayer.SignedOperationStruct[] = [opOpenA1, opOpenA2]
-		// 	await expect(instantLayer.executeBatch(signedOps)).not.to.be.reverted
+		// 	await expect(instantLayer.executeBatch(signedOps)).not.to.revert(ethers)
 		// 	let intent: OpenIntentStruct = await context.viewFacet.getOpenIntent(1)
 		// 	expect(intent.price).to.be.equal(request.price).to.be.equal(5)
 		// 	expect(intent.tradeAgreements.quantity).to.be.equal(request.quantity).to.equal(e(1))

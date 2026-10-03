@@ -33,7 +33,8 @@ export default defineConfig({
 		default: {
 			type: "edr-simulated",
 			chainType: "l1",
-			allowUnlimitedContractSize: false,
+			// allowUnlimitedContractSize is left unset on purpose: it defaults to false, and leaving it unset lets
+			// `hardhat test --coverage` lift the limit for instrumented bytecode. Setting it explicitly disables that.
 		},
 		polygon: {
 			type: "http",

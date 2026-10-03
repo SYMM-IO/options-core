@@ -1,11 +1,11 @@
-import { ethers } from "hardhat"
-import { deployDiamond } from "../tasks/deployment/deploy-lib"
-import { Diamond, FakeOracle, FakeStablecoin, InstantLayer, SignatureVerifier } from "../types"
-import { createRunContext, RunContext } from "./run-context"
-import { e } from "../utils/e"
-import { OptionType } from "./option-enums"
-import { grantingRoles } from "./granting-roles"
-import { diamondInitialize } from "./diamond-init"
+import { ethers } from "./connection.js"
+import { deployDiamond } from "../tasks/deployment/deploy-lib.js"
+import { Diamond, FakeOracle, FakeStablecoin, InstantLayer, SignatureVerifier } from "../types/index.js"
+import { createRunContext, RunContext } from "./run-context.js"
+import { e } from "../utils/e.js"
+import { OptionType } from "./option-enums.js"
+import { grantingRoles } from "./granting-roles.js"
+import { diamondInitialize } from "./diamond-init.js"
 
 export async function initializeTestFixture(): Promise<RunContext> {
 	const diamond: Diamond = await deployDiamond(ethers, false)

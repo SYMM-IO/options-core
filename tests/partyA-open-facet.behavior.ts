@@ -1,23 +1,22 @@
-import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers"
+import { ethers, networkHelpers } from "./connection.js"
 import { expect } from "chai"
-import { initializeTestFixture } from "./initialize-test.fixture"
-import { PartyA } from "./models/partyA.model"
-import { RunContext } from "./run-context"
-import { OpenIntent, openIntentRequestBuilder } from "./models/builders/send-open-intent.builder"
-import { PartyB } from "./models/partyB.model"
-import { ethers } from "hardhat"
-import { e } from "../utils/e"
+import { initializeTestFixture } from "./initialize-test.fixture.js"
+import { PartyA } from "./models/partyA.model.js"
+import { RunContext } from "./run-context.js"
+import { OpenIntent, openIntentRequestBuilder } from "./models/builders/send-open-intent.builder.js"
+import { PartyB } from "./models/partyB.model.js"
+import { e } from "../utils/e.js"
 import { ContractEventPayload, parseUnits, ZeroAddress } from "ethers"
-import { IntentStatus, MarginType, TradeSide } from "./option-enums"
-import { CrossEntryStruct, OpenIntentStruct, SymbolStruct } from "../types/contracts/interfaces/ISymmio"
+import { IntentStatus, MarginType, TradeSide } from "./option-enums.js"
+import { CrossEntryStruct, OpenIntentStruct, SymbolStruct } from "../types/interfaces/ISymmio.js"
 
-import { getLatestBlockTime } from "./utils/time"
+import { getLatestBlockTime } from "./utils/time.js"
 
 export function shouldBehaveLikePartyAOpenFacet(): void {
 	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyB1: PartyB, partyB2: PartyB
 
 	beforeEach(async function () {
-		context = await loadFixture(initializeTestFixture)
+		context = await networkHelpers.loadFixture(initializeTestFixture)
 
 		await context.controlFacet.setAffiliateStatus(context.signers.others[0], true)
 		partyA1 = new PartyA(context, context.signers.partyA1)
@@ -191,11 +190,11 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.price(7)
 
 			request.affiliate(ZeroAddress)
-			expect(await partyA1.sendOpenIntent(request.build())).to.be.not.reverted
+			expect(await partyA1.sendOpenIntent(request.build())).not.to.revert(ethers)
 
 			request.affiliate(context.signers.others[1])
 			await context.controlFacet.setAffiliateStatus(context.signers.others[1], true)
-			expect(await partyA1.sendOpenIntent(request.build())).to.be.not.reverted
+			expect(await partyA1.sendOpenIntent(request.build())).not.to.revert(ethers)
 
 			await context.controlFacet.setAffiliateStatus(context.signers.others[1], false)
 			await expect(partyA1.sendOpenIntent(request.build())).to.be.revertedWithCustomError(context.partyAOpenFacet, "InvalidAffiliate")
@@ -246,7 +245,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.build()
 
 			await context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(partyB1.getSigner)
-			await expect(partyA1.sendOpenIntent(request)).not.to.be.reverted
+			await expect(partyA1.sendOpenIntent(request)).not.to.revert(ethers)
 		})
 
 		it("Should fail as MSG Sender is in whitelisted partyB", async function () {
@@ -563,7 +562,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: e(0.5), closeFee: e(0.5) }])
 			await context.controlFacet.setSymbolsPlatformFees([1], [{ openFee: e(0.5), closeFee: e(0.5) }])
 
-			await expect(partyALocal.sendOpenIntent(request)).not.to.be.reverted
+			await expect(partyALocal.sendOpenIntent(request)).not.to.revert(ethers)
 
 			console.log("Sender Isolated Balance:", await context.viewFacet.getIsolatedBalance(partyALocal.address, await context.collateral.getAddress()))
 			console.log(
@@ -618,7 +617,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: e(0.5), closeFee: e(0.5) }])
 			await context.controlFacet.setSymbolsPlatformFees([1], [{ openFee: e(0.5), closeFee: e(0.5) }])
 
-			await expect(partyALocal.sendOpenIntent(request)).not.to.be.reverted
+			await expect(partyALocal.sendOpenIntent(request)).not.to.revert(ethers)
 
 			console.log("Sender Isolated Balance:", await context.viewFacet.getIsolatedBalance(partyALocal.address, await context.collateral.getAddress()))
 			console.log(
@@ -653,7 +652,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.price(7)
 				.build()
 
-			expect(await partyA1.sendOpenIntent(request)).to.be.not.reverted
+			expect(await partyA1.sendOpenIntent(request)).not.to.revert(ethers)
 
 			const intent = await context.viewFacet.getOpenIntent(await context.viewFacet.getLastOpenIntentId())
 
@@ -709,7 +708,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 			await context.controlFacet.setDefaultReleaseInterval(12)
 
-			expect(await partyA1.sendOpenIntent(request)).to.be.not.reverted
+			expect(await partyA1.sendOpenIntent(request)).not.to.revert(ethers)
 			const intent = await context.viewFacet.getOpenIntent(await context.viewFacet.getLastOpenIntentId())
 
 			expect(
@@ -737,7 +736,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.strikePrice(e(1))
 				.price(e(7))
 				.build()
-			for (let i = 0; i < intentCount; i++) await expect(partyA1.sendOpenIntent(request)).to.be.not.reverted
+			for (let i = 0; i < intentCount; i++) await expect(partyA1.sendOpenIntent(request)).not.to.revert(ethers)
 
 			const intent = await context.viewFacet.getOpenIntent(await context.viewFacet.getLastOpenIntentId())
 
@@ -778,7 +777,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				partyB1.address,
 			)
 			console.log("Cross Balance Sell Trade Before:", crossBalanceBefore)
-			await expect(partyA1.sendOpenIntent(request)).to.be.not.reverted
+			await expect(partyA1.sendOpenIntent(request)).not.to.revert(ethers)
 			const intent = await context.viewFacet.getOpenIntent(await context.viewFacet.getLastOpenIntentId())
 
 			const crossBalanceAfter: CrossEntryStruct = await context.viewFacet.getCrossBalance(
@@ -811,7 +810,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: e(0.5), closeFee: e(0.5) }])
 			await context.controlFacet.setSymbolsPlatformFees([1], [{ openFee: e(0.5), closeFee: e(0.5) }])
 			const balanceBefore = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, request.feeToken)
-			await expect(partyA1.sendOpenIntent(request)).to.be.not.reverted
+			await expect(partyA1.sendOpenIntent(request)).not.to.revert(ethers)
 			const intent = await context.viewFacet.getOpenIntent(await context.viewFacet.getLastOpenIntentId())
 
 			const balanceAfter = await context.viewFacet.getIsolatedLockedBalance(intent.partyA, intent.feeStructure.feeToken)
@@ -850,7 +849,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			await context.controlFacet.setSymbolsPlatformFees([1], [{ openFee: e(0.5), closeFee: e(0.5) }])
 			await context.controlFacet.setDefaultFeeCollector(context.signers.admin)
 
-			await expect(partyA1.sendOpenIntent(request)).to.be.not.reverted
+			await expect(partyA1.sendOpenIntent(request)).not.to.revert(ethers)
 			const intent = await context.viewFacet.getOpenIntent(await context.viewFacet.getLastOpenIntentId())
 
 			const balance = await context.viewFacet.getCrossBalance(intent.partyA, intent.feeStructure.feeToken, request.partyBsWhiteList[0])
@@ -906,7 +905,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			const collateralLockedBefore = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, symbol.collateral)
 			const feeLockedBefore = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, request.feeToken)
 
-			await expect(partyA1.sendOpenIntent(request)).not.to.be.reverted
+			await expect(partyA1.sendOpenIntent(request)).not.to.revert(ethers)
 
 			const intentId = await context.viewFacet.getLastOpenIntentId()
 			const intent = await context.viewFacet.getOpenIntent(intentId)
@@ -932,7 +931,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			)
 			expect(await context.viewFacet.getIsolatedLockedBalance(partyA1.address, request.feeToken)).to.equal(feeLockedBefore + lockedFee)
 
-			await expect(partyA1.sendCancelOpenIntent([intentId])).not.to.be.reverted
+			await expect(partyA1.sendCancelOpenIntent([intentId])).not.to.revert(ethers)
 
 			const canceledIntent = await context.viewFacet.getOpenIntent(intentId)
 			const releasedEscrow = await context.viewFacet.getOpenIntentEscrow(intentId)
@@ -994,9 +993,9 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.price(8)
 				.build()
 
-			await expect(partyA1.sendOpenIntent(request)).not.to.be.reverted
-			await expect(partyA1.sendOpenIntent(requestCrossBuy)).not.to.be.reverted
-			await expect(partyA1.sendOpenIntent(requestCrossSell)).not.to.be.reverted
+			await expect(partyA1.sendOpenIntent(request)).not.to.revert(ethers)
+			await expect(partyA1.sendOpenIntent(requestCrossBuy)).not.to.revert(ethers)
+			await expect(partyA1.sendOpenIntent(requestCrossSell)).not.to.revert(ethers)
 		})
 
 		it("Should be failed when Sender address is Suspended", async () => {
@@ -1028,8 +1027,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 		it("Should fail when not in appropriate state", async function () {
 			await context.controlFacet.setPartyBSupportedSymbolTypes(partyB1.getSigner.address, [0], [true])
 
-			await expect(partyB1.lockOpenIntent(1)).not.to.be.reverted
-			await expect(partyB1.fillOpenIntent(1, e(100), 6)).not.to.reverted
+			await expect(partyB1.lockOpenIntent(1)).not.to.revert(ethers)
+			await expect(partyB1.fillOpenIntent(1, e(100), 6)).not.to.revert(ethers)
 			await expect(partyA1.sendCancelOpenIntent(["1"])).to.be.revertedWithCustomError(context.partyAOpenFacet, "InvalidState")
 		})
 
@@ -1038,7 +1037,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
 			await ethers.provider.send("evm_mine")
 
-			expect(await partyA1.sendCancelOpenIntent(["1"])).not.to.be.reverted
+			expect(await partyA1.sendCancelOpenIntent(["1"])).not.to.revert(ethers)
 			let intent = await context.viewFacet.getOpenIntent(1)
 			expect(intent.status).to.be.equal(IntentStatus.EXPIRED)
 		})
@@ -1049,7 +1048,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			let isolatedBalance = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral.getAddress())
 			let premium: BigInt = await context.viewFacet.getOpenIntentPremium(1)
 
-			expect(await partyA1.sendCancelOpenIntent(["1"])).to.be.not.reverted
+			expect(await partyA1.sendCancelOpenIntent(["1"])).not.to.revert(ethers)
 
 			let isolatedLocketBalanceLatter = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateral.getAddress())
 			let isolatedBalanceLatter = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral.getAddress())
@@ -1064,7 +1063,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			let crossBalance = await context.viewFacet.getCrossBalance(partyA1.address, await context.collateral.getAddress(), partyB1.address)
 			let premium: BigInt = await context.viewFacet.getOpenIntentPremium(2)
 
-			expect(await partyA1.sendCancelOpenIntent(["2"])).to.be.not.reverted
+			expect(await partyA1.sendCancelOpenIntent(["2"])).not.to.revert(ethers)
 
 			let crossBalanceLatter = await context.viewFacet.getCrossBalance(partyA1.getSigner, await context.collateral.getAddress(), partyB1.address)
 			console.log("Cross Balance Before", crossBalance)
@@ -1078,7 +1077,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			let crossBalance = await context.viewFacet.getCrossBalance(partyA1.address, await context.collateral.getAddress(), partyB1.address)
 			let premium: BigInt = await context.viewFacet.getOpenIntentPremium(3)
 
-			expect(await partyA1.sendCancelOpenIntent(["3"])).to.be.not.reverted
+			expect(await partyA1.sendCancelOpenIntent(["3"])).not.to.revert(ethers)
 
 			const intent = await context.viewFacet.getOpenIntent(3)
 
@@ -1104,7 +1103,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				)) *
 					parseUnits("1", 18))
 
-			expect(await partyA1.sendCancelOpenIntent(["1"])).to.be.not.reverted
+			expect(await partyA1.sendCancelOpenIntent(["1"])).not.to.revert(ethers)
 
 			let isolatedLocketBalanceLatter = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateralNL.getAddress())
 
@@ -1129,7 +1128,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				)) *
 					parseUnits("1", 18))
 
-			expect(await partyA1.sendCancelOpenIntent(["2"])).to.be.not.reverted
+			expect(await partyA1.sendCancelOpenIntent(["2"])).not.to.revert(ethers)
 
 			let crossLocketBalanceLatter = await context.viewFacet.getCrossBalance(
 				partyA1.getSigner,
@@ -1158,10 +1157,10 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.quantity(e(100))
 				.price(7)
 				.build()
-			expect(await partyA1.sendOpenIntent(request)).not.to.be.reverted
-			expect(await partyA1.sendOpenIntent(request)).not.to.be.reverted
+			expect(await partyA1.sendOpenIntent(request)).not.to.revert(ethers)
+			expect(await partyA1.sendOpenIntent(request)).not.to.revert(ethers)
 
-			expect(await partyA1.sendCancelOpenIntent(["2"])).not.to.be.reverted
+			expect(await partyA1.sendCancelOpenIntent(["2"])).not.to.revert(ethers)
 			let activeIntentIds: BigInt[] = await context.viewFacet.getActiveOpenIntentIds(partyA1.getSigner)
 			for (let a of activeIntentIds) {
 				expect(a).not.to.be.equal(2)
@@ -1170,8 +1169,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 		})
 
 		it("Should be change state to cancel_pending when locked", async function () {
-			expect(await partyB1.lockOpenIntent(1)).to.not.reverted
-			expect(await partyA1.sendCancelOpenIntent(["1"])).not.to.be.reverted
+			expect(await partyB1.lockOpenIntent(1)).not.to.revert(ethers)
+			expect(await partyA1.sendCancelOpenIntent(["1"])).not.to.revert(ethers)
 
 			let intent = await context.viewFacet.getOpenIntent(1)
 			expect(intent.status).to.be.equal(IntentStatus.CANCEL_PENDING)
@@ -1179,7 +1178,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 		it("Should update status modifying timestamp", async function () {
 			const latestBlock = await getLatestBlockTime()
-			expect(await partyA1.sendCancelOpenIntent(["1"])).not.to.be.reverted
+			expect(await partyA1.sendCancelOpenIntent(["1"])).not.to.revert(ethers)
 
 			let intent = await context.viewFacet.getOpenIntent(1)
 			expect(intent.statusModifyTimestamp).to.be.approximately(latestBlock, 3)
@@ -1194,7 +1193,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			expect(intent2.status).to.be.equal(IntentStatus.PENDING)
 			expect(intent3.status).to.be.equal(IntentStatus.PENDING)
 
-			expect(await partyA1.sendCancelOpenIntent(["1", "2", "3"])).not.to.be.reverted
+			expect(await partyA1.sendCancelOpenIntent(["1", "2", "3"])).not.to.revert(ethers)
 
 			intent1 = await context.viewFacet.getOpenIntent(1)
 			intent2 = await context.viewFacet.getOpenIntent(2)
@@ -1266,9 +1265,9 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.price(8)
 				.build()
 
-			await expect(partyA1.sendOpenIntent(request)).not.to.be.reverted
-			await expect(partyA1.sendOpenIntent(requestCrossBuy)).not.to.be.reverted
-			await expect(partyA1.sendOpenIntent(requestCrossSell)).not.to.be.reverted
+			await expect(partyA1.sendOpenIntent(request)).not.to.revert(ethers)
+			await expect(partyA1.sendOpenIntent(requestCrossBuy)).not.to.revert(ethers)
+			await expect(partyA1.sendOpenIntent(requestCrossSell)).not.to.revert(ethers)
 		})
 
 		it("Should be failed when Globally Paused", async () => {
@@ -1303,7 +1302,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
 			await ethers.provider.send("evm_mine")
 
-			await expect(partyA1.expireOpenIntent([1, 2, 3])).not.to.be.reverted
+			await expect(partyA1.expireOpenIntent([1, 2, 3])).not.to.revert(ethers)
 
 			for (let i = 1; i <= 3; i++) expect((await context.viewFacet.getOpenIntent(i)).status).to.be.equal(IntentStatus.EXPIRED)
 		})
@@ -1317,7 +1316,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			let newBlockTimeStamp = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 120
 			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
 			await ethers.provider.send("evm_mine")
-			expect(await partyA1.expireOpenIntent([1, 2, 3])).to.be.not.reverted
+			expect(await partyA1.expireOpenIntent([1, 2, 3])).not.to.revert(ethers)
 
 			let isolatedLocketBalanceLatter = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateral.getAddress())
 			let isolatedBalanceLatter = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral.getAddress())
@@ -1335,7 +1334,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			let newBlockTimeStamp = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 120
 			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
 			await ethers.provider.send("evm_mine")
-			expect(await partyA1.expireOpenIntent([1, 2])).to.be.not.reverted
+			expect(await partyA1.expireOpenIntent([1, 2])).not.to.revert(ethers)
 
 			let crossBalanceLatter = await context.viewFacet.getCrossBalance(partyA1.getSigner, await context.collateral.getAddress(), partyB1.address)
 			console.log("Cross Balance Before", crossBalance)
@@ -1352,7 +1351,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			let newBlockTimeStamp = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 120
 			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
 			await ethers.provider.send("evm_mine")
-			expect(await partyA1.expireOpenIntent([1, 3])).to.be.not.reverted
+			expect(await partyA1.expireOpenIntent([1, 3])).not.to.revert(ethers)
 
 			const intent = await context.viewFacet.getOpenIntent(3)
 
@@ -1381,7 +1380,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			let newBlockTimeStamp = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 120
 			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
 			await ethers.provider.send("evm_mine")
-			expect(await partyA1.expireOpenIntent([1, 2, 3])).to.be.not.reverted
+			expect(await partyA1.expireOpenIntent([1, 2, 3])).not.to.revert(ethers)
 
 			let isolatedLocketBalanceLatter = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateralNL.getAddress())
 
@@ -1409,7 +1408,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			let newBlockTimeStamp = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 120
 			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlockTimeStamp])
 			await ethers.provider.send("evm_mine")
-			expect(await partyA1.expireOpenIntent([1, 2])).to.be.not.reverted
+			expect(await partyA1.expireOpenIntent([1, 2])).not.to.revert(ethers)
 
 			let crossLocketBalanceLatter = await context.viewFacet.getCrossBalance(
 				partyA1.getSigner,
@@ -1448,7 +1447,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.marginType(MarginType.ISOLATED)
 				.build()
 
-			expect(await partyA1.sendOpenIntent(request)).to.be.not.reverted
+			expect(await partyA1.sendOpenIntent(request)).not.to.revert(ethers)
 
 			const intent = await context.viewFacet.getOpenIntent(1)
 
@@ -1488,7 +1487,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			const crossBalance: CrossEntryStruct = await context.viewFacet.getCrossBalance(partyA1.getSigner, symbol.collateral, partyB1.getSigner)
 			const isolatedBalance = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, symbol.collateral)
 
-			expect(await partyA1.sendOpenIntent(request)).to.be.not.reverted
+			expect(await partyA1.sendOpenIntent(request)).not.to.revert(ethers)
 
 			const intent = await context.viewFacet.getOpenIntent(1)
 			const premium = ethers.formatUnits((intent.tradeAgreements.quantity * intent.price).toString(), 18)
@@ -1532,7 +1531,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: e(0.01), closeFee: e(0.01) }])
 			await context.controlFacet.setSymbolsPlatformFees([1], [{ openFee: e(0.01), closeFee: e(0.01) }])
 
-			await expect(partyA1.sendOpenIntent(request)).not.to.reverted
+			await expect(partyA1.sendOpenIntent(request)).not.to.revert(ethers)
 
 			const intent = await context.viewFacet.getOpenIntent(1)
 			const symbol: SymbolStruct = await context.viewFacet.getSymbol(intent.tradeAgreements.symbolId)
@@ -1586,7 +1585,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: e(0.01), closeFee: e(0.01) }])
 			await context.controlFacet.setSymbolsPlatformFees([1], [{ openFee: e(0.01), closeFee: e(0.01) }])
 
-			expect(await partyA1.sendOpenIntent(request)).not.to.reverted
+			expect(await partyA1.sendOpenIntent(request)).not.to.revert(ethers)
 			const intent = await context.viewFacet.getOpenIntent(1)
 
 			// partyA pays the fees in so:
@@ -1641,7 +1640,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: e(0.01), closeFee: e(0.01) }])
 			await context.controlFacet.setSymbolsPlatformFees([1], [{ openFee: e(0.01), closeFee: e(0.01) }])
 
-			expect(await partyA1.sendOpenIntent(request)).not.to.reverted
+			expect(await partyA1.sendOpenIntent(request)).not.to.revert(ethers)
 			const intent = await context.viewFacet.getOpenIntent(1)
 			const symbol: SymbolStruct = await context.viewFacet.getSymbol(intent.tradeAgreements.symbolId)
 			const premiumFromView = await context.viewFacet.getOpenIntentPremium(1)

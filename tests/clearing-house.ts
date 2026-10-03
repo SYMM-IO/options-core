@@ -1,17 +1,15 @@
-import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers"
-import "@nomicfoundation/hardhat-ethers"
+import { ethers, networkHelpers } from "./connection.js"
 import { expect, use } from "chai"
-import { initializeTestFixture } from "./initialize-test.fixture"
-import { PartyA } from "./models/partyA.model"
-import { RunContext } from "./run-context"
-import { openIntentRequestBuilder } from "./models/builders/send-open-intent.builder"
-import { PartyB } from "./models/partyB.model"
-import { ethers } from "hardhat"
-import { e } from "../utils/e"
+import { initializeTestFixture } from "./initialize-test.fixture.js"
+import { PartyA } from "./models/partyA.model.js"
+import { RunContext } from "./run-context.js"
+import { openIntentRequestBuilder } from "./models/builders/send-open-intent.builder.js"
+import { PartyB } from "./models/partyB.model.js"
+import { e } from "../utils/e.js"
 
-import { CloseIntentStruct, LiquidationDetailStruct, SettlementPriceSigStruct, TradeStruct } from "../types/contracts/interfaces/ISymmio"
-import { getLatestBlockTime, moveTime } from "./utils/time"
-import { settlementSigBuilder } from "./models/builders/settlement.builder"
+import { CloseIntentStruct, LiquidationDetailStruct, SettlementPriceSigStruct, TradeStruct } from "../types/interfaces/ISymmio.js"
+import { getLatestBlockTime, moveTime } from "./utils/time.js"
+import { settlementSigBuilder } from "./models/builders/settlement.builder.js"
 // import { encodeBytes32String, ZeroAddress } from "ethers/lib.esm"
 import {
 	MarginType,
@@ -23,17 +21,17 @@ import {
 	CloseIntentStatus,
 	LiquidationSide,
 	OptionType,
-} from "./option-enums"
+} from "./option-enums.js"
 import { ContractEventPayload, ZeroAddress } from "ethers"
-import { ScheduledReleaseEntryStruct } from "../types/contracts/facets/View/ViewFacet"
-import { LibAccessibility } from "../types"
+import { ScheduledReleaseEntryStruct } from "../types/facets/View/ViewFacet.js"
+import { LibAccessibility } from "../types/index.js"
 
 export function shouldBehaveLikeClearingHouseFacet(): void {
 	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyB1: PartyB, partyB2: PartyB
 	let formatter: Intl.NumberFormat
 
 	beforeEach(async function () {
-		context = await loadFixture(initializeTestFixture)
+		context = await networkHelpers.loadFixture(initializeTestFixture)
 		partyA1 = new PartyA(context, context.signers.partyA1)
 		partyA2 = new PartyA(context, context.signers.partyA2)
 		partyB1 = new PartyB(context, context.signers.partyB1)
@@ -207,7 +205,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagIsolatedPartyBLiquidation(partyB2.getSigner.getAddress(), context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const liquidationId = await context.viewFacet.getInProgressLiquidationId(ZeroAddress, partyB2.address, await context.collateral.getAddress())
 
@@ -248,7 +246,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagIsolatedPartyBLiquidation(partyB2.getSigner.getAddress(), context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			let liquidationId = await context.viewFacet.getInProgressLiquidationId(ZeroAddress, partyB2.address, await context.collateral.getAddress())
 			console.log("Liquidation Flag:", liquidationId)
@@ -257,7 +255,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.unflagIsolatedPartyBLiquidation(partyB2.getSigner.getAddress(), context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			liquidationId = await context.viewFacet.getInProgressLiquidationId(ZeroAddress, partyB2.address, await context.collateral.getAddress())
 			console.log("Liquidation Flag:", liquidationId)
@@ -305,7 +303,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagIsolatedPartyBLiquidation(partyB2.getSigner.getAddress(), context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const upnl = e(-10000)
 			const collateralPrice = e(10)
@@ -360,7 +358,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagIsolatedPartyBLiquidation(partyB2.getSigner.getAddress(), context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const upnl = e(-1200000)
 			const collateralPrice = e(10)
@@ -372,7 +370,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.liquidateIsolatedPartyB(partyB2.address, context.collateral.getAddress(), upnl, collateralPrice),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const liquidationId = await context.viewFacet.getInProgressLiquidationId(ZeroAddress, partyB2.address, await context.collateral.getAddress())
 
@@ -457,7 +455,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagCrossPartyBLiquidation(partyB2.address, partyA2.address, context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const liquidationId = await context.viewFacet.getInProgressLiquidationId(
 				partyA2.address,
@@ -507,13 +505,13 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagCrossPartyBLiquidation(partyB2.address, partyA2.address, context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			expect(
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.unflagCrossPartyBLiquidation(partyB2.address, partyA2.address, context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			expect(await context.viewFacet.getInProgressLiquidationId(partyA2.address, partyB2.address, await context.collateral.getAddress())).to.be.equal(
 				0,
@@ -561,7 +559,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagCrossPartyBLiquidation(partyB2.address, partyA2.address, context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const upnl = e(-10000)
 			const collateralPrice = e(10)
@@ -622,7 +620,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagCrossPartyBLiquidation(partyB2.address, partyA2.address, context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const upnl = e(-12000)
 			const collateralPrice = e(10)
@@ -637,7 +635,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.liquidateCrossPartyB(partyB2.address, partyA2.address, context.collateral.getAddress(), upnl, collateralPrice),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const partyAAfterCrossBalance = await context.viewFacet.getCrossBalance(partyA2.address, context.collateral.getAddress(), partyB2.address)
 			const partyBAfterCrossBalance = await context.viewFacet.getCrossBalance(partyB2.address, context.collateral.getAddress(), partyA2.address)
@@ -696,7 +694,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagCrossPartyBLiquidation(partyB2.address, partyA2.address, context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const upnl = e(-12000)
 			const collateralPrice = e(10)
@@ -704,7 +702,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.liquidateCrossPartyB(partyB2.address, partyA2.address, context.collateral.getAddress(), upnl, collateralPrice),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const partyAAfterCrossBalance = await context.viewFacet.getCrossBalance(partyA2.address, context.collateral.getAddress(), partyB2.address)
 			const partyBAfterCrossBalance = await context.viewFacet.getCrossBalance(partyB2.address, context.collateral.getAddress(), partyA2.address)
@@ -760,7 +758,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagCrossPartyBLiquidation(partyB2.address, partyA2.address, context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			let liquidationId = await context.viewFacet.getInProgressLiquidationId(partyA2.address, partyB2.address, await context.collateral.getAddress())
 			let detail: LiquidationDetailStruct = await context.viewFacet.getLiquidationDetail(liquidationId)
@@ -772,7 +770,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.liquidateCrossPartyB(partyB2.address, partyA2.address, context.collateral.getAddress(), upnl, collateralPrice),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			liquidationId = await context.viewFacet.getInProgressLiquidationId(partyA2.address, partyB2.address, await context.collateral.getAddress())
 
@@ -859,7 +857,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagPartyALiquidation(partyA2.address, partyB2.address, context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const liquidationId = await context.viewFacet.getInProgressLiquidationId(
 				partyA2.address,
@@ -910,13 +908,13 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagPartyALiquidation(partyA2.address, partyB2.address, context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			expect(
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.unflagPartyALiquidation(partyA2.address, partyB2.address, context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const liquidationID = await context.viewFacet.getInProgressLiquidationId(
 				partyA2.address,
@@ -969,7 +967,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagPartyALiquidation(partyA2.address, partyB2.address, context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const liquidationId = await context.viewFacet.getInProgressLiquidationId(
 				partyA2.address,
@@ -1032,7 +1030,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagPartyALiquidation(partyA2.address, partyB2.address, context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const liquidationId = await context.viewFacet.getInProgressLiquidationId(
 				partyA2.address,
@@ -1052,7 +1050,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.liquidateCrossPartyA(liquidationId, partyA2.address, partyB2.address, context.collateral.getAddress(), upnl, collateralPrice),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const partyAAfterCrossBalance = await context.viewFacet.getCrossBalance(partyA2.address, context.collateral.getAddress(), partyB2.address)
 			const partyBAfterCrossBalance = await context.viewFacet.getCrossBalance(partyB2.address, context.collateral.getAddress(), partyA2.address)
@@ -1104,7 +1102,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagPartyALiquidation(partyA2.address, partyB2.address, context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const liquidationId = await context.viewFacet.getInProgressLiquidationId(
 				partyA2.address,
@@ -1124,7 +1122,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.liquidateCrossPartyA(liquidationId, partyA2.address, partyB2.address, context.collateral.getAddress(), upnl, collateralPrice),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const detail: LiquidationDetailStruct = await context.viewFacet.getLiquidationDetail(liquidationId)
 			expect(detail.status).to.be.equal(LiquidationStatus.IN_PROGRESS)
@@ -1167,13 +1165,13 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagIsolatedPartyBLiquidation(partyB2.getSigner.getAddress(), context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			expect(
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.liquidateIsolatedPartyB(partyB2.address, context.collateral.getAddress(), e(-1200000), e(10)),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const liquidationId = await context.viewFacet.getInProgressLiquidationId(ZeroAddress, partyB2.address, await context.collateral.getAddress())
 
@@ -1217,13 +1215,13 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagCrossPartyBLiquidation(partyB2.address, partyA2.address, context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			expect(
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.liquidateCrossPartyB(partyB2.address, partyA2.address, context.collateral.getAddress(), e(-1200000), e(10)),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const liquidationId = await context.viewFacet.getInProgressLiquidationId(
 				partyA2.address,
@@ -1270,7 +1268,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagIsolatedPartyBLiquidation(partyB2.getSigner.getAddress(), context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			// In Flaged State
 			const liquidationId = await context.viewFacet.getInProgressLiquidationId(ZeroAddress, partyB2.address, await context.collateral.getAddress())
@@ -1314,17 +1312,17 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagIsolatedPartyBLiquidation(partyB2.getSigner.getAddress(), context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			expect(
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.liquidateIsolatedPartyB(partyB2.address, context.collateral.getAddress(), e(-12000), e(10)),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const liquidationId = await context.viewFacet.getInProgressLiquidationId(ZeroAddress, partyB2.address, await context.collateral.getAddress())
 
-			expect(await context.clearingHouse.connect(context.signers.clearingHouse).closeTrades(liquidationId, [1], [e(30000)])).not.reverted
+			expect(await context.clearingHouse.connect(context.signers.clearingHouse).closeTrades(liquidationId, [1], [e(30000)])).not.to.revert(ethers)
 
 			expect((await context.viewFacet.getTrade(1)).status).to.be.equal(TradeStatus.LIQUIDATED)
 		})
@@ -1364,7 +1362,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagCrossPartyBLiquidation(partyB2.address, partyA2.address, context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const liquidationId = await context.viewFacet.getInProgressLiquidationId(
 				partyA2.address,
@@ -1419,13 +1417,13 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagIsolatedPartyBLiquidation(partyB2.address, context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			expect(
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.liquidateIsolatedPartyB(partyB2.address, context.collateral.getAddress(), e(-1200000), e(10)),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const liquidationId = await context.viewFacet.getInProgressLiquidationId(ZeroAddress, partyB2.address, await context.collateral.getAddress())
 			const detail = await context.viewFacet.getLiquidationDetail(liquidationId)
@@ -1506,13 +1504,13 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagCrossPartyBLiquidation(partyB2.address, partyA2.address, context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			expect(
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.liquidateCrossPartyB(partyB2.address, partyA2.address, context.collateral.getAddress(), e(-120000), e(10)),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const liquidationId = await context.viewFacet.getInProgressLiquidationId(
 				partyA2.address,
@@ -1592,7 +1590,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagPartyALiquidation(partyA2.address, partyB2.address, context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const liquidationId = await context.viewFacet.getInProgressLiquidationId(
 				partyA2.address,
@@ -1612,12 +1610,12 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.liquidateCrossPartyA(liquidationId, partyA2.address, partyB2.address, context.collateral.getAddress(), upnl, collateralPrice),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			await moveTime(100)
 
 			const price = [e(30000)]
-			expect(await context.clearingHouse.connect(context.signers.clearingHouse).closeTrades(liquidationId, [tradeID], price)).not.reverted
+			expect(await context.clearingHouse.connect(context.signers.clearingHouse).closeTrades(liquidationId, [tradeID], price)).not.to.revert(ethers)
 
 			const currentBlockTime = await getLatestBlockTime()
 			const closeIntentsIDs = await context.viewFacet.getCloseIntentIds(tradeID)
@@ -1676,7 +1674,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagPartyALiquidation(partyA2.address, partyB2.address, context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const liquidationId = await context.viewFacet.getInProgressLiquidationId(
 				partyA2.address,
@@ -1696,12 +1694,12 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.liquidateCrossPartyA(liquidationId, partyA2.address, partyB2.address, context.collateral.getAddress(), upnl, collateralPrice),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const tradeBefore = await context.viewFacet.getTrade(tradeID)
 
 			const price = [e(30000)]
-			expect(await context.clearingHouse.connect(context.signers.clearingHouse).closeTrades(liquidationId, [tradeID], price)).not.reverted
+			expect(await context.clearingHouse.connect(context.signers.clearingHouse).closeTrades(liquidationId, [tradeID], price)).not.to.revert(ethers)
 
 			const trade: TradeStruct = await context.viewFacet.getTrade(tradeID)
 			expect(tradeBefore.activeCloseIntentIds.length).equal(closeIntentLen)
@@ -1767,7 +1765,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagPartyALiquidation(partyA2.address, partyB2.address, context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const liquidationId = await context.viewFacet.getInProgressLiquidationId(
 				partyA2.address,
@@ -1787,7 +1785,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.liquidateCrossPartyA(liquidationId, partyA2.address, partyB2.address, context.collateral.getAddress(), upnl, collateralPrice),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const tradeOpenAmount = await context.viewFacet.getTradeOpenAmount(tradeID)
 			const tradeMM = await context.viewFacet.getTradeMM(tradeID, tradeOpenAmount)
@@ -1872,7 +1870,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagPartyALiquidation(partyA2.address, partyB2.address, context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const liquidationId = await context.viewFacet.getInProgressLiquidationId(
 				partyA2.address,
@@ -1892,7 +1890,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.liquidateCrossPartyA(liquidationId, partyA2.address, partyB2.address, context.collateral.getAddress(), upnl, collateralPrice),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const tradeOpenAmount = await context.viewFacet.getTradeOpenAmount(tradeID)
 			const tradeMM = await context.viewFacet.getTradeMM(tradeID, tradeOpenAmount)
@@ -1901,7 +1899,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 
 			console.log("Party A MM:", tradeMM)
 			const price = [e(30000)]
-			expect(await context.clearingHouse.connect(context.signers.clearingHouse).closeTrades(liquidationId, [tradeID], price)).not.reverted
+			expect(await context.clearingHouse.connect(context.signers.clearingHouse).closeTrades(liquidationId, [tradeID], price)).not.to.revert(ethers)
 
 			const partyABalanceAfter = await context.viewFacet.getCrossBalance(partyA2.address, context.collateral, partyB2.address)
 			const PartyBBalaceDiff = partyABalanceBefore.totalMM - partyABalanceAfter.totalMM
@@ -1934,7 +1932,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.allocateFromReserveToCross(partyB2.address, partyA2.address, context.collateral.getAddress(), amountToDeposit),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const partyBAfterReserveBalance = await context.viewFacet.getReserveBalance(partyB2.address, context.collateral.getAddress())
 
@@ -1957,7 +1955,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.allocateFromReserveToCross(partyB2.address, partyA2.address, context.collateral.getAddress(), amountToDeposit),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const partyBAfterReserveBalance = await context.viewFacet.getReserveBalance(partyB2.address, context.collateral.getAddress())
 
@@ -2019,7 +2017,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.distributeCollateral(liquidationId, partyB2.address, context.collateral, MarginType.ISOLATED, [partyA2.address], [e(10)]),
-			).not.reverted
+			).not.to.revert(ethers)
 		})
 
 		it("Should enforce onlyRole(CLEARING_HOUSE_ROLE) on distributeCollateral", async () => {
@@ -2067,7 +2065,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				context.clearingHouse
 					.connect(unauthorized)
 					.distributeCollateral(liquidationId, partyB2.address, context.collateral, MarginType.ISOLATED, [partyA2.address], [e(10)]),
-			).to.be.reverted // tighten with AccessControl error if exposed on this facet
+			).to.revert(ethers) // tighten with AccessControl error if exposed on this facet
 		})
 
 		it("Should failed when Partys list Length different from Amounts list length ", async () => {
@@ -2130,7 +2128,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagIsolatedPartyBLiquidation(partyB2.address, context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const liquidationId = await context.viewFacet.getInProgressLiquidationId(
 				partyA2.address,
@@ -2192,13 +2190,13 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagIsolatedPartyBLiquidation(partyB2.address, context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			expect(
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.liquidateIsolatedPartyB(partyB2.address, context.collateral.getAddress(), e(-1200000), e(10)),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const distributionParties = [partyA1.address, partyA2.address]
 			const distributionAmounts: bigint[] = [e(10), e(10)]
@@ -2240,7 +2238,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 						distributionParties,
 						distributionAmounts,
 					),
-			).not.to.be.reverted
+			).not.to.revert(ethers)
 
 			////////////// Note ////////////////////////////////////////////////
 			//No effect as therer PartyB is not SOLVENT
@@ -2370,7 +2368,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			await context.controlFacet.unpauseGlobal() // default signer assumed to have UNPAUSER_ROLE
 			await expect(
 				context.clearingHouse.connect(context.signers.clearingHouse).confiscate(liquidationId, partyB2.address, cps, amts, MarginType.ISOLATED),
-			).not.reverted
+			).not.to.revert(ethers)
 		})
 
 		it("Should revert confiscate when LiquidatingPaused, then succeed after unpause", async () => {
@@ -2428,7 +2426,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 			await context.controlFacet.unpauseLiquidating()
 			await expect(
 				context.clearingHouse.connect(context.signers.clearingHouse).confiscate(liquidationId, partyB2.address, cps, amts, MarginType.ISOLATED),
-			).not.reverted
+			).not.to.revert(ethers)
 		})
 
 		it("Should enforce onlyRole(CLEARING_HOUSE_ROLE) on confiscate (unauthorized reverts, authorized succeeds)", async () => {
@@ -2470,13 +2468,13 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagIsolatedPartyBLiquidation(partyB2.getSigner.getAddress(), context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			await expect(
 				context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.liquidateIsolatedPartyB(partyB2.address, context.collateral.getAddress(), e(-1200000), e(10)),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const liquidationId = await context.viewFacet.getInProgressLiquidationId(ZeroAddress, partyB2.address, await context.collateral.getAddress())
 
@@ -2499,7 +2497,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.confiscate(liquidationId, partyB2.address, counterParties, amounts, MarginType.ISOLATED),
-			).not.reverted
+			).not.to.revert(ethers)
 		})
 
 		it("Should fail on mismatched counterparties/amounts length in ISOLATED BUY", async () => {
@@ -2563,7 +2561,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagIsolatedPartyBLiquidation(partyB2.getSigner.getAddress(), context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const liquidationId = await context.viewFacet.getInProgressLiquidationId(ZeroAddress, partyB2.address, await context.collateral.getAddress())
 
@@ -2611,13 +2609,13 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagIsolatedPartyBLiquidation(partyB2.getSigner.getAddress(), context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			expect(
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.liquidateIsolatedPartyB(partyB2.address, context.collateral.getAddress(), e(-1200000), e(10)),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const liquidationId = await context.viewFacet.getInProgressLiquidationId(ZeroAddress, partyB2.address, await context.collateral.getAddress())
 			const detail = await context.viewFacet.getLiquidationDetail(liquidationId)
@@ -2669,13 +2667,13 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagIsolatedPartyBLiquidation(partyB2.getSigner.getAddress(), context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			expect(
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.liquidateIsolatedPartyB(partyB2.address, context.collateral.getAddress(), e(-1200000), e(10)),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const liquidationId = await context.viewFacet.getInProgressLiquidationId(ZeroAddress, partyB2.address, await context.collateral.getAddress())
 			expect((await context.viewFacet.getLiquidationDetail(liquidationId)).status).to.equal(LiquidationStatus.IN_PROGRESS)
@@ -2686,7 +2684,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.confiscate(liquidationId, partyB2.address, counterParties, liquidationAmounts, MarginType.ISOLATED),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			let totalAmount = 0n
 			let partyBAfterIsolatedBalance = await context.viewFacet.getIsolatedBalance(partyB2.address, context.collateral.getAddress())
@@ -2728,7 +2726,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 
 			// Unpause and it should work
 			await context.controlFacet.unpauseGlobal()
-			await expect(context.clearingHouse.connect(context.signers.clearingHouse).confiscateWithdrawal(withdrawalId)).not.reverted
+			await expect(context.clearingHouse.connect(context.signers.clearingHouse).confiscateWithdrawal(withdrawalId)).not.to.revert(ethers)
 		})
 
 		it("Should revert when LiquidatingPaused, then succeed after unpause", async () => {
@@ -2749,7 +2747,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 
 			// Unpause and it should work
 			await context.controlFacet.unpauseLiquidating()
-			await expect(context.clearingHouse.connect(context.signers.clearingHouse).confiscateWithdrawal(withdrawalId)).not.reverted
+			await expect(context.clearingHouse.connect(context.signers.clearingHouse).confiscateWithdrawal(withdrawalId)).not.to.revert(ethers)
 		})
 
 		it("Should revert on withdrawId == 0", async () => {
@@ -2805,16 +2803,16 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagIsolatedPartyBLiquidation(partyB1.getSigner.getAddress(), context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			expect(
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.liquidateIsolatedPartyB(partyB1.address, context.collateral.getAddress(), e(-1200000), e(10)),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			const withdrawalId = await context.viewFacet.getLastWithdrawalId()
-			await expect(context.clearingHouse.connect(context.signers.clearingHouse).confiscateWithdrawal(withdrawalId)).not.reverted
+			await expect(context.clearingHouse.connect(context.signers.clearingHouse).confiscateWithdrawal(withdrawalId)).not.to.revert(ethers)
 
 			const partyBAfterBalance = await context.viewFacet.getIsolatedBalance(partyB1.address, context.collateral.getAddress())
 			console.log("partyBAfterBalance", partyBAfterBalance)
@@ -2860,13 +2858,13 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 	// 			await context.clearingHouse
 	// 				.connect(context.signers.clearingHouse)
 	// 				.flagIsolatedPartyBLiquidation(partyB2.getSigner.getAddress(), context.collateral.getAddress()),
-	// 		).not.reverted
+	// 		).not.to.revert(ethers)
 
 	// 		expect(
 	// 			await context.clearingHouse
 	// 				.connect(context.signers.clearingHouse)
 	// 				.liquidateIsolatedPartyB(partyB2.address, context.collateral.getAddress(), e(-1200000), e(10)),
-	// 		).not.reverted
+	// 		).not.to.revert(ethers)
 
 	// 		const liquidationId = await context.viewFacet.getInProgressLiquidationId(ZeroAddress, partyB2.address, await context.collateral.getAddress())
 
@@ -2876,7 +2874,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 	// 		// 	await context.clearingHouse
 	// 		// 		.connect(context.signers.clearingHouse)
 	// 		// 		.confiscate(liquidationId, liquidationAmount, partyB2.address, partyA2.address, MarginType.ISOLATED),
-	// 		// ).not.reverted
+	// 		// ).not.to.revert(ethers)
 
 	// 		// await expect(
 	// 		// 	context.clearingHouse
@@ -2927,7 +2925,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 	// 			await context.clearingHouse
 	// 				.connect(context.signers.clearingHouse)
 	// 				.flagIsolatedPartyBLiquidation(partyB2.getSigner.getAddress(), context.collateral.getAddress()),
-	// 		).not.reverted
+	// 		).not.to.revert(ethers)
 
 	// 		const liquidationId = await context.viewFacet.getInProgressLiquidationId(ZeroAddress, partyB2.address, await context.collateral.getAddress())
 
@@ -2972,13 +2970,13 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 	// 			await context.clearingHouse
 	// 				.connect(context.signers.clearingHouse)
 	// 				.flagIsolatedPartyBLiquidation(partyB2.getSigner.getAddress(), context.collateral.getAddress()),
-	// 		).not.reverted
+	// 		).not.to.revert(ethers)
 
 	// 		expect(
 	// 			await context.clearingHouse
 	// 				.connect(context.signers.clearingHouse)
 	// 				.liquidateIsolatedPartyB(partyB2.address, context.collateral.getAddress(), e(-1200000), e(10)),
-	// 		).not.reverted
+	// 		).not.to.revert(ethers)
 
 	// 		const liquidationId = await context.viewFacet.getInProgressLiquidationId(ZeroAddress, partyB2.address, await context.collateral.getAddress())
 
@@ -2988,7 +2986,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 	// 		// 	await context.clearingHouse
 	// 		// 		.connect(context.signers.clearingHouse)
 	// 		// 		.confiscate(liquidationId, liquidationAmount, partyB2.address, partyA2.address, MarginType.ISOLATED),
-	// 		// ).not.reverted
+	// 		// ).not.to.revert(ethers)
 
 	// 		// await expect(
 	// 		// 	context.clearingHouse
@@ -3032,13 +3030,13 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 	// 			await context.clearingHouse
 	// 				.connect(context.signers.clearingHouse)
 	// 				.flagIsolatedPartyBLiquidation(partyB2.getSigner.getAddress(), context.collateral.getAddress()),
-	// 		).not.reverted
+	// 		).not.to.revert(ethers)
 
 	// 		expect(
 	// 			await context.clearingHouse
 	// 				.connect(context.signers.clearingHouse)
 	// 				.liquidateIsolatedPartyB(partyB2.address, context.collateral.getAddress(), e(-1200000), e(10)),
-	// 		).not.reverted
+	// 		).not.to.revert(ethers)
 
 	// 		const liquidationId = await context.viewFacet.getInProgressLiquidationId(ZeroAddress, partyB2.address, await context.collateral.getAddress())
 
@@ -3048,7 +3046,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 	// 		// 	await context.clearingHouse
 	// 		// 		.connect(context.signers.clearingHouse)
 	// 		// 		.confiscate(liquidationId, liquidationAmount, partyB2.address, partyA2.address, MarginType.ISOLATED),
-	// 		// ).not.reverted
+	// 		// ).not.to.revert(ethers)
 
 	// 		// expect(
 	// 		// 	await context.clearingHouse
@@ -3061,7 +3059,7 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 	// 		// 			[partyA2.address],
 	// 		// 			[liquidationAmount],
 	// 		// 		),
-	// 		// ).not.reverted
+	// 		// ).not.to.revert(ethers)
 
 	// 		// const partyAScheduledBalance = (
 	// 		// 	await context.viewFacet.getScheduledReleaseEntry(partyA2.address, context.collateral.getAddress(), partyB2.address)
@@ -3185,15 +3183,15 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagIsolatedPartyBLiquidation(partyB2.getSigner.getAddress(), context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			expect(
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.liquidateIsolatedPartyB(partyB2.address, context.collateral.getAddress(), e(-1200000), e(10)),
-			).not.reverted
+			).not.to.revert(ethers)
 
-			expect(await context.clearingHouse.connect(context.signers.clearingHouse).cancelOpenIntents([openIntentId2])).not.reverted
+			expect(await context.clearingHouse.connect(context.signers.clearingHouse).cancelOpenIntents([openIntentId2])).not.to.revert(ethers)
 
 			expect((await context.viewFacet.getOpenIntent(openIntentId2)).status).to.be.equal(IntentStatus.CANCELED)
 		})
@@ -3303,15 +3301,15 @@ export function shouldBehaveLikeClearingHouseFacet(): void {
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.flagIsolatedPartyBLiquidation(partyB2.getSigner.getAddress(), context.collateral.getAddress()),
-			).not.reverted
+			).not.to.revert(ethers)
 
 			expect(
 				await context.clearingHouse
 					.connect(context.signers.clearingHouse)
 					.liquidateIsolatedPartyB(partyB2.address, context.collateral.getAddress(), e(-1200000), e(10)),
-			).not.reverted
+			).not.to.revert(ethers)
 
-			expect(await context.clearingHouse.connect(context.signers.clearingHouse).cancelCloseIntents([closeIntentId1])).not.reverted
+			expect(await context.clearingHouse.connect(context.signers.clearingHouse).cancelCloseIntents([closeIntentId1])).not.to.revert(ethers)
 
 			expect((await context.viewFacet.getCloseIntent(closeIntentId1)).status).to.be.equal(CloseIntentStatus.CANCELED)
 		})

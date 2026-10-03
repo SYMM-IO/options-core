@@ -1,22 +1,21 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers"
+import { ethers, networkHelpers } from "./connection.js"
 import { expect } from "chai"
-import { ethers } from "hardhat"
 
-import { initializeTestFixture } from "./initialize-test.fixture"
-import { PartyA } from "./models/partyA.model"
-import { PartyB } from "./models/partyB.model"
-import { RunContext } from "./run-context"
-import { tradeBuilder } from "./models/builders/trade.builder"
-import { closeIntentBuilder } from "./models/builders/close-intent.builder"
-import { TradeStruct } from "../types/contracts/interfaces/ISymmio"
-import { CloseIntentStatus } from "./option-enums"
+import { initializeTestFixture } from "./initialize-test.fixture.js"
+import { PartyA } from "./models/partyA.model.js"
+import { PartyB } from "./models/partyB.model.js"
+import { RunContext } from "./run-context.js"
+import { tradeBuilder } from "./models/builders/trade.builder.js"
+import { closeIntentBuilder } from "./models/builders/close-intent.builder.js"
+import { TradeStruct } from "../types/interfaces/ISymmio.js"
+import { CloseIntentStatus } from "./option-enums.js"
 
 export function shouldBehaveLikeLibCloseIntent(): void {
 	let context: RunContext
 	let partyA1: PartyA, partyB1: PartyB
 
 	beforeEach(async () => {
-		context = await loadFixture(initializeTestFixture)
+		context = await networkHelpers.loadFixture(initializeTestFixture)
 		partyA1 = new PartyA(context, context.signers.partyA1)
 		partyB1 = new PartyB(context, context.signers.partyB1)
 		await partyA1.setBalances(undefined, "500", "500")
@@ -29,7 +28,7 @@ export function shouldBehaveLikeLibCloseIntent(): void {
 				const closeIntent = closeIntentBuilder().build()
 
 				await context.mocks.libCloseIntentMock.setTrade(trade.id, trade)
-				await expect(context.mocks.libCloseIntentMock.testSave(closeIntent)).to.not.be.reverted
+				await expect(context.mocks.libCloseIntentMock.testSave(closeIntent)).not.to.revert(ethers)
 
 				const storedTrade = await context.mocks.libCloseIntentMock.getTrade(trade.id)
 				const storedIntent = await context.mocks.libCloseIntentMock.getCloseIntent(closeIntent.id)
@@ -96,7 +95,7 @@ export function shouldBehaveLikeLibCloseIntent(): void {
 					.build()
 
 				await context.mocks.libCloseIntentMock.testSave(closeIntent)
-				expect(await context.mocks.libCloseIntentMock.testExpire(closeIntent.id)).to.not.reverted
+				expect(await context.mocks.libCloseIntentMock.testExpire(closeIntent.id)).not.to.revert(ethers)
 
 				const latestBlock = await ethers.provider.getBlock("latest")
 				latestTimestamp = latestBlock?.timestamp ?? 0

@@ -1,25 +1,32 @@
-import { TestModeEnum } from "../common/test-mode.enum"
-import { name, version } from "../package.json"
-import { shouldBehaveLikeAccountFacet } from "./account-facet.behavior"
-import { shouldBehaveLikeForceActionFacet } from "./force-action.behavior"
-import { shouldBehaveLikeLibCloseIntent } from "./lib-closeIntent.behavior"
-import { shouldBehaveLikePartyACloseFacet } from "./partyA-close-facet.behavior"
-import { shouldBehaveLikePartyAOpenFacet } from "./partyA-open-facet.behavior"
-import { shouldBehaveLikePartyBCloseFacet } from "./partyB-close-facet.behavior"
-import { shouldBehaveLikePartyBOpenFacet } from "./partyB-open-facet.behavior"
-import { shouldBehaveLikeSettlementFacet } from "./trade-settlement"
-import { shouldBehaveLikeBridgeFacet } from "./bridge-facet.behavior"
-import { shouldBehaveLikeInstantLayer } from "./helpers/instant-layer.behavior"
-import { shouldBehaveLikeMultiAccount } from "./helpers/multi-account.behavior"
-import { shouldBehaveLikeSymmioPartyB } from "./helpers/symmio-partyb.behavior"
-import { shouldBehaveLikeClearingHouseFacet } from "./clearing-house"
-import { shouldBehaveLikeControlFacet } from "./control-facet.behavior"
-import { shouldBehaveLikeTradeNFT } from "./helpers/trade-nft.behavior"
-import { shouldGuardSymmioPartyBAgainstReentrancy } from "./helpers/symmio-partyb-reentrancy.behavior"
-import { shouldBehaveLikeSignatureVerifier } from "./helpers/signature-verifier.behavior"
+import { TestModeEnum } from "../common/test-mode.enum.js"
+import pkg from "../package.json" with { type: "json" }
+import { shouldBehaveLikeAccountFacet } from "./account-facet.behavior.js"
+import { shouldBehaveLikeForceActionFacet } from "./force-action.behavior.js"
+import { shouldBehaveLikeLibCloseIntent } from "./lib-closeIntent.behavior.js"
+import { shouldBehaveLikePartyACloseFacet } from "./partyA-close-facet.behavior.js"
+import { shouldBehaveLikePartyAOpenFacet } from "./partyA-open-facet.behavior.js"
+import { shouldBehaveLikePartyBCloseFacet } from "./partyB-close-facet.behavior.js"
+import { shouldBehaveLikePartyBOpenFacet } from "./partyB-open-facet.behavior.js"
+import { shouldBehaveLikeSettlementFacet } from "./trade-settlement.js"
+import { shouldBehaveLikeBridgeFacet } from "./bridge-facet.behavior.js"
+import { shouldBehaveLikeInstantLayer } from "./helpers/instant-layer.behavior.js"
+import { shouldBehaveLikeMultiAccount } from "./helpers/multi-account.behavior.js"
+import { shouldBehaveLikeSymmioPartyB } from "./helpers/symmio-partyb.behavior.js"
+import { shouldBehaveLikeClearingHouseFacet } from "./clearing-house.js"
+import { shouldBehaveLikeControlFacet } from "./control-facet.behavior.js"
+import { shouldBehaveLikeTradeNFT } from "./helpers/trade-nft.behavior.js"
+import { shouldGuardSymmioPartyBAgainstReentrancy } from "./helpers/symmio-partyb-reentrancy.behavior.js"
+import { shouldBehaveLikeSignatureVerifier } from "./helpers/signature-verifier.behavior.js"
+import { shouldShareOneChainWithTasks } from "./helpers/connection.behavior.js"
+
+const { name, version } = pkg
 
 describe(`${name}-v${version}`, () => {
 	if (process.env.TEST_MODE === TestModeEnum.UNIT_TEST) {
+		describe("Hardhat connection", async function () {
+			shouldShareOneChainWithTasks()
+		})
+
 		describe("Facets_Accounts", async function () {
 			shouldBehaveLikeAccountFacet()
 		})

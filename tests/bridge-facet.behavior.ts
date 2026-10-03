@@ -1,19 +1,18 @@
-import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers"
+import { ethers, networkHelpers } from "./connection.js"
 import { expect } from "chai"
-import { initializeTestFixture } from "./initialize-test.fixture"
-import { PartyA } from "./models/partyA.model"
-import { RunContext } from "./run-context"
-import { PartyB } from "./models/partyB.model"
-import { ethers } from "hardhat"
-import { e } from "../utils/e"
+import { initializeTestFixture } from "./initialize-test.fixture.js"
+import { PartyA } from "./models/partyA.model.js"
+import { RunContext } from "./run-context.js"
+import { PartyB } from "./models/partyB.model.js"
+import { e } from "../utils/e.js"
 import { toUtf8Bytes, ZeroAddress } from "ethers"
-import { moveTime } from "./utils/time"
+import { moveTime } from "./utils/time.js"
 
 export function shouldBehaveLikeBridgeFacet(): void {
 	let context: RunContext, partyA1: PartyA, partyB1: PartyB
 	const ONE_DAY_IN_SEC = 86400
 	beforeEach(async function () {
-		context = await loadFixture(initializeTestFixture)
+		context = await networkHelpers.loadFixture(initializeTestFixture)
 		partyA1 = new PartyA(context, context.signers.partyA1)
 		partyB1 = new PartyB(context, context.signers.partyB1)
 
@@ -115,7 +114,7 @@ export function shouldBehaveLikeBridgeFacet(): void {
 	// 			context.expressWithdrawFacet
 	// 				.connect(partyA1.getSigner)
 	// 				.transferToBridge(context.collateral, e(1000), context.signers.bridge1.address, partyA1.address),
-	// 		).to.not.reverted
+	// 		).not.to.revert(ethers)
 
 	// 		const bridgeTxId = await context.viewFacet.getLastBridgeTransactionId()
 	// 		const bridgeTx = await context.viewFacet.getBridgeTransaction(bridgeTxId)
@@ -224,7 +223,7 @@ export function shouldBehaveLikeBridgeFacet(): void {
 	// 		const beforeBalance = await context.collateral.balanceOf(context.signers.bridge1)
 	// 		await moveTime(ONE_DAY_IN_SEC)
 	// 		await expect(context.expressWithdrawFacet.connect(context.signers.bridge1).withdrawReceivedBridgeValues([LastBridgeTransactionId])).to.not
-	// 			.reverted
+	// 			.to.revert(ethers)
 	// 		const afterBalance = await context.collateral.balanceOf(context.signers.bridge1)
 
 	// 		const bridgeTx = await context.viewFacet.getBridgeTransaction(LastBridgeTransactionId)
@@ -251,7 +250,7 @@ export function shouldBehaveLikeBridgeFacet(): void {
 	// 		const beforeBalance = await context.collateral.balanceOf(context.signers.bridge1)
 	// 		await moveTime(ONE_DAY_IN_SEC)
 
-	// 		await expect(context.expressWithdrawFacet.connect(context.signers.bridge1).withdrawReceivedBridgeValues(txIds)).to.not.reverted
+	// 		await expect(context.expressWithdrawFacet.connect(context.signers.bridge1).withdrawReceivedBridgeValues(txIds)).not.to.revert(ethers)
 
 	// 		const afterBalance = await context.collateral.balanceOf(context.signers.bridge1)
 
@@ -308,7 +307,7 @@ export function shouldBehaveLikeBridgeFacet(): void {
 	// 	})
 
 	// 	it("Should suspend bridge transaction successfully", async function () {
-	// 		await expect(context.expressWithdrawFacet.suspendBridgeTransaction(LastBridgeTransactionId)).to.not.reverted
+	// 		await expect(context.expressWithdrawFacet.suspendBridgeTransaction(LastBridgeTransactionId)).not.to.revert(ethers)
 
 	// 		const bridgeTx = await context.viewFacet.getBridgeTransaction(LastBridgeTransactionId)
 
@@ -369,7 +368,7 @@ export function shouldBehaveLikeBridgeFacet(): void {
 	// 		const txBefore = await context.viewFacet.getBridgeTransaction(LastBridgeTransactionId)
 	// 		expect(txBefore.status).to.equal(1) // SUSPENDED
 
-	// 		await expect(context.expressWithdrawFacet.restoreBridgeTransaction(LastBridgeTransactionId, e(900))).to.not.reverted
+	// 		await expect(context.expressWithdrawFacet.restoreBridgeTransaction(LastBridgeTransactionId, e(900))).not.to.revert(ethers)
 
 	// 		const txAfter = await context.viewFacet.getBridgeTransaction(LastBridgeTransactionId)
 	// 		expect(txAfter.status).to.equal(0) // RECEIVED
