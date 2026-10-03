@@ -12,7 +12,7 @@ import { Symbol, SymbolStorage } from "../../storages/SymbolStorage.sol";
 
 import { TradeSide, MarginType, FeeStructure, FeeOp, TradeAgreements } from "../../types/BaseTypes.sol";
 import { OpenIntent, OpenIntentEscrow, OpenIntentStatus } from "../../types/IntentTypes.sol";
-import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
+import { ScheduledReleaseBalance, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 
 import { ValidationErrors } from "../../errors/ValidationErrors.sol";
 import { IntentErrors } from "../../errors/IntentErrors.sol";
@@ -51,7 +51,7 @@ library LibOpenIntentOps {
 		return SymbolStorage.layout().symbols[self.tradeAgreements.symbolId];
 	}
 
-	function isDeferredPartyBSell(address[] calldata partyBsWhiteList, TradeAgreements memory agreements) internal pure returns (bool) {
+	function isDeferredPartyBSell(address[] memory partyBsWhiteList, TradeAgreements memory agreements) internal pure returns (bool) {
 		return agreements.tradeSide == TradeSide.SELL && agreements.marginType == MarginType.CROSS && partyBsWhiteList.length == 0;
 	}
 
@@ -62,45 +62,52 @@ library LibOpenIntentOps {
 			self.partyBsWhiteList.length == 0;
 	}
 
+	function activeIntents(address owner, uint256 bucketId) internal view returns (uint256[] storage) {
+		OpenIntentStorage.Layout storage layout = OpenIntentStorage.layout();
+		if (bucketId == 0) return layout.activeOpenIntentsOf[owner];
+		return layout.activeOpenIntentsOfBucket[owner][bucketId];
+	}
+
 	function register(OpenIntent memory self) internal {
-		OpenIntentStorage.Layout storage openIntentLayout = OpenIntentStorage.layout();
-
-		openIntentLayout.openIntents[self.id] = self;
-
+		OpenIntentStorage.Layout storage layout = OpenIntentStorage.layout();
+		layout.openIntents[self.id] = self;
 		if (self.status == OpenIntentStatus.PENDING) {
-			openIntentLayout.activeOpenIntentsOf[self.partyA].push(self.id);
-			openIntentLayout.activeOpenIntentsCount[self.partyA] += 1;
-			openIntentLayout.partyAOpenIntentsIndex[self.id] = openIntentLayout.activeOpenIntentsOf[self.partyA].length - 1;
+			uint256[] storage intents = activeIntents(self.partyA, self.partyABucketId);
+			intents.push(self.id);
+			if (self.partyABucketId == 0) layout.activeOpenIntentsCount[self.partyA]++;
+			else layout.activeOpenIntentsCountOfBucket[self.partyA][self.partyABucketId]++;
+			layout.partyAOpenIntentsIndex[self.id] = intents.length - 1;
 		}
 	}
 
 	function registerForPartyB(OpenIntent memory self) internal {
-		OpenIntentStorage.Layout storage openIntentLayout = OpenIntentStorage.layout();
-
-		openIntentLayout.activeOpenIntentsOf[self.partyB].push(self.id);
-		openIntentLayout.partyBOpenIntentsIndex[self.id] = openIntentLayout.activeOpenIntentsOf[self.partyB].length - 1;
+		OpenIntentStorage.Layout storage layout = OpenIntentStorage.layout();
+		uint256[] storage intents = activeIntents(self.partyB, self.partyBBucketId);
+		intents.push(self.id);
+		layout.partyBOpenIntentsIndex[self.id] = intents.length - 1;
 	}
 
 	function unregister(OpenIntent memory self, bool fromPartyBOnly) internal {
-		OpenIntentStorage.Layout storage openIntentLayout = OpenIntentStorage.layout();
-
+		OpenIntentStorage.Layout storage layout = OpenIntentStorage.layout();
 		if (!fromPartyBOnly) {
-			uint256 indexOfIntent = openIntentLayout.partyAOpenIntentsIndex[self.id];
-			uint256 lastIndex = openIntentLayout.activeOpenIntentsOf[self.partyA].length - 1;
-			openIntentLayout.activeOpenIntentsOf[self.partyA][indexOfIntent] = openIntentLayout.activeOpenIntentsOf[self.partyA][lastIndex];
-			openIntentLayout.partyAOpenIntentsIndex[openIntentLayout.activeOpenIntentsOf[self.partyA][lastIndex]] = indexOfIntent;
-			openIntentLayout.activeOpenIntentsOf[self.partyA].pop();
-			openIntentLayout.partyAOpenIntentsIndex[self.id] = 0;
-			openIntentLayout.activeOpenIntentsCount[self.partyA] -= 1;
+			uint256[] storage intents = activeIntents(self.partyA, self.partyABucketId);
+			uint256 index = layout.partyAOpenIntentsIndex[self.id];
+			uint256 lastIntentId = intents[intents.length - 1];
+			intents[index] = lastIntentId;
+			layout.partyAOpenIntentsIndex[lastIntentId] = index;
+			intents.pop();
+			if (self.partyABucketId == 0) layout.activeOpenIntentsCount[self.partyA]--;
+			else layout.activeOpenIntentsCountOfBucket[self.partyA][self.partyABucketId]--;
+			delete layout.partyAOpenIntentsIndex[self.id];
 		}
-
 		if (self.partyB != address(0)) {
-			uint256 indexOfIntent = openIntentLayout.partyBOpenIntentsIndex[self.id];
-			uint256 lastIndex = openIntentLayout.activeOpenIntentsOf[self.partyB].length - 1;
-			openIntentLayout.activeOpenIntentsOf[self.partyB][indexOfIntent] = openIntentLayout.activeOpenIntentsOf[self.partyB][lastIndex];
-			openIntentLayout.partyBOpenIntentsIndex[openIntentLayout.activeOpenIntentsOf[self.partyB][lastIndex]] = indexOfIntent;
-			openIntentLayout.activeOpenIntentsOf[self.partyB].pop();
-			openIntentLayout.partyBOpenIntentsIndex[self.id] = 0;
+			uint256[] storage intents = activeIntents(self.partyB, self.partyBBucketId);
+			uint256 index = layout.partyBOpenIntentsIndex[self.id];
+			uint256 lastIntentId = intents[intents.length - 1];
+			intents[index] = lastIntentId;
+			layout.partyBOpenIntentsIndex[lastIntentId] = index;
+			intents.pop();
+			delete layout.partyBOpenIntentsIndex[self.id];
 		}
 	}
 
@@ -130,8 +137,8 @@ library LibOpenIntentOps {
 		uint256 mm = self.tradeAgreements.mm;
 		uint256 feeLockAmount = calculateOpenFeeAmount(self, self.price);
 
-		self.partyA.balanceOf(symbol.collateral).isolatedLock(mm);
-		self.partyA.balanceOf(self.feeStructure.feeToken).isolatedLock(feeLockAmount);
+		self.partyA.balanceOf(self.partyABucketId, symbol.collateral).isolatedLock(mm);
+		self.partyA.balanceOf(self.partyABucketId, self.feeStructure.feeToken).isolatedLock(feeLockAmount);
 
 		openIntentLayout.openIntentEscrows[self.id] = OpenIntentEscrow({
 			partyA: self.partyA,
@@ -228,20 +235,20 @@ library LibOpenIntentOps {
 	}
 
 	function _lock(OpenIntent memory self, address collateral, uint256 amount) internal {
-		ScheduledReleaseBalance storage partyABalance = self.partyA.balanceOf(collateral);
+		ScheduledReleaseBalance storage partyABalance = self.partyA.balanceOf(self.partyABucketId, collateral);
 		if (self.tradeAgreements.marginType == MarginType.ISOLATED) {
 			partyABalance.isolatedLock(amount);
 		} else {
-			partyABalance.crossLock(self.partyBsWhiteList[0], amount);
+			partyABalance.crossLock(self.partyBsWhiteList[0], self.partyBBucketId, amount);
 		}
 	}
 
 	function _unlock(OpenIntent memory self, address collateral, uint256 amount) internal {
-		ScheduledReleaseBalance storage partyABalance = self.partyA.balanceOf(collateral);
+		ScheduledReleaseBalance storage partyABalance = self.partyA.balanceOf(self.partyABucketId, collateral);
 		if (self.tradeAgreements.marginType == MarginType.ISOLATED) {
 			partyABalance.isolatedUnlock(amount);
 		} else {
-			partyABalance.crossUnlock(self.partyBsWhiteList[0], amount);
+			partyABalance.crossUnlock(self.partyBsWhiteList[0], self.partyBBucketId, amount);
 		}
 	}
 
@@ -255,39 +262,48 @@ library LibOpenIntentOps {
 
 	function lockMMIfSell(OpenIntent memory self) internal {
 		if (self.tradeAgreements.tradeSide == TradeSide.SELL)
-			self.partyA.balanceOf(getSymbol(self).collateral).crossLock(self.partyBsWhiteList[0], self.tradeAgreements.mm);
+			self.partyA.balanceOf(self.partyABucketId, getSymbol(self).collateral).crossLock(
+				self.partyBsWhiteList[0],
+				self.partyBBucketId,
+				self.tradeAgreements.mm
+			);
 	}
 
 	function unlockMMIfSell(OpenIntent memory self) internal {
 		if (self.tradeAgreements.tradeSide == TradeSide.SELL)
-			self.partyA.balanceOf(getSymbol(self).collateral).crossUnlock(self.partyBsWhiteList[0], self.tradeAgreements.mm);
+			self.partyA.balanceOf(self.partyABucketId, getSymbol(self).collateral).crossUnlock(
+				self.partyBsWhiteList[0],
+				self.partyBBucketId,
+				self.tradeAgreements.mm
+			);
 	}
 
-	function _handleFees(OpenIntent memory self, FeeOp op, uint256 price) internal returns (uint256[3] memory fees) {
+	function _handleFees(OpenIntent memory self, FeeOp op, uint256 price) private returns (uint256[3] memory fees) {
 		FeeStructure memory s = self.feeStructure;
 		bool isolated = self.tradeAgreements.marginType == MarginType.ISOLATED;
 		bool singlePartyB = self.partyBsWhiteList.length == 1;
 		address partyB = singlePartyB ? self.partyBsWhiteList[0] : self.partyB;
-
 		if (!isolated && partyB == address(0)) revert ValidationErrors.ZeroAddress("partyB");
-
-		ScheduledReleaseBalance storage bal = self.partyA.balanceOf(s.feeToken);
-
 		fees = [
 			calculateFee(self, s.platformFee.openFee, price),
 			calculateFee(self, s.affiliateFee.openFee, price),
 			calculateFee(self, s.solverFee.openFee, price)
 		];
 
+		if (op == FeeOp.Lock || op == FeeOp.Unlock) {
+			for (uint8 i; i < 3; ++i) {
+				if (op == FeeOp.Lock) _lock(self, s.feeToken, fees[i]);
+				else _unlock(self, s.feeToken, fees[i]);
+			}
+			return fees;
+		}
+
+		ScheduledReleaseBalance storage bal = self.partyA.balanceOf(self.partyABucketId, s.feeToken);
+
 		DecreaseBalanceReason[3] memory decReasons = [
 			DecreaseBalanceReason.PLATFORM_FEE,
 			DecreaseBalanceReason.AFFILIATE_FEE,
 			DecreaseBalanceReason.SOLVER_FEE
-		];
-		IncreaseBalanceReason[3] memory incReasons = [
-			IncreaseBalanceReason.PLATFORM_FEE,
-			IncreaseBalanceReason.AFFILIATE_FEE,
-			IncreaseBalanceReason.SOLVER_FEE
 		];
 
 		for (uint8 i; i < 3; ++i) {
@@ -295,18 +311,8 @@ library LibOpenIntentOps {
 				if (isolated && !singlePartyB) {
 					bal.isolatedSub(fees[i], decReasons[i]);
 				} else {
-					bal.subForCounterParty(partyB, fees[i], self.tradeAgreements.marginType, decReasons[i]);
+					bal.subForCounterParty(partyB, self.partyBBucketId, fees[i], self.tradeAgreements.marginType, decReasons[i]);
 				}
-			} else if (op == FeeOp.Add) {
-				if (isolated && !singlePartyB) {
-					bal.instantIsolatedAdd(fees[i], incReasons[i]);
-				} else {
-					bal.scheduledAdd(partyB, fees[i], self.tradeAgreements.marginType, incReasons[i]);
-				}
-			} else if (op == FeeOp.Lock) {
-				_lock(self, self.feeStructure.feeToken, fees[i]);
-			} else if (op == FeeOp.Unlock) {
-				_unlock(self, self.feeStructure.feeToken, fees[i]);
 			}
 		}
 	}

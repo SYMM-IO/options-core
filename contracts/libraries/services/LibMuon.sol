@@ -5,7 +5,7 @@
 pragma solidity >=0.8.19;
 
 import { AppStorage } from "../../storages/AppStorage.sol";
-import { AccountStorage } from "../../storages/AccountStorage.sol";
+import { LibBucket } from "../core/LibBucket.sol";
 
 import { SymbolStorage, Symbol, Oracle } from "../../storages/SymbolStorage.sol";
 
@@ -18,7 +18,7 @@ import { ValidationErrors } from "../../errors/ValidationErrors.sol";
 
 library LibMuon {
 	function getChainId() internal view returns (uint256 id) {
-		assembly {
+		assembly ("memory-safe") {
 			id := chainid()
 		}
 	}
@@ -57,7 +57,18 @@ library LibMuon {
 	}
 
 	function verifyUpnlSig(UpnlSig memory sig, address collateral, address party, address counterParty, uint256 oracleId) internal view {
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
+		verifyUpnlSig(sig, collateral, party, 0, counterParty, 0, oracleId);
+	}
+
+	function verifyUpnlSig(
+		UpnlSig memory sig,
+		address collateral,
+		address party,
+		uint256 partyBucketId,
+		address counterParty,
+		uint256 counterPartyBucketId,
+		uint256 oracleId
+	) internal view {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 		Oracle storage oracle = SymbolStorage.layout().oracles[oracleId];
 
@@ -71,22 +82,46 @@ library LibMuon {
 			);
 		// == ) ==
 
-		bytes32 hash = keccak256(
-			abi.encodePacked(
-				sig.reqId,
-				address(this),
-				"verifyUpnlSig",
-				party,
-				counterParty,
-				sig.partyUpnl,
-				sig.counterPartyUpnl,
-				collateral,
-				sig.collateralPrice,
-				accountLayout.nonces[party][counterParty],
-				sig.timestamp,
-				getChainId()
-			)
-		);
+		bytes32 hash;
+		uint256 nonce = LibBucket.nonce(party, partyBucketId, counterParty, counterPartyBucketId);
+		if (partyBucketId == 0 && counterPartyBucketId == 0) {
+			hash = keccak256(
+				abi.encodePacked(
+					sig.reqId,
+					address(this),
+					"verifyUpnlSig",
+					party,
+					counterParty,
+					sig.partyUpnl,
+					sig.counterPartyUpnl,
+					collateral,
+					sig.collateralPrice,
+					nonce,
+					sig.timestamp,
+					getChainId()
+				)
+			);
+		} else {
+			hash = keccak256(
+				abi.encodePacked(
+					sig.reqId,
+					address(this),
+					// Compatibility domain: retained to preserve existing oracle proofs.
+					"verifyPoolUpnlSig",
+					party,
+					partyBucketId,
+					counterParty,
+					counterPartyBucketId,
+					sig.partyUpnl,
+					sig.counterPartyUpnl,
+					collateral,
+					sig.collateralPrice,
+					nonce,
+					sig.timestamp,
+					getChainId()
+				)
+			);
+		}
 
 		IMuonOracle(oracle.contractAddress).verifyTSSAndGW(hash, sig.reqId, sig.sigs, sig.gatewaySignature);
 	}

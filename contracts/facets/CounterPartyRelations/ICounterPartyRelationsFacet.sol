@@ -20,4 +20,10 @@ interface ICounterPartyRelationsFacet is ICounterPartyRelationsEvents {
 	function completeUnbindingFromPartyB() external;
 
 	function cancelUnbindingFromPartyB() external;
+
+	event BucketBindingChanged(address indexed owner, uint256 indexed bucketId, address indexed partyB, uint256 partyBBucketId, bool bound);
+	function bindToPartyB(uint256 bucketId, address partyB, uint256 partyBBucketId) external;
+	function initiateUnbindingFromPartyB(uint256 bucketId) external;
+	function completeUnbindingFromPartyB(uint256 bucketId) external;
+	function cancelUnbindingFromPartyB(uint256 bucketId) external;
 }

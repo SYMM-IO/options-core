@@ -3,6 +3,10 @@
 // Copyright (c) 2023 Symmetry Labs AG
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
+import { LibBucket } from "../../libraries/core/LibBucket.sol";
+import { BucketStorage } from "../../storages/BucketStorage.sol";
+import { BucketRef } from "../../types/BucketTypes.sol";
+import { ScheduledReleaseBalanceOps } from "../../libraries/models/LibScheduledReleaseBalance.sol";
 
 import { LibParty } from "../../libraries/models/LibParty.sol";
 import { LibTradeOps } from "../../libraries/models/LibTrade.sol";
@@ -25,7 +29,7 @@ import { Fee } from "../../types/BaseTypes.sol";
 import { Trade } from "../../types/TradeTypes.sol";
 import { LiquidationDetail } from "../../types/LiquidationTypes.sol";
 import { OpenIntent, OpenIntentEscrow, CloseIntent } from "../../types/IntentTypes.sol";
-import { ScheduledReleaseEntry, CrossEntry } from "../../types/BalanceTypes.sol";
+import { ScheduledReleaseEntry, CrossEntry, ScheduledReleaseBalance } from "../../types/BalanceTypes.sol";
 import { Withdraw, ExpressWithdrawProviderConfig } from "../../types/WithdrawTypes.sol";
 
 import { IViewFacet } from "./IViewFacet.sol";
@@ -40,6 +44,7 @@ import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableS
 contract ViewFacet is IViewFacet {
 	using EnumerableSet for EnumerableSet.AddressSet;
 	using LibParty for address;
+	using ScheduledReleaseBalanceOps for ScheduledReleaseBalance;
 	using LibOpenIntentOps for OpenIntent;
 	using LibCloseIntentOps for CloseIntent;
 	using LibTradeOps for Trade;
@@ -1145,5 +1150,102 @@ contract ViewFacet is IViewFacet {
 	 */
 	function getTradeExerciseFee(uint256 tradeId, uint256 settlementPrice, uint256 pnl) external view returns (uint256) {
 		return TradeStorage.layout().trades[tradeId].calculateExerciseFee(settlementPrice, pnl);
+	}
+
+	function getIsolatedBalance(address owner, uint256 bucketId, address token) external view returns (uint256) {
+		return owner.balanceOf(bucketId, token).isolatedBalance;
+	}
+	function getIsolatedLockedBalance(address owner, uint256 bucketId, address token) external view returns (uint256) {
+		return owner.balanceOf(bucketId, token).isolatedLockedBalance;
+	}
+	function getReserveBalance(address owner, uint256 bucketId, address token) external view returns (uint256) {
+		return owner.balanceOf(bucketId, token).reserveBalance;
+	}
+	function getCrossBalance(
+		address owner,
+		uint256 bucketId,
+		address token,
+		address cp,
+		uint256 cpBucketId
+	) external view returns (CrossEntry memory) {
+		return owner.balanceOf(bucketId, token).crossEntry(cp, cpBucketId);
+	}
+	function getScheduledReleaseEntry(
+		address owner,
+		uint256 bucketId,
+		address token,
+		address cp,
+		uint256 cpBucketId
+	) external view returns (ScheduledReleaseEntry memory) {
+		return owner.balanceOf(bucketId, token).scheduleEntry(cp, cpBucketId);
+	}
+	function getCounterPartyAddresses(address owner, uint256 bucketId, address token) external view returns (BucketRef[] memory result) {
+		ScheduledReleaseBalance storage b = owner.balanceOf(bucketId, token);
+		result = new BucketRef[](b.counterPartyAddresses.length + b.bucketedCounterParties.length);
+		uint256 i;
+		for (; i < b.counterPartyAddresses.length; i++) result[i] = BucketRef(b.counterPartyAddresses[i], 0);
+		for (uint256 j; j < b.bucketedCounterParties.length; j++) result[i + j] = b.bucketedCounterParties[j];
+	}
+	function getNonce(address owner, uint256 bucketId, address cp, uint256 cpBucketId) external view returns (uint256) {
+		return LibBucket.nonce(owner, bucketId, cp, cpBucketId);
+	}
+	function getBoundPartyB(address owner, uint256 bucketId) external view returns (address partyB, uint256 partyBBucketId) {
+		return (LibBucket.boundPartyB(owner, bucketId), LibBucket.boundPartyBBucketId(owner, bucketId));
+	}
+	function getUnbindingRequestTime(address owner, uint256 bucketId) external view returns (uint256) {
+		return
+			bucketId == 0
+				? CounterPartyRelationsStorage.layout().unbindingRequestTime[owner]
+				: BucketStorage.layout().unbindingRequestTimes[owner][bucketId];
+	}
+	function getInProgressLiquidationId(address a, uint256 bucketA, address b, uint256 bucketB, address token) external view returns (uint256) {
+		return LibParty.liquidationId(a, bucketA, b, bucketB, token);
+	}
+	function getActiveOpenIntentIds(address owner, uint256 bucketId) external view returns (uint256[] memory) {
+		return
+			bucketId == 0
+				? OpenIntentStorage.layout().activeOpenIntentsOf[owner]
+				: OpenIntentStorage.layout().activeOpenIntentsOfBucket[owner][bucketId];
+	}
+	function getActiveOpenIntentsCount(address owner, uint256 bucketId) external view returns (uint256) {
+		return
+			bucketId == 0
+				? OpenIntentStorage.layout().activeOpenIntentsCount[owner]
+				: OpenIntentStorage.layout().activeOpenIntentsCountOfBucket[owner][bucketId];
+	}
+	function getActiveTradeIdsOfPartyA(address owner, uint256 bucketId) external view returns (uint256[] memory) {
+		return bucketId == 0 ? TradeStorage.layout().activeTradesOfPartyA[owner] : TradeStorage.layout().activeTradesOfPartyABucket[owner][bucketId];
+	}
+	function getActiveTradeIdsForPartyB(address owner, uint256 bucketId, address token) external view returns (uint256[] memory) {
+		return
+			bucketId == 0
+				? TradeStorage.layout().activeTradesOfPartyB[owner][token]
+				: TradeStorage.layout().activeTradesOfPartyBBucket[owner][bucketId][token];
+	}
+	function isAddressSuspended(address owner, uint256 bucketId) external view returns (bool) {
+		return LibBucket.isSuspended(owner, bucketId);
+	}
+	function isPartyBInEmergencyMode(address owner, uint256 bucketId) external view returns (bool) {
+		return LibBucket.isPartyBEmergency(owner, bucketId);
+	}
+
+	function getActiveOpenIntents(address owner, uint256 bucketId, uint256 start, uint256 size) external view returns (OpenIntent[] memory) {
+		OpenIntentStorage.Layout storage l = OpenIntentStorage.layout();
+		uint256[] storage ids = bucketId == 0 ? l.activeOpenIntentsOf[owner] : l.activeOpenIntentsOfBucket[owner][bucketId];
+		if (start >= ids.length) return new OpenIntent[](0);
+		uint256 count = size < ids.length - start ? size : ids.length - start;
+		OpenIntent[] memory result = new OpenIntent[](count);
+		for (uint256 i; i < count; i++) result[i] = l.openIntents[ids[start + i]];
+		return result;
+	}
+
+	function getActiveTradesOfPartyA(address owner, uint256 bucketId, uint256 start, uint256 size) external view returns (Trade[] memory) {
+		TradeStorage.Layout storage l = TradeStorage.layout();
+		uint256[] storage ids = bucketId == 0 ? l.activeTradesOfPartyA[owner] : l.activeTradesOfPartyABucket[owner][bucketId];
+		if (start >= ids.length) return new Trade[](0);
+		uint256 count = size < ids.length - start ? size : ids.length - start;
+		Trade[] memory result = new Trade[](count);
+		for (uint256 i; i < count; i++) result[i] = l.trades[ids[start + i]];
+		return result;
 	}
 }

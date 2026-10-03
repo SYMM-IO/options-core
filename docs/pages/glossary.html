@@ -20,6 +20,9 @@
 <a class="toc-link level-2" href="#helpers-and-off-chain">Helpers And Off-chain</a>
 <a class="toc-link level-2" href="#risk-and-liquidation">Risk And Liquidation</a>
 <a class="toc-link level-2" href="#system-concepts">System Concepts</a>
+<a class="toc-link level-2" href="#funding-vocabulary">Funding vocabulary</a>
+<a class="toc-link level-3" href="#funding-bucket">Funding bucket</a>
+<a class="toc-link level-3" href="#relationship">Relationship</a>
 </div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1>Glossary</h1><p class="hero-copy">Protocol terms, actors, quantities, and units.</p></div></div></header>
 <article class="doc-article" id="full-document"><p>A definitive A–Z dictionary of every domain term used in Options Core. Each entry gives a one-sentence definition, an optional clarification with a link to the deeper doc, and the primary code reference where applicable. Sections are grouped by concern; entries inside a section are alphabetical.</p>
 <h2 id="contents">Contents</h2>
@@ -31,6 +34,7 @@
 <li><a href="#helpers-and-off-chain">Helpers And Off-chain</a></li>
 <li><a href="#risk-and-liquidation">Risk And Liquidation</a></li>
 <li><a href="#system-concepts">System Concepts</a></li>
+<li><a href="#funding-vocabulary">Funding vocabulary</a></li>
 </ul>
 <h2 id="actors">Actors</h2>
 <ul>
@@ -137,4 +141,13 @@
 <li><strong>Virtual withdraw</strong> — Withdrawal whose <code>isVirtual = true</code> (set by the express provider config); <code>completeWithdraw</code> skips the ERC-20 transfer (<code>contracts/types/WithdrawTypes.sol:9</code>, <code>contracts/libraries/core/LibBalanceOperations.sol:184</code>).</li>
 <li><strong>Whitelist</strong> — Generic term for <code>OpenIntent.partyBsWhiteList</code>, <code>whiteListedCollateral</code>, <code>externalTransferTargets</code>, and <code>expressWithdrawProviderConfigs</code>; semantics differ per surface. For open intents, empty whitelist means any active Party B for isolated intents and deferred Party B sells, but not for normal cross intents.</li>
 </ul>
+<h2 id="funding-vocabulary">Funding vocabulary</h2>
+<p>Terms for funding within the options protocol.</p>
+<h3 id="funding-bucket">Funding bucket</h3>
+<p>An independently funded portion of a user or solver wallet's collateral, with its own available funds and obligations.</p>
+<p><em>Avoid</em>: Pool, subaccount</p>
+<h3 id="relationship">Relationship</h3>
+<p>A bilateral funding association between one user's funding bucket and one solver's funding bucket. It may support multiple instruments while keeping its funding separate from other bucket pairs.</p>
+<p><em>Avoid</em>: Bucket, trade</p>
+<p>See <a href="native-buckets.html">native funding buckets</a> for the APIs and accounting behavior.</p>
 </article></main></div><footer class="site-footer"><span>Options Core documentation.</span></footer></body></html>

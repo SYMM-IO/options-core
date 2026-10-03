@@ -3,6 +3,7 @@
 // Copyright (c) 2023 Symmetry Labs AG
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
+import { LibBucket } from "../../libraries/core/LibBucket.sol";
 
 import { LibCounterPartyRelations } from "../../libraries/core/LibCounterPartyRelations.sol";
 import { LibParty } from "../../libraries/models/LibParty.sol";
@@ -90,5 +91,30 @@ contract CounterPartyRelationsFacet is Accessibility, Pausable, ICounterPartyRel
 	function cancelUnbindingFromPartyB() external onlyNotPartyB(msg.sender) whenPartyNotPaused(msg.sender) {
 		LibCounterPartyRelations.cancelUnbindingFromPartyB();
 		emit CancelUnbindingFromPartyB(msg.sender, CounterPartyRelationsStorage.layout().boundPartyB[msg.sender]);
+	}
+
+	function bindToPartyB(
+		uint256 bucketId,
+		address partyB,
+		uint256 partyBBucketId
+	) external onlyNotPartyB(msg.sender) whenPartyNotPaused(msg.sender) {
+		LibBucket.requireNotSuspended(msg.sender, bucketId);
+		LibCounterPartyRelations.bindToPartyB(bucketId, partyB, partyBBucketId);
+		emit BucketBindingChanged(msg.sender, bucketId, partyB, partyBBucketId, true);
+	}
+	function initiateUnbindingFromPartyB(uint256 bucketId) external onlyNotPartyB(msg.sender) whenPartyNotPaused(msg.sender) {
+		LibBucket.requireNotSuspended(msg.sender, bucketId);
+		LibCounterPartyRelations.initiateUnbindingFromPartyB(bucketId);
+	}
+	function completeUnbindingFromPartyB(uint256 bucketId) external onlyNotPartyB(msg.sender) whenPartyNotPaused(msg.sender) {
+		address b = LibBucket.boundPartyB(msg.sender, bucketId);
+		uint256 bBucket = LibBucket.boundPartyBBucketId(msg.sender, bucketId);
+		LibBucket.requireNotSuspended(msg.sender, bucketId);
+		LibCounterPartyRelations.completeUnbindingFromPartyB(bucketId);
+		emit BucketBindingChanged(msg.sender, bucketId, b, bBucket, false);
+	}
+	function cancelUnbindingFromPartyB(uint256 bucketId) external onlyNotPartyB(msg.sender) whenPartyNotPaused(msg.sender) {
+		LibBucket.requireNotSuspended(msg.sender, bucketId);
+		LibCounterPartyRelations.cancelUnbindingFromPartyB(bucketId);
 	}
 }

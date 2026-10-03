@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Implementation Proposal: Native Deferred PartyB Sell Escrow | Options Core</title>
+		<link rel="icon" type="image/svg+xml" href="docs/assets/symmio-mark.svg" />
+		<link rel="stylesheet" href="docs/assets/reader.css" />
+		<link rel="stylesheet" href="docs/assets/docs-portal.css" />
+		<script>
+			try {
+				if (localStorage.getItem("options-docs-theme") === "light") document.documentElement.dataset.theme = "light";
+			} catch (_) {}
+		</script>
+		<script src="docs/assets/chapters.js" defer></script>
+		<script src="docs/assets/reader.js" defer></script>
+		<script src="docs/assets/docs-portal.js" defer></script>
+	</head>
+	<body class="doc-page" data-version="current">
+		<a class="skip-link" href="#full-document">Skip to document</a>
+		<header class="docs-header">
+			<div class="doc-topbar">
+				<nav class="docs-trail" aria-label="Breadcrumb">
+					<a class="brand" href="docs/index.html"
+						><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Options Core</span></a
+					><span class="trail-sep" aria-hidden="true">/</span><a class="trail-release" href="docs/index.html">Documentation</a>
+				</nav>
+				<nav class="top-actions" aria-label="Page actions">
+					<button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button>
+				</nav>
+			</div>
+		</header>
+		<div class="reader-shell">
+			<div data-rail-sections hidden>
+				<a class="toc-link level-2" href="#summary">Summary</a>
+				<a class="toc-link level-2" href="#current-blockers">Current Blockers</a>
+				<a class="toc-link level-2" href="#storage-design">Storage Design</a>
+				<a class="toc-link level-2" href="#helper-predicates">Helper Predicates</a>
+				<a class="toc-link level-2" href="#send-open-intent-flow">Send Open Intent Flow</a>
+				<a class="toc-link level-2" href="#escrow-locking">Escrow Locking</a>
+				<a class="toc-link level-2" href="#lock-open-intent-flow">Lock Open Intent Flow</a>
+				<a class="toc-link level-2" href="#fill-open-intent-flow">Fill Open Intent Flow</a>
+				<a class="toc-link level-2" href="#fee-handling-on-fill">Fee Handling On Fill</a>
+				<a class="toc-link level-2" href="#partial-fills">Partial Fills</a>
+				<a class="toc-link level-2" href="#cancel-expire-force-cancel-clearing-house">Cancel, Expire, Force-Cancel, Clearing House</a>
+				<a class="toc-link level-2" href="#events-and-errors">Events And Errors</a>
+				<a class="toc-link level-2" href="#views">Views</a>
+				<a class="toc-link level-2" href="#file-touchpoints">File Touchpoints</a>
+				<a class="toc-link level-2" href="#tests">Tests</a>
+				<a class="toc-link level-3" href="#creation">Creation</a>
+				<a class="toc-link level-3" href="#lock">Lock</a>
+				<a class="toc-link level-3" href="#fill">Fill</a>
+				<a class="toc-link level-3" href="#cancel-and-expiry">Cancel And Expiry</a>
+				<a class="toc-link level-3" href="#regression">Regression</a>
+				<a class="toc-link level-2" href="#security-invariants">Security Invariants</a>
+				<a class="toc-link level-2" href="#open-decisions">Open Decisions</a>
+				<a class="toc-link level-2" href="#recommended-v1">Recommended V1</a>
+			</div>
+			<main class="reader-main">
+				<header class="reader-hero">
+					<div class="reader-title-row">
+						<div>
+							<h1 id="implementation-proposal-native-deferred-partyb-sell-escrow">
+								Implementation Proposal: Native Deferred PartyB Sell Escrow
+							</h1>
+						</div>
+					</div>
+				</header>
+				<article class="doc-article" id="full-document">
+					<noscript
+						><nav aria-label="On this page">
+							<a class="toc-link level-2" href="#summary">Summary</a>
+							<a class="toc-link level-2" href="#current-blockers">Current Blockers</a>
+							<a class="toc-link level-2" href="#storage-design">Storage Design</a>
+							<a class="toc-link level-2" href="#helper-predicates">Helper Predicates</a>
+							<a class="toc-link level-2" href="#send-open-intent-flow">Send Open Intent Flow</a>
+							<a class="toc-link level-2" href="#escrow-locking">Escrow Locking</a>
+							<a class="toc-link level-2" href="#lock-open-intent-flow">Lock Open Intent Flow</a>
+							<a class="toc-link level-2" href="#fill-open-intent-flow">Fill Open Intent Flow</a>
+							<a class="toc-link level-2" href="#fee-handling-on-fill">Fee Handling On Fill</a>
+							<a class="toc-link level-2" href="#partial-fills">Partial Fills</a>
+							<a class="toc-link level-2" href="#cancel-expire-force-cancel-clearing-house"
+								>Cancel, Expire, Force-Cancel, Clearing House</a
+							>
+							<a class="toc-link level-2" href="#events-and-errors">Events And Errors</a>
+							<a class="toc-link level-2" href="#views">Views</a>
+							<a class="toc-link level-2" href="#file-touchpoints">File Touchpoints</a>
+							<a class="toc-link level-2" href="#tests">Tests</a>
+							<a class="toc-link level-3" href="#creation">Creation</a>
+							<a class="toc-link level-3" href="#lock">Lock</a>
+							<a class="toc-link level-3" href="#fill">Fill</a>
+							<a class="toc-link level-3" href="#cancel-and-expiry">Cancel And Expiry</a>
+							<a class="toc-link level-3" href="#regression">Regression</a>
+							<a class="toc-link level-2" href="#security-invariants">Security Invariants</a>
+							<a class="toc-link level-2" href="#open-decisions">Open Decisions</a>
+							<a class="toc-link level-2" href="#recommended-v1">Recommended V1</a>
+						</nav></noscript
+					>
+					<h2 id="summary">Summary</h2>
+					<p>
+						Implement the escrow idea as a narrow SYMMIO open-intent feature inside <code>src/symmio/contracts</code>, not as a market or
+						symbol creation change.
+					</p>
+					<p>The new supported case is:</p>
+					<pre><code class="language-text">tradeSide == SELL
+marginType == CROSS
+partyBsWhiteList.length == 0
+</code></pre>
+					<p>
+						This allows PartyA to broadcast a funded sell intent before PartyB is known. SYMMIO locks PartyA&#39;s seller maintenance
+						margin and open-fee estimate in intent-scoped escrow. When a valid PartyB locks and fills the intent, the escrow is converted
+						into ordinary <code>(PartyA, PartyB, collateral)</code> cross-margin accounting and the resulting trade behaves like a normal
+						cross trade.
+					</p>
+					<p>Recommended v1 scope:</p>
+					<p><strong>lafa comment</strong></p>
+					<ol>
+						<li>
+							<p>Allow only <code>SELL + CROSS + empty whitelist</code>.</p>
+						</li>
+						<li>
+							<p>Keep <code>SELL + ISOLATED</code> rejected.</p>
+						</li>
+						<li>
+							<p>Keep <code>BUY + CROSS + empty whitelist</code> rejected.</p>
+						</li>
+						<li>
+							<p>
+								Keep <code>SELL + CROSS + multiple PartyBs</code> rejected.
+								<em>lets discuss if we want these other modes 2/, 3/, 4/ as well the others as well</em>
+								<a href="impl_proposal_add.html#discussion-other-modes">See addendum: mode scope discussion</a>
+							</p>
+						</li>
+						<li><p>Require PartyA to be unbound to a PartyB.</p></li>
+						<li><p>Lock escrow from isolated balances until fill.</p></li>
+						<li><p>Move escrow into selected PartyB cross state at fill, not at lock.</p></li>
+					</ol>
+					<p>
+						<strong>lafa comment</strong> 8. Disable partial fills for deferred sells in v1. // I guess its very hard to implement partial
+						fills, and might also not be desired UX from PartyA sender perspective, as we most likely have to isolate both sells. so its
+						an AOC (all or cancel only)
+					</p>
+					<p>
+						<strong>lafa comment</strong> 9. Release escrow on every non-fill terminal path.
+						<em>potentially gotta add a cancel function? I guess we already have something?</em>
+						<a href="impl_proposal_add.html#partya-cancellation">See addendum: PartyA cancellation</a>
+					</p>
+					<h2 id="current-blockers">Current Blockers</h2>
+					<p>
+						<code>LibPartyAOpen.sendOpenIntent</code> currently rejects all cross-margin open intents that do not specify exactly one
+						PartyB:
+					</p>
+					<pre><code class="language-solidity">if (tradeAgreements.marginType == MarginType.CROSS) {
+    if (partyBsWhiteList.length != 1) revert IntentErrors.MultiplePartyBNotAllowed();
+    sender.requireSolvent(partyBsWhiteList[0], symbol.collateral, tradeAgreements.marginType);
+    partyBsWhiteList[0].requireSolvent(sender, symbol.collateral, tradeAgreements.marginType);
+}
+</code></pre>
+					<p><code>LibOpenIntentOps</code> also assumes a concrete PartyB when locking cross-margin fees and seller MM:</p>
+					<pre><code class="language-solidity">function _lock(OpenIntent memory self, address collateral, uint256 amount) internal {
+	ScheduledReleaseBalance storage partyABalance = self.partyA.balanceOf(collateral);
+	if (self.tradeAgreements.marginType == MarginType.ISOLATED) {
+		partyABalance.isolatedLock(amount);
+	} else {
+		partyABalance.crossLock(self.partyBsWhiteList[0], amount);
+	}
+}
+
+function lockMMIfSell(OpenIntent memory self) internal {
+	if (self.tradeAgreements.tradeSide == TradeSide.SELL)
+		self.partyA.balanceOf(getSymbol(self).collateral).crossLock(self.partyBsWhiteList[0], self.tradeAgreements.mm);
+}
+</code></pre>
+					<p>So <code>SELL + CROSS + []</code> needs a separate escrow branch instead of indexing <code>partyBsWhiteList[0]</code>.</p>
+					<h2 id="storage-design">Storage Design</h2>
+					<p>
+						Add an intent-scoped escrow record. Do not add fields to <code>OpenIntent</code>, because it is persisted storage and contains
+						dynamic fields.
+					</p>
+					<p>Add to <code>contracts/types/IntentTypes.sol</code>:</p>
+					<pre><code class="language-solidity">struct OpenIntentEscrow {
+	address partyA;
+	address collateral;
+	address feeToken;
+	uint256 mm;
+	uint256 feeLockAmount;
+	bool exists;
+	bool consumed;
+}
+</code></pre>
+					<p>Append to <code>OpenIntentStorage.Layout</code>:</p>
+					<pre><code class="language-solidity">mapping(uint256 =&gt; OpenIntentEscrow) openIntentEscrows;
+</code></pre>
+					<p>
+						Appending to the layout preserves the existing diamond storage shape. The source of truth should be keyed by
+						<code>intentId</code>, not by PartyA, because cancel, expiry, force-cancel, fill, and partial-fill lifecycle operations are
+						all intent-scoped.
+					</p>
+					<h2 id="helper-predicates">Helper Predicates</h2>
+					<p>Add helpers in <code>LibOpenIntent.sol</code>:</p>
+					<pre><code class="language-solidity">function isDeferredPartyBSell(address[] memory partyBsWhiteList, TradeAgreements memory agreements) internal pure returns (bool) {
+	return agreements.tradeSide == TradeSide.SELL &amp;&amp; agreements.marginType == MarginType.CROSS &amp;&amp; partyBsWhiteList.length == 0;
+}
+
+function isDeferredPartyBSellIntent(OpenIntent memory intent) internal pure returns (bool) {
+	return
+		intent.tradeAgreements.tradeSide == TradeSide.SELL &amp;&amp;
+		intent.tradeAgreements.marginType == MarginType.CROSS &amp;&amp;
+		intent.partyBsWhiteList.length == 0;
+}
+</code></pre>
+					<p>These helpers keep the special case explicit and prevent accidentally creating generalized multi-PartyB cross margin.</p>
+					<h2 id="send-open-intent-flow">Send Open Intent Flow</h2>
+					<p>Modify <code>LibPartyAOpen.sendOpenIntent</code>.</p>
+					<p>Existing behavior stays unchanged for:</p>
+					<ol>
+						<li><code>BUY + ISOLATED</code>.</li>
+						<li><code>BUY + CROSS + one PartyB</code>.</li>
+						<li><code>SELL + CROSS + one PartyB</code>.</li>
+						<li>Existing rejected cases except the new deferred sell case.</li>
+					</ol>
+					<p>New behavior:</p>
+					<pre><code class="language-solidity">bool deferredSell = LibOpenIntentOps.isDeferredPartyBSell(partyBsWhiteList, tradeAgreements);
+
+if (tradeAgreements.marginType == MarginType.CROSS) {
+    if (deferredSell) {
+        _validateDeferredSellPartyA(sender);
+    } else {
+        if (partyBsWhiteList.length != 1) revert IntentErrors.MultiplePartyBNotAllowed();
+        sender.requireSolvent(partyBsWhiteList[0], symbol.collateral, tradeAgreements.marginType);
+        partyBsWhiteList[0].requireSolvent(sender, symbol.collateral, tradeAgreements.marginType);
+    }
+}
+</code></pre>
+					<p>For v1, <code>_validateDeferredSellPartyA</code> should at least reject bound PartyA accounts:</p>
+					<pre><code class="language-solidity">function _validateDeferredSellPartyA(address partyA) internal view {
+	address boundPartyB = CounterPartyRelationsStorage.layout().boundPartyB[partyA];
+	if (boundPartyB != address(0)) {
+		revert IntentErrors.DeferredSellNotAllowedForBoundPartyA(partyA, boundPartyB);
+	}
+}
+</code></pre>
+					<p>After registering the intent:</p>
+					<pre><code class="language-solidity">if (deferredSell) {
+    intent.lockDeferredSellEscrow();
+} else {
+    intent.lockFees();
+    intent.lockPremiumIfBuy();
+    intent.lockMMIfSell();
+}
+</code></pre>
+					<h2 id="escrow-locking">Escrow Locking</h2>
+					<p>Use isolated-balance locking for v1. This avoids pretending there is bilateral cross exposure before PartyB is known.</p>
+					<p>Lock:</p>
+					<ol>
+						<li><code>tradeAgreements.mm</code> from PartyA&#39;s isolated balance for the symbol collateral.</li>
+						<li>Estimated open fees from PartyA&#39;s isolated balance for <code>feeToken</code>.</li>
+					</ol>
+					<p>Implementation shape:</p>
+					<pre><code class="language-solidity">function lockDeferredSellEscrow(OpenIntent memory intent) internal {
+	OpenIntentStorage.Layout storage layout = OpenIntentStorage.layout();
+	Symbol memory symbol = getSymbol(intent);
+
+	uint256 mm = intent.tradeAgreements.mm;
+	uint256 feeLockAmount = calculateOpenFeeLock(intent);
+
+	intent.partyA.balanceOf(symbol.collateral).isolatedLock(mm);
+	intent.partyA.balanceOf(intent.feeStructure.feeToken).isolatedLock(feeLockAmount);
+
+	layout.openIntentEscrows[intent.id] = OpenIntentEscrow({
+		partyA: intent.partyA,
+		collateral: symbol.collateral,
+		feeToken: intent.feeStructure.feeToken,
+		mm: mm,
+		feeLockAmount: feeLockAmount,
+		exists: true,
+		consumed: false
+	});
+
+	emit LockOpenIntentEscrow(intent.id, intent.partyA, symbol.collateral, mm, intent.feeStructure.feeToken, feeLockAmount);
+}
+</code></pre>
+					<p>
+						<code>calculateOpenFeeLock</code> should sum the same fee types that <code>lockFees</code> currently locks at the submitted
+						intent price:
+					</p>
+					<pre><code class="language-solidity">function calculateOpenFeeLock(OpenIntent memory intent) internal pure returns (uint256) {
+	FeeStructure memory s = intent.feeStructure;
+
+	return
+		intent.calculateFee(s.platformFee.openFee, intent.price) +
+		intent.calculateFee(s.affiliateFee.openFee, intent.price) +
+		intent.calculateFee(s.solverFee.openFee, intent.price);
+}
+</code></pre>
+					<p>
+						If <code>feeToken == collateral</code>, both locks hit the same <code>ScheduledReleaseBalance</code> slot. That is acceptable
+						as long as available isolated balance covers <code>mm + feeLockAmount</code>.
+					</p>
+					<h2 id="lock-open-intent-flow">Lock Open Intent Flow</h2>
+					<p><code>LibPartyBOpen.lockOpenIntent</code> already allows empty whitelists:</p>
+					<pre><code class="language-solidity">if (intent.partyBsWhiteList.length == 0) {
+    isValidPartyB = true;
+}
+</code></pre>
+					<p>Add a deferred-sell escrow check before assigning PartyB:</p>
+					<pre><code class="language-solidity">if (intent.isDeferredPartyBSellIntent()) {
+    OpenIntentEscrow storage escrow = OpenIntentStorage.layout().openIntentEscrows[intentId];
+    if (!escrow.exists) revert IntentErrors.MissingOpenIntentEscrow(intentId);
+    if (escrow.consumed) revert IntentErrors.OpenIntentEscrowAlreadyConsumed(intentId);
+}
+</code></pre>
+					<p>
+						Do not move escrow into cross state at lock time. Keep it intent-scoped until fill. This keeps PartyB unlock, PartyA
+						cancel-pending, and expiry behavior simpler.
+					</p>
+					<h2 id="fill-open-intent-flow">Fill Open Intent Flow</h2>
+					<p>Modify <code>LibPartyBOpen.fillOpenIntent</code>.</p>
+					<p>For normal intents, keep current behavior:</p>
+					<pre><code class="language-solidity">intent.unlockFees();
+intent.unlockPremiumIfBuy();
+intent.unlockMMIfSell();
+</code></pre>
+					<p>For deferred sells, skip normal unlock helpers and consume escrow:</p>
+					<pre><code class="language-solidity">bool deferredSell = intent.isDeferredPartyBSellIntent();
+
+if (deferredSell) {
+    if (quantity != intent.tradeAgreements.quantity) {
+        revert IntentErrors.PartialFillNotAllowedForDeferredSell(intent.id);
+    }
+    intent.consumeDeferredSellEscrow(tradeId, intent.partyB);
+} else {
+    intent.unlockFees();
+    intent.unlockPremiumIfBuy();
+    intent.unlockMMIfSell();
+}
+</code></pre>
+					<p>Consume logic:</p>
+					<pre><code class="language-solidity">function consumeDeferredSellEscrow(OpenIntent storage intent, uint256 tradeId, address partyB) internal {
+	OpenIntentStorage.Layout storage layout = OpenIntentStorage.layout();
+	OpenIntentEscrow storage escrow = layout.openIntentEscrows[intent.id];
+
+	if (!escrow.exists) revert IntentErrors.MissingOpenIntentEscrow(intent.id);
+	if (escrow.consumed) revert IntentErrors.OpenIntentEscrowAlreadyConsumed(intent.id);
+
+	escrow.partyA.balanceOf(escrow.collateral).isolatedUnlock(escrow.mm);
+	escrow.partyA.balanceOf(escrow.feeToken).isolatedUnlock(escrow.feeLockAmount);
+
+	escrow.partyA.balanceOf(escrow.collateral).allocateBalance(partyB, escrow.mm);
+
+	emit ConsumeOpenIntentEscrow(intent.id, tradeId, partyB, escrow.mm, 0);
+
+	delete layout.openIntentEscrows[intent.id];
+}
+</code></pre>
+					<p>
+						Do not call <code>increaseMM</code> inside <code>consumeDeferredSellEscrow</code>. The existing sell fill path already does:
+					</p>
+					<pre><code class="language-solidity">partyABalance.increaseMM(trade.partyB, trade.tradeAgreements.mm);
+</code></pre>
+					<p>Keeping that call where it is minimizes downstream changes to close, exercise, and liquidation behavior.</p>
+					<h2 id="fee-handling-on-fill">Fee Handling On Fill</h2>
+					<p>
+						The lock amount is based on the submitted intent price. The actual fill price may be better for PartyA, which can make actual
+						fees higher than the locked estimate.
+					</p>
+					<p>Recommended v1:</p>
+					<ol>
+						<li>Lock fees at submitted intent price.</li>
+						<li>On fill, unlock the fee escrow.</li>
+						<li>Charge actual fees using existing fee logic.</li>
+						<li>If actual fees exceed the locked estimate, require the extra amount to be available from PartyA.</li>
+					</ol>
+					<p>
+						Because existing fee subtraction for cross margin expects a concrete counterparty, the deferred-sell fill path must ensure fee
+						collection uses the selected <code>intent.partyB</code>, not <code>partyBsWhiteList[0]</code>.
+					</p>
+					<p>One clean implementation is to update <code>_handleFees</code> to use:</p>
+					<pre><code class="language-solidity">address partyB = self.partyBsWhiteList.length == 1 ? self.partyBsWhiteList[0] : self.partyB;
+</code></pre>
+					<p>
+						and require <code>partyB != address(0)</code> for cross-margin subtract/add operations. For lock/unlock operations, deferred
+						sells should use the escrow helpers instead of <code>_lock</code> and <code>_unlock</code>.
+					</p>
+					<h2 id="partial-fills">Partial Fills</h2>
+					<p>Disable partial fills for deferred sells in v1:</p>
+					<pre><code class="language-solidity">error PartialFillNotAllowedForDeferredSell(uint256 intentId);
+</code></pre>
+					<p>
+						Reason: partial fills require proportional escrow splitting, child intent escrow creation, fee lock split accounting, and
+						repeated-conservation tests. That can be added later after the full-fill path is proven.
+					</p>
+					<p>If partial fills are added later, the invariant should be:</p>
+					<pre><code class="language-text">original escrow = consumed escrow + released escrow + child escrow
+</code></pre>
+					<h2 id="cancel-expire-force-cancel-clearing-house">Cancel, Expire, Force-Cancel, Clearing House</h2>
+					<p>Every path that currently unlocks normal open-intent funds must branch for deferred sells.</p>
+					<p>Current pattern:</p>
+					<pre><code class="language-solidity">intent.unlockFees();
+intent.unlockPremiumIfBuy();
+intent.unlockMMIfSell();
+</code></pre>
+					<p>New helper:</p>
+					<pre><code class="language-solidity">function unlockForCancelOrExpire(OpenIntent storage intent) internal {
+	if (intent.isDeferredPartyBSellIntent()) {
+		releaseDeferredSellEscrow(intent.id);
+	} else {
+		intent.unlockFees();
+		intent.unlockPremiumIfBuy();
+		intent.unlockMMIfSell();
+	}
+}
+</code></pre>
+					<p>Use it in:</p>
+					<ol>
+						<li><code>LibPartyAOpen.cancelOpenIntent</code></li>
+						<li><code>LibOpenIntentOps.expire</code></li>
+						<li><code>LibPartyBOpen.acceptCancelOpenIntent</code></li>
+						<li><code>LibForceActions.forceCancelOpenIntent</code></li>
+						<li><code>LibClearingHouse.cancelOpenIntents</code></li>
+					</ol>
+					<p>Release logic:</p>
+					<pre><code class="language-solidity">function releaseDeferredSellEscrow(uint256 intentId) internal {
+	OpenIntentStorage.Layout storage layout = OpenIntentStorage.layout();
+	OpenIntentEscrow storage escrow = layout.openIntentEscrows[intentId];
+
+	if (!escrow.exists) return;
+	if (escrow.consumed) return;
+
+	escrow.partyA.balanceOf(escrow.collateral).isolatedUnlock(escrow.mm);
+	escrow.partyA.balanceOf(escrow.feeToken).isolatedUnlock(escrow.feeLockAmount);
+
+	emit ReleaseOpenIntentEscrow(intentId, escrow.partyA, escrow.collateral, escrow.mm, escrow.feeToken, escrow.feeLockAmount);
+
+	delete layout.openIntentEscrows[intentId];
+}
+</code></pre>
+					<h2 id="events-and-errors">Events And Errors</h2>
+					<p>Add errors to <code>IntentErrors.sol</code>:</p>
+					<pre><code class="language-solidity">error DeferredSellNotAllowedForBoundPartyA(address partyA, address boundPartyB);
+error MissingOpenIntentEscrow(uint256 intentId);
+error OpenIntentEscrowAlreadyConsumed(uint256 intentId);
+error PartialFillNotAllowedForDeferredSell(uint256 intentId);
+</code></pre>
+					<p>Add events to <code>IPartyAOpenEvents.sol</code> or another shared open-intent event interface:</p>
+					<pre><code class="language-solidity">event LockOpenIntentEscrow(
+	uint256 indexed intentId,
+	address indexed partyA,
+	address indexed collateral,
+	uint256 mm,
+	address feeToken,
+	uint256 feeLockAmount
+);
+
+event ReleaseOpenIntentEscrow(
+	uint256 indexed intentId,
+	address indexed partyA,
+	address indexed collateral,
+	uint256 mm,
+	address feeToken,
+	uint256 feeLockAmount
+);
+
+event ConsumeOpenIntentEscrow(uint256 indexed intentId, uint256 indexed tradeId, address indexed partyB, uint256 mmConsumed, uint256 mmRemaining);
+</code></pre>
+					<h2 id="views">Views</h2>
+					<p>Add a view struct if needed:</p>
+					<pre><code class="language-solidity">struct OpenIntentEscrowView {
+	bool exists;
+	bool consumed;
+	address partyA;
+	address collateral;
+	address feeToken;
+	uint256 mm;
+	uint256 feeLockAmount;
+}
+</code></pre>
+					<p>Add to <code>ViewFacet</code> and <code>IViewFacet</code>:</p>
+					<pre><code class="language-solidity">function getOpenIntentEscrow(uint256 intentId) external view returns (OpenIntentEscrow memory);
+
+function isDeferredPartyBSellIntent(uint256 intentId) external view returns (bool);
+</code></pre>
+					<p>The frontend and PartyBs need to see that the broadcast sell intent is funded before attempting to lock/fill it.</p>
+					<h2 id="file-touchpoints">File Touchpoints</h2>
+					<p>Likely Solidity changes:</p>
+					<ol>
+						<li>
+							<code>contracts/types/IntentTypes.sol</code>
+							<ul>
+								<li>Add <code>OpenIntentEscrow</code>.</li>
+							</ul>
+						</li>
+						<li>
+							<code>contracts/storages/OpenIntentStorage.sol</code>
+							<ul>
+								<li>Append <code>mapping(uint256 =&gt; OpenIntentEscrow) openIntentEscrows</code>.</li>
+							</ul>
+						</li>
+						<li>
+							<code>contracts/errors/IntentErrors.sol</code>
+							<ul>
+								<li>Add deferred-sell escrow errors.</li>
+							</ul>
+						</li>
+						<li>
+							<code>contracts/facets/PartyAOpen/IPartyAOpenEvents.sol</code>
+							<ul>
+								<li>Add escrow events.</li>
+							</ul>
+						</li>
+						<li>
+							<code>contracts/libraries/models/LibOpenIntent.sol</code>
+							<ul>
+								<li>Add predicates, fee-lock calculation, escrow lock/release/consume helpers, and cancel/expire unlock helper.</li>
+							</ul>
+						</li>
+						<li>
+							<code>contracts/libraries/core/LibPartyAOpen.sol</code>
+							<ul>
+								<li>Allow deferred sell at send time and lock escrow.</li>
+							</ul>
+						</li>
+						<li>
+							<code>contracts/libraries/core/LibPartyBOpen.sol</code>
+							<ul>
+								<li>
+									Validate escrow on lock, consume escrow on fill, reject partial deferred fills, avoid normal unlock helpers for
+									deferred sell.
+								</li>
+							</ul>
+						</li>
+						<li>
+							<code>contracts/libraries/core/LibForceActions.sol</code>
+							<ul>
+								<li>Release escrow on force-cancel.</li>
+							</ul>
+						</li>
+						<li>
+							<code>contracts/libraries/core/LibClearingHouse.sol</code>
+							<ul>
+								<li>Release or route escrow on clearing-house cancellation.</li>
+							</ul>
+						</li>
+						<li>
+							<code>contracts/facets/View/ViewFacet.sol</code>
+							<ul>
+								<li>Expose escrow state.</li>
+							</ul>
+						</li>
+						<li>
+							<code>contracts/facets/View/IViewFacet.sol</code>
+							<ul>
+								<li>Add view function declarations.</li>
+							</ul>
+						</li>
+					</ol>
+					<h2 id="tests">Tests</h2>
+					<p>Add tests around these cases:</p>
+					<h3 id="creation">Creation</h3>
+					<ol>
+						<li><code>SELL + CROSS + empty whitelist</code> succeeds when PartyA has enough isolated collateral.</li>
+						<li>It reverts if PartyA lacks available isolated balance for MM plus fees.</li>
+						<li>It reverts if PartyA is bound to a PartyB.</li>
+						<li><code>BUY + CROSS + empty whitelist</code> still reverts.</li>
+						<li><code>SELL + CROSS + multiple PartyBs</code> still reverts.</li>
+						<li>Existing <code>SELL + CROSS + one PartyB</code> still works.</li>
+					</ol>
+					<h3 id="lock">Lock</h3>
+					<ol>
+						<li>Any valid PartyB can lock the deferred sell intent.</li>
+						<li>Suspended PartyB cannot lock.</li>
+						<li>PartyB with wrong oracle cannot lock.</li>
+						<li>PartyB without symbol support cannot lock.</li>
+						<li>Lock reverts if escrow is missing or consumed.</li>
+					</ol>
+					<h3 id="fill">Fill</h3>
+					<ol>
+						<li>Full fill consumes escrow and opens trade with original PartyA.</li>
+						<li>Trade has selected PartyB.</li>
+						<li>PartyA MM is allocated into selected PartyB cross state.</li>
+						<li>Existing sell fill code increases PartyA total MM against selected PartyB.</li>
+						<li>Fees are charged correctly.</li>
+						<li>Better-than-quoted sell price handles additional fee requirement.</li>
+						<li>Partial fill reverts in v1.</li>
+					</ol>
+					<h3 id="cancel-and-expiry">Cancel And Expiry</h3>
+					<ol>
+						<li>PartyA cancel while pending releases escrow.</li>
+						<li>Expiry releases escrow.</li>
+						<li>PartyB unlock returns intent to pending and keeps escrow.</li>
+						<li>PartyA cancel while locked moves to <code>CANCEL_PENDING</code> and keeps escrow.</li>
+						<li>PartyB accept cancel releases escrow.</li>
+						<li>Force cancel releases escrow.</li>
+						<li>Clearing-house cancellation does not leave escrow locked.</li>
+					</ol>
+					<h3 id="regression">Regression</h3>
+					<ol>
+						<li>Existing isolated buy flow still works.</li>
+						<li>Existing cross buy with one PartyB still works.</li>
+						<li>Existing cross sell with one PartyB still works.</li>
+						<li>Existing close, exercise, and liquidation paths for filled sell trades remain unchanged.</li>
+					</ol>
+					<h2 id="security-invariants">Security Invariants</h2>
+					<ol>
+						<li>Deferred-sell escrow is never withdrawable while the intent is pending or locked.</li>
+						<li>Escrow can be released only once.</li>
+						<li>Escrow can be consumed only once.</li>
+						<li>A filled deferred sell trade always has the original PartyA as <code>trade.partyA</code>.</li>
+						<li>A filled deferred sell trade always has the locking PartyB as <code>trade.partyB</code>.</li>
+						<li>No bilateral cross accounting exists before fill.</li>
+						<li>After fill, the trade uses ordinary cross-margin accounting.</li>
+					</ol>
+					<h2 id="open-decisions">Open Decisions</h2>
+					<p>The recommended v1 answers are included above, but these decisions should be confirmed before implementation:</p>
+					<ol>
+						<li>Should escrow be backed by isolated balance or reserve balance?</li>
+						<li>Should partial fills be disabled in v1?</li>
+						<li>Should deferred sell automatically bind PartyA to the selected PartyB?</li>
+						<li>What exact clean-subaccount rule should core enforce beyond &quot;not bound&quot;?</li>
+						<li>Should liquidation cancel escrow, release escrow, or confiscate escrow?</li>
+						<li>Should fee locks include a buffer for better-than-quoted sell fills?</li>
+						<li>Should the feature be globally gated or symbol-gated?</li>
+					</ol>
+					<h2 id="recommended-v1">Recommended V1</h2>
+					<p>Implement the full-fill-only isolated-balance escrow design first.</p>
+					<p>This gives the product outcome with the smallest core surface area:</p>
+					<pre><code class="language-text">PartyA broadcasts a funded sell intent to all eligible PartyBs.
+One PartyB locks and fills it.
+SYMMIO converts the escrow into normal bilateral cross margin.
+The opened trade has the original PartyA and the selected PartyB.
+</code></pre>
+					<p>
+						Partial fills, automatic PartyB binding, and liquidation-specific escrow confiscation can be added after this path is tested
+						and reviewed.
+					</p>
+				</article>
+			</main>
+		</div>
+		<footer class="site-footer"><span>Options Core documentation.</span></footer>
+	</body>
+</html>

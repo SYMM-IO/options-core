@@ -1,7 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Marked } from "marked";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const docs = resolve(root, "docs");
@@ -12,95 +11,62 @@ const plain = value =>
 		.replace(/<[^>]+>/g, "")
 		.replace(/&#39;/g, "'")
 		.replace(/&amp;/g, "&")
-		.replace(/&quot;/g, '"')
-		.replace(/[`*_]/g, "");
+		.replace(/&quot;/g, '"');
 const slug = value =>
 	plain(value)
 		.toLowerCase()
 		.replace(/[^\p{L}\p{N}\s_-]/gu, "")
 		.replace(/\s/g, "-");
 
-// This list drives the catalog, reader navigation, and generated pages.
+// Canonical HTML chapters; this list drives the catalog and reader navigation.
+// Article content is edited in docs/pages, never generated from another format.
 export const chapters = [
-	["README.md", "Start here", "Reading paths, chapter map, and documentation maintenance."],
-	["architecture.md", "Architecture", "Diamond routing, domain libraries, storage, and helper contracts."],
-	["development-standards.md", "Development", "Contract conventions, lint rules, release checks, and Git hooks."],
-	["testing.md", "Development", "Mocha behavior groups, fixtures, assertions, and coverage."],
-	["deployment-and-operations.md", "Development", "Deployment tasks, configuration, networks, and post-deploy setup."],
-	["flows/account-balances.md", "Flows", "Deposits, withdrawals, allocation, reserves, and transfers."],
-	["flows/open-intents.md", "Flows", "Create, lock, fill, and cancel intents, including deferred sell escrow."],
-	["flows/close-and-settlement.md", "Flows", "Close intents, settlement, exercise, trade transfers, and NFTs."],
-	["flows/instant-actions.md", "Flows", "Party binding, helper accounts, and signed InstantLayer batches."],
-	["flows/liquidation-and-force-actions.md", "Flows", "Forced cancellations, liquidation, confiscation, and distribution."],
-	["concepts/glossary.md", "Concepts", "Protocol terms, actors, quantities, and units."],
-	["concepts/margin-modes.md", "Concepts", "Cross and isolated margin, collateral reservation, and restrictions."],
-	["concepts/fee-model.md", "Concepts", "Open, close, and exercise fees, affiliates, and fee collectors."],
-	["concepts/oracle-and-signatures.md", "Concepts", "Muon verification, gateway signatures, ERC-1271, and EIP-712."],
-	["concepts/scheduled-release.md", "Concepts", "Delayed isolated releases, synchronization, and liquidation."],
-	["reference/facets.md", "Reference", "Facet selectors, modifiers, preconditions, and accounting effects."],
-	["reference/events.md", "Reference", "Diamond and helper events with declaration and emission sites."],
-	["reference/errors.md", "Reference", "Custom errors, trigger conditions, and call sites."],
-	["reference/types-and-storage.md", "Reference", "Structs, enums, storage layouts, and units."],
-	["reference/roles-and-pauses.md", "Reference", "Roles, pause flags, gated operations, and operational consequences."],
-	["security.md", "Security", "Trust assumptions, invariants, upgrade authority, and known limits."],
-].map(([source, category, summary]) => {
-	const markdown = readFileSync(resolve(docs, source), "utf8").replace(/^---\n[\s\S]*?\n---\n/, "");
-	const title = /^# (.+)$/m.exec(markdown)?.[1];
-	if (!title) throw new Error(`Missing title in ${source}`);
-	return { source, category, summary, title, slug: source === "README.md" ? "overview" : basename(source, ".md"), markdown };
+	["pages/overview.html", "Start here"],
+	["pages/architecture.html", "Architecture"],
+	["pages/development-standards.html", "Development"],
+	["pages/testing.html", "Development"],
+	["pages/deployment-and-operations.html", "Development"],
+	["pages/account-balances.html", "Flows"],
+	["pages/native-buckets.html", "Flows"],
+	["pages/open-intents.html", "Flows"],
+	["pages/close-and-settlement.html", "Flows"],
+	["pages/instant-actions.html", "Flows"],
+	["pages/liquidation-and-force-actions.html", "Flows"],
+	["pages/glossary.html", "Concepts"],
+	["pages/margin-modes.html", "Concepts"],
+	["pages/fee-model.html", "Concepts"],
+	["pages/oracle-and-signatures.html", "Concepts"],
+	["pages/scheduled-release.html", "Concepts"],
+	["pages/facets.html", "Reference"],
+	["pages/events.html", "Reference"],
+	["pages/errors.html", "Reference"],
+	["pages/types-and-storage.html", "Reference"],
+	["pages/roles-and-pauses.html", "Reference"],
+	["pages/security.html", "Security"],
+].map(([source, category]) => {
+	const html = readFileSync(resolve(docs, source), "utf8");
+	const title = plain(/<h1(?:\s[^>]*)?>([\s\S]*?)<\/h1>/.exec(html)?.[1] || "").trim();
+	const summary = /<meta\s+name="description"\s+content="([^"]*)"/.exec(html)?.[1];
+	if (!title || !summary) throw new Error(`Missing title or description in ${source}`);
+	return { source, category, summary: plain(summary), title, slug: basename(source, ".html"), html };
 });
 
-const bySource = new Map(chapters.map(chapter => [resolve(docs, chapter.source), chapter]));
-const bySlug = new Map(chapters.map(chapter => [chapter.slug, chapter]));
-bySlug.set("README", chapters[0]);
 const outputs = new Map();
 const put = (name, content) => outputs.set(name, content);
 
-function link(href, chapter) {
-	if (/^(https?:|mailto:|data:)/.test(href)) return href;
-	if (href.startsWith("#")) return href;
-	const [path, anchor] = href.split("#");
-	const target = bySource.get(resolve(docs, dirname(chapter.source), path));
-	if (target) return `${target.slug}.html${anchor ? `#${slug(decodeURIComponent(anchor))}` : ""}`;
-	if (["flows", "concepts", "reference"].some(folder => resolve(docs, dirname(chapter.source), path) === resolve(docs, folder)))
-		return `../index.html#${basename(path)}`;
-	if (path === "./index.html" && chapter.source === "README.md") return "../index.html";
-	throw new Error(`Unresolved local link ${href} in ${chapter.source}`);
-}
-
-function render(chapter) {
-	const headings = [];
-	const ids = new Map();
-	const parser = new Marked({ gfm: true });
-	parser.use({
-		renderer: {
-			heading({ tokens, depth }) {
-				const text = this.parser.parseInline(tokens);
-				const base = slug(text);
-				const count = ids.get(base) || 0;
-				ids.set(base, count + 1);
-				const id = count ? `${base}-${count}` : base;
-				if (depth >= 2 && depth <= 3) headings.push({ depth, text, id });
-				return `<h${depth} id="${escape(id)}">${text}</h${depth}>\n`;
-			},
-			link({ href, tokens }) {
-				return `<a href="${escape(link(href, chapter))}">${this.parser.parseInline(tokens)}</a>`;
-			},
-		},
+function refreshOutline(chapter) {
+	const article = /<article\b[^>]*\bid="full-document"[^>]*>([\s\S]*?)<\/article>/.exec(chapter.html)?.[1];
+	if (article === undefined) throw new Error(`Missing canonical article in ${chapter.source}`);
+	const headings = [...article.matchAll(/<h([23])\b([^>]*)>([\s\S]*?)<\/h\1>/g)].map(([, depth, attributes, text]) => {
+		const id = /\bid="([^"]+)"/.exec(attributes)?.[1];
+		if (!id) throw new Error(`Heading lacks a stable HTML id in ${chapter.source}: ${plain(text)}`);
+		return { depth, text, id };
 	});
-	let markdown = chapter.markdown.replace(/^# .+\n/m, "");
-	markdown = markdown.replace(/\[\[([^\]]+)\]\]/g, (_match, value) => {
-		const [destination, label] = value.split("|");
-		const [name, anchor] = destination.split("#");
-		const target = bySlug.get(name || chapter.slug);
-		if (!target) throw new Error(`Unknown chapter ${name} in ${chapter.source}`);
-		const relative = target.slug + ".html" + (anchor ? "#" + slug(anchor) : "");
-		// Raw HTML avoids re-resolving this already-normalized wiki link.
-		return `<a href="${escape(relative)}">${escape(label || destination)}</a>`;
-	});
-	markdown = markdown.replace(/^> \[!([^\]]+)\](.*)$/gm, (_match, type, label) => `> **${label.trim() || type[0].toUpperCase() + type.slice(1)}**`);
-	const article = parser.parse(markdown);
-	return { article, headings };
+	const outline = headings.map(({ depth, text, id }) => `<a class="toc-link level-${depth}" href="#${escape(id)}">${text}</a>`).join("\n");
+	const rail = /(<div\b[^>]*\bdata-rail-sections[^>]*>)[\s\S]*?(<\/div>)/;
+	if (!rail.test(chapter.html)) throw new Error(`Missing reader outline in ${chapter.source}`);
+	// Replace only the derived rail. The article and page chrome remain the editable HTML source.
+	return chapter.html.replace(rail, (_match, open, close) => `${open}\n${outline}\n${close}`);
 }
 
 function head(title, summary, prefix) {
@@ -120,18 +86,8 @@ ${reader ? `<span class="trail-sep" aria-hidden="true">/</span><a class="trail-r
 </nav><nav class="top-actions" aria-label="Page actions"><button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button></nav></div></header>`;
 }
 const footer = '<footer class="site-footer"><span>Options Core documentation.</span></footer></body></html>\n';
-for (const chapter of chapters) {
-	const { article, headings } = render(chapter);
-	put(
-		`pages/${chapter.slug}.html`,
-		`${head(chapter.title, chapter.summary, "../")}
-<body class="doc-page" data-version="current"><a class="skip-link" href="#full-document">Skip to document</a>
-${header("../", true)}<div class="reader-shell"><div data-rail-sections hidden>
-${headings.map(({ depth, text, id }) => `<a class="toc-link level-${depth}" href="#${escape(id)}">${text}</a>`).join("\n")}
-</div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1>${escape(chapter.title)}</h1><p class="hero-copy">${escape(chapter.summary)}</p></div></div></header>
-<article class="doc-article" id="full-document">${article}</article></main></div>${footer}`,
-	);
-}
+for (const chapter of chapters) put(chapter.source, refreshOutline(chapter));
+
 put(
 	"assets/chapters.js",
 	`// Generated by scripts/build-docs.mjs.\nwindow.OPTIONS_DOCS_CHAPTERS = ${JSON.stringify(
@@ -173,5 +129,5 @@ for (const [name, content] of outputs) {
 		writeFileSync(path, content);
 	}
 }
-if (stale.length) throw new Error(`Stale generated docs: ${stale.join(", ")}. Run npm run docs:build.`);
+if (stale.length) throw new Error(`Stale documentation navigation: ${stale.join(", ")}. Run npm run docs:build.`);
 console.log(`${check ? "Verified" : "Built"} ${chapters.length} chapters and the documentation catalog.`);

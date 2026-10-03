@@ -104,7 +104,9 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			await expect(
 				context.partyAOpenFacet
 					.connect(partyB1.getSigner)
-					.sendOpenIntent(
+					[
+						"sendOpenIntent(address[],uint256,uint256,uint256,uint256,uint256,uint256,uint8,uint8,(uint256,uint256),(uint256,uint256),uint256,address,address,bytes)"
+					](
 						request.partyBsWhiteList,
 						request.symbolId,
 						request.price,
@@ -212,7 +214,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.exerciseFee({ cap: e(1), rate: "0" })
 				.build()
 
-			await context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(partyB1.getSigner)
+			await context.counterPartyRelation.connect(partyA1.getSigner)["bindToPartyB(address)"](partyB1.getSigner)
 			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "BoundedToAnotherPartyB")
 		})
 
@@ -228,7 +230,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.exerciseFee({ cap: e(1), rate: "0" })
 				.build()
 
-			await context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(partyB1.getSigner)
+			await context.counterPartyRelation.connect(partyA1.getSigner)["bindToPartyB(address)"](partyB1.getSigner)
 			await expect(partyA1.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "BoundedToAnotherPartyB")
 		})
 
@@ -244,7 +246,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.exerciseFee({ cap: e(1), rate: "0" })
 				.build()
 
-			await context.counterPartyRelation.connect(partyA1.getSigner).bindToPartyB(partyB1.getSigner)
+			await context.counterPartyRelation.connect(partyA1.getSigner)["bindToPartyB(address)"](partyB1.getSigner)
 			await expect(partyA1.sendOpenIntent(request)).not.to.revert(ethers)
 		})
 
@@ -313,7 +315,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 		})
 
 		it("Should fail when partyA is not solvent in cross margin", async function () {
-			await context.clearingHouse.flagPartyALiquidation(partyA1.address, partyB1.address, context.collateral)
+			await context.clearingHouse["flagPartyALiquidation(address,address,address)"](partyA1.address, partyB1.address, context.collateral)
 
 			const latestBlock = await getLatestBlockTime()
 			const request = openIntentRequestBuilder()
@@ -337,7 +339,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				lossCoverage: 1,
 				oracleId: 1,
 			})
-			await context.clearingHouse.flagCrossPartyBLiquidation(partyB1.address, partyA1.address, context.collateral)
+			await context.clearingHouse["flagCrossPartyBLiquidation(address,address,address)"](partyB1.address, partyA1.address, context.collateral)
 
 			const latestBlock = await getLatestBlockTime()
 			const request = openIntentRequestBuilder()
@@ -385,7 +387,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				lossCoverage: 1,
 				oracleId: 1,
 			})
-			await context.clearingHouse.flagCrossPartyBLiquidation(partyB1.address, partyA1.address, context.collateral)
+			await context.clearingHouse["flagCrossPartyBLiquidation(address,address,address)"](partyB1.address, partyA1.address, context.collateral)
 
 			const latestBlock = await getLatestBlockTime()
 			const request = openIntentRequestBuilder()
@@ -429,8 +431,12 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			await partyALocal.setBalances(context.collateral, amountToMint, amountToDeposit)
 			await partyALocal.setBalances(context.collateralNL, amountToMint, amountToDeposit)
 
-			await context.accountFacet.connect(partyALocal.getSigner).allocate(context.collateral, partyB1.address, amountToAllocate)
-			await context.accountFacet.connect(partyALocal.getSigner).allocate(context.collateralNL, partyB1.address, amountToAllocate)
+			await context.accountFacet
+				.connect(partyALocal.getSigner)
+				["allocate(address,address,uint256)"](context.collateral, partyB1.address, amountToAllocate)
+			await context.accountFacet
+				.connect(partyALocal.getSigner)
+				["allocate(address,address,uint256)"](context.collateralNL, partyB1.address, amountToAllocate)
 
 			await context.controlFacet.setPriceOracleAddress(context.oracle)
 
@@ -458,18 +464,33 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 			await expect(partyALocal.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "InsufficientBalance")
 
-			console.log("Sender Isolated Balance:", await context.viewFacet.getIsolatedBalance(partyALocal.address, await context.collateral.getAddress()))
+			console.log(
+				"Sender Isolated Balance:",
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyALocal.address, await context.collateral.getAddress()),
+			)
 			console.log(
 				"Sender Isolated Locked Balance:",
-				await context.viewFacet.getIsolatedLockedBalance(partyALocal.address, await context.collateral.getAddress()),
+				await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyALocal.address, await context.collateral.getAddress()),
 			)
-			console.log("Sender Isolated Fee Balance:", await context.viewFacet.getIsolatedBalance(partyALocal.address, context.collateralNL))
-			console.log("Sender Isolated Locked Fee Balance:", await context.viewFacet.getIsolatedLockedBalance(partyALocal.address, context.collateralNL))
-			console.log("Sender Cross Balance:", await context.viewFacet.getCrossBalance(partyALocal.address, context.collateral, partyB1.address))
-			console.log("Sender Cross Fee Balance:", await context.viewFacet.getCrossBalance(partyALocal.address, context.collateralNL, partyB1.address))
+			console.log(
+				"Sender Isolated Fee Balance:",
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyALocal.address, context.collateralNL),
+			)
+			console.log(
+				"Sender Isolated Locked Fee Balance:",
+				await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyALocal.address, context.collateralNL),
+			)
+			console.log(
+				"Sender Cross Balance:",
+				await context.viewFacet["getCrossBalance(address,address,address)"](partyALocal.address, context.collateral, partyB1.address),
+			)
+			console.log(
+				"Sender Cross Fee Balance:",
+				await context.viewFacet["getCrossBalance(address,address,address)"](partyALocal.address, context.collateralNL, partyB1.address),
+			)
 			console.log(
 				"Sender Scheduled Release Entry:",
-				await context.viewFacet.getScheduledReleaseEntry(partyALocal.address, context.collateralNL, partyB1.address),
+				await context.viewFacet["getScheduledReleaseEntry(address,address,address)"](partyALocal.address, context.collateralNL, partyB1.address),
 			)
 			console.log("Oracle returns:", await context.oracle.getPrice(context.collateralNL, context.collateral))
 		})
@@ -482,8 +503,12 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			await partyALocal.setBalances(context.collateral, amountToMint, amountToDeposit)
 			await partyALocal.setBalances(context.collateralNL, amountToMint, amountToDeposit)
 
-			await context.accountFacet.connect(partyALocal.getSigner).allocate(context.collateral, partyB1.address, amountToAllocate)
-			await context.accountFacet.connect(partyALocal.getSigner).allocate(context.collateralNL, partyB1.address, amountToAllocate)
+			await context.accountFacet
+				.connect(partyALocal.getSigner)
+				["allocate(address,address,uint256)"](context.collateral, partyB1.address, amountToAllocate)
+			await context.accountFacet
+				.connect(partyALocal.getSigner)
+				["allocate(address,address,uint256)"](context.collateralNL, partyB1.address, amountToAllocate)
 
 			await context.controlFacet.setPriceOracleAddress(context.oracle)
 
@@ -511,18 +536,33 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 			await expect(partyALocal.sendOpenIntent(request)).to.be.revertedWithCustomError(context.partyAOpenFacet, "InsufficientBalance")
 
-			console.log("Sender Isolated Balance:", await context.viewFacet.getIsolatedBalance(partyALocal.address, await context.collateral.getAddress()))
+			console.log(
+				"Sender Isolated Balance:",
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyALocal.address, await context.collateral.getAddress()),
+			)
 			console.log(
 				"Sender Isolated Locked Balance:",
-				await context.viewFacet.getIsolatedLockedBalance(partyALocal.address, await context.collateral.getAddress()),
+				await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyALocal.address, await context.collateral.getAddress()),
 			)
-			console.log("Sender Isolated Fee Balance:", await context.viewFacet.getIsolatedBalance(partyALocal.address, context.collateralNL))
-			console.log("Sender Isolated Locked Fee Balance:", await context.viewFacet.getIsolatedLockedBalance(partyALocal.address, context.collateralNL))
-			console.log("Sender Cross Balance:", await context.viewFacet.getCrossBalance(partyALocal.address, context.collateral, partyB1.address))
-			console.log("Sender Cross Fee Balance:", await context.viewFacet.getCrossBalance(partyALocal.address, context.collateralNL, partyB1.address))
+			console.log(
+				"Sender Isolated Fee Balance:",
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyALocal.address, context.collateralNL),
+			)
+			console.log(
+				"Sender Isolated Locked Fee Balance:",
+				await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyALocal.address, context.collateralNL),
+			)
+			console.log(
+				"Sender Cross Balance:",
+				await context.viewFacet["getCrossBalance(address,address,address)"](partyALocal.address, context.collateral, partyB1.address),
+			)
+			console.log(
+				"Sender Cross Fee Balance:",
+				await context.viewFacet["getCrossBalance(address,address,address)"](partyALocal.address, context.collateralNL, partyB1.address),
+			)
 			console.log(
 				"Sender Scheduled Release Entry:",
-				await context.viewFacet.getScheduledReleaseEntry(partyALocal.address, context.collateralNL, partyB1.address),
+				await context.viewFacet["getScheduledReleaseEntry(address,address,address)"](partyALocal.address, context.collateralNL, partyB1.address),
 			)
 			console.log("Oracle returns:", await context.oracle.getPrice(context.collateralNL, context.collateral))
 		})
@@ -535,8 +575,12 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			await partyALocal.setBalances(context.collateral, amountToMint, amountToDeposit)
 			await partyALocal.setBalances(context.collateralNL, amountToMint, amountToDeposit)
 
-			await context.accountFacet.connect(partyALocal.getSigner).allocate(context.collateral, partyB1.address, amountToAllocate)
-			await context.accountFacet.connect(partyALocal.getSigner).allocate(context.collateralNL, partyB1.address, amountToAllocate)
+			await context.accountFacet
+				.connect(partyALocal.getSigner)
+				["allocate(address,address,uint256)"](context.collateral, partyB1.address, amountToAllocate)
+			await context.accountFacet
+				.connect(partyALocal.getSigner)
+				["allocate(address,address,uint256)"](context.collateralNL, partyB1.address, amountToAllocate)
 
 			await context.controlFacet.setPriceOracleAddress(context.oracle)
 
@@ -564,18 +608,33 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 			await expect(partyALocal.sendOpenIntent(request)).not.to.revert(ethers)
 
-			console.log("Sender Isolated Balance:", await context.viewFacet.getIsolatedBalance(partyALocal.address, await context.collateral.getAddress()))
+			console.log(
+				"Sender Isolated Balance:",
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyALocal.address, await context.collateral.getAddress()),
+			)
 			console.log(
 				"Sender Isolated Locked Balance:",
-				await context.viewFacet.getIsolatedLockedBalance(partyALocal.address, await context.collateral.getAddress()),
+				await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyALocal.address, await context.collateral.getAddress()),
 			)
-			console.log("Sender Isolated Fee Balance:", await context.viewFacet.getIsolatedBalance(partyALocal.address, context.collateralNL))
-			console.log("Sender Isolated Locked Fee Balance:", await context.viewFacet.getIsolatedLockedBalance(partyALocal.address, context.collateralNL))
-			console.log("Sender Cross Balance:", await context.viewFacet.getCrossBalance(partyALocal.address, context.collateral, partyB1.address))
-			console.log("Sender Cross Fee Balance:", await context.viewFacet.getCrossBalance(partyALocal.address, context.collateralNL, partyB1.address))
+			console.log(
+				"Sender Isolated Fee Balance:",
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyALocal.address, context.collateralNL),
+			)
+			console.log(
+				"Sender Isolated Locked Fee Balance:",
+				await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyALocal.address, context.collateralNL),
+			)
+			console.log(
+				"Sender Cross Balance:",
+				await context.viewFacet["getCrossBalance(address,address,address)"](partyALocal.address, context.collateral, partyB1.address),
+			)
+			console.log(
+				"Sender Cross Fee Balance:",
+				await context.viewFacet["getCrossBalance(address,address,address)"](partyALocal.address, context.collateralNL, partyB1.address),
+			)
 			console.log(
 				"Sender Scheduled Release Entry:",
-				await context.viewFacet.getScheduledReleaseEntry(partyALocal.address, context.collateralNL, partyB1.address),
+				await context.viewFacet["getScheduledReleaseEntry(address,address,address)"](partyALocal.address, context.collateralNL, partyB1.address),
 			)
 			console.log("Oracle returns:", await context.oracle.getPrice(context.collateralNL, context.collateral))
 		})
@@ -588,8 +647,12 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			await partyALocal.setBalances(context.collateral, amountToMint, amountToDeposit)
 			await partyALocal.setBalances(context.collateralNL, amountToMint, amountToDeposit)
 
-			await context.accountFacet.connect(partyALocal.getSigner).allocate(context.collateral, partyB1.address, amountToAllocate)
-			await context.accountFacet.connect(partyALocal.getSigner).allocate(context.collateralNL, partyB1.address, amountToAllocate)
+			await context.accountFacet
+				.connect(partyALocal.getSigner)
+				["allocate(address,address,uint256)"](context.collateral, partyB1.address, amountToAllocate)
+			await context.accountFacet
+				.connect(partyALocal.getSigner)
+				["allocate(address,address,uint256)"](context.collateralNL, partyB1.address, amountToAllocate)
 
 			await context.controlFacet.setPriceOracleAddress(context.oracle)
 
@@ -619,18 +682,33 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 			await expect(partyALocal.sendOpenIntent(request)).not.to.revert(ethers)
 
-			console.log("Sender Isolated Balance:", await context.viewFacet.getIsolatedBalance(partyALocal.address, await context.collateral.getAddress()))
+			console.log(
+				"Sender Isolated Balance:",
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyALocal.address, await context.collateral.getAddress()),
+			)
 			console.log(
 				"Sender Isolated Locked Balance:",
-				await context.viewFacet.getIsolatedLockedBalance(partyALocal.address, await context.collateral.getAddress()),
+				await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyALocal.address, await context.collateral.getAddress()),
 			)
-			console.log("Sender Isolated Fee Balance:", await context.viewFacet.getIsolatedBalance(partyALocal.address, context.collateralNL))
-			console.log("Sender Isolated Locked Fee Balance:", await context.viewFacet.getIsolatedLockedBalance(partyALocal.address, context.collateralNL))
-			console.log("Sender Cross Balance:", await context.viewFacet.getCrossBalance(partyALocal.address, context.collateral, partyB1.address))
-			console.log("Sender Cross Fee Balance:", await context.viewFacet.getCrossBalance(partyALocal.address, context.collateralNL, partyB1.address))
+			console.log(
+				"Sender Isolated Fee Balance:",
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyALocal.address, context.collateralNL),
+			)
+			console.log(
+				"Sender Isolated Locked Fee Balance:",
+				await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyALocal.address, context.collateralNL),
+			)
+			console.log(
+				"Sender Cross Balance:",
+				await context.viewFacet["getCrossBalance(address,address,address)"](partyALocal.address, context.collateral, partyB1.address),
+			)
+			console.log(
+				"Sender Cross Fee Balance:",
+				await context.viewFacet["getCrossBalance(address,address,address)"](partyALocal.address, context.collateralNL, partyB1.address),
+			)
 			console.log(
 				"Sender Scheduled Release Entry:",
-				await context.viewFacet.getScheduledReleaseEntry(partyALocal.address, context.collateralNL, partyB1.address),
+				await context.viewFacet["getScheduledReleaseEntry(address,address,address)"](partyALocal.address, context.collateralNL, partyB1.address),
 			)
 			console.log("Oracle returns:", await context.oracle.getPrice(context.collateralNL, context.collateral))
 		})
@@ -712,7 +790,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			const intent = await context.viewFacet.getOpenIntent(await context.viewFacet.getLastOpenIntentId())
 
 			expect(
-				await context.viewFacet.getIsolatedLockedBalance(
+				await context.viewFacet["getIsolatedLockedBalance(address,address)"](
 					intent.partyA,
 					(await context.viewFacet.getSymbol(intent.tradeAgreements.symbolId)).collateral,
 				),
@@ -740,7 +818,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 			const intent = await context.viewFacet.getOpenIntent(await context.viewFacet.getLastOpenIntentId())
 
-			const crossBalance = await context.viewFacet.getCrossBalance(
+			const crossBalance = await context.viewFacet["getCrossBalance(address,address,address)"](
 				intent.partyA,
 				(await context.viewFacet.getSymbol(intent.tradeAgreements.symbolId)).collateral,
 				partyB1.address,
@@ -771,7 +849,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			// await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: e(0.5), closeFee: e(0.5) }])
 			// await context.controlFacet.setSymbolsPlatformFees([1], [{ openFee: e(0.5), closeFee: e(0.5) }])
 
-			const crossBalanceBefore: CrossEntryStruct = await context.viewFacet.getCrossBalance(
+			const crossBalanceBefore: CrossEntryStruct = await context.viewFacet["getCrossBalance(address,address,address)"](
 				partyA1.address,
 				(await context.viewFacet.getSymbol(request.symbolId)).collateral,
 				partyB1.address,
@@ -780,7 +858,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			await expect(partyA1.sendOpenIntent(request)).not.to.revert(ethers)
 			const intent = await context.viewFacet.getOpenIntent(await context.viewFacet.getLastOpenIntentId())
 
-			const crossBalanceAfter: CrossEntryStruct = await context.viewFacet.getCrossBalance(
+			const crossBalanceAfter: CrossEntryStruct = await context.viewFacet["getCrossBalance(address,address,address)"](
 				intent.partyA,
 				(await context.viewFacet.getSymbol(intent.tradeAgreements.symbolId)).collateral,
 				partyB1.address,
@@ -809,11 +887,11 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: e(0.5), closeFee: e(0.5) }])
 			await context.controlFacet.setSymbolsPlatformFees([1], [{ openFee: e(0.5), closeFee: e(0.5) }])
-			const balanceBefore = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, request.feeToken)
+			const balanceBefore = await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, request.feeToken)
 			await expect(partyA1.sendOpenIntent(request)).not.to.revert(ethers)
 			const intent = await context.viewFacet.getOpenIntent(await context.viewFacet.getLastOpenIntentId())
 
-			const balanceAfter = await context.viewFacet.getIsolatedLockedBalance(intent.partyA, intent.feeStructure.feeToken)
+			const balanceAfter = await context.viewFacet["getIsolatedLockedBalance(address,address)"](intent.partyA, intent.feeStructure.feeToken)
 
 			const solverFee =
 				(BigInt(request.price) * BigInt(request.quantity) * BigInt(request.solverFee.openFee)) /
@@ -852,7 +930,11 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			await expect(partyA1.sendOpenIntent(request)).not.to.revert(ethers)
 			const intent = await context.viewFacet.getOpenIntent(await context.viewFacet.getLastOpenIntentId())
 
-			const balance = await context.viewFacet.getCrossBalance(intent.partyA, intent.feeStructure.feeToken, request.partyBsWhiteList[0])
+			const balance = await context.viewFacet["getCrossBalance(address,address,address)"](
+				intent.partyA,
+				intent.feeStructure.feeToken,
+				request.partyBsWhiteList[0],
+			)
 
 			const solverFee =
 				(BigInt(request.price) * BigInt(request.quantity) * BigInt(request.solverFee.openFee)) /
@@ -865,18 +947,33 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			console.log("Platform Fee:", platformFee)
 			console.log("Solver Fee:", solverFee)
 
-			console.log("Sender Isolated Balance:", await context.viewFacet.getIsolatedBalance(partyA1.address, await context.collateral.getAddress()))
+			console.log(
+				"Sender Isolated Balance:",
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyA1.address, await context.collateral.getAddress()),
+			)
 			console.log(
 				"Sender Isolated Locked Balance:",
-				await context.viewFacet.getIsolatedLockedBalance(partyA1.address, await context.collateral.getAddress()),
+				await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, await context.collateral.getAddress()),
 			)
-			console.log("Sender Isolated Fee Balance:", await context.viewFacet.getIsolatedBalance(partyA1.address, context.collateralNL))
-			console.log("Sender Isolated Locked Fee Balance:", await context.viewFacet.getIsolatedLockedBalance(partyA1.address, context.collateralNL))
-			console.log("Sender Cross Balance:", await context.viewFacet.getCrossBalance(partyA1.address, context.collateral, partyB1.address))
-			console.log("Sender Cross Fee Balance:", await context.viewFacet.getCrossBalance(partyA1.address, context.collateralNL, partyB1.address))
+			console.log(
+				"Sender Isolated Fee Balance:",
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyA1.address, context.collateralNL),
+			)
+			console.log(
+				"Sender Isolated Locked Fee Balance:",
+				await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, context.collateralNL),
+			)
+			console.log(
+				"Sender Cross Balance:",
+				await context.viewFacet["getCrossBalance(address,address,address)"](partyA1.address, context.collateral, partyB1.address),
+			)
+			console.log(
+				"Sender Cross Fee Balance:",
+				await context.viewFacet["getCrossBalance(address,address,address)"](partyA1.address, context.collateralNL, partyB1.address),
+			)
 			console.log(
 				"Sender Scheduled Release Entry:",
-				await context.viewFacet.getScheduledReleaseEntry(partyA1.address, context.collateralNL, partyB1.address),
+				await context.viewFacet["getScheduledReleaseEntry(address,address,address)"](partyA1.address, context.collateralNL, partyB1.address),
 			)
 			console.log("Oracle returns:", await context.oracle.getPrice(context.collateralNL, context.collateral))
 
@@ -902,8 +999,8 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 				.build()
 
 			const symbol = await context.viewFacet.getSymbol(request.symbolId)
-			const collateralLockedBefore = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, symbol.collateral)
-			const feeLockedBefore = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, request.feeToken)
+			const collateralLockedBefore = await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, symbol.collateral)
+			const feeLockedBefore = await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, request.feeToken)
 
 			await expect(partyA1.sendOpenIntent(request)).not.to.revert(ethers)
 
@@ -926,20 +1023,24 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			expect(escrow.feeToken).to.equal(request.feeToken)
 			expect(escrow.mm).to.equal(request.mm)
 			expect(escrow.feeLockAmount).to.equal(lockedFee)
-			expect(await context.viewFacet.getIsolatedLockedBalance(partyA1.address, symbol.collateral)).to.equal(
+			expect(await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, symbol.collateral)).to.equal(
 				collateralLockedBefore + BigInt(request.mm),
 			)
-			expect(await context.viewFacet.getIsolatedLockedBalance(partyA1.address, request.feeToken)).to.equal(feeLockedBefore + lockedFee)
+			expect(await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, request.feeToken)).to.equal(
+				feeLockedBefore + lockedFee,
+			)
 
 			await expect(partyA1.sendCancelOpenIntent([intentId])).not.to.revert(ethers)
 
 			const canceledIntent = await context.viewFacet.getOpenIntent(intentId)
 			const releasedEscrow = await context.viewFacet.getOpenIntentEscrow(intentId)
-			const activeIntentIds = await context.viewFacet.getActiveOpenIntentIds(partyA1.address)
+			const activeIntentIds = await context.viewFacet["getActiveOpenIntentIds(address)"](partyA1.address)
 			expect(canceledIntent.status).to.equal(IntentStatus.CANCELED)
 			expect(releasedEscrow.exists).to.equal(false)
-			expect(await context.viewFacet.getIsolatedLockedBalance(partyA1.address, symbol.collateral)).to.equal(collateralLockedBefore)
-			expect(await context.viewFacet.getIsolatedLockedBalance(partyA1.address, request.feeToken)).to.equal(feeLockedBefore)
+			expect(await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, symbol.collateral)).to.equal(
+				collateralLockedBefore,
+			)
+			expect(await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, request.feeToken)).to.equal(feeLockedBefore)
 			expect(activeIntentIds).not.to.include(intentId)
 		})
 	})
@@ -1044,14 +1145,20 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 		it("Should Unlock premium on Isolated Margin", async () => {
 			// take snapshot
-			let isolatedLocketBalance = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateral.getAddress())
-			let isolatedBalance = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral.getAddress())
+			let isolatedLocketBalance = await context.viewFacet["getIsolatedLockedBalance(address,address)"](
+				partyA1.getSigner,
+				await context.collateral.getAddress(),
+			)
+			let isolatedBalance = await context.viewFacet["getIsolatedBalance(address,address)"](partyA1.getSigner, context.collateral.getAddress())
 			let premium: BigInt = await context.viewFacet.getOpenIntentPremium(1)
 
 			expect(await partyA1.sendCancelOpenIntent(["1"])).not.to.revert(ethers)
 
-			let isolatedLocketBalanceLatter = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateral.getAddress())
-			let isolatedBalanceLatter = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral.getAddress())
+			let isolatedLocketBalanceLatter = await context.viewFacet["getIsolatedLockedBalance(address,address)"](
+				partyA1.getSigner,
+				await context.collateral.getAddress(),
+			)
+			let isolatedBalanceLatter = await context.viewFacet["getIsolatedBalance(address,address)"](partyA1.getSigner, context.collateral.getAddress())
 			console.log("Locked Balance Before", isolatedLocketBalance)
 			console.log("Locke Balance After", isolatedLocketBalanceLatter)
 
@@ -1060,12 +1167,20 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 		it("Should Unlock premium on Cross Buy Margin", async () => {
 			// take snapshot
-			let crossBalance = await context.viewFacet.getCrossBalance(partyA1.address, await context.collateral.getAddress(), partyB1.address)
+			let crossBalance = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyA1.address,
+				await context.collateral.getAddress(),
+				partyB1.address,
+			)
 			let premium: BigInt = await context.viewFacet.getOpenIntentPremium(2)
 
 			expect(await partyA1.sendCancelOpenIntent(["2"])).not.to.revert(ethers)
 
-			let crossBalanceLatter = await context.viewFacet.getCrossBalance(partyA1.getSigner, await context.collateral.getAddress(), partyB1.address)
+			let crossBalanceLatter = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyA1.getSigner,
+				await context.collateral.getAddress(),
+				partyB1.address,
+			)
 			console.log("Cross Balance Before", crossBalance)
 			console.log("Cross Balance After", crossBalanceLatter)
 
@@ -1074,14 +1189,22 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 		it("Should Unlock premium on Cross Sell Margin", async () => {
 			// take snapshot
-			let crossBalance = await context.viewFacet.getCrossBalance(partyA1.address, await context.collateral.getAddress(), partyB1.address)
+			let crossBalance = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyA1.address,
+				await context.collateral.getAddress(),
+				partyB1.address,
+			)
 			let premium: BigInt = await context.viewFacet.getOpenIntentPremium(3)
 
 			expect(await partyA1.sendCancelOpenIntent(["3"])).not.to.revert(ethers)
 
 			const intent = await context.viewFacet.getOpenIntent(3)
 
-			let crossBalanceLatter = await context.viewFacet.getCrossBalance(partyA1.getSigner, await context.collateral.getAddress(), partyB1.address)
+			let crossBalanceLatter = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyA1.getSigner,
+				await context.collateral.getAddress(),
+				partyB1.address,
+			)
 			console.log("Cross Balance Before", crossBalance)
 			console.log("Cross Balance After", crossBalanceLatter)
 
@@ -1090,7 +1213,10 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 		it("Should Unlock Fees on Isolated Margin", async () => {
 			// take snapshot
-			let isolatedLocketBalance = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateralNL.getAddress())
+			let isolatedLocketBalance = await context.viewFacet["getIsolatedLockedBalance(address,address)"](
+				partyA1.getSigner,
+				await context.collateralNL.getAddress(),
+			)
 
 			const intent = await context.viewFacet.getOpenIntent(1)
 			const affiliateFee = await context.viewFacet.getOpenIntentAffiliateFee(1)
@@ -1105,7 +1231,10 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 			expect(await partyA1.sendCancelOpenIntent(["1"])).not.to.revert(ethers)
 
-			let isolatedLocketBalanceLatter = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateralNL.getAddress())
+			let isolatedLocketBalanceLatter = await context.viewFacet["getIsolatedLockedBalance(address,address)"](
+				partyA1.getSigner,
+				await context.collateralNL.getAddress(),
+			)
 
 			console.log("Locked Fee Balance Before", isolatedLocketBalance)
 			console.log("Locke Fee Balance After", isolatedLocketBalanceLatter)
@@ -1115,7 +1244,11 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 		it("Should Unlock Fees on Cross Margin", async () => {
 			// take snapshot
-			let crossLocketBalance = await context.viewFacet.getCrossBalance(partyA1.getSigner, await context.collateralNL.getAddress(), partyB1.address)
+			let crossLocketBalance = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyA1.getSigner,
+				await context.collateralNL.getAddress(),
+				partyB1.address,
+			)
 
 			const intent = await context.viewFacet.getOpenIntent(2)
 			const affiliateFee = await context.viewFacet.getOpenIntentAffiliateFee(2)
@@ -1130,7 +1263,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 			expect(await partyA1.sendCancelOpenIntent(["2"])).not.to.revert(ethers)
 
-			let crossLocketBalanceLatter = await context.viewFacet.getCrossBalance(
+			let crossLocketBalanceLatter = await context.viewFacet["getCrossBalance(address,address,address)"](
 				partyA1.getSigner,
 				await context.collateralNL.getAddress(),
 				partyB1.address,
@@ -1161,7 +1294,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			expect(await partyA1.sendOpenIntent(request)).not.to.revert(ethers)
 
 			expect(await partyA1.sendCancelOpenIntent(["2"])).not.to.revert(ethers)
-			let activeIntentIds: BigInt[] = await context.viewFacet.getActiveOpenIntentIds(partyA1.getSigner)
+			let activeIntentIds: BigInt[] = await context.viewFacet["getActiveOpenIntentIds(address)"](partyA1.getSigner)
 			for (let a of activeIntentIds) {
 				expect(a).not.to.be.equal(2)
 			}
@@ -1207,7 +1340,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			expect(await context.viewFacet.getPartyAOpenIntentIndex(2)).to.be.equal(0)
 			expect(await context.viewFacet.getPartyAOpenIntentIndex(3)).to.be.equal(0)
 
-			let activeIntentIds: BigInt[] = await context.viewFacet.getActiveOpenIntentIds(partyA1.getSigner)
+			let activeIntentIds: BigInt[] = await context.viewFacet["getActiveOpenIntentIds(address)"](partyA1.getSigner)
 			for (let a of activeIntentIds) {
 				expect(a).not.to.be.equal(1)
 				expect(a).not.to.be.equal(2)
@@ -1309,8 +1442,11 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 		it("Should Unlock premium on Isolated Margin", async () => {
 			// take snapshot
-			let isolatedLocketBalance = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateral.getAddress())
-			let isolatedBalance = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral.getAddress())
+			let isolatedLocketBalance = await context.viewFacet["getIsolatedLockedBalance(address,address)"](
+				partyA1.getSigner,
+				await context.collateral.getAddress(),
+			)
+			let isolatedBalance = await context.viewFacet["getIsolatedBalance(address,address)"](partyA1.getSigner, context.collateral.getAddress())
 			let premium: BigInt = await context.viewFacet.getOpenIntentPremium(1)
 
 			let newBlockTimeStamp = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 120
@@ -1318,8 +1454,11 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			await ethers.provider.send("evm_mine")
 			expect(await partyA1.expireOpenIntent([1, 2, 3])).not.to.revert(ethers)
 
-			let isolatedLocketBalanceLatter = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateral.getAddress())
-			let isolatedBalanceLatter = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral.getAddress())
+			let isolatedLocketBalanceLatter = await context.viewFacet["getIsolatedLockedBalance(address,address)"](
+				partyA1.getSigner,
+				await context.collateral.getAddress(),
+			)
+			let isolatedBalanceLatter = await context.viewFacet["getIsolatedBalance(address,address)"](partyA1.getSigner, context.collateral.getAddress())
 			console.log("Locked Balance Before", isolatedLocketBalance)
 			console.log("Locke Balance After", isolatedLocketBalanceLatter)
 
@@ -1328,7 +1467,11 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 		it("Should Unlock premium on Cross Buy Margin", async () => {
 			// take snapshot
-			let crossBalance = await context.viewFacet.getCrossBalance(partyA1.address, await context.collateral.getAddress(), partyB1.address)
+			let crossBalance = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyA1.address,
+				await context.collateral.getAddress(),
+				partyB1.address,
+			)
 			let premium: BigInt = await context.viewFacet.getOpenIntentPremium(2)
 
 			let newBlockTimeStamp = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 120
@@ -1336,7 +1479,11 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			await ethers.provider.send("evm_mine")
 			expect(await partyA1.expireOpenIntent([1, 2])).not.to.revert(ethers)
 
-			let crossBalanceLatter = await context.viewFacet.getCrossBalance(partyA1.getSigner, await context.collateral.getAddress(), partyB1.address)
+			let crossBalanceLatter = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyA1.getSigner,
+				await context.collateral.getAddress(),
+				partyB1.address,
+			)
 			console.log("Cross Balance Before", crossBalance)
 			console.log("Cross Balance After", crossBalanceLatter)
 
@@ -1345,7 +1492,11 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 		it("Should Unlock premium on Cross Sell Margin", async () => {
 			// take snapshot
-			let crossBalance = await context.viewFacet.getCrossBalance(partyA1.address, await context.collateral.getAddress(), partyB1.address)
+			let crossBalance = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyA1.address,
+				await context.collateral.getAddress(),
+				partyB1.address,
+			)
 			let premium: BigInt = await context.viewFacet.getOpenIntentPremium(3)
 
 			let newBlockTimeStamp = ((await ethers.provider.getBlock("latest"))?.timestamp ?? 0) + 120
@@ -1355,7 +1506,11 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 			const intent = await context.viewFacet.getOpenIntent(3)
 
-			let crossBalanceLatter = await context.viewFacet.getCrossBalance(partyA1.getSigner, await context.collateral.getAddress(), partyB1.address)
+			let crossBalanceLatter = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyA1.getSigner,
+				await context.collateral.getAddress(),
+				partyB1.address,
+			)
 			console.log("Cross Balance Before", crossBalance)
 			console.log("Cross Balance After", crossBalanceLatter)
 
@@ -1364,7 +1519,10 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 		it("Should Unlock Fees on Isolated Margin", async () => {
 			// take snapshot
-			let isolatedLocketBalance = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateralNL.getAddress())
+			let isolatedLocketBalance = await context.viewFacet["getIsolatedLockedBalance(address,address)"](
+				partyA1.getSigner,
+				await context.collateralNL.getAddress(),
+			)
 
 			const intent = await context.viewFacet.getOpenIntent(1)
 			const affiliateFee = await context.viewFacet.getOpenIntentAffiliateFee(1)
@@ -1382,7 +1540,10 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			await ethers.provider.send("evm_mine")
 			expect(await partyA1.expireOpenIntent([1, 2, 3])).not.to.revert(ethers)
 
-			let isolatedLocketBalanceLatter = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateralNL.getAddress())
+			let isolatedLocketBalanceLatter = await context.viewFacet["getIsolatedLockedBalance(address,address)"](
+				partyA1.getSigner,
+				await context.collateralNL.getAddress(),
+			)
 
 			console.log("Locked Fee Balance Before", isolatedLocketBalance)
 			console.log("Locke Fee Balance After", isolatedLocketBalanceLatter)
@@ -1392,7 +1553,11 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 		it("Should Unlock Fees on Cross Margin", async () => {
 			// take snapshot
-			let crossLocketBalance = await context.viewFacet.getCrossBalance(partyA1.getSigner, await context.collateralNL.getAddress(), partyB1.address)
+			let crossLocketBalance = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyA1.getSigner,
+				await context.collateralNL.getAddress(),
+				partyB1.address,
+			)
 
 			const intent = await context.viewFacet.getOpenIntent(2)
 			const affiliateFee = await context.viewFacet.getOpenIntentAffiliateFee(2)
@@ -1410,7 +1575,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			await ethers.provider.send("evm_mine")
 			expect(await partyA1.expireOpenIntent([1, 2])).not.to.revert(ethers)
 
-			let crossLocketBalanceLatter = await context.viewFacet.getCrossBalance(
+			let crossLocketBalanceLatter = await context.viewFacet["getCrossBalance(address,address,address)"](
 				partyA1.getSigner,
 				await context.collateralNL.getAddress(),
 				partyB1.address,
@@ -1430,8 +1595,11 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 		it("should fail on premium not locked on partyA isolatedLocked balance when margin is isolated", async function () {
 			// take snapshot
-			let isolatedLocketBalance = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateral.getAddress())
-			let isolatedBalance = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral.getAddress())
+			let isolatedLocketBalance = await context.viewFacet["getIsolatedLockedBalance(address,address)"](
+				partyA1.getSigner,
+				await context.collateral.getAddress(),
+			)
+			let isolatedBalance = await context.viewFacet["getIsolatedBalance(address,address)"](partyA1.getSigner, context.collateral.getAddress())
 
 			const latestBlock = await getLatestBlockTime()
 			const request = openIntentRequestBuilder()
@@ -1455,8 +1623,11 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			const premiumFromView = await context.viewFacet.getOpenIntentPremium(1)
 			// partyA pays the fees in so:
 			// we are in isolated margin
-			let isolatedLocketBalance2 = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateral.getAddress())
-			let isolatedBalance2 = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, await context.collateral.getAddress())
+			let isolatedLocketBalance2 = await context.viewFacet["getIsolatedLockedBalance(address,address)"](
+				partyA1.getSigner,
+				await context.collateral.getAddress(),
+			)
+			let isolatedBalance2 = await context.viewFacet["getIsolatedBalance(address,address)"](partyA1.getSigner, await context.collateral.getAddress())
 
 			console.log("PartyA isolatedBalance:", isolatedBalance)
 			console.log("PartyA Balance equals: isolatedBalance - isolatedLocketBalance2:", isolatedBalance - isolatedLocketBalance2)
@@ -1484,8 +1655,12 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 			// take snapshot
 			const symbol: SymbolStruct = await context.viewFacet.getSymbol(1)
-			const crossBalance: CrossEntryStruct = await context.viewFacet.getCrossBalance(partyA1.getSigner, symbol.collateral, partyB1.getSigner)
-			const isolatedBalance = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, symbol.collateral)
+			const crossBalance: CrossEntryStruct = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyA1.getSigner,
+				symbol.collateral,
+				partyB1.getSigner,
+			)
+			const isolatedBalance = await context.viewFacet["getIsolatedBalance(address,address)"](partyA1.getSigner, symbol.collateral)
 
 			expect(await partyA1.sendOpenIntent(request)).not.to.revert(ethers)
 
@@ -1494,8 +1669,15 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 			const premiumFromView = await context.viewFacet.getOpenIntentPremium(intent.id)
 
 			// take second snapshot
-			const isolatedBalance2 = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, await context.collateral.getAddress())
-			const crossBalance2: CrossEntryStruct = await context.viewFacet.getCrossBalance(partyA1.getSigner, symbol.collateral, partyB1.getSigner)
+			const isolatedBalance2 = await context.viewFacet["getIsolatedBalance(address,address)"](
+				partyA1.getSigner,
+				await context.collateral.getAddress(),
+			)
+			const crossBalance2: CrossEntryStruct = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyA1.getSigner,
+				symbol.collateral,
+				partyB1.getSigner,
+			)
 
 			console.log("Before sending Intent:")
 			console.log("PartyA cross locked balance:", crossBalance.locked)
@@ -1510,8 +1692,11 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 		it("should fail on Fee not paid accordingly when only one partyB whitelisted ", async function () {
 			// take snapshot from Fee token
-			let isolatedBalance = await context.viewFacet.getIsolatedBalance(partyA1.address, await context.collateralNL.getAddress())
-			let isolatedLockeBalance = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, await context.collateralNL.getAddress())
+			let isolatedBalance = await context.viewFacet["getIsolatedBalance(address,address)"](partyA1.address, await context.collateralNL.getAddress())
+			let isolatedLockeBalance = await context.viewFacet["getIsolatedLockedBalance(address,address)"](
+				partyA1.address,
+				await context.collateralNL.getAddress(),
+			)
 
 			const latestBlock = await getLatestBlockTime()
 			const request = openIntentRequestBuilder()
@@ -1546,8 +1731,11 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 			// partyA pays the fees in so:
 			// we are in isolated margin
-			let isolatedBalance2 = await context.viewFacet.getIsolatedBalance(partyA1.address, await context.collateralNL.getAddress())
-			let isolatedLockedBalance2 = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, await context.collateralNL.getAddress())
+			let isolatedBalance2 = await context.viewFacet["getIsolatedBalance(address,address)"](partyA1.address, await context.collateralNL.getAddress())
+			let isolatedLockedBalance2 = await context.viewFacet["getIsolatedLockedBalance(address,address)"](
+				partyA1.address,
+				await context.collateralNL.getAddress(),
+			)
 
 			console.log("PartyA isolated balance:", isolatedBalance)
 			console.log("PartyA isolated balance after sending Intent:", isolatedBalance2)
@@ -1565,8 +1753,11 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 		it("should fail on Fee not paid accordingly when more than one partyB whitelisted ", async function () {
 			// take snapshot
-			let isolatedBalance = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, await context.collateralNL.getAddress())
-			let isolatedLockedBalance = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateralNL.getAddress())
+			let isolatedBalance = await context.viewFacet["getIsolatedBalance(address,address)"](partyA1.getSigner, await context.collateralNL.getAddress())
+			let isolatedLockedBalance = await context.viewFacet["getIsolatedLockedBalance(address,address)"](
+				partyA1.getSigner,
+				await context.collateralNL.getAddress(),
+			)
 
 			const latestBlock = await getLatestBlockTime()
 			const request = openIntentRequestBuilder()
@@ -1590,8 +1781,14 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 			// partyA pays the fees in so:
 			// we are in isolated margin
-			let isolatedBalance2 = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, await context.collateralNL.getAddress())
-			let isolatedLockedBalance2 = await context.viewFacet.getIsolatedLockedBalance(partyA1.getSigner, await context.collateralNL.getAddress())
+			let isolatedBalance2 = await context.viewFacet["getIsolatedBalance(address,address)"](
+				partyA1.getSigner,
+				await context.collateralNL.getAddress(),
+			)
+			let isolatedLockedBalance2 = await context.viewFacet["getIsolatedLockedBalance(address,address)"](
+				partyA1.getSigner,
+				await context.collateralNL.getAddress(),
+			)
 			const symbol: SymbolStruct = await context.viewFacet.getSymbol(intent.tradeAgreements.symbolId)
 			const feeTokenPriceInCollateral = await context.oracle.getPrice(context.collateral, symbol.collateral)
 			const tradingFeeFromView = await context.viewFacet.getOpenIntentPlatformFee(1)
@@ -1617,7 +1814,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 		it("should fail on Fee not paid accordingly when in Cross mode", async function () {
 			// take snapshot from Fee token
-			let crossBalance: CrossEntryStruct = await context.viewFacet.getCrossBalance(
+			let crossBalance: CrossEntryStruct = await context.viewFacet["getCrossBalance(address,address,address)"](
 				partyA1.getSigner,
 				await context.collateralNL.getAddress(),
 				partyB1.getSigner,
@@ -1649,7 +1846,7 @@ export function shouldBehaveLikePartyAOpenFacet(): void {
 
 			// partyA pays the fees in so:
 			// we are in isolated margin
-			let crossBalance2: CrossEntryStruct = await context.viewFacet.getCrossBalance(
+			let crossBalance2: CrossEntryStruct = await context.viewFacet["getCrossBalance(address,address,address)"](
 				partyA1.getSigner,
 				await context.collateralNL.getAddress(),
 				partyB1.getSigner,

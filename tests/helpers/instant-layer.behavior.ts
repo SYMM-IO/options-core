@@ -64,23 +64,26 @@ export function shouldBehaveLikeInstantLayer(): void {
 			.quantity(e(1))
 			.build()
 
-		openIntentCallData = partyAOpenFacet.interface.encodeFunctionData("sendOpenIntent", [
-			request.partyBsWhiteList,
-			request.symbolId,
-			request.price,
-			request.quantity,
-			request.strikePrice,
-			request.expirationTimestamp,
-			request.mm,
-			request.tradeSide,
-			request.marginType,
-			request.exerciseFee,
-			request.solverFee,
-			request.deadline,
-			request.feeToken,
-			request.affiliate,
-			request.userData,
-		])
+		openIntentCallData = partyAOpenFacet.interface.encodeFunctionData(
+			"sendOpenIntent(address[],uint256,uint256,uint256,uint256,uint256,uint256,uint8,uint8,(uint256,uint256),(uint256,uint256),uint256,address,address,bytes)",
+			[
+				request.partyBsWhiteList,
+				request.symbolId,
+				request.price,
+				request.quantity,
+				request.strikePrice,
+				request.expirationTimestamp,
+				request.mm,
+				request.tradeSide,
+				request.marginType,
+				request.exerciseFee,
+				request.solverFee,
+				request.deadline,
+				request.feeToken,
+				request.affiliate,
+				request.userData,
+			],
+		)
 		lockIntentCallData = partyBOpenFacet.interface.encodeFunctionData("lockOpenIntent", [1])
 		fillIntentCallData = partyBOpenFacet.interface.encodeFunctionData("fillOpenIntent", [1, request.quantity, request.price])
 
@@ -286,8 +289,12 @@ export function shouldBehaveLikeInstantLayer(): void {
 
 			await expect(context.collateral.connect(partyA1.getSigner).mint(accounts[0].account, e(30))).not.to.revert(ethers)
 			await expect(context.collateralNL.connect(partyA1.getSigner).mint(accounts[0].account, e(30))).not.to.revert(ethers)
-			await context.accountFacet.connect(partyA1.getSigner).depositFor(await context.collateral.getAddress(), accounts[0].account, e(20))
-			await context.accountFacet.connect(partyA1.getSigner).depositFor(await context.collateralNL.getAddress(), accounts[0].account, e(20))
+			await context.accountFacet
+				.connect(partyA1.getSigner)
+				["depositFor(address,address,uint256)"](await context.collateral.getAddress(), accounts[0].account, e(20))
+			await context.accountFacet
+				.connect(partyA1.getSigner)
+				["depositFor(address,address,uint256)"](await context.collateralNL.getAddress(), accounts[0].account, e(20))
 
 			opOpenA1 = {
 				accountSource: await context.multiAccount.getAddress(),
@@ -703,8 +710,12 @@ export function shouldBehaveLikeInstantLayer(): void {
 
 			await expect(context.collateral.connect(partyA1.getSigner).mint(accounts[0].account, e(30))).not.to.revert(ethers)
 			await expect(context.collateralNL.connect(partyA1.getSigner).mint(accounts[0].account, e(30))).not.to.revert(ethers)
-			await context.accountFacet.connect(partyA1.getSigner).depositFor(await context.collateral.getAddress(), accounts[0].account, e(20))
-			await context.accountFacet.connect(partyA1.getSigner).depositFor(await context.collateralNL.getAddress(), accounts[0].account, e(20))
+			await context.accountFacet
+				.connect(partyA1.getSigner)
+				["depositFor(address,address,uint256)"](await context.collateral.getAddress(), accounts[0].account, e(20))
+			await context.accountFacet
+				.connect(partyA1.getSigner)
+				["depositFor(address,address,uint256)"](await context.collateralNL.getAddress(), accounts[0].account, e(20))
 
 			opOpenA1 = {
 				accountSource: await context.multiAccount.getAddress(),

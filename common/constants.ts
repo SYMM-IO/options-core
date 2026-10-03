@@ -1,6 +1,9 @@
 export const FacetNames = [
-	"AccountFacet",
-	"ClearingHouseFacet",
+	"AccountBalanceFacet",
+	"AccountAllocationFacet",
+	"AccountWithdrawFacet",
+	"ClearingHouseLiquidationFacet",
+	"ClearingHouseSettlementFacet",
 	"ControlFacet",
 	"CounterPartyRelationsFacet",
 	"DiamondLoupeFacet",
@@ -8,9 +11,15 @@ export const FacetNames = [
 	"PartyACloseFacet",
 	"PartyAOpenFacet",
 	"PartyBCloseFacet",
-	"PartyBOpenFacet",
+	"PartyBOpenLifecycleFacet",
+	"PartyBOpenFillFacet",
+	"BucketFacet",
 	"TradeFacet",
 	"ViewFacet",
 ]
 
 export const DEPLOYMENT_LOG_FILE = "deployed.json"
+
+export const OPEN_INTENT_FUNDING_LIBRARY = "contracts/libraries/core/LibOpenIntentFunding.sol:LibOpenIntentFunding"
+
+export const OPEN_INTENT_FUNDING_LIBRARY_NAME = "LibOpenIntentFunding"

@@ -1,7 +1,7 @@
 import type { HardhatEthers } from "@nomicfoundation/hardhat-ethers/types"
 import type { HardhatUpgrades } from "@openzeppelin/hardhat-upgrades"
 
-import { DEPLOYMENT_LOG_FILE, FacetNames } from "../../common/constants.js"
+import { DEPLOYMENT_LOG_FILE, FacetNames, OPEN_INTENT_FUNDING_LIBRARY, OPEN_INTENT_FUNDING_LIBRARY_NAME } from "../../common/constants.js"
 import type {
 	Diamond,
 	FakeOracle,
@@ -17,6 +17,22 @@ import { writeData } from "../utils/fs.js"
 
 export type Ethers = HardhatEthers
 export type Upgrades = HardhatUpgrades
+
+export interface DeploymentRecord {
+	name: string
+	address: string
+	constructorArguments: unknown[]
+	libraries?: Record<string, string>
+	contract?: string
+}
+
+export async function deployOpenIntentFunding(ethers: Ethers): Promise<DeploymentRecord> {
+	const library = await (await ethers.getContractFactory(OPEN_INTENT_FUNDING_LIBRARY)).deploy()
+	await library.waitForDeployment()
+	const address = await library.getAddress()
+	console.log("LibOpenIntentFunding deployed:", address)
+	return { name: "LibOpenIntentFunding", address, constructorArguments: [], contract: OPEN_INTENT_FUNDING_LIBRARY }
+}
 
 export async function deployDiamond(ethers: Ethers, logData: boolean): Promise<Diamond> {
 	const [owner] = await ethers.getSigners()
@@ -34,9 +50,11 @@ export async function deployDiamond(ethers: Ethers, logData: boolean): Promise<D
 	console.log("DiamondInit deployed:", await diamondInit.getAddress())
 
 	const cut: Array<{ facetAddress: string; action: FacetCutAction; functionSelectors: string[] }> = []
-	const deployedFacets: Array<{ name: string; address: string }> = []
+	const fundingLibrary = await deployOpenIntentFunding(ethers)
+	const deployedFacets: DeploymentRecord[] = []
 	for (const facetName of FacetNames) {
-		const facet = await (await ethers.getContractFactory(facetName)).deploy()
+		const libraries = facetName === "PartyBOpenFillFacet" ? { [OPEN_INTENT_FUNDING_LIBRARY_NAME]: fundingLibrary.address } : undefined
+		const facet = await (await ethers.getContractFactory(facetName, { libraries })).deploy()
 		await facet.waitForDeployment()
 		console.log(`${facetName} deployed: ${await facet.getAddress()}`)
 		cut.push({
@@ -44,7 +62,7 @@ export async function deployDiamond(ethers: Ethers, logData: boolean): Promise<D
 			action: FacetCutAction.Add,
 			functionSelectors: getSelectors(ethers, facet as any).selectors,
 		})
-		deployedFacets.push({ name: facetName, address: await facet.getAddress() })
+		deployedFacets.push({ name: facetName, address: await facet.getAddress(), constructorArguments: [], ...(libraries ? { libraries } : {}) })
 	}
 
 	const diamondCut = await ethers.getContractAt("IDiamondCut", await diamond.getAddress())
@@ -57,7 +75,8 @@ export async function deployDiamond(ethers: Ethers, logData: boolean): Promise<D
 		writeData(DEPLOYMENT_LOG_FILE, [
 			{ name: "DiamondCut", address: await diamondCutFacet.getAddress(), constructorArguments: [] },
 			{ name: "Diamond", address: await diamond.getAddress(), constructorArguments: [owner.address, await diamondCutFacet.getAddress()] },
-			...deployedFacets.map(facet => ({ name: facet.name, address: facet.address, constructorArguments: [] })),
+			fundingLibrary,
+			...deployedFacets,
 		])
 		console.log("Deployed addresses written to json file")
 	}

@@ -13,6 +13,7 @@ library LiquidationStorage {
 		mapping(address => mapping(address => mapping(address => uint256))) inProgressLiquidationIds; // partyAAddress => partyBAddress => collateral => liquidationId
 		mapping(uint256 => LiquidationDetail) liquidationDetails; // liquidationId => detail
 		uint256 lastLiquidationId;
+		mapping(address => mapping(uint256 => mapping(address => mapping(uint256 => mapping(address => uint256))))) bucketInProgressLiquidationIds;
 	}
 
 	function layout() internal pure returns (Layout storage l) {

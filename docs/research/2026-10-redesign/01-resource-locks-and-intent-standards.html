@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Resource locks, allocators, and intent standards | Options Core</title>
+<link rel="icon" type="image/svg+xml" href="../../assets/symmio-mark.svg"><link rel="stylesheet" href="../../assets/reader.css"><link rel="stylesheet" href="../../assets/docs-portal.css">
+<script>try { if (localStorage.getItem("options-docs-theme") === "light") document.documentElement.dataset.theme = "light"; } catch (_) {}</script>
+<script src="../../assets/chapters.js" defer></script><script src="../../assets/reader.js" defer></script><script src="../../assets/docs-portal.js" defer></script></head>
+<body class="doc-page" data-version="current"><a class="skip-link" href="#full-document">Skip to document</a><header class="docs-header"><div class="doc-topbar"><nav class="docs-trail" aria-label="Breadcrumb"><a class="brand" href="../../index.html"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Options Core</span></a><span class="trail-sep" aria-hidden="true">/</span><a class="trail-release" href="../../index.html">Documentation</a></nav><nav class="top-actions" aria-label="Page actions"><button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button></nav></div></header>
+<div class="reader-shell"><div data-rail-sections hidden><a class="toc-link level-2" href="#document-metadata">Document metadata</a>
+<a class="toc-link level-2" href="#the-compact-uniswap-labs-v1">The Compact (Uniswap Labs, v1)</a>
+<a class="toc-link level-3" href="#mechanism">Mechanism</a>
+<a class="toc-link level-3" href="#trust">Trust</a>
+<a class="toc-link level-3" href="#for-options-core">For options-core</a>
+<a class="toc-link level-2" href="#erc-7683-cross-chain-intents">ERC-7683 (cross-chain intents)</a>
+<a class="toc-link level-3" href="#mechanism-1">Mechanism</a>
+<a class="toc-link level-3" href="#trust-1">Trust</a>
+<a class="toc-link level-3" href="#for-options-core-1">For options-core</a>
+<a class="toc-link level-2" href="#onebalance">OneBalance</a>
+<a class="toc-link level-3" href="#mechanism-2">Mechanism</a>
+<a class="toc-link level-3" href="#trust-2">Trust</a>
+<a class="toc-link level-3" href="#for-options-core-2">For options-core</a>
+<a class="toc-link level-2" href="#rhinestone">Rhinestone</a>
+<a class="toc-link level-3" href="#mechanism-3">Mechanism</a>
+<a class="toc-link level-3" href="#trust-3">Trust</a>
+<a class="toc-link level-3" href="#for-options-core-3">For options-core</a>
+<a class="toc-link level-2" href="#across-filler-guarantee-only">Across (filler guarantee only)</a>
+<a class="toc-link level-2" href="#uniswapx-and-cow-protocol">UniswapX and CoW Protocol</a>
+<a class="toc-link level-2" href="#anoma-resource-machine">Anoma resource machine</a>
+<a class="toc-link level-3" href="#mechanism-4">Mechanism</a>
+<a class="toc-link level-3" href="#trust-4">Trust</a>
+<a class="toc-link level-3" href="#for-options-core-4">For options-core</a>
+<a class="toc-link level-2" href="#what-this-means-for-options-core">What this means for options-core</a>
+<a class="toc-link level-3" href="#the-shared-pattern">The shared pattern</a>
+<a class="toc-link level-3" href="#a-per-pair-channels-vs-b-shared-balance-with-an-allocator">(a) Per-pair channels vs (b) shared balance with an allocator</a>
+<a class="toc-link level-3" href="#allocator-as-the-matching-engine-or-a-separate-service">Allocator as the matching engine, or a separate service</a>
+<a class="toc-link level-3" href="#bounding-the-allocators-trust">Bounding the allocator&#39;s trust</a>
+<a class="toc-link level-3" href="#weaknesses-of-b">Weaknesses of (b)</a>
+<a class="toc-link level-3" href="#suggested-direction-shared-until-filled-isolated-once-filled">Suggested direction: shared until filled, isolated once filled</a>
+<a class="toc-link level-2" href="#sources">Sources</a></div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1 id="resource-locks-allocators-and-intent-standards">Resource locks, allocators, and intent standards</h1></div></div></header><article class="doc-article" id="full-document"><noscript><nav aria-label="On this page"><a class="toc-link level-2" href="#document-metadata">Document metadata</a>
+<a class="toc-link level-2" href="#the-compact-uniswap-labs-v1">The Compact (Uniswap Labs, v1)</a>
+<a class="toc-link level-3" href="#mechanism">Mechanism</a>
+<a class="toc-link level-3" href="#trust">Trust</a>
+<a class="toc-link level-3" href="#for-options-core">For options-core</a>
+<a class="toc-link level-2" href="#erc-7683-cross-chain-intents">ERC-7683 (cross-chain intents)</a>
+<a class="toc-link level-3" href="#mechanism-1">Mechanism</a>
+<a class="toc-link level-3" href="#trust-1">Trust</a>
+<a class="toc-link level-3" href="#for-options-core-1">For options-core</a>
+<a class="toc-link level-2" href="#onebalance">OneBalance</a>
+<a class="toc-link level-3" href="#mechanism-2">Mechanism</a>
+<a class="toc-link level-3" href="#trust-2">Trust</a>
+<a class="toc-link level-3" href="#for-options-core-2">For options-core</a>
+<a class="toc-link level-2" href="#rhinestone">Rhinestone</a>
+<a class="toc-link level-3" href="#mechanism-3">Mechanism</a>
+<a class="toc-link level-3" href="#trust-3">Trust</a>
+<a class="toc-link level-3" href="#for-options-core-3">For options-core</a>
+<a class="toc-link level-2" href="#across-filler-guarantee-only">Across (filler guarantee only)</a>
+<a class="toc-link level-2" href="#uniswapx-and-cow-protocol">UniswapX and CoW Protocol</a>
+<a class="toc-link level-2" href="#anoma-resource-machine">Anoma resource machine</a>
+<a class="toc-link level-3" href="#mechanism-4">Mechanism</a>
+<a class="toc-link level-3" href="#trust-4">Trust</a>
+<a class="toc-link level-3" href="#for-options-core-4">For options-core</a>
+<a class="toc-link level-2" href="#what-this-means-for-options-core">What this means for options-core</a>
+<a class="toc-link level-3" href="#the-shared-pattern">The shared pattern</a>
+<a class="toc-link level-3" href="#a-per-pair-channels-vs-b-shared-balance-with-an-allocator">(a) Per-pair channels vs (b) shared balance with an allocator</a>
+<a class="toc-link level-3" href="#allocator-as-the-matching-engine-or-a-separate-service">Allocator as the matching engine, or a separate service</a>
+<a class="toc-link level-3" href="#bounding-the-allocators-trust">Bounding the allocator&#39;s trust</a>
+<a class="toc-link level-3" href="#weaknesses-of-b">Weaknesses of (b)</a>
+<a class="toc-link level-3" href="#suggested-direction-shared-until-filled-isolated-once-filled">Suggested direction: shared until filled, isolated once filled</a>
+<a class="toc-link level-2" href="#sources">Sources</a></nav></noscript><section class="callout" aria-label="Document metadata"><h2 id="document-metadata">Document metadata</h2><pre><code class="language-yaml">title: Resource locks, allocators, and intent standards
+tags:
+    - symmio
+    - options-core
+    - research
+date: 2026-10-03
+status: research note</code></pre></section>
+<p>This note asks one question. Can options-core keep a user&#39;s collateral in one shared pool and still promise a solver, before it hedges, that the user cannot withdraw or double-commit those funds?</p>
+<p>Every system below that gives fillers that promise does it the same way. Some party other than the user co-signs every spend from the pool. The user can still leave without that party, but only after a fixed delay longer than any promise still outstanding. The Compact spells this out most clearly, so it gets the most space.</p>
+<p>All sources were checked on 2026-10-03. Versions and commits are listed in <a href="#sources">Sources</a>.</p>
+<h2 id="the-compact-uniswap-labs-v1">The Compact (Uniswap Labs, v1)</h2>
+<h3 id="mechanism">Mechanism</h3>
+<p>The Compact is an ownerless ERC-6909 contract. A deposit mints a token whose id combines the underlying token with a <code>bytes12 lockTag</code>, which packs <code>allocatorId</code>, <code>Scope</code> (<code>Multichain</code> or <code>ChainSpecific</code>) and <code>ResetPeriod</code> (<a href="https://github.com/Uniswap/the-compact/blob/ac25e50dbfd51358f206919e649ff79b042a5dab/README.md#resource-locks">README</a>). <code>ResetPeriod</code> is an enum of eight values from <code>OneSecond</code> to <code>ThirtyDays</code> (<a href="https://github.com/Uniswap/the-compact/blob/ac25e50dbfd51358f206919e649ff79b042a5dab/src/types/ResetPeriod.sol">ResetPeriod.sol</a>). <code>TenMinutes</code> and <code>OneHourAndFiveMinutes</code> fit a &quot;write every few minutes&quot; rhythm.</p>
+<p>The token owner, called the sponsor, signs an EIP-712 <code>Compact</code> (<code>arbiter, sponsor, nonce, expires, lockTag, token, amount</code>) or a <code>BatchCompact</code> carrying <code>Lock[] commitments</code>, each with an optional <code>Mandate</code> witness (<a href="https://github.com/Uniswap/the-compact/blob/ac25e50dbfd51358f206919e649ff79b042a5dab/README.md#compacts--eip-712-payloads">README</a>). The contract hashes the witness with a caller-supplied typestring and never reads it. The arbiter interprets it (<a href="https://github.com/Uniswap/the-compact/blob/ac25e50dbfd51358f206919e649ff79b042a5dab/README.md#witness-structure">README</a>). To settle, the arbiter calls <code>claim(Claim)</code>. The Compact checks <code>expires</code>, consumes the nonce in the allocator&#39;s scope, verifies the sponsor&#39;s signature or registration, calls <code>IAllocator.authorizeClaim</code>, and pays each <code>Component{claimant, amount}</code> (<a href="https://github.com/Uniswap/the-compact/blob/ac25e50dbfd51358f206919e649ff79b042a5dab/src/lib/ClaimProcessorLib.sol#L54-L92">ClaimProcessorLib.sol</a>). The claim hash uses <code>msg.sender</code> as the arbiter, so only the named arbiter can submit (<a href="https://github.com/Uniswap/the-compact/blob/ac25e50dbfd51358f206919e649ff79b042a5dab/src/lib/HashLib.sol#L60-L63">HashLib.sol</a>).</p>
+<p>No claim needs its own lock transaction, because nothing leaves a lock without the allocator. ERC-6909 transfers call <code>IAllocator.attest</code> (<a href="https://github.com/Uniswap/the-compact/blob/ac25e50dbfd51358f206919e649ff79b042a5dab/src/lib/TransferLogic.sol#L122-L170">TransferLogic.sol</a>), withdrawals go through <code>allocatedTransfer</code> with <code>allocatorData</code>, and claims call <code>authorizeClaim</code>. The allocator keeps the ledger of what is promised and refuses to sign past the unallocated balance. The reference allocators show the checks that make this hold over time.</p>
+<ul>
+<li>Smallocator refuses a compact if the lock has a forced withdrawal pending, if already-allocated plus requested exceeds the finalized balance, or if <code>now + resetPeriod &lt; expires</code> (<a href="https://github.com/Uniswap/smallocator/blob/4153469a95b91f72c3c52b83dc58ae0649891811/src/validation/allocation.ts#L30-L79">allocation.ts</a>, <a href="https://github.com/Uniswap/smallocator/blob/4153469a95b91f72c3c52b83dc58ae0649891811/src/validation/domain.ts#L45-L53">domain.ts</a>).</li>
+<li><code>OnChainAllocator</code> requires <code>expires &lt; now + minResetPeriod</code>, and refuses if a scheduled forced withdrawal unlocks on or before <code>expires</code> (<a href="https://github.com/Uniswap/sc-allocators/blob/e38e273415007cdb6939277597daf5f1a629d200/src/allocators/OnChainAllocator.sol#L310-L344">OnChainAllocator.sol</a>).</li>
+</ul>
+<p>The user&#39;s exit is <code>enableForcedWithdrawal(id)</code>, a wait of <code>resetPeriod</code>, then <code>forcedWithdrawal(id, recipient, amount)</code>, with no allocator signature (<a href="https://github.com/Uniswap/the-compact/blob/ac25e50dbfd51358f206919e649ff79b042a5dab/src/lib/WithdrawalLogic.sol">WithdrawalLogic.sol</a>). Emissaries (<code>IEmissary.verifyClaim</code>) are fallback signers for smart accounts whose ERC-1271 logic can change, and replacing one also waits out the reset period (<a href="https://github.com/Uniswap/the-compact/blob/ac25e50dbfd51358f206919e649ff79b042a5dab/README.md#emissaries">README</a>).</p>
+<h3 id="trust">Trust</h3>
+<table>
+<thead>
+<tr>
+<th>Party</th>
+<th>Can censor</th>
+<th>Can steal</th>
+<th>Can double-spend</th>
+<th>If it disappears</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Allocator</td>
+<td>Yes, new compacts and withdrawals</td>
+<td>No, it cannot move funds without the sponsor</td>
+<td>Yes, by over-signing</td>
+<td>Sponsors force-withdraw after <code>resetPeriod</code>. Signed compacts stay claimable only if <code>authorizeClaim</code> just checks a signature issued up front.</td>
+</tr>
+<tr>
+<td>Arbiter</td>
+<td>Yes, by not submitting</td>
+<td>Yes, within what the sponsor signed. It picks claimants</td>
+<td>No</td>
+<td>Claimants cannot get paid</td>
+</tr>
+<tr>
+<td>Sponsor</td>
+<td>No</td>
+<td>No</td>
+<td>Only if the allocator helps</td>
+<td>Not needed after signing</td>
+</tr>
+</tbody></table>
+<p>Sponsors &quot;cannot unilaterally cancel a signed compact; only allocators can effectively do so by consuming the nonce&quot; (<a href="https://github.com/Uniswap/the-compact/blob/ac25e50dbfd51358f206919e649ff79b042a5dab/README.md?plain=1#L259">README</a>), via <code>consume(nonces)</code> (<a href="https://github.com/Uniswap/the-compact/blob/ac25e50dbfd51358f206919e649ff79b042a5dab/src/lib/AllocatorLogic.sol#L37-L60">AllocatorLogic.sol</a>). So a claimant trusts the allocator not to cancel after the claimant has acted, as well as not to over-allocate.</p>
+<p>OpenZeppelin&#39;s audit says fillers must decide &quot;whether a claim&#39;s condition is safe to fulfill, especially considering the reset period&quot;, and warns that sponsors can change their code with EIP-7702 (<a href="https://github.com/Uniswap/the-compact/blob/ac25e50dbfd51358f206919e649ff79b042a5dab/audits/Audit-OpenZeppelin.pdf">OZ audit, p. 8</a>). Both audits found the same top bug, a storage slot that left out the sponsor, so anyone could set any user&#39;s emissary and steal from their locks (OZ H-01, Spearbit 5.1.1, fixed in <code>3caea0b</code>, <a href="https://github.com/Uniswap/the-compact/blob/ac25e50dbfd51358f206919e649ff79b042a5dab/audits/Audit-Spearbit.pdf">Spearbit audit</a>). It was hand-written assembly slot math, a risk we inherit if we copy that style.</p>
+<h3 id="for-options-core">For options-core</h3>
+<ul>
+<li><strong>Goal 1.</strong> The Compact is already a product-agnostic ledger. Balances sit per owner, lock and token. They move only by allocator-approved transfer or by an arbiter-submitted claim. A claim can pay out as a transfer, as a withdrawal, or by converting the balance into a lock under a different allocator (<a href="https://github.com/Uniswap/the-compact/blob/ac25e50dbfd51358f206919e649ff79b042a5dab/README.md#claimant-processing--structure">README</a>). That last option is &quot;pool A pays pool B&quot; plus &quot;B&#39;s funds now sit under another controller&quot;.</li>
+<li><strong>Goal 2.</strong> <code>Mandate</code> plus typestring is a generic witness. Our <code>Rule[]</code> can be the mandate, and our arbiter can be an immutable contract that runs the validators. That turns the arbiter, the most powerful party in The Compact, into code.</li>
+<li><strong>Goal 3.</strong> The allocator&#39;s co-signature is the off-chain lock, and it replaces <code>lockOpenIntent</code>. The solver is covered once it holds the sponsor signature and the allocator signature. It can submit any time before <code>expires</code>. Batching every few minutes only works if the batch interval and <code>expires</code> both fit inside the reset period.</li>
+<li>A compact pays in one direction, from sponsor to claimants. An option trade locks two things, the user&#39;s premium and the solver&#39;s collateral, so both need allocating in the same step.</li>
+<li>The reset period caps how long a promise can last. Option positions last days or weeks. A compact can cover the fill window. It cannot hold position margin for a week unless users accept a week-long exit.</li>
+</ul>
+<h2 id="erc-7683-cross-chain-intents">ERC-7683 (cross-chain intents)</h2>
+<h3 id="mechanism-1">Mechanism</h3>
+<p>ERC-7683 is still a Draft, and the file was rewritten on 2026-05-13 (&quot;Redesign around resolvers&quot;). The <code>orderData</code> and <code>ResolvedCrossChainOrder</code> fields named in the brief come from the earlier draft.</p>
+<p>That earlier draft defined <code>GaslessCrossChainOrder</code> with <code>bytes32 orderDataType</code> (an EIP-712 typehash) and opaque <code>bytes orderData</code>. <code>IOriginSettler.openFor</code> escrowed the user&#39;s funds, and <code>resolve</code> returned <code>ResolvedCrossChainOrder</code> with <code>maxSpent</code>, <code>minReceived</code> and <code>fillInstructions</code> (<a href="https://github.com/ethereum/ERCs/blob/dfc90d9274c17977b8bad021ae1207f71c339266/ERCS/erc-7683.md?plain=1#L40-L204">previous draft</a>). The filler&#39;s guarantee was that escrow, ideally opened through a Permit2 witness transfer so one signature both approves tokens and binds the order (<a href="https://github.com/ethereum/ERCs/blob/dfc90d9274c17977b8bad021ae1207f71c339266/ERCS/erc-7683.md?plain=1#L289-L299">previous draft</a>).</p>
+<p>The current draft drops all of that. A protocol publishes an <code>IResolver</code> with <code>resolve(bytes payload) view returns (ResolvedOrder)</code>, which returns <code>steps</code> (<code>Call</code> with attributes such as <code>SpendsERC20</code>, <code>TimingBounds</code>, <code>RevertPolicy</code>), <code>variables</code>, <code>payments</code> and <code>Assumption{string name; bytes data}</code> (<a href="https://github.com/ethereum/ERCs/blob/96d110fbbe7042b061064833edaf8fa2cf5db195/ERCS/erc-7683.md?plain=1#L281-L377">current</a>). Solvers run it with <code>eth_call</code>. A resolver &quot;MUST guarantee that an order may only abort as explicitly specified in revert policies&quot;, and lists anything it cannot check as a named assumption for the solver to validate (<a href="https://github.com/ethereum/ERCs/blob/96d110fbbe7042b061064833edaf8fa2cf5db195/ERCS/erc-7683.md?plain=1#L283-L297">current</a>). The rationale says the old structs were &quot;only superficially standardized&quot;, and that escrow-first did not fit &quot;fill-first protocols&quot; where &quot;user funds are under a lock that is trusted by the solver&quot; (<a href="https://github.com/ethereum/ERCs/blob/96d110fbbe7042b061064833edaf8fa2cf5db195/ERCS/erc-7683.md?plain=1#L423-L441">current</a>).</p>
+<h3 id="trust-1">Trust</h3>
+<p>The ERC defines no settlement. The resolver is &quot;the point of trust&quot;, and solvers whitelist resolver addresses (<a href="https://github.com/ethereum/ERCs/blob/96d110fbbe7042b061064833edaf8fa2cf5db195/ERCS/erc-7683.md?plain=1#L396-L398">current</a>). The security section names our exact problem. Audits should verify &quot;that payment paths cannot be invalidated after the solver has incurred costs&quot; (<a href="https://github.com/ethereum/ERCs/blob/96d110fbbe7042b061064833edaf8fa2cf5db195/ERCS/erc-7683.md?plain=1#L443-L451">current</a>). The standard leaves that guarantee to whatever lock or escrow sits underneath.</p>
+<h3 id="for-options-core-1">For options-core</h3>
+<ul>
+<li>A resolver is the same idea as our validators, view code on-chain that both sides run off-chain. <code>Assumption{name, data}</code> has nearly the same shape as <code>Rule{validator, kind, data}</code>.</li>
+<li>The authors dropped the <code>orderDataType + orderData</code> envelope because it did not make solvers generic. A bare <code>bytes4 kind</code> has the same problem unless the validator returns something a solver can act on without knowing the kind.</li>
+<li>Publishing a resolver for options intents is low priority. The draft is still moving, and our solvers are specialists.</li>
+</ul>
+<h2 id="onebalance">OneBalance</h2>
+<h3 id="mechanism-2">Mechanism</h3>
+<p>OneBalance defines a resource lock as &quot;a credible commitment made by a user to escrow some state conditional on particular conditions fulfilled, or an expiry time&quot;, issued by a TEE, MPC, smart account or protocol change (<a href="https://ethresear.ch/t/introducing-onebalance/19557">ethresear.ch</a>). In production the locks were account-based, on Kernel smart accounts. An &quot;RL Service&quot; checked balances, &quot;co-signs operations … and prevents double-spending&quot;, and &quot;issues security attestations to solvers for immediate delivery&quot; (<a href="http://web.archive.org/web/20260510135419/https://docs.onebalance.io/concepts/resource-locks.md">archived docs</a>). Once a lock was on, &quot;transactions can be sent only via OneBalance Toolkit&quot;. A <code>user_admin</code> role on the <code>RoleBasedValidator</code> could &quot;execute trustless rage quit in emergency case&quot; (<a href="http://web.archive.org/web/20260510135616/https://docs.onebalance.io/concepts/accounts.md">archived docs</a>). The Toolkit API &quot;was deprecated on May 18, 2026&quot; (<a href="https://docs.onebalance.io/index.md">docs</a>).</p>
+<h3 id="trust-2">Trust</h3>
+<p>The RL Service co-signs every outflow, so it can censor everything and solvers rely on it fully for double-spend safety. It cannot spend alone. I could not find the delay or mechanics of the rage quit, so the exit path is unverified.</p>
+<h3 id="for-options-core-2">For options-core</h3>
+<p>An account-level lock needs a co-signer on everything the account does. Our vault already escrows, so an escrow-style lock like The Compact fits better. The deprecation is a reminder that the exit must work after the company running the co-signer stops.</p>
+<h2 id="rhinestone">Rhinestone</h2>
+<h3 id="mechanism-3">Mechanism</h3>
+<p>Rhinestone first shipped an ERC-7579 &quot;Resource Lock Hook&quot; that checks every account execution and needs an Orchestrator signature if the balance would drop below the locked amount (<a href="https://github.com/rhinestonewtf/docs-legacy/blob/58a6246d42105d64e58a9eb55f465782d6040bf7/pages/omni-account/architecture/omni-account.mdx">legacy docs</a>). The Orchestrator &quot;only co-signs transactions involving locked funds&quot;, &quot;solvers are the only party that must trust the Orchestrator&quot;, and users have an &quot;onchain escape hatch&quot; (<a href="https://github.com/rhinestonewtf/docs-legacy/blob/58a6246d42105d64e58a9eb55f465782d6040bf7/pages/omni-account/architecture/orchestrator.mdx">legacy docs</a>). Rhinestone then co-built The Compact (<a href="https://github.com/Uniswap/the-compact/blob/ac25e50dbfd51358f206919e649ff79b042a5dab/README.md#credits">README</a>). Its current Warp router settles through <code>CompactArbiter</code>, <code>Permit2Arbiter</code> or <code>SameChainArbiter</code>, with relayers filling first and claiming later (<a href="https://github.com/rhinestonewtf/warp-router/blob/e329b785e13525e6f3bcebcd211f1513c48578a1/docs/threadmodel_auditor_focused.md?plain=1#L10-L16">threat model</a>).</p>
+<h3 id="trust-3">Trust</h3>
+<p>The allocator key is &quot;controlled by Rhinestone&quot;, and users cannot change their emissary config without allocator approval, so &quot;claims remain valid until expiry&quot; (<a href="https://github.com/rhinestonewtf/warp-router/blob/e329b785e13525e6f3bcebcd211f1513c48578a1/docs/threadmodel_auditor_focused.md?plain=1#L994-L1018">threat model</a>). The same document flags a hole. An admin can call <code>retireClaimAdapter()</code> between a relayer&#39;s fill and its claim, stranding the relayer&#39;s funds. A timelock is planned, but there is &quot;No on-chain enforcement&quot; yet (<a href="https://github.com/rhinestonewtf/warp-router/blob/e329b785e13525e6f3bcebcd211f1513c48578a1/docs/threadmodel_auditor_focused.md?plain=1#L137-L157">threat model</a>).</p>
+<h3 id="for-options-core-3">For options-core</h3>
+<p>The operator running the allocator is the realistic default for us too. The lesson I&#39;d keep is the retired adapter. Any upgradeable code between fill and settlement breaks the solver&#39;s guarantee, so that path must be immutable or timelocked for longer than the longest claim window.</p>
+<h2 id="across-filler-guarantee-only">Across (filler guarantee only)</h2>
+<p><code>depositV3</code> pulls the input tokens into the origin <code>SpokePool</code> in the deposit transaction (<a href="https://github.com/across-protocol/contracts/blob/a634bea927668519c748e46036181c89c7bd9b40/contracts/spoke-pools/SpokePool.sol#L1383-L1446">SpokePool.sol</a>). A relayer fills on the destination before <code>fillDeadline</code>, optionally as the <code>exclusiveRelayer</code> until <code>exclusivityDeadline</code>, and is repaid later (<a href="https://github.com/across-protocol/contracts/blob/a634bea927668519c748e46036181c89c7bd9b40/contracts/spoke-pools/SpokePool.sol#L590-L611">SpokePool.sol</a>). Its guarantee is the per-order escrow, and its remaining risk is an origin reorg. This is the one-lock-transaction-per-intent model options-core wants to leave. The ERC-7683 rationale names resource locks as its replacement.</p>
+<h2 id="uniswapx-and-cow-protocol">UniswapX and CoW Protocol</h2>
+<p>A UniswapX order is bound by a Permit2 witness transfer. The reactor calls <code>permitWitnessTransferFrom</code> with the order hash as witness, and the order&#39;s <code>nonce</code> is a Permit2 unordered nonce (<a href="https://github.com/Uniswap/UniswapX/blob/eb7ce077036258b9510b42ad37aa920cf3aaf308/src/reactors/BaseReactor.sol#L31-L51">BaseReactor.sol</a>, <a href="https://github.com/Uniswap/UniswapX/blob/eb7ce077036258b9510b42ad37aa920cf3aaf308/src/reactors/LimitOrderReactor.sol#L30-L45">LimitOrderReactor.sol</a>). The user can cancel at any time with <code>invalidateUnorderedNonces</code> (<a href="https://github.com/Uniswap/permit2/blob/cc56ad0f3439c502c246fc5cfcc3db92bb8b7219/src/SignatureTransfer.sol#L130-L134">SignatureTransfer.sol</a>), or simply move the tokens. In CoW, <code>invalidateOrder</code> sets <code>filledAmount[orderUid]</code> to the maximum (<a href="https://github.com/cowprotocol/contracts/blob/c07a93e3596194c5e3cf331c755a3f9f0e4a17d8/src/contracts/GPv2Settlement.sol#L250-L255">GPv2Settlement.sol</a>), and funds come from a plain allowance.</p>
+<p>Both settle atomically, so the filler never holds half a trade on-chain. UniswapX exclusivity keeps other fillers out (<a href="https://github.com/Uniswap/UniswapX/blob/eb7ce077036258b9510b42ad37aa920cf3aaf308/src/lib/ExclusivityLib.sol">ExclusivityLib.sol</a>) and does nothing about the user. A filler that hedges before its transaction lands has no protection, which is Symmio&#39;s failure mode today.</p>
+<h2 id="anoma-resource-machine">Anoma resource machine</h2>
+<h3 id="mechanism-4">Mechanism</h3>
+<p>State is a set of immutable resources with <code>logicRef</code>, <code>labelRef</code>, <code>valueRef</code>, <code>quantity</code>, <code>isEphemeral</code>, <code>nonce</code>, <code>nullifierKeyCommitment</code> and <code>randSeed</code> (<a href="https://specs.anoma.net/v1.0.0/arch/system/state/resource_machine/data_structures/resource/index.html">spec</a>). A resource&#39;s kind is <code>kindHash(labelRef, logicRef)</code> (<a href="https://specs.anoma.net/v1.0.0/arch/system/state/resource_machine/data_structures/resource/computable_components/kind.html">spec</a>). The label decides fungibility, and the value holds extra data that does not. Creating a resource publishes a commitment. Consuming it publishes a nullifier, which can appear only once (<a href="https://specs.anoma.net/v1.0.0/arch/system/state/resource_machine/data_structures/resource/computable_components/nullifier.html">spec</a>). A transaction is valid when every created or consumed resource&#39;s logic proof passes and the delta proof shows each kind balances (<a href="https://specs.anoma.net/v1.0.0/arch/system/state/resource_machine/data_structures/action/resource_logic_proof.html">spec</a>, <a href="https://specs.anoma.net/v1.0.0/arch/system/state/resource_machine/data_structures/transaction/transaction.html">spec</a>). The machine checks conservation and uniqueness and leaves meaning to the resource logic. Intents are unbalanced transactions that solvers compose into balanced ones (<a href="https://specs.anoma.net/v1.0.0/arch/system/state/resource_machine/index.html">spec</a>). On EVM a protocol adapter keeps the commitment tree and nullifier set and verifies RISC Zero proofs (<a href="https://specs.anoma.net/v1.0.0/arch/integrations/adapters/evm.html">spec</a>, <a href="https://github.com/anoma/pa-evm">pa-evm</a>).</p>
+<h3 id="trust-4">Trust</h3>
+<p>The nullifier set stops double-spends at ordering time only. A user can consume the same resource in another transaction before the solver&#39;s lands, unless the resource logic demands an extra signature. Anoma has a clean generic core and no hedge-first guarantee.</p>
+<h3 id="for-options-core-4">For options-core</h3>
+<p>Anoma shows the right split for goals 1 and 2. The core checks per-token conservation, and checks that the logic attached to each debited pool approved the debit. It never reads application data. An allocator is that kind of logic, a per-pool rule that approves spends. The full model, with ZK proofs and commitment trees, is far more than we need.</p>
+<h2 id="what-this-means-for-options-core">What this means for options-core</h2>
+<h3 id="the-shared-pattern">The shared pattern</h3>
+<p>Every design that lets a solver act before settlement has the same parts. The user signs something they cannot revoke. A third party with a ledger co-signs to say the funds are not promised elsewhere. The user can leave without that party after a delay longer than any open promise.</p>
+<p>Per-pair channels fit this pattern too. The counterparty co-signs for the pair&#39;s collateral, and the challenge period is the delay. The real choice is who does the co-signing.</p>
+<h3 id="a-per-pair-channels-vs-b-shared-balance-with-an-allocator">(a) Per-pair channels vs (b) shared balance with an allocator</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>(a) Per-pair channel</th>
+<th>(b) Shared balance with an allocator</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Capital</td>
+<td>Split per solver before trading</td>
+<td>One balance, quotes from any solver</td>
+</tr>
+<tr>
+<td>Who stops double-commitment</td>
+<td>The counterparty co-signs each state</td>
+<td>The allocator co-signs each spend</td>
+</tr>
+<tr>
+<td>What the solver trusts</td>
+<td>The contracts</td>
+<td>The allocator, for every promise it signs</td>
+</tr>
+<tr>
+<td>What the user trusts</td>
+<td>Nobody for safety. Exit takes a challenge period</td>
+<td>The allocator for liveness. Exit takes the reset period</td>
+</tr>
+<tr>
+<td>Lock per intent</td>
+<td>None</td>
+<td>None, one signature</td>
+</tr>
+<tr>
+<td>Open positions</td>
+<td>Margin isolated in the pair</td>
+<td>Needs a separate home, see weaknesses</td>
+</tr>
+<tr>
+<td>On-chain writes</td>
+<td>Checkpoints</td>
+<td>Claim batches, at least one per <code>expires</code> window</td>
+</tr>
+</tbody></table>
+<p>(b) adds a trusted party for solvers. (a) adds none.</p>
+<h3 id="allocator-as-the-matching-engine-or-a-separate-service">Allocator as the matching engine, or a separate service</h3>
+<p>The RFQ server already sees every intent in order, so making it the allocator adds no new party. Rhinestone&#39;s Orchestrator did routing, intent queuing and lock accounting in one service (<a href="https://github.com/rhinestonewtf/docs-legacy/blob/58a6246d42105d64e58a9eb55f465782d6040bf7/pages/omni-account/architecture/orchestrator.mdx">legacy docs</a>). A separate allocator only needs amounts, sponsor, nonce and expiry. Smallocator signs while seeing only the witness hash, never the order (<a href="https://github.com/Uniswap/smallocator/blob/4153469a95b91f72c3c52b83dc58ae0649891811/README.md#features">README</a>). Separation hides order details from the allocator and lets several venues share one, at the cost of one more network hop before the solver can hedge. I&#39;d start with the matching engine as allocator and keep the message format splittable.</p>
+<h3 id="bounding-the-allocators-trust">Bounding the allocator&#39;s trust</h3>
+<ul>
+<li><strong>Exit.</strong> Forced withdrawal after the reset period. Smallocator and <code>OnChainAllocator</code> enforce the expiry checks as allocator policy. Our vault should enforce them itself and reject a co-signed commitment whose <code>expires</code> falls after <code>now + resetPeriod</code> or after a pending forced withdrawal.</li>
+<li><strong>No silent cancel.</strong> Leave out anything like <code>consume</code>. After the allocator co-signs, only the solver&#39;s signature or expiry can cancel.</li>
+<li><strong>Equivocation proofs and a bond.</strong> The allocator could sign a sequence number and cumulative allocated amount per pool with each approval, the way <code>QualifiedAllocator</code> signs <code>QualifiedClaim(claimHash, qualificationArg)</code> (<a href="https://github.com/Uniswap/the-compact/blob/ac25e50dbfd51358f206919e649ff79b042a5dab/src/examples/allocator/QualifiedAllocator.sol#L57-L68">QualifiedAllocator.sol</a>). Two signatures with one sequence number, or a cumulative amount above the pool balance, would prove over-allocation on-chain and could slash a bond to pay the harmed solver. This is my proposal, not something The Compact does. The bond must cover the largest total of open promises, so allocator capital caps throughput.</li>
+<li><strong>On-chain allocator logic.</strong> <code>OnChainAllocator</code> removes the trust but costs one transaction per allocation, the cost we are trying to remove. A middle ground is a periodic checkpoint of the allocator&#39;s ledger root with fraud proofs against it.</li>
+<li><strong>Immutable settlement path.</strong> See Rhinestone&#39;s retired adapter.</li>
+</ul>
+<h3 id="weaknesses-of-b">Weaknesses of (b)</h3>
+<ul>
+<li>An allocator protects the fill window, not the position. Margin shared across open positions with several solvers is cross-margin, which needs a portfolio risk engine and liquidations. An allocator provides neither.</li>
+<li>If the allocator is down, nobody trades, and users wait out the reset period to exit. Ten minutes or an hour is tolerable. Thirty days is not.</li>
+<li>Batch interval ≤ <code>expires − now</code> &lt; <code>resetPeriod</code>. Longer batches force longer exits.</li>
+<li>Two-sided trades need the user&#39;s premium and the solver&#39;s collateral allocated together, and the arbiter must settle both or neither.</li>
+<li>EIP-7702 and ERC-1271 sponsors can change whether their signatures are valid. <a href="00-synthesis-and-design-directions.html">Note 00</a> already handles this with a registered plain key. An emissary that only changes with the allocator&#39;s signature also works.</li>
+</ul>
+<h3 id="suggested-direction-shared-until-filled-isolated-once-filled">Suggested direction: shared until filled, isolated once filled</h3>
+<p>Free balance sits in one pool under an allocator, and any solver can quote against it. On a fill, the allocator co-signs both sides and the solver hedges. The next batch pays the premium to the solver and moves both sides&#39; margin into a per-pair or per-position lock. The channel or engine contract owns that lock and controls the position until expiry or close, so exit follows the channel&#39;s rules, not the reset period.</p>
+<p>Collateral stays shared while idle, and settlement stays bilateral while at risk. The channel design in note 00 still holds. The allocator only replaces the up-front split of collateral per solver.</p>
+<p>Open questions for Naveed:</p>
+<ol>
+<li>Who runs the allocator at launch, and is a bond realistic?</li>
+<li>Will users accept a 10-minute or 1-hour exit from free balance?</li>
+<li>Does any product need cross-margin across solvers, or is per-pair margin enough?</li>
+</ol>
+<h2 id="sources">Sources</h2>
+<p>All checked 2026-10-03.</p>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Version or commit</th>
+<th>Date of version</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>The Compact</td>
+<td><code>main</code> <code>ac25e50</code>, tag <code>V1</code> <code>c84929a</code></td>
+<td>2025-10-14, 2025-09-16</td>
+</tr>
+<tr>
+<td>The Compact audits</td>
+<td>OpenZeppelin; Spearbit (commit <code>102fa069</code>)</td>
+<td>2025-06-30, 2025-07-14</td>
+</tr>
+<tr>
+<td>Smallocator</td>
+<td><code>4153469</code></td>
+<td>2025-03-06</td>
+</tr>
+<tr>
+<td>sc-allocators</td>
+<td><code>the-compact-v1</code> <code>e38e273</code>, README <code>main</code> <code>1869606</code></td>
+<td>2025-08-25, 2026-03-10</td>
+</tr>
+<tr>
+<td>ERC-7683</td>
+<td>current <code>96d110f</code>; previous draft <code>dfc90d9</code></td>
+<td>2026-05-13, 2026-05-12</td>
+</tr>
+<tr>
+<td>OneBalance</td>
+<td>ethresear.ch post; docs via Wayback</td>
+<td>2024-05-15; snapshot 2026-05-10</td>
+</tr>
+<tr>
+<td>Rhinestone</td>
+<td>docs-legacy <code>58a6246</code>; warp-router <code>e329b78</code></td>
+<td>2025-05-30, 2026-09-14</td>
+</tr>
+<tr>
+<td>Across</td>
+<td>contracts <code>a634bea</code></td>
+<td>2026-09-28</td>
+</tr>
+<tr>
+<td>Permit2, UniswapX, CoW</td>
+<td><code>cc56ad0</code>, <code>eb7ce07</code>, <code>c07a93e</code></td>
+<td>2023-09-29, 2026-09-04, 2026-09-01</td>
+</tr>
+<tr>
+<td>Anoma</td>
+<td>specs v1.0.0; pa-evm <code>contracts/v2.0.0-rc.7.1</code></td>
+<td>2025-11-18, 2026-10-02</td>
+</tr>
+</tbody></table>
+</article></main></div><footer class="site-footer"><span>Options Core documentation.</span></footer></body></html>

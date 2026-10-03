@@ -411,8 +411,8 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			closeIntent.quantity
 			await context.controlFacet.setPartyBReleaseInterval(partyB1.getSigner, releaseInterval)
 
-			const partyBBalanceBefore = await context.viewFacet.getIsolatedBalance(partyB1.getSigner, context.collateral)
-			const partyABalanceBefore = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral)
+			const partyBBalanceBefore = await context.viewFacet["getIsolatedBalance(address,address)"](partyB1.getSigner, context.collateral)
+			const partyABalanceBefore = await context.viewFacet["getIsolatedBalance(address,address)"](partyA1.getSigner, context.collateral)
 
 			const halfQuantity = BigInt(closeIntent.quantity) / division
 			const price = BigInt(closeIntent.price) + 1000n // Close Premium
@@ -427,10 +427,14 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 
 			const trade: TradeStruct = await context.viewFacet.getTrade(closeIntent.tradeId)
 			const symbol: SymbolStruct = await context.viewFacet.getSymbol(trade.tradeAgreements.symbolId)
-			const partyBBalanceAfter = await context.viewFacet.getIsolatedBalance(trade.partyB, symbol.collateral)
-			let partyABalanceAfter = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral)
+			const partyBBalanceAfter = await context.viewFacet["getIsolatedBalance(address,address)"](trade.partyB, symbol.collateral)
+			let partyABalanceAfter = await context.viewFacet["getIsolatedBalance(address,address)"](partyA1.getSigner, context.collateral)
 			const premium = await context.viewFacet.getTradePremium(closeIntent.tradeId)
-			let scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA1.getSigner, context.collateral, partyB1.getSigner)
+			let scheduleEntry = await context.viewFacet["getScheduledReleaseEntry(address,address,address)"](
+				partyA1.getSigner,
+				context.collateral,
+				partyB1.getSigner,
+			)
 
 			const partyAProfit = (BigInt(price) * BigInt(division * halfQuantity)) / parseUnits("1", 18)
 			const finalPremium = (premium * division * halfQuantity) / BigInt(trade.tradeAgreements.quantity)
@@ -458,8 +462,12 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 
 			expect(scheduleEntry.scheduled).to.be.equal(partyAProfit / division)
 
-			await context.accountFacet.syncBalances(context.collateral, partyA1.getSigner, [partyB1.getSigner])
-			scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA1.getSigner, context.collateral, partyB1.getSigner)
+			await context.accountFacet["syncBalances(address,address,address[])"](context.collateral, partyA1.getSigner, [partyB1.getSigner])
+			scheduleEntry = await context.viewFacet["getScheduledReleaseEntry(address,address,address)"](
+				partyA1.getSigner,
+				context.collateral,
+				partyB1.getSigner,
+			)
 
 			expect(scheduleEntry.transitioning).to.be.equal(partyAProfit / division)
 
@@ -467,9 +475,13 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlockTime])
 			await ethers.provider.send("evm_mine")
 
-			await context.accountFacet.syncBalances(context.collateral, partyA1.getSigner, [partyB1.getSigner])
-			partyABalanceAfter = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral)
-			scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA1.getSigner, context.collateral, partyB1.getSigner)
+			await context.accountFacet["syncBalances(address,address,address[])"](context.collateral, partyA1.getSigner, [partyB1.getSigner])
+			partyABalanceAfter = await context.viewFacet["getIsolatedBalance(address,address)"](partyA1.getSigner, context.collateral)
+			scheduleEntry = await context.viewFacet["getScheduledReleaseEntry(address,address,address)"](
+				partyA1.getSigner,
+				context.collateral,
+				partyB1.getSigner,
+			)
 
 			console.log("PartyA balance after window sync:", partyABalanceAfter)
 			console.log("PartyA balance Scheduled:", scheduleEntry.scheduled)
@@ -488,8 +500,8 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			const closeIntent: CloseIntentStruct = await context.viewFacet.getCloseIntent(closeIntentID)
 			closeIntent.quantity
 
-			const partyBBalanceBefore = await context.viewFacet.getIsolatedBalance(partyB1.getSigner, context.collateral)
-			const partyABalanceBefore = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral)
+			const partyBBalanceBefore = await context.viewFacet["getIsolatedBalance(address,address)"](partyB1.getSigner, context.collateral)
+			const partyABalanceBefore = await context.viewFacet["getIsolatedBalance(address,address)"](partyA1.getSigner, context.collateral)
 
 			const halfQuantity = BigInt(closeIntent.quantity) / division
 			const price = BigInt(closeIntent.price) + 1000n // party B says I can buy higher
@@ -504,10 +516,14 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 
 			const trade: TradeStruct = await context.viewFacet.getTrade(closeIntent.tradeId)
 			const symbol: SymbolStruct = await context.viewFacet.getSymbol(trade.tradeAgreements.symbolId)
-			const partyBBalanceAfter = await context.viewFacet.getIsolatedBalance(trade.partyB, symbol.collateral)
+			const partyBBalanceAfter = await context.viewFacet["getIsolatedBalance(address,address)"](trade.partyB, symbol.collateral)
 			const premium = await context.viewFacet.getTradePremium(closeIntent.tradeId)
-			let partyABalanceAfter = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, context.collateral)
-			let scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA1.getSigner, context.collateral, partyB1.getSigner)
+			let partyABalanceAfter = await context.viewFacet["getIsolatedBalance(address,address)"](partyA1.getSigner, context.collateral)
+			let scheduleEntry = await context.viewFacet["getScheduledReleaseEntry(address,address,address)"](
+				partyA1.getSigner,
+				context.collateral,
+				partyB1.getSigner,
+			)
 
 			const partyAProfit = (BigInt(price) * division * halfQuantity) / parseUnits("1", 18)
 			const finalPremium = (premium * division * halfQuantity) / BigInt(trade.tradeAgreements.quantity)
@@ -536,8 +552,16 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			const closeIntent: CloseIntentStruct = await context.viewFacet.getCloseIntent(closeIntentID)
 
 			//take balance snapshot
-			const partyACrossBalanceBefore = await context.viewFacet.getCrossBalance(partyA1.address, context.collateral, partyB1.address)
-			let partyBCrossBalanceBefore = await context.viewFacet.getCrossBalance(partyB1.address, context.collateral, partyA1.address)
+			const partyACrossBalanceBefore = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyA1.address,
+				context.collateral,
+				partyB1.address,
+			)
+			let partyBCrossBalanceBefore = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyB1.address,
+				context.collateral,
+				partyA1.address,
+			)
 
 			const halfQuantity = BigInt(closeIntent.quantity) / division
 			const price = BigInt(closeIntent.price) + 1000n // party B says I can buy higher
@@ -546,8 +570,16 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 
 			const trade: TradeStruct = await context.viewFacet.getTrade(closeIntent.tradeId)
 			const premium = await context.viewFacet.getTradePremium(closeIntent.tradeId)
-			let partyACrossBalanceAfter = await context.viewFacet.getCrossBalance(partyA1.getSigner, context.collateral, partyB1.address)
-			let partyBCrossBalanceAfter = await context.viewFacet.getCrossBalance(partyB1.address, context.collateral, partyA1.address)
+			let partyACrossBalanceAfter = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyA1.getSigner,
+				context.collateral,
+				partyB1.address,
+			)
+			let partyBCrossBalanceAfter = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyB1.address,
+				context.collateral,
+				partyA1.address,
+			)
 
 			const partyAProfit = (BigInt(price) * division * halfQuantity) / parseUnits("1", 18)
 			const finalPremium = (premium * division * halfQuantity) / BigInt(trade.tradeAgreements.quantity)
@@ -572,7 +604,11 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			const closeIntent: CloseIntentStruct = await context.viewFacet.getCloseIntent(closeIntentID)
 
 			//take balance snapshot
-			let partyBCrossBalanceBefore = await context.viewFacet.getCrossBalance(partyB1.address, context.collateral, partyA1.address)
+			let partyBCrossBalanceBefore = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyB1.address,
+				context.collateral,
+				partyA1.address,
+			)
 
 			const halfQuantity = BigInt(closeIntent.quantity) / division
 			const price = BigInt(closeIntent.price) + 1000n // party B says I can buy higher
@@ -581,7 +617,11 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 
 			const trade: TradeStruct = await context.viewFacet.getTrade(closeIntent.tradeId)
 			const premium = await context.viewFacet.getTradePremium(closeIntent.tradeId)
-			let partyBCrossBalanceAfter = await context.viewFacet.getCrossBalance(partyB1.address, context.collateral, partyA1.address)
+			let partyBCrossBalanceAfter = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyB1.address,
+				context.collateral,
+				partyA1.address,
+			)
 
 			const SCALE = parseUnits("1", 18)
 			const partyAProfit = (BigInt(price) * halfQuantity * division) / SCALE
@@ -606,8 +646,16 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			const closeIntent: CloseIntentStruct = await context.viewFacet.getCloseIntent(closeIntentID)
 
 			//take balance snapshot
-			const partyACrossBalanceBefore = await context.viewFacet.getCrossBalance(partyA2.address, context.collateral, partyB2.address)
-			let partyBCrossBalanceBefore = await context.viewFacet.getCrossBalance(partyB2.address, context.collateral, partyA2.address)
+			const partyACrossBalanceBefore = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyA2.address,
+				context.collateral,
+				partyB2.address,
+			)
+			let partyBCrossBalanceBefore = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyB2.address,
+				context.collateral,
+				partyA2.address,
+			)
 
 			const halfQuantity = BigInt(closeIntent.quantity) / division
 			const price = BigInt(closeIntent.price) - priceDiff
@@ -617,8 +665,16 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			const trade: TradeStruct = await context.viewFacet.getTrade(closeIntent.tradeId)
 			const symbol: SymbolStruct = await context.viewFacet.getSymbol(trade.tradeAgreements.symbolId)
 			const premium = await context.viewFacet.getTradePremium(closeIntent.tradeId)
-			let partyACrossBalanceAfter = await context.viewFacet.getCrossBalance(partyA2.address, context.collateral, partyB2.address)
-			let partyBCrossBalanceAfter = await context.viewFacet.getCrossBalance(partyB2.address, context.collateral, partyA2.address)
+			let partyACrossBalanceAfter = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyA2.address,
+				context.collateral,
+				partyB2.address,
+			)
+			let partyBCrossBalanceAfter = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyB2.address,
+				context.collateral,
+				partyA2.address,
+			)
 
 			// const partyAProfit = (BigInt(price) * BigInt(2n * halfQuantity)) / BigInt(1000000000000000000)
 			// const scale = parseEther("1")
@@ -648,7 +704,11 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			const closeIntent: CloseIntentStruct = await context.viewFacet.getCloseIntent(closeIntentID)
 
 			//take balance snapshot
-			const partyACrossBalanceBefore = await context.viewFacet.getCrossBalance(partyA2.address, context.collateral, partyB2.address)
+			const partyACrossBalanceBefore = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyA2.address,
+				context.collateral,
+				partyB2.address,
+			)
 
 			const halfQuantity = BigInt(closeIntent.quantity) / division
 			const price = BigInt(closeIntent.price) - priceDiff
@@ -656,7 +716,11 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			await expect(partyB2.fillCloseIntent(closeIntentID, halfQuantity, price)).not.to.revert(ethers)
 
 			const trade: TradeStruct = await context.viewFacet.getTrade(closeIntent.tradeId)
-			let partyACrossBalanceAfter = await context.viewFacet.getCrossBalance(partyA2.address, context.collateral, partyB2.address)
+			let partyACrossBalanceAfter = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyA2.address,
+				context.collateral,
+				partyB2.address,
+			)
 
 			console.log("PartyA Cross balance before fill to close intent:", partyACrossBalanceBefore)
 			console.log("PartyA Cross balance after fill to close intent:", partyACrossBalanceAfter)
@@ -673,8 +737,16 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			const closeIntent: CloseIntentStruct = await context.viewFacet.getCloseIntent(closeIntentID)
 
 			//take balance snapshot
-			const partyACrossBalanceBefore = await context.viewFacet.getCrossBalance(partyA2.address, context.collateral, partyB2.address)
-			const partyBCrossBalanceBefore = await context.viewFacet.getCrossBalance(partyB2.address, context.collateral, partyA2.address)
+			const partyACrossBalanceBefore = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyA2.address,
+				context.collateral,
+				partyB2.address,
+			)
+			const partyBCrossBalanceBefore = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyB2.address,
+				context.collateral,
+				partyA2.address,
+			)
 
 			const halfQuantity = BigInt(closeIntent.quantity) / division
 			const price = BigInt(closeIntent.price) - priceDiff // party B says I can sell lower
@@ -684,8 +756,16 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			const trade: TradeStruct = await context.viewFacet.getTrade(closeIntent.tradeId)
 			const symbol: SymbolStruct = await context.viewFacet.getSymbol(trade.tradeAgreements.symbolId)
 			const premium = await context.viewFacet.getTradePremium(closeIntent.tradeId)
-			const partyACrossBalanceAfter = await context.viewFacet.getCrossBalance(partyA2.address, context.collateral, partyB2.address)
-			const partyBCrossBalanceAfter = await context.viewFacet.getCrossBalance(partyB2.address, context.collateral, partyA2.address)
+			const partyACrossBalanceAfter = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyA2.address,
+				context.collateral,
+				partyB2.address,
+			)
+			const partyBCrossBalanceAfter = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyB2.address,
+				context.collateral,
+				partyA2.address,
+			)
 
 			const SCALE = parseUnits("1", 18)
 			const partyBProfit = (BigInt(price) * halfQuantity * division) / SCALE
@@ -714,14 +794,23 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 
 			await context.controlFacet.setAffiliateFeesCollector(openTrade.affiliate, openTrade.affiliate)
 
-			const affiliateBalanceBefore = await context.viewFacet.getIsolatedBalance(openTrade.affiliate, await context.collateralNL.getAddress())
+			const affiliateBalanceBefore = await context.viewFacet["getIsolatedBalance(address,address)"](
+				openTrade.affiliate,
+				await context.collateralNL.getAddress(),
+			)
 
 			const price = closeIntent.price + priceDiff
 			const quantity = closeIntent.quantity / division
 			await expect(partyB1.fillCloseIntent(closeIntent.id, quantity, price)).not.to.revert(ethers)
 
-			const affiliateBalanceAfter = await context.viewFacet.getIsolatedBalance(openTrade.affiliate, await context.collateralNL.getAddress())
-			const partyAFeeBalance = await context.viewFacet.getIsolatedBalance(partyA1.address, await context.collateralNL.getAddress())
+			const affiliateBalanceAfter = await context.viewFacet["getIsolatedBalance(address,address)"](
+				openTrade.affiliate,
+				await context.collateralNL.getAddress(),
+			)
+			const partyAFeeBalance = await context.viewFacet["getIsolatedBalance(address,address)"](
+				partyA1.address,
+				await context.collateralNL.getAddress(),
+			)
 
 			const intentTradingFee = await context.viewFacet.getCloseIntentPlatformFee(closeIntent.id, quantity, price) //Platform Fee
 			const intentAffiliateFee = await context.viewFacet.getCloseIntentAffiliateFee(closeIntent.id, quantity, price) //Affiliate Fee
@@ -747,18 +836,30 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			const priceDiff = 100n
 			const closeIntentId = 1
 			await context.controlFacet.setDefaultFeeCollector(partyA3.address)
-			const defaultFeeBalanceBefore = await context.viewFacet.getIsolatedBalance(partyA3.address, await context.collateralNL.getAddress())
+			const defaultFeeBalanceBefore = await context.viewFacet["getIsolatedBalance(address,address)"](
+				partyA3.address,
+				await context.collateralNL.getAddress(),
+			)
 
 			const closeIntent = await context.viewFacet.getCloseIntent(closeIntentId)
 			const openTrade = await context.viewFacet.getTrade(closeIntent.tradeId)
-			const partyAFeeBalanceBefore = await context.viewFacet.getIsolatedBalance(openTrade.partyA, await context.collateralNL.getAddress())
+			const partyAFeeBalanceBefore = await context.viewFacet["getIsolatedBalance(address,address)"](
+				openTrade.partyA,
+				await context.collateralNL.getAddress(),
+			)
 
 			const quantity = closeIntent.quantity / division
 			const price = closeIntent.price + priceDiff
 			await expect(partyB1.fillCloseIntent(closeIntent.id, quantity, price)).not.to.revert(ethers)
 
-			const defaultFeeBalanceAfter = await context.viewFacet.getIsolatedBalance(partyA3.address, await context.collateralNL.getAddress())
-			const partyAFeeBalanceAfter = await context.viewFacet.getIsolatedBalance(openTrade.partyA, await context.collateralNL.getAddress())
+			const defaultFeeBalanceAfter = await context.viewFacet["getIsolatedBalance(address,address)"](
+				partyA3.address,
+				await context.collateralNL.getAddress(),
+			)
+			const partyAFeeBalanceAfter = await context.viewFacet["getIsolatedBalance(address,address)"](
+				openTrade.partyA,
+				await context.collateralNL.getAddress(),
+			)
 
 			const intentPlatformFee = await context.viewFacet.getCloseIntentPlatformFee(closeIntent.id, quantity, price) //Platform Fee
 			const intentAffiliateFee = await context.viewFacet.getCloseIntentAffiliateFee(closeIntent.id, quantity, price) //Affiliate Fee
@@ -785,13 +886,19 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			const closeIntentId = 1
 			const closeIntent = await context.viewFacet.getCloseIntent(closeIntentId)
 			const openTrade = await context.viewFacet.getTrade(closeIntent.tradeId)
-			const partyBFeeBalanceBefore = await context.viewFacet.getIsolatedBalance(openTrade.partyB, await context.collateralNL.getAddress())
+			const partyBFeeBalanceBefore = await context.viewFacet["getIsolatedBalance(address,address)"](
+				openTrade.partyB,
+				await context.collateralNL.getAddress(),
+			)
 
 			const quantity = closeIntent.quantity / division
 			const price = closeIntent.price + priceDiff
 			await expect(partyB1.fillCloseIntent(closeIntent.id, quantity, price)).not.to.revert(ethers)
 
-			const partyBFeeBalanceAfter = await context.viewFacet.getIsolatedBalance(openTrade.partyB, await context.collateralNL.getAddress())
+			const partyBFeeBalanceAfter = await context.viewFacet["getIsolatedBalance(address,address)"](
+				openTrade.partyB,
+				await context.collateralNL.getAddress(),
+			)
 
 			const solverFeePaid =
 				(quantity * price * closeIntent.feeStructure.solverFee.closeFee) / (openTrade.feeStructure.tokenPriceInCollateral * parseUnits("1", 18))
@@ -810,7 +917,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			const closeIntentId = 2
 			const closeIntent = await context.viewFacet.getCloseIntent(closeIntentId)
 			const openTrade = await context.viewFacet.getTrade(closeIntent.tradeId)
-			const partyBFeeBalanceBefore = await context.viewFacet.getCrossBalance(
+			const partyBFeeBalanceBefore = await context.viewFacet["getCrossBalance(address,address,address)"](
 				openTrade.partyB,
 				await context.collateralNL.getAddress(),
 				openTrade.partyA,
@@ -820,7 +927,7 @@ export function shouldBehaveLikePartyBCloseFacet(): void {
 			const price = closeIntent.price + priceDiff
 			await expect(partyB1.fillCloseIntent(2, quantity, price)).not.to.revert(ethers)
 
-			const partyBFeeBalanceAfter = await context.viewFacet.getCrossBalance(
+			const partyBFeeBalanceAfter = await context.viewFacet["getCrossBalance(address,address,address)"](
 				openTrade.partyB,
 				await context.collateralNL.getAddress(),
 				openTrade.partyA,

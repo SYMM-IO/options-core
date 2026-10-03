@@ -21,7 +21,7 @@ export class PartyEntity {
 		await runTx(clt.connect(this.signer).approve(this.context.common.diamondAddress, ethers.MaxUint256))
 
 		if (collateralAmountToMint) await runTx(clt.connect(this.signer).mint(userAddress, collateralAmountToMint))
-		if (depositAmount) await runTx(this.context.accountFacet.connect(this.signer).deposit(await clt.getAddress(), depositAmount))
+		if (depositAmount) await runTx(this.context.accountFacet.connect(this.signer)["deposit(address,uint256)"](await clt.getAddress(), depositAmount))
 	}
 
 	public async setNativeBalance(amount: bigint) {

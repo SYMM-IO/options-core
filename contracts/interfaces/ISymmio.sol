@@ -5,6 +5,7 @@
 pragma solidity >=0.8.18;
 
 import "../facets/Trade/ITradeFacet.sol";
+import "../facets/Bucket/IBucketFacet.sol";
 import "../facets/View/IViewFacet.sol";
 import "../facets/Account/IAccountFacet.sol";
 import "../facets/Control/IControlFacet.sol";
@@ -19,6 +20,7 @@ import "../facets/ClearingHouse/IClearingHouseFacet.sol";
 
 interface ISymmio is
 	IAccountFacet,
+	IBucketFacet,
 	ITradeFacet,
 	IClearingHouseFacet,
 	IControlFacet,

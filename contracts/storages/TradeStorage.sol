@@ -17,6 +17,9 @@ library TradeStorage {
 		mapping(uint256 => uint256) partyATradesIndex;
 		mapping(uint256 => uint256) partyBTradesIndex;
 		uint256 lastTradeId;
+		mapping(address => mapping(uint256 => uint256[])) activeTradesOfPartyABucket;
+		mapping(address => mapping(uint256 => mapping(address => uint256[]))) activeTradesOfPartyBBucket;
+		mapping(address => mapping(uint256 => mapping(address => mapping(address => mapping(uint256 => uint256))))) activeTradesOfBucketPairCount;
 	}
 
 	function layout() internal pure returns (Layout storage l) {

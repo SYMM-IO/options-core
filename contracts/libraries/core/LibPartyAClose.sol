@@ -4,6 +4,8 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
+import { LibBucket } from "./LibBucket.sol";
+
 import { LibParty } from "../../libraries/models/LibParty.sol";
 import { LibTradeOps } from "../../libraries/models/LibTrade.sol";
 import { LibCloseIntentOps } from "../../libraries/models/LibCloseIntent.sol";
@@ -29,6 +31,7 @@ library LibPartyAClose {
 	function sendCloseIntent(address sender, uint256 tradeId, uint256 quantity, uint256 price, uint256 deadline) internal returns (uint256 intentId) {
 		TradeStorage.Layout storage tradeLayout = TradeStorage.layout();
 		Trade storage trade = tradeLayout.trades[tradeId];
+		LibBucket.requireInstantModeInactive(sender, trade.partyABucketId);
 
 		if (sender != trade.partyA) revert ValidationErrors.UnauthorizedSender(sender, trade.partyA);
 
@@ -61,6 +64,7 @@ library LibPartyAClose {
 	function cancelCloseIntent(address sender, uint256 intentId) internal returns (CloseIntentStatus) {
 		CloseIntent storage intent = CloseIntentStorage.layout().closeIntents[intentId];
 		Trade storage trade = TradeStorage.layout().trades[intent.tradeId];
+		LibBucket.requireInstantModeInactive(sender, trade.partyABucketId);
 
 		if (trade.partyA != sender) revert ValidationErrors.UnauthorizedSender(sender, trade.partyA);
 

@@ -25,6 +25,8 @@ library AccountStorage {
 		mapping(address => mapping(address => ExpressWithdrawProviderConfig)) expressWithdrawProviderConfigs; // provider => collateral => config
 		/////////////////////////////////////////////////////////
 		mapping(address => mapping(address => bool)) externalTransferTargets; // target => collateral => isValid
+		mapping(address => mapping(uint256 => mapping(address => ScheduledReleaseBalance))) bucketedBalances;
+		mapping(address => mapping(uint256 => mapping(address => mapping(uint256 => uint256)))) bucketNonces;
 	}
 
 	function layout() internal pure returns (Layout storage l) {

@@ -17,6 +17,7 @@ struct Withdraw {
 	bytes userData;
 	WithdrawStatus status;
 	bool isVirtual;
+	uint256 bucketId;
 }
 
 struct UpnlSig {

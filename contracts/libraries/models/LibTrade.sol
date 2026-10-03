@@ -61,52 +61,58 @@ library LibTradeOps {
 		return cap < fee ? cap : fee;
 	}
 
+	function activeTradesOfPartyA(address owner, uint256 bucketId) internal view returns (uint256[] storage) {
+		TradeStorage.Layout storage layout = TradeStorage.layout();
+		if (bucketId == 0) return layout.activeTradesOfPartyA[owner];
+		return layout.activeTradesOfPartyABucket[owner][bucketId];
+	}
+
+	function activeTradesOfPartyB(address owner, uint256 bucketId, address collateral) internal view returns (uint256[] storage) {
+		TradeStorage.Layout storage layout = TradeStorage.layout();
+		if (bucketId == 0) return layout.activeTradesOfPartyB[owner][collateral];
+		return layout.activeTradesOfPartyBBucket[owner][bucketId][collateral];
+	}
+
 	function register(Trade memory self) internal {
 		TradeStorage.Layout storage tradeLayout = TradeStorage.layout();
-
-		if (tradeLayout.activeTradesOfPartyA[self.partyA].length >= AppStorage.layout().maxTradePerPartyA)
-			revert TradeErrors.TooManyActiveTradesForPartyA(
-				self.partyA,
-				tradeLayout.activeTradesOfPartyA[self.partyA].length,
-				AppStorage.layout().maxTradePerPartyA
-			);
-
-		tradeLayout.trades[self.id] = self;
-
+		uint256[] storage partyATrades = activeTradesOfPartyA(self.partyA, self.partyABucketId);
 		Symbol memory symbol = SymbolStorage.layout().symbols[self.tradeAgreements.symbolId];
-		tradeLayout.activeTradesOfPartyA[self.partyA].push(self.id);
-		tradeLayout.activeTradesOfPartyB[self.partyB][symbol.collateral].push(self.id);
+		uint256[] storage partyBTrades = activeTradesOfPartyB(self.partyB, self.partyBBucketId, symbol.collateral);
 
-		tradeLayout.partyATradesIndex[self.id] = tradeLayout.activeTradesOfPartyA[self.partyA].length - 1;
-		tradeLayout.partyBTradesIndex[self.id] = tradeLayout.activeTradesOfPartyB[self.partyB][symbol.collateral].length - 1;
-
-		tradeLayout.activeTradesOfPartyAWithPartyBCount[self.partyA][symbol.collateral][self.partyB]++;
-		self.partyA.balanceOf(symbol.collateral).addCounterParty(self.partyB);
+		if (partyATrades.length >= AppStorage.layout().maxTradePerPartyA)
+			revert TradeErrors.TooManyActiveTradesForPartyA(self.partyA, partyATrades.length, AppStorage.layout().maxTradePerPartyA);
+		tradeLayout.trades[self.id] = self;
+		partyATrades.push(self.id);
+		partyBTrades.push(self.id);
+		tradeLayout.partyATradesIndex[self.id] = partyATrades.length - 1;
+		tradeLayout.partyBTradesIndex[self.id] = partyBTrades.length - 1;
+		if (self.partyABucketId == 0 && self.partyBBucketId == 0)
+			tradeLayout.activeTradesOfPartyAWithPartyBCount[self.partyA][symbol.collateral][self.partyB]++;
+		else tradeLayout.activeTradesOfBucketPairCount[self.partyA][self.partyABucketId][symbol.collateral][self.partyB][self.partyBBucketId]++;
+		self.partyA.balanceOf(self.partyABucketId, symbol.collateral).addCounterParty(self.partyB, self.partyBBucketId);
 	}
 
 	function unregister(Trade memory self) internal {
 		TradeStorage.Layout storage tradeLayout = TradeStorage.layout();
 		Symbol memory symbol = SymbolStorage.layout().symbols[self.tradeAgreements.symbolId];
-
-		uint256 indexOfPartyATrade = tradeLayout.partyATradesIndex[self.id];
-		uint256 indexOfPartyBTrade = tradeLayout.partyBTradesIndex[self.id];
-		uint256 lastIndex = tradeLayout.activeTradesOfPartyA[self.partyA].length - 1;
-		tradeLayout.activeTradesOfPartyA[self.partyA][indexOfPartyATrade] = tradeLayout.activeTradesOfPartyA[self.partyA][lastIndex];
-		tradeLayout.partyATradesIndex[tradeLayout.activeTradesOfPartyA[self.partyA][lastIndex]] = indexOfPartyATrade;
-		tradeLayout.activeTradesOfPartyA[self.partyA].pop();
-
-		lastIndex = tradeLayout.activeTradesOfPartyB[self.partyB][symbol.collateral].length - 1;
-		tradeLayout.activeTradesOfPartyB[self.partyB][symbol.collateral][indexOfPartyBTrade] = tradeLayout.activeTradesOfPartyB[self.partyB][
-			symbol.collateral
-		][lastIndex];
-		tradeLayout.partyBTradesIndex[tradeLayout.activeTradesOfPartyB[self.partyB][symbol.collateral][lastIndex]] = indexOfPartyBTrade;
-		tradeLayout.activeTradesOfPartyB[self.partyB][symbol.collateral].pop();
-
-		tradeLayout.partyATradesIndex[self.id] = 0;
-		tradeLayout.partyBTradesIndex[self.id] = 0;
-
-		tradeLayout.activeTradesOfPartyAWithPartyBCount[self.partyA][symbol.collateral][self.partyB]--;
-		self.partyA.balanceOf(symbol.collateral).tryRemoveCounterParty(self.partyB);
+		uint256[] storage partyATrades = activeTradesOfPartyA(self.partyA, self.partyABucketId);
+		uint256[] storage partyBTrades = activeTradesOfPartyB(self.partyB, self.partyBBucketId, symbol.collateral);
+		uint256 index = tradeLayout.partyATradesIndex[self.id];
+		uint256 lastTradeId = partyATrades[partyATrades.length - 1];
+		partyATrades[index] = lastTradeId;
+		tradeLayout.partyATradesIndex[lastTradeId] = index;
+		partyATrades.pop();
+		index = tradeLayout.partyBTradesIndex[self.id];
+		lastTradeId = partyBTrades[partyBTrades.length - 1];
+		partyBTrades[index] = lastTradeId;
+		tradeLayout.partyBTradesIndex[lastTradeId] = index;
+		partyBTrades.pop();
+		delete tradeLayout.partyATradesIndex[self.id];
+		delete tradeLayout.partyBTradesIndex[self.id];
+		if (self.partyABucketId == 0 && self.partyBBucketId == 0)
+			tradeLayout.activeTradesOfPartyAWithPartyBCount[self.partyA][symbol.collateral][self.partyB]--;
+		else tradeLayout.activeTradesOfBucketPairCount[self.partyA][self.partyABucketId][symbol.collateral][self.partyB][self.partyBBucketId]--;
+		self.partyA.balanceOf(self.partyABucketId, symbol.collateral).tryRemoveCounterParty(self.partyB, self.partyBBucketId);
 	}
 
 	function close(Trade storage self, TradeStatus tradeStatus, CloseIntentStatus intentStatus) internal {

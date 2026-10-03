@@ -3,6 +3,7 @@
 // Copyright (c) 2023 Symmetry Labs AG
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
+import { BucketRef } from "../../types/BucketTypes.sol";
 
 import { PartyBConfig } from "../../storages/AppStorage.sol";
 import { Symbol, Oracle } from "../../storages/SymbolStorage.sol";
@@ -297,4 +298,36 @@ interface IViewFacet {
 	function getTradePremium(uint256 tradeId) external view returns (uint256);
 
 	function getTradeExerciseFee(uint256 tradeId, uint256 settlementPrice, uint256 pnl) external view returns (uint256);
+
+	function getIsolatedBalance(address owner, uint256 bucketId, address token) external view returns (uint256);
+	function getIsolatedLockedBalance(address owner, uint256 bucketId, address token) external view returns (uint256);
+	function getReserveBalance(address owner, uint256 bucketId, address token) external view returns (uint256);
+	function getCrossBalance(
+		address owner,
+		uint256 bucketId,
+		address token,
+		address cp,
+		uint256 cpBucketId
+	) external view returns (CrossEntry memory);
+	function getScheduledReleaseEntry(
+		address owner,
+		uint256 bucketId,
+		address token,
+		address cp,
+		uint256 cpBucketId
+	) external view returns (ScheduledReleaseEntry memory);
+	function getCounterPartyAddresses(address owner, uint256 bucketId, address token) external view returns (BucketRef[] memory result);
+	function getNonce(address owner, uint256 bucketId, address cp, uint256 cpBucketId) external view returns (uint256);
+	function getBoundPartyB(address owner, uint256 bucketId) external view returns (address partyB, uint256 partyBBucketId);
+	function getUnbindingRequestTime(address owner, uint256 bucketId) external view returns (uint256);
+	function getInProgressLiquidationId(address a, uint256 bucketA, address b, uint256 bucketB, address token) external view returns (uint256);
+	function getActiveOpenIntentIds(address owner, uint256 bucketId) external view returns (uint256[] memory);
+	function getActiveOpenIntentsCount(address owner, uint256 bucketId) external view returns (uint256);
+	function getActiveTradeIdsOfPartyA(address owner, uint256 bucketId) external view returns (uint256[] memory);
+	function getActiveTradeIdsForPartyB(address owner, uint256 bucketId, address token) external view returns (uint256[] memory);
+	function isAddressSuspended(address owner, uint256 bucketId) external view returns (bool);
+	function isPartyBInEmergencyMode(address owner, uint256 bucketId) external view returns (bool);
+
+	function getActiveOpenIntents(address owner, uint256 bucketId, uint256 start, uint256 size) external view returns (OpenIntent[] memory);
+	function getActiveTradesOfPartyA(address owner, uint256 bucketId, uint256 start, uint256 size) external view returns (Trade[] memory);
 }

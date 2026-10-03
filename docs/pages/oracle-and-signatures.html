@@ -32,7 +32,7 @@
 <a class="toc-link level-2" href="#8-settlement-sequence">8. Settlement sequence</a>
 <a class="toc-link level-2" href="#9-code-map">9. Code map</a>
 </div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1>Oracle and Signatures</h1><p class="hero-copy">Muon verification, gateway signatures, ERC-1271, and EIP-712.</p></div></div></header>
-<article class="doc-article" id="full-document"><p>SYMM Options Core relies on three distinct signing schemes, each with different trust assumptions, replay-protection models, and verification paths. This document covers the off-chain oracle (Muon TSS + Schnorr) and the on-chain account-signature path (ECDSA / ERC-1271) in depth, and points to <code>docs/flows/instant-actions.md</code> for EIP-712 batch authorization.</p>
+<article class="doc-article" id="full-document"><p>SYMM Options Core relies on three distinct signing schemes, each with different trust assumptions, replay-protection models, and verification paths. This document covers the off-chain oracle (Muon TSS + Schnorr) and the on-chain account-signature path (ECDSA / ERC-1271) in depth, and points to <code>docs/pages/instant-actions.html</code> for EIP-712 batch authorization.</p>
 <h2 id="1-overview">1. Overview</h2>
 <table>
 <thead>
@@ -55,7 +55,7 @@
 <tr>
 <td>EIP-712 batches (InstantLayer)</td>
 <td>Operator-pushed batches of pre-authorized actions submitted in a single transaction</td>
-<td>InstantLayer facets — see <code>docs/flows/instant-actions.md</code></td>
+<td>InstantLayer facets — see <code>docs/pages/instant-actions.html</code></td>
 </tr>
 <tr>
 <td><code>IPriceOracle</code> (collateral / fee-token quote)</td>
@@ -234,7 +234,7 @@ if (gatewaySignatureSigner != config.validGateway) revert InvalidGatewaySignatur
 <h3 id="33-magic-value-0x1626ba7e">3.3 Magic value 0x1626ba7e</h3>
 <p><code>SignatureVerifier.isValidSignatureEIP1271</code> (<code>contracts/helpers/SignatureVerifier.sol:23</code>) is the public ERC-1271 facade — it wraps <code>verifySignature</code> and returns <code>0x1626ba7e</code> on success, <code>0xffffffff</code> otherwise. <code>0x1626ba7e</code> is <code>bytes4(keccak256(&quot;isValidSignature(bytes32,bytes)&quot;))</code> per EIP-1271; smart-contract wallets that implement that interface return this value to assert the signature is valid for them. The diamond itself does not implement ERC-1271; the facade exists so that <em>external</em> protocols integrating SYMM accounts can verify signatures the same way the diamond does.</p>
 <h2 id="4-eip-712-instantlayer">4. EIP-712 (InstantLayer)</h2>
-<p>InstantLayer uses EIP-712 typed-data signatures to authorize a <em>batch</em> of actions in a single operator-submitted transaction. Domain separator, type hashes, per-action nonces, and the operator-vs-account replay model are detailed in <code>docs/flows/instant-actions.md</code>. From an oracle perspective, instant batches still consume Muon signatures and ECDSA / ERC-1271 signatures using the verification paths above — EIP-712 only governs how the <em>batch container</em> itself is authorized.</p>
+<p>InstantLayer uses EIP-712 typed-data signatures to authorize a <em>batch</em> of actions in a single operator-submitted transaction. Domain separator, type hashes, per-action nonces, and the operator-vs-account replay model are detailed in <code>docs/pages/instant-actions.html</code>. From an oracle perspective, instant batches still consume Muon signatures and ECDSA / ERC-1271 signatures using the verification paths above — EIP-712 only governs how the <em>batch container</em> itself is authorized.</p>
 <h2 id="5-ipriceoracle-collateral--fee-token-quote">5. IPriceOracle (collateral / fee-token quote)</h2>
 <p>Distinct from Muon, the diamond holds a configured <code>IPriceOracle</code> adapter for spot-quoting the collateral and the fee token at intent-creation time. This is used to size collateral requirements and fee charges against a dollar-denominated risk model, <em>not</em> to settle PnL. The interface is intentionally minimal and is satisfied by Chainlink-style adapters or a custom feed.</p>
 <p>Key differences vs. Muon:</p>
@@ -439,7 +439,7 @@ if (gatewaySignatureSigner != config.validGateway) revert InvalidGatewaySignatur
 </tr>
 <tr>
 <td>InstantLayer (EIP-712)</td>
-<td>see <code>docs/flows/instant-actions.md</code></td>
+<td>see <code>docs/pages/instant-actions.html</code></td>
 <td>—</td>
 </tr>
 </tbody></table>

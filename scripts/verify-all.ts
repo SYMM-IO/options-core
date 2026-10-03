@@ -1,31 +1,8 @@
-import { verifyContract } from "@nomicfoundation/hardhat-verify/verify"
 import hre from "hardhat"
+import verifyDeployment from "../tasks/verify/verify.js"
 
-async function main() {
-	let facets: { [x: string]: string } = {
-		AccountFacet: "",
-		BridgeFacet: "",
-		ClearingHouseFacet: "",
-		ControlFacet: "",
-		CounterPartyRelationsFacet: "",
-		DiamondLoupeFacet: "",
-		ForceActionsFacet: "",
-		PartyACloseFacet: "",
-		PartyAOpenFacet: "",
-		PartyBCloseFacet: "",
-		PartyBOpenFacet: "",
-		TradeSettlementFacet: "",
-		ViewFacet: "",
-	}
-	for (const facet in facets) {
-		if (!facets.hasOwnProperty(facet)) continue
-		const facetAddr = facets[facet]
-		console.log(`Verifying ${facet} with impl in ${facetAddr}`)
-		await verifyContract({ address: facetAddr, constructorArgs: [] }, hre)
-	}
-}
-
-main().catch(error => {
+// Verify the recorded Diamond deployment, including each facet's linked library metadata.
+verifyDeployment({}, hre).catch(error => {
 	console.error(error)
 	process.exitCode = 1
 })

@@ -157,4 +157,10 @@ interface IControlFacet is IControlEvents {
 
 	// Instant Layer
 	function setCallFromInstantLayer(bool _callFromInstantLayer) external;
+
+	event BucketSuspended(address indexed owner, uint256 indexed bucketId, bool suspended);
+	event BucketPartyBEmergencyChanged(address indexed owner, uint256 indexed bucketId, bool active);
+	function suspendBucket(address owner, uint256 bucketId, bool suspended) external;
+	function activePartyBEmergencyMode(address owner, uint256 bucketId) external;
+	function deactivePartyBEmergencyMode(address owner, uint256 bucketId) external;
 }

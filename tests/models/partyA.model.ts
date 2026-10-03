@@ -14,7 +14,9 @@ export class PartyA extends PartyEntity {
 		return await runTx(
 			this.context.partyAOpenFacet
 				.connect(this.signer)
-				.sendOpenIntent(
+				[
+					"sendOpenIntent(address[],uint256,uint256,uint256,uint256,uint256,uint256,uint8,uint8,(uint256,uint256),(uint256,uint256),uint256,address,address,bytes)"
+				](
 					request.partyBsWhiteList,
 					request.symbolId,
 					request.price,
@@ -51,19 +53,19 @@ export class PartyA extends PartyEntity {
 	}
 
 	public async bindToCounterParty(partyB: AddressLike) {
-		await runTx(this.context.counterPartyRelation.connect(this.signer).bindToPartyB(partyB))
+		await runTx(this.context.counterPartyRelation.connect(this.signer)["bindToPartyB(address)"](partyB))
 	}
 
 	public async initiateUnbindingFromPartyB(partyB: string) {
-		await runTx(this.context.counterPartyRelation.connect(this.signer).initiateUnbindingFromPartyB())
+		await runTx(this.context.counterPartyRelation.connect(this.signer)["initiateUnbindingFromPartyB()"]())
 	}
 
 	public async completeUnbindingFromPartyB(partyB: string) {
-		await runTx(this.context.counterPartyRelation.connect(this.signer).completeUnbindingFromPartyB())
+		await runTx(this.context.counterPartyRelation.connect(this.signer)["completeUnbindingFromPartyB()"]())
 	}
 
 	public async cancelUnbindingFromPartyB(partyB: string) {
-		await runTx(this.context.counterPartyRelation.connect(this.signer).cancelUnbindingFromPartyB())
+		await runTx(this.context.counterPartyRelation.connect(this.signer)["cancelUnbindingFromPartyB()"]())
 	}
 
 	public async activateInstantActionMode() {

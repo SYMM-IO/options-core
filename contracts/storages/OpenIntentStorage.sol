@@ -17,6 +17,8 @@ library OpenIntentStorage {
 		mapping(uint256 => uint256) partyBOpenIntentsIndex;
 		uint256 lastOpenIntentId;
 		mapping(uint256 => OpenIntentEscrow) openIntentEscrows;
+		mapping(address => mapping(uint256 => uint256[])) activeOpenIntentsOfBucket;
+		mapping(address => mapping(uint256 => uint256)) activeOpenIntentsCountOfBucket;
 	}
 
 	function layout() internal pure returns (Layout storage l) {

@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Owner-local funding buckets, pinned relationships, admission checks, and integration."><title>Native funding buckets in the Options Diamond | Options Core</title>
+<link rel="icon" type="image/svg+xml" href="../assets/symmio-mark.svg">
+<script>try { if (localStorage.getItem("options-docs-theme") === "light") document.documentElement.dataset.theme = "light"; } catch (_) {}</script>
+<link rel="stylesheet" href="../assets/reader.css"><link rel="stylesheet" href="../assets/docs-portal.css">
+<script src="../assets/chapters.js" defer></script><script src="../assets/reader.js" defer></script><script src="../assets/docs-portal.js" defer></script>
+</head>
+<body class="doc-page" data-version="current"><a class="skip-link" href="#full-document">Skip to document</a>
+<header class="docs-header"><div class="doc-topbar"><nav class="docs-trail" aria-label="Breadcrumb">
+<a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Options Core</span></a>
+<span class="trail-sep" aria-hidden="true">/</span><a class="trail-release" href="../index.html">Documentation</a>
+</nav><nav class="top-actions" aria-label="Page actions"><button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button></nav></div></header><div class="reader-shell"><div data-rail-sections hidden>
+<a class="toc-link level-2" href="#choosing-a-bucket">Choosing a bucket</a>
+<a class="toc-link level-2" href="#funding-apis">Funding APIs</a>
+<a class="toc-link level-2" href="#a-10000-token-split">A 10,000-token split</a>
+<a class="toc-link level-2" href="#opening-and-closing-positions">Opening and closing positions</a>
+<a class="toc-link level-2" href="#oracle-signatures-and-clearing">Oracle signatures and clearing</a>
+<a class="toc-link level-2" href="#integration-and-upgrade-boundary">Integration and upgrade boundary</a>
+</div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1>Native funding buckets in the Options Diamond</h1><p class="hero-copy">Owner-local funding buckets, pinned relationships, admission checks, and integration.</p></div></div></header>
+<article class="doc-article" id="full-document"><p>Native funding buckets let each user or solver wallet keep independent funding ledgers inside the existing Options Diamond. A bucket is identified by <code>(owner wallet, uint256 bucketId)</code>. The owner remains <code>partyA</code> or <code>partyB</code> in every intent and trade; the bucket ID selects its accounting ledger. Buckets require no account contracts or synthetic addresses.</p>
+<p>The implementation adds ordinary facet overloads and leaves <code>Diamond.sol</code> unchanged. It retains the existing option pricing, oracle verification, margin model, release schedules, and clearing-house roles. It does not implement bilateral state channels or offchain challenge periods.</p>
+<h2 id="choosing-a-bucket">Choosing a bucket</h2>
+<p>Bucket IDs are local to an owner: Alice&#39;s bucket <code>1</code> and Bob&#39;s bucket <code>1</code> are different buckets. IDs need not be sequential. Bucket <code>0</code> is the existing default ledger, and old method selectors continue to use it. No implicit execution context is required.</p>
+<p>Call <code>createBucket(bucketId)</code> from the owner wallet to register a bucket. Owner-directed deposits and native intent creation can register the selected owner bucket lazily. Register a solver&#39;s nonzero bucket before using it as a counterparty. Merely choosing an ID does not let another wallet withdraw or trade as its owner. ERC-20 transfers use the real payer or recipient address, never a numeric bucket ID.</p>
+<p>PartyB registration, supported symbols, oracle configuration, release intervals, and manual synchronization remain wallet policies. Suspension and PartyB emergency checks combine the owner&#39;s global flag with the selected bucket&#39;s flag. A flag on bucket <code>0</code> does not flag a sibling nonzero bucket. The existing global action pauses still apply. <code>balanceLimitPerUser</code> applies to the selected balance ledger or cross entry, and <code>maxTradePerPartyA</code> applies to the selected PartyA bucket. They are not new aggregate limits across all buckets of a wallet.</p>
+<h2 id="funding-apis">Funding APIs</h2>
+<p>Use these ABIs at the Diamond address. Amounts accepted by deposits are raw ERC-20 units; ledger allocations, transfers, reserves, and withdrawals use the existing normalized 18-decimal amounts. The legacy overloads remain available.</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>createBucket(bucketId)</code></td>
+<td>Register the caller&#39;s bucket. Repeated registration is allowed.</td>
+</tr>
+<tr>
+<td><code>getBucket(owner, bucketId)</code> / <code>isBucketRegistered(owner, bucketId)</code></td>
+<td>Read the explicit identity and registration state. Bucket <code>0</code> is available by default.</td>
+</tr>
+<tr>
+<td><code>deposit(bucketId, token, rawAmount)</code></td>
+<td>Pay from the caller wallet into its selected bucket.</td>
+</tr>
+<tr>
+<td><code>depositFor(bucketId, token, owner, rawAmount)</code></td>
+<td>Pay into the recipient owner&#39;s selected bucket.</td>
+</tr>
+<tr>
+<td><code>allocate(bucketId, token, counterpartyOwner, counterpartyBucketId, amount)</code></td>
+<td>Move isolated funds into one exact bilateral cross entry.</td>
+</tr>
+<tr>
+<td><code>deallocate(bucketId, token, counterpartyOwner, counterpartyBucketId, amount, isPartyB, upnlSig)</code></td>
+<td>Release available cross funds under existing lock, margin, solvency, and oracle checks.</td>
+</tr>
+<tr>
+<td><code>transferBetweenBuckets(fromBucketId, toBucketId, token, amount)</code></td>
+<td>Move available isolated funds between the caller&#39;s distinct buckets.</td>
+</tr>
+<tr>
+<td><code>initiateWithdraw(bucketId, token, amount, recipient)</code></td>
+<td>Start an ordinary withdrawal pinned to the selected bucket. Later calls infer that bucket from the withdrawal ID.</td>
+</tr>
+<tr>
+<td><code>getCrossBalance(owner, bucketId, token, counterpartyOwner, counterpartyBucketId)</code></td>
+<td>Read the exact cross entry, including signed balance, locks, and maintenance margin.</td>
+</tr>
+<tr>
+<td><code>getRelationshipId(partyA, partyABucketId, partyB, partyBBucketId)</code></td>
+<td>Read the assigned relationship ID; zero means none has been created.</td>
+</tr>
+<tr>
+<td><code>getRelationship(id)</code> / <code>getIntentRelationship(id)</code> / <code>getTradeRelationship(id)</code></td>
+<td>Read the immutable wallet-and-bucket association.</td>
+</tr>
+</tbody></table>
+<p>Explicit overloads also cover internal transfers, reserves, synchronization, counterparty binding/unbinding, virtual deposits, external transfers, and express withdrawals. External targets and express providers keep their existing wallet interfaces. See <code>IAccountFacet</code> (<code>contracts/facets/Account/IAccountFacet.sol</code>), <code>IBucketFacet</code> (<code>contracts/facets/Bucket/IBucketFacet.sol</code>), and <code>IViewFacet</code> (<code>contracts/facets/View/IViewFacet.sol</code>) for exact signatures.</p>
+<h2 id="a-10000-token-split">A 10,000-token split</h2>
+<p>Alice deposits 10,000 tokens into bucket <code>7</code>, then allocates 2,000 against Solver One&#39;s bucket <code>1</code> and 3,000 against Solver Two&#39;s bucket <code>2</code>. Both solvers have the existing PartyB configuration. Before fees, premium payments, or settlement:</p>
+<table>
+<thead>
+<tr>
+<th>Alice&#39;s bucket <code>7</code> entry</th>
+<th align="right">Token units</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Isolated balance</td>
+<td align="right">5,000</td>
+<td>Funds outside both relationships</td>
+</tr>
+<tr>
+<td>Cross entry against <code>(solverOne, 1)</code></td>
+<td align="right">2,000</td>
+<td>Allocated exclusively to that bucket pair</td>
+</tr>
+<tr>
+<td>Cross entry against <code>(solverTwo, 2)</code></td>
+<td align="right">3,000</td>
+<td>Allocated exclusively to that bucket pair</td>
+</tr>
+<tr>
+<td>Total</td>
+<td align="right">10,000</td>
+<td>Across these three accounting entries</td>
+</tr>
+</tbody></table>
+<p>Each side independently allocates its own collateral. Allocation is not a promise that all those units remain withdrawable: locks, maintenance margin, pending release schedules, and reserves still apply. On a cross entry, admission requires cash to cover <code>locked + totalMM</code>. Deallocation eligibility also depends on the existing solvency and UPNL checks. Withdrawal completion retains its existing cooldown.</p>
+<p>For a configured local Diamond and a six-decimal collateral token, the split is:</p>
+<pre><code class="language-ts">const buckets = await ethers.getContractAt(&quot;BucketFacet&quot;, diamondAddress);
+const accounts = await ethers.getContractAt(&quot;AccountFacet&quot;, diamondAddress);
+const token = await ethers.getContractAt(&quot;IERC20&quot;, tokenAddress);
+
+await (await buckets.connect(solverOne).createBucket(1)).wait();
+await (await buckets.connect(solverTwo).createBucket(2)).wait();
+const raw = ethers.parseUnits(&quot;10000&quot;, 6);
+await (await token.connect(alice).approve(diamondAddress, raw)).wait();
+await (await accounts.connect(alice)[&quot;deposit(uint256,address,uint256)&quot;](7, tokenAddress, raw)).wait();
+for (const [solver, solverBucketId, amount] of [
+	[solverOne.address, 1, &quot;2000&quot;],
+	[solverTwo.address, 2, &quot;3000&quot;],
+] as const) {
+	await (
+		await accounts
+			.connect(alice)
+			[&quot;allocate(uint256,address,address,uint256,uint256)&quot;](7, tokenAddress, solver, solverBucketId, ethers.parseEther(amount))
+	).wait();
+}
+</code></pre>
+<p>A trade against Solver One&#39;s bucket <code>1</code> cannot debit Alice&#39;s cross entry against Solver Two&#39;s bucket <code>2</code>, or either wallet&#39;s unrelated bucket. A relationship has a monotonically assigned numeric ID and pins the ordered <code>(partyA, partyABucketId, partyB, partyBBucketId)</code> tuple. Multiple instruments and tokens between that same tuple share the relationship. Balances remain separate per token. To isolate instruments from each other, choose different bucket pairs.</p>
+<h2 id="opening-and-closing-positions">Opening and closing positions</h2>
+<p>The new <code>sendOpenIntent</code> overload replaces the old whitelist argument with <code>partyABucketId, partyB, partyBBucketId</code>. The remaining parameters retain their order:</p>
+<pre><code class="language-text">sendOpenIntent(
+  partyABucketId, partyB, partyBBucketId,
+  symbolId, price, quantity, strikePrice, expirationTimestamp, mm,
+  tradeSide, marginType, exerciseFee, solverFee, deadline,
+  feeToken, affiliate, userData
+)
+</code></pre>
+<p>It requires <code>CROSS</code> margin and one exact solver wallet and bucket. PartyA authorizes its bucket through its wallet transaction. PartyB&#39;s wallet authorizes locking and filling that exact intent; choosing a solver does not authorize PartyA to spend the solver&#39;s other buckets. <code>lockOpenIntent(intentId)</code> and <code>fillOpenIntent(intentId, quantity, price)</code> infer both bucket IDs from the intent. Partial fills copy those IDs and the relationship to the residual intent and resulting trade. A canceled native residual does not reacquire funds.</p>
+<p>Native admission adds cash-backing checks for the existing required costs:</p>
+<ul>
+<li>Sending checks PartyA&#39;s collateral and fee-token entries after reserving fees, BUY premium, or SELL maintenance margin.</li>
+<li>Locking rechecks PartyA&#39;s reserved backing. It creates no new solver cash reservation and does not guarantee a later fill.</li>
+<li>Full or partial filling checks both sides after actual fees, premium, maintenance margin, and any pending residual reservations.</li>
+<li>Voluntary close filling checks both sides after its actual accounting changes.</li>
+</ul>
+<p>These checks require a nonnegative cross balance at least equal to its existing locks plus maintenance margin. They do not reserve the maximum possible option payoff. Expiry settlement and liquidation retain the protocol&#39;s signed debt recognition. Unsubmitted signed orders have no onchain reservation.</p>
+<p>Closing, forced cancellation, exercise, and expiry use stored intent or trade IDs to recover the exact buckets. They do not require a separately selected caller bucket. Clearing flags, PartyB liquidation, unflagging, and reserve allocation take explicit wallet-and-bucket tuples; PartyA liquidation and trade closure infer buckets from the liquidation record. Fees debit the chosen PartyA bucket&#39;s exact fee-token cross entry; solver fees credit the pinned PartyB bucket. Platform and affiliate fee recipients retain their existing wallet default ledgers.</p>
+<p>The old <code>sendOpenIntent</code> overload retains its bucket <code>0</code> whitelist and deferred-solver behavior. Explicit native <code>0/0</code> intents share the same default balances, nonce, and liquidation lookup with those legacy methods. Their native admission checks do not insulate the default ledger from legacy risk paths. Use nonzero buckets for separate ledgers.</p>
+<h2 id="oracle-signatures-and-clearing">Oracle signatures and clearing</h2>
+<p>For UPNL proofs with either bucket ID nonzero, <code>LibMuon</code> (<code>contracts/libraries/services/LibMuon.sol</code>) verifies:</p>
+<pre><code class="language-text">keccak256(abi.encodePacked(
+  reqId, diamondAddress, &quot;verifyPoolUpnlSig&quot;,
+  partyOwner, uint256 partyBucketId,
+  counterpartyOwner, uint256 counterpartyBucketId,
+  int256 partyUpnl, int256 counterpartyUpnl,
+  collateral, uint256 collateralPrice,
+  uint256 pairNonce, uint256 timestamp, uint256 chainId
+))
+</code></pre>
+<p>The domain string <code>verifyPoolUpnlSig</code> retains its historical spelling for oracle wire compatibility; the terminology rename does not change signed payloads. The bucket IDs occupy the same positions in that payload.</p>
+<p>The nonce belongs to that directed owner-and-bucket pair. Changing a bucket, wallet, Diamond, chain, token, or nonce changes the digest. Both IDs <code>0</code> retain the original <code>verifyUpnlSig</code> digest and legacy nonce, including explicit native <code>0/0</code> requests. Settlement-price signatures retain their existing product schema. These are Muon oracle proofs, not a new user EIP-712 channel protocol.</p>
+<p>Bucket-aware clearing overloads flag an exact wallet-and-bucket pair and collateral. The liquidation record stores both bucket IDs and a bucket-liquidation marker. Its trade closures, confiscation, and distribution must match those endpoints, collateral, and CROSS margin; distributions may reverse the pair direction. Old confiscation/distribution overloads pass zero IDs through the same checks and cannot bypass a marked nonzero record. Unmarked legacy liquidation behavior remains confined to default ledgers. <code>BucketLiquidationStatusChanged</code> reports the liquidation ID, pair, bucket IDs, token, and status alongside existing events.</p>
+<h2 id="integration-and-upgrade-boundary">Integration and upgrade boundary</h2>
+<p>Native relationship trades cannot transfer ownership or mint trade NFTs. InstantLayer helper mode remains limited to default buckets. Ordinary bucket-aware external transfers and express withdrawals are supported through their existing target/provider interfaces. Token handling and trusted oracle/clearing-house assumptions remain the existing protocol&#39;s; this change adds no rebasing-token guarantee or oracle-free settlement.</p>
+<p>This source change appends fields to mapping-backed intents, trades, withdrawals, and liquidation records, and adds scoped accounting/index mappings. Returned struct tuples therefore change ABI. Integrators must regenerate ABIs and update their decoders. It supplies no executed live-chain upgrade or migration assurance: a deployment operator must review storage compatibility, selector installation, initialization, and the deployed revision before applying it. The Diamond dispatcher itself is unchanged. <code>BucketStorage</code> retains the historical namespace literal <code>diamond.standard.storage.explicitPools</code> so the terminology rename does not change its storage location. Source type and field names use <code>Bucket</code>, <code>bucketId</code>, <code>partyABucketId</code>, and <code>partyBBucketId</code>; these naming changes are separate from the appended-field ABI changes described above.</p>
+<p>Deployment installs the concrete <code>AccountBalanceFacet</code>, <code>AccountAllocationFacet</code>, <code>AccountWithdrawFacet</code>, <code>PartyBOpenLifecycleFacet</code>, <code>PartyBOpenFillFacet</code>, <code>ClearingHouseLiquidationFacet</code>, and <code>ClearingHouseSettlementFacet</code>, alongside the other facets including <code>BucketFacet</code>. <code>AccountFacet</code>, <code>PartyBOpenFacet</code>, and <code>ClearingHouseFacet</code> are abstract client ABI aggregates, not contracts to deploy. Clients use those complete ABIs at the same Diamond address; the concrete implementations serve the original and overloaded selectors. Deploy <code>LibOpenIntentFunding</code> first and link its address into <code>PartyBOpenFillFacet</code>; the deployment helper performs this step and records the link. This Solidity library executes the existing fee accounting through DELEGATECALL in Diamond storage and adds no Diamond selector. Its non-view function cannot mutate the deployed library through a direct call.</p>
+<p>Indexers must consume the bucket-aware account, relationship, liquidation, and <code>BucketBalanceChanged</code> events. Existing wallet-only balance events are also emitted for nonzero buckets and cannot identify a ledger by themselves.</p>
+<p>Local behavior coverage is in <code>native-buckets.behavior.ts</code> (<code>tests/native-buckets.behavior.ts</code>), with a real Diamond fixture in <code>native-buckets.fixture.ts</code> (<code>tests/fixtures/native-buckets.fixture.ts</code>). Run <code>TEST_MODE=UNIT_TEST npx hardhat test mocha tests/native-buckets.behavior.ts</code>; run <code>npm test</code> for legacy compatibility and <code>npm run docs:check</code> for documentation checks. These commands describe local verification, not a network deployment.</p>
+</article></main></div><footer class="site-footer"><span>Options Core documentation.</span></footer></body></html>

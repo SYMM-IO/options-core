@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Accounting kernels and plugin authority | Options Core</title>
+<link rel="icon" type="image/svg+xml" href="../../assets/symmio-mark.svg"><link rel="stylesheet" href="../../assets/reader.css"><link rel="stylesheet" href="../../assets/docs-portal.css">
+<script>try { if (localStorage.getItem("options-docs-theme") === "light") document.documentElement.dataset.theme = "light"; } catch (_) {}</script>
+<script src="../../assets/chapters.js" defer></script><script src="../../assets/reader.js" defer></script><script src="../../assets/docs-portal.js" defer></script></head>
+<body class="doc-page" data-version="current"><a class="skip-link" href="#full-document">Skip to document</a><header class="docs-header"><div class="doc-topbar"><nav class="docs-trail" aria-label="Breadcrumb"><a class="brand" href="../../index.html"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Options Core</span></a><span class="trail-sep" aria-hidden="true">/</span><a class="trail-release" href="../../index.html">Documentation</a></nav><nav class="top-actions" aria-label="Page actions"><button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button></nav></div></header>
+<div class="reader-shell"><div data-rail-sections hidden><a class="toc-link level-2" href="#document-metadata">Document metadata</a>
+<a class="toc-link level-2" href="#short-answer">Short answer</a>
+<a class="toc-link level-2" href="#euler-ethereum-vault-connector-evc">Euler Ethereum Vault Connector (EVC)</a>
+<a class="toc-link level-2" href="#synthetix-v3">Synthetix v3</a>
+<a class="toc-link level-2" href="#uniswap-v4-poolmanager">Uniswap v4 PoolManager</a>
+<a class="toc-link level-2" href="#balancer-v3-vault">Balancer v3 Vault</a>
+<a class="toc-link level-2" href="#aave-v4-hub-and-spokes">Aave v4 (Hub and Spokes)</a>
+<a class="toc-link level-2" href="#morpho-blue">Morpho Blue</a>
+<a class="toc-link level-2" href="#dydx-v4-and-hyperliquid-briefly">dYdX v4 and Hyperliquid, briefly</a>
+<a class="toc-link level-2" href="#comparison">Comparison</a>
+<a class="toc-link level-2" href="#what-this-means-for-options-core">What this means for options-core</a>
+<a class="toc-link level-3" href="#a-minimal-kernel-interface">(a) Minimal kernel interface</a>
+<a class="toc-link level-3" href="#b-capping-a-modules-authority">(b) Capping a module&#39;s authority</a>
+<a class="toc-link level-3" href="#c-immutability-and-upgradeability">(c) Immutability and upgradeability</a>
+<a class="toc-link level-3" href="#d-single-token-or-multi-token">(d) Single-token or multi-token</a></div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1 id="accounting-kernels-and-plugin-authority">Accounting kernels and plugin authority</h1></div></div></header><article class="doc-article" id="full-document"><noscript><nav aria-label="On this page"><a class="toc-link level-2" href="#document-metadata">Document metadata</a>
+<a class="toc-link level-2" href="#short-answer">Short answer</a>
+<a class="toc-link level-2" href="#euler-ethereum-vault-connector-evc">Euler Ethereum Vault Connector (EVC)</a>
+<a class="toc-link level-2" href="#synthetix-v3">Synthetix v3</a>
+<a class="toc-link level-2" href="#uniswap-v4-poolmanager">Uniswap v4 PoolManager</a>
+<a class="toc-link level-2" href="#balancer-v3-vault">Balancer v3 Vault</a>
+<a class="toc-link level-2" href="#aave-v4-hub-and-spokes">Aave v4 (Hub and Spokes)</a>
+<a class="toc-link level-2" href="#morpho-blue">Morpho Blue</a>
+<a class="toc-link level-2" href="#dydx-v4-and-hyperliquid-briefly">dYdX v4 and Hyperliquid, briefly</a>
+<a class="toc-link level-2" href="#comparison">Comparison</a>
+<a class="toc-link level-2" href="#what-this-means-for-options-core">What this means for options-core</a>
+<a class="toc-link level-3" href="#a-minimal-kernel-interface">(a) Minimal kernel interface</a>
+<a class="toc-link level-3" href="#b-capping-a-modules-authority">(b) Capping a module&#39;s authority</a>
+<a class="toc-link level-3" href="#c-immutability-and-upgradeability">(c) Immutability and upgradeability</a>
+<a class="toc-link level-3" href="#d-single-token-or-multi-token">(d) Single-token or multi-token</a></nav></noscript><section class="callout" aria-label="Document metadata"><h2 id="document-metadata">Document metadata</h2><pre><code class="language-yaml">title: Accounting kernels that host product plugins, and how they bound plugin authority
+tags:
+    - symmio
+    - options-core
+    - research
+date: 2026-10-03
+status: research note</code></pre></section>
+<p>The question: when a small core holds everyone&#39;s money and pluggable product modules tell it what to move, what stops one module from taking money that belongs to another module&#39;s users?</p>
+<p>I read six kernels from source and one pair of app-chains from docs. Derive v2 was covered earlier and is only used for comparison. Everything below was checked on 2026-10-03 against these commits.</p>
+<table>
+<thead>
+<tr>
+<th>System</th>
+<th>Source checked</th>
+<th>Commit date</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Euler EVC</td>
+<td><a href="https://github.com/euler-xyz/ethereum-vault-connector/tree/838e5f72eaea25fab7d242760245244226096054"><code>ethereum-vault-connector@838e5f7</code></a></td>
+<td>2026-09-01</td>
+</tr>
+<tr>
+<td>Euler Vault Kit</td>
+<td><a href="https://github.com/euler-xyz/euler-vault-kit/tree/e88274cc624b9867d3c0197614dc5fe5201377c3"><code>euler-vault-kit@e88274c</code></a></td>
+<td>2026-09-24</td>
+</tr>
+<tr>
+<td>Synthetix v3</td>
+<td><a href="https://github.com/Synthetixio/synthetix-v3/tree/23585f73c76d625b2a43aaf94dc440a8a1e7a8fa"><code>synthetix-v3@23585f7</code></a></td>
+<td>2025-06-12</td>
+</tr>
+<tr>
+<td>Uniswap v4</td>
+<td><a href="https://github.com/Uniswap/v4-core/tree/46c6834698c48bc4a463a86d8420f4eb1d7f3b75"><code>v4-core@46c6834</code></a></td>
+<td>2026-04-02</td>
+</tr>
+<tr>
+<td>Balancer v3</td>
+<td><a href="https://github.com/balancer/balancer-v3-monorepo/tree/2b9ce4b1b8ad49eafcad8d136f0872ea7c7d5d53"><code>balancer-v3-monorepo@2b9ce4b</code></a></td>
+<td>2026-09-13</td>
+</tr>
+<tr>
+<td>Aave v4</td>
+<td><a href="https://github.com/aave/aave-v4/tree/40232a0a91150d8ee5cab42bd3ddd0baf4ffff9f"><code>aave-v4@40232a0</code></a></td>
+<td>2026-09-15</td>
+</tr>
+<tr>
+<td>Morpho Blue</td>
+<td><a href="https://github.com/morpho-org/morpho-blue/tree/8e26ca6a8dbc5089edcd67fb576248810fd2870a"><code>morpho-blue@8e26ca6</code></a></td>
+<td>2026-09-09</td>
+</tr>
+<tr>
+<td>dYdX v4</td>
+<td><a href="https://github.com/dydxprotocol/v4-chain/tree/66444258b5e6931eeaf1ab7cf46fa11049ec829a"><code>v4-chain@6644425</code></a></td>
+<td>2026-10-01</td>
+</tr>
+</tbody></table>
+<h2 id="short-answer">Short answer</h2>
+<p>The kernels bound plugins in three ways:</p>
+<ol>
+<li><strong>Opt-in scope.</strong> A plugin can only touch funds a user attached to it: an EVC controller, a Morpho market, a Uniswap or Balancer pool.</li>
+<li><strong>Caps in the kernel.</strong> Aave v4 caps what each spoke can draw. Synthetix v3 caps what each market can withdraw.</li>
+<li><strong>Net-zero at the end of a call.</strong> Uniswap v4 and Balancer v3 let the plugin compute anything, then revert unless every balance is settled.</li>
+</ol>
+<p>The failure mode repeats. Wherever the kernel accepts a number the plugin reports, and that number feeds shared accounting, the cap stops being a cap. Synthetix&#39;s <code>reportedDebt</code> and Aave v4&#39;s premium reporting are both documented as ways a malicious module can hurt users outside it.</p>
+<h2 id="euler-ethereum-vault-connector-evc">Euler Ethereum Vault Connector (EVC)</h2>
+<p><strong>Mechanism.</strong> The EVC holds no funds. It authenticates callers and schedules checks, and ERC-4626 vaults do the custody (<a href="https://github.com/euler-xyz/ethereum-vault-connector/blob/838e5f72eaea25fab7d242760245244226096054/docs/whitepaper.md#L45-L47">whitepaper, Introduction</a>; <a href="https://github.com/euler-xyz/ethereum-vault-connector/blob/838e5f72eaea25fab7d242760245244226096054/docs/whitepaper.md#L336-L340">EVC Contract Privileges</a>). Each address owns 256 sub-accounts that share its first 19 bytes, and the owner is recorded on first use (<a href="https://github.com/euler-xyz/ethereum-vault-connector/blob/838e5f72eaea25fab7d242760245244226096054/docs/whitepaper.md#L222-L238">whitepaper, Authorisation</a>). <code>call</code>, <code>batch</code> and <code>controlCollateral</code> defer status checks to the end of the outermost call. Then the EVC calls <code>checkAccountStatus</code> on the account&#39;s controller and <code>checkVaultStatus</code> on each vault that asked for a check, with at most 10 of each per batch (<a href="https://github.com/euler-xyz/ethereum-vault-connector/blob/838e5f72eaea25fab7d242760245244226096054/docs/specs.md">specs CER-43, CER-45, CER-73</a>). <code>permit</code> executes EIP-712 signed calldata, and owner-set nonce namespaces scope those signatures.</p>
+<p><strong>Authority.</strong> A user who calls <code>enableController</code> is, in Euler&#39;s words, &quot;entirely submitting the account to the rules encoded in the controller vault&#39;s code&quot; (<a href="https://github.com/euler-xyz/ethereum-vault-connector/blob/838e5f72eaea25fab7d242760245244226096054/docs/whitepaper.md#L66-L78">whitepaper, Controller</a>). <code>controlCollateral</code> checks only that the caller is the account&#39;s single enabled controller and that the target is one of the account&#39;s enabled collaterals (<a href="https://github.com/euler-xyz/ethereum-vault-connector/blob/838e5f72eaea25fab7d242760245244226096054/src/EthereumVaultConnector.sol#L571-L597">source</a>). The EVC does not limit the amount. The collateral vault sees an ordinary <code>withdraw</code>. The bounds:</p>
+<ul>
+<li>The user opts in.</li>
+<li>An account can have only one controller when it is checked.</li>
+<li>Only the controller can call <code>disableController</code>.</li>
+<li>A controller cannot use <code>permit</code> to seize collateral or release itself (CER-21, CER-57).</li>
+</ul>
+<p>Operators are revocable by the owner at any time. A controller is not (<a href="https://github.com/euler-xyz/ethereum-vault-connector/blob/838e5f72eaea25fab7d242760245244226096054/docs/whitepaper.md#L240-L246">whitepaper, Operators</a>). Lockdown mode stops the owner&#39;s own operators and calls, but &quot;authorized controllers can still control collaterals for the accounts even under lockdown&quot; (<a href="https://github.com/euler-xyz/ethereum-vault-connector/blob/838e5f72eaea25fab7d242760245244226096054/docs/whitepaper.md#L313-L319">whitepaper, Lockdown Mode</a>).</p>
+<p><strong>Upgradeability.</strong> The EVC has no admin. Its <code>onlyOwner</code> modifiers refer to account owners. On top of it, the Euler Vault Kit lets each vault creator choose an upgradeable beacon proxy or an immutable proxy, and lets a governor renounce control (<a href="https://github.com/euler-xyz/euler-vault-kit/blob/e88274cc624b9867d3c0197614dc5fe5201377c3/docs/whitepaper.md#L125-L143">EVK whitepaper</a>). EVK also ramps liquidation LTV changes over a duration set by the governor. A governor cannot liquidate borrowers with a sudden parameter change (<a href="https://github.com/euler-xyz/euler-vault-kit/blob/e88274cc624b9867d3c0197614dc5fe5201377c3/src/EVault/IEVault.sol#L492"><code>setLTV</code></a>, <a href="https://github.com/euler-xyz/euler-vault-kit/blob/e88274cc624b9867d3c0197614dc5fe5201377c3/docs/whitepaper.md#L387-L399">LTV Ramping</a>).</p>
+<p><strong>Findings.</strong> The yAudit review of EVC and EVK (March 25 to May 5, 2024) found two issues that show where the risk sits (<a href="https://github.com/euler-xyz/ethereum-vault-connector/blob/838e5f72eaea25fab7d242760245244226096054/audits/Euler%20yAudit%20report%20%28EVC%20%2B%20EVK%20%2B%20Price%20Oracle%29.pdf">report</a>):</p>
+<ul>
+<li><strong>Critical.</strong> <code>deloop()</code> never asked the EVC to check the paying account, which allowed bad debt between two vaults that accept each other as collateral. The EVC only checks what a plugin asks it to check.</li>
+<li><strong>High.</strong> A malicious controller enabled by the attacker could re-enter a savings vault during the status-check callback.</li>
+</ul>
+<p>The report marks both fixed. I found no public exploit of the EVC itself.</p>
+<h2 id="synthetix-v3">Synthetix v3</h2>
+<p><strong>Mechanism.</strong> Accounts are NFTs with role-based permissions. LPs delegate collateral to pools. A pool owner points the pool&#39;s credit at markets with <code>setPoolConfiguration</code>, giving each market a weight and a <code>maxDebtShareValueD18</code> (<a href="https://github.com/Synthetixio/synthetix-v3/blob/23585f73c76d625b2a43aaf94dc440a8a1e7a8fa/protocol/synthetix/contracts/storage/MarketConfiguration.sol#L15-L35"><code>MarketConfiguration</code></a>). A market is any contract that implements <code>IMarket</code>: <code>name</code>, <code>reportedDebt</code> and <code>minimumCredit</code> (<a href="https://github.com/Synthetixio/synthetix-v3/blob/23585f73c76d625b2a43aaf94dc440a8a1e7a8fa/protocol/synthetix/contracts/interfaces/external/IMarket.sol"><code>IMarket</code></a>). <code>depositMarketUsd</code> burns snxUSD and raises the market&#39;s <code>creditCapacityD18</code>. <code>withdrawMarketUsd</code> mints snxUSD, but only up to <code>getWithdrawableMarketUsd</code>, which equals credit capacity plus collateral the market deposited (<a href="https://github.com/Synthetixio/synthetix-v3/blob/23585f73c76d625b2a43aaf94dc440a8a1e7a8fa/protocol/synthetix/contracts/modules/core/MarketManagerModule.sol#L77-L87">source</a>, <a href="https://github.com/Synthetixio/synthetix-v3/blob/23585f73c76d625b2a43aaf94dc440a8a1e7a8fa/protocol/synthetix/contracts/modules/core/MarketManagerModule.sol#L303-L342">withdraw</a>).</p>
+<p><strong>Authority and caps.</strong></p>
+<ul>
+<li>A market&#39;s cash draw is capped by credit capacity.</li>
+<li>When a market&#39;s debt per share passes a pool&#39;s <code>maxDebtShareValue</code>, that pool is disconnected from the market.</li>
+<li>The system owner caps how much collateral each market may deposit (<code>configureMaximumMarketCollateral</code>).</li>
+<li><code>minimumCredit</code> lets a market stop LPs from leaving.</li>
+</ul>
+<p>Debt is the weak point. The core takes <code>reportedDebt</code> on trust and spreads it to the pools. SIP-303 says it plainly: &quot;a malicious actor could generate a market, persuade pools to provide it with liquidity, and then set the <code>balance</code> value to a large negative number … This would subject the pools involved to liquidation&quot; (<a href="https://sips.synthetix.io/sips/sip-303/">SIP-303</a>).</p>
+<p><strong>Perps and spot.</strong> The perps market registers once and reports the debt of its whole book. It computes that debt from its own collateral and prices (<a href="https://github.com/Synthetixio/synthetix-v3/blob/23585f73c76d625b2a43aaf94dc440a8a1e7a8fa/markets/perps-market/contracts/modules/PerpsMarketFactoryModule.sol#L114-L156"><code>reportedDebt</code>, <code>minimumCredit</code></a>). The spot market registers one market per synth in <code>createSynth</code> (<a href="https://github.com/Synthetixio/synthetix-v3/blob/23585f73c76d625b2a43aaf94dc440a8a1e7a8fa/markets/spot-market/contracts/modules/SpotMarketFactoryModule.sol#L64-L78">source</a>). Product knowledge also leaked into the core. <code>AccountRBAC</code> defines <code>PERPS_MODIFY_COLLATERAL</code> and similar permission constants (<a href="https://github.com/Synthetixio/synthetix-v3/blob/23585f73c76d625b2a43aaf94dc440a8a1e7a8fa/protocol/synthetix/contracts/storage/AccountRBAC.sol#L18-L27">source</a>).</p>
+<p><strong>Upgradeability and status.</strong> The core is a UUPS proxy that the owner can upgrade (<a href="https://github.com/Synthetixio/synthetix-v3/blob/23585f73c76d625b2a43aaf94dc440a8a1e7a8fa/protocol/synthetix/contracts/modules/common/UpgradeModule.sol"><code>UpgradeModule</code></a>). Synthetix shut down its L2 deployments in 2025 (<a href="https://blog.synthetix.io/mainnet-is-where-the-heart-is/">blog, 2025-08-16</a>). I did not verify which v3 deployments still run.</p>
+<h2 id="uniswap-v4-poolmanager">Uniswap v4 PoolManager</h2>
+<p><strong>Mechanism.</strong> <code>unlock</code> calls the caller&#39;s <code>unlockCallback</code>. Inside it, every swap, liquidity change, <code>take</code>, <code>settle</code>, <code>mint</code>, <code>burn</code> or <code>clear</code> adds a signed delta per (currency, address) in transient storage. <code>NonzeroDeltaCount</code> tracks how many deltas are non-zero, and <code>unlock</code> reverts with <code>CurrencyNotSettled</code> unless the count is zero at the end (<a href="https://github.com/Uniswap/v4-core/blob/46c6834698c48bc4a463a86d8420f4eb1d7f3b75/src/PoolManager.sol#L104-L114">source</a>). Payment is measured, not claimed: <code>sync</code> snapshots the balance, the payer transfers, and <code>settle</code> credits the difference (<a href="https://github.com/Uniswap/v4-core/blob/46c6834698c48bc4a463a86d8420f4eb1d7f3b75/src/PoolManager.sol#L279-L366">source</a>).</p>
+<p><strong>Authority.</strong> A hook&#39;s permissions are 14 bits of its address, and the <code>PoolKey</code> fixes which hook a pool uses (<a href="https://github.com/Uniswap/v4-core/blob/46c6834698c48bc4a463a86d8420f4eb1d7f3b75/src/libraries/Hooks.sol#L29-L47"><code>Hooks.sol</code></a>). The whitepaper notes this &quot;ensures that even upgradeable hooks obey certain invariants&quot; (<a href="https://github.com/Uniswap/v4-core/blob/46c6834698c48bc4a463a86d8420f4eb1d7f3b75/docs/whitepaper/whitepaper-v4.pdf">whitepaper</a>). Four <code>*_RETURNS_DELTA</code> flags let a hook change amounts, and the change is booked to the hook&#39;s own address. The PoolManager stores no per-pool token balances, only price, liquidity, ticks and positions (<a href="https://github.com/Uniswap/v4-core/blob/46c6834698c48bc4a463a86d8420f4eb1d7f3b75/src/libraries/Pool.sol#L83-L91"><code>Pool.State</code></a>). Pools are isolated by liquidity math and by position ownership. The kernel does not protect a swapper from a hook in the pool they chose. Uniswap&#39;s own list says a return-delta hook &quot;can &#39;take&#39; all specified token without crediting the user&quot;, which &quot;should be checked in a router&quot; (<a href="https://github.com/Uniswap/v4-core/blob/46c6834698c48bc4a463a86d8420f4eb1d7f3b75/docs/security/Known_Effects_of_Hook_Permissions.pdf">Known Effects of Hook Permissions</a>).</p>
+<p><strong>Upgradeability.</strong> The contract cannot be upgraded. The owner only picks a fee controller, and the protocol fee is capped at 0.1% (<a href="https://github.com/Uniswap/v4-core/blob/46c6834698c48bc4a463a86d8420f4eb1d7f3b75/src/libraries/ProtocolFeeLibrary.sol#L6-L8">source</a>).</p>
+<p><strong>Incidents.</strong> Cork lost about $12M on 2025-05-28 because its hook&#39;s <code>beforeSwap</code> did not check <code>msg.sender</code> (<a href="https://www.cork.tech/blog/post-mortem">Cork post-mortem</a>). Bunni lost about $8.4M on 2025-09-02 to a rounding error in its own withdrawal logic (<a href="https://blog.bunni.xyz/posts/exploit-post-mortem/">Bunni post-mortem</a>). I took both amounts from third-party analyses. Both were bugs inside the plugin, and neither report blames the PoolManager.</p>
+<h2 id="balancer-v3-vault">Balancer v3 Vault</h2>
+<p><strong>Mechanism.</strong> Balancer v3 uses the same pattern as Uniswap v4: <code>unlock</code>, a <code>transient</code> modifier that reverts with <code>BalanceNotSettled</code> if <code>_nonZeroDeltaCount</code> is non-zero, and <code>settle</code> priced from the change in <code>_reservesOf</code> (<a href="https://github.com/balancer/balancer-v3-monorepo/blob/2b9ce4b1b8ad49eafcad8d136f0872ea7c7d5d53/pkg/vault/contracts/Vault.sol#L96-L163">source</a>). Unlike Uniswap v4, the Vault also keeps per-pool token balances in <code>_poolTokenBalances</code> (<a href="https://github.com/balancer/balancer-v3-monorepo/blob/2b9ce4b1b8ad49eafcad8d136f0872ea7c7d5d53/pkg/vault/contracts/VaultStorage.sol#L96-L121">source</a>).</p>
+<p><strong>Authority.</strong> Hooks only change amounts when <code>enableHookAdjustedAmounts</code> is set. When it is, the Vault itself checks the hook&#39;s result against the user&#39;s limit and reverts with <code>HookAdjustedSwapLimit</code> (<a href="https://github.com/balancer/balancer-v3-monorepo/blob/2b9ce4b1b8ad49eafcad8d136f0872ea7c7d5d53/pkg/vault/contracts/lib/HooksConfigLib.sol#L265-L276">source</a>). Uniswap leaves that check to the router. Recovery mode is &quot;a safe proportional withdrawal, with no external calls&quot;, an exit that never runs pool or hook code (<a href="https://github.com/balancer/balancer-v3-monorepo/blob/2b9ce4b1b8ad49eafcad8d136f0872ea7c7d5d53/pkg/interfaces/contracts/vault/IVaultAdmin.sol#L233-L241"><code>IVaultAdmin</code></a>).</p>
+<p><strong>Upgradeability.</strong> &quot;The system cannot be upgraded&quot; (<a href="https://github.com/balancer/balancer-v3-monorepo/blob/2b9ce4b1b8ad49eafcad8d136f0872ea7c7d5d53/README.md#L164-L166">README</a>). The power to pause expires: the window is at most 4 years plus a 180-day buffer (<a href="https://github.com/balancer/balancer-v3-monorepo/blob/2b9ce4b1b8ad49eafcad8d136f0872ea7c7d5d53/pkg/vault/contracts/VaultStorage.sol#L45-L46">source</a>).</p>
+<p><strong>Context.</strong> The 2025-11-03 exploit hit v2 Composable Stable Pools and not v3 (<a href="https://x.com/Balancer/status/1990856260988670132">Balancer post-mortem</a>; I read it through secondary summaries). On 2026-09-15 a wind-down was proposed that moves pools to withdrawal-only mode through pause and recovery mode. My source is press coverage (<a href="https://crypto.news/balancer-wind-down-proposed-as-post-exploit-revenue-fails-to-recover/">crypto.news</a>), and I have not verified the vote result.</p>
+<h2 id="aave-v4-hub-and-spokes">Aave v4 (Hub and Spokes)</h2>
+<p><strong>Mechanism.</strong> The Hub &quot;is immutable&quot; and has no oracle. Spokes are upgradeable. They hold user positions, oracles and liquidation logic (<a href="https://github.com/aave/aave-v4/blob/40232a0a91150d8ee5cab42bd3ddd0baf4ffff9f/docs/overview.md#L45-L82">overview</a>). Spokes call <code>add</code>, <code>remove</code>, <code>draw</code>, <code>restore</code>, <code>reportDeficit</code>, <code>refreshPremium</code>, <code>eliminateDeficit</code> and <code>transferShares</code>. Aave v4 went live on Ethereum on 2026-03-30 with &quot;conservative supply and borrow caps&quot; that the DAO will raise (<a href="https://aave.com/blog/aave-v4-live-ethereum">Aave blog</a>).</p>
+<p><strong>Authority and caps.</strong> Each spoke has a <code>SpokeConfig {addCap, drawCap, riskPremiumThreshold, active, halted}</code> (<a href="https://github.com/aave/aave-v4/blob/40232a0a91150d8ee5cab42bd3ddd0baf4ffff9f/src/hub/interfaces/IHub.sol#L94-L100">source</a>). In the Hub code (<a href="https://github.com/aave/aave-v4/blob/40232a0a91150d8ee5cab42bd3ddd0baf4ffff9f/src/hub/Hub.sol#L224-L271"><code>remove</code>/<code>draw</code></a>, <a href="https://github.com/aave/aave-v4/blob/40232a0a91150d8ee5cab42bd3ddd0baf4ffff9f/src/hub/Hub.sol#L831-L887">validation</a>):</p>
+<ul>
+<li><code>draw</code> checks the spoke&#39;s debt plus any reported deficit against <code>drawCap</code>.</li>
+<li><code>remove</code> subtracts from <code>spoke.addedShares</code> with checked arithmetic, so a spoke cannot remove more than it added.</li>
+<li><code>reportDeficit</code> cannot exceed what the spoke drew.</li>
+</ul>
+<p>ChainSecurity&#39;s March 2026 audit sets the limits of those caps (<a href="https://github.com/aave/aave-v4/blob/40232a0a91150d8ee5cab42bd3ddd0baf4ffff9f/audits/2026-03-23_Aave-V4_ChainSecurity.pdf">report</a>, §2.2–2.3). &quot;The Hub does not perform any solvency checks on Spokes or users&quot;. &quot;A malicious Spoke could inflate the amount of premium shares … allowing the malicious Spoke to drain the Hub liquidity for that asset&quot;. Users &quot;must not only trust the Hub but also all other Spokes connected to that Hub that have at least one common asset&quot;. The current Hub requires <code>premiumShares &lt;= drawnShares × riskPremiumThreshold</code> (<a href="https://github.com/aave/aave-v4/blob/40232a0a91150d8ee5cab42bd3ddd0baf4ffff9f/src/hub/Hub.sol#L757-L762">source</a>). That limits the inflation. I did not confirm the check was added because of the audit.</p>
+<h2 id="morpho-blue">Morpho Blue</h2>
+<p><strong>Mechanism.</strong> A market&#39;s ID is the hash of <code>MarketParams {loanToken, collateralToken, oracle, irm, lltv}</code>. Anyone can call <code>createMarket</code> with an IRM and LLTV from lists that governance controls. Governance can only add to those lists (<a href="https://github.com/morpho-org/morpho-blue/blob/8e26ca6a8dbc5089edcd67fb576248810fd2870a/src/Morpho.sol#L150-L164">source</a>). One contract holds every token, and each market keeps separate totals.</p>
+<p><strong>Authority.</strong> The oracle and IRM are fixed for the life of the market. Governance &quot;cannot halt the operation of a market or modify its LLTV, IRM, and oracle&quot;, and it can set a fee of at most 25% of interest (<a href="https://github.com/morpho-org/morpho-blue/blob/8e26ca6a8dbc5089edcd67fb576248810fd2870a/morpho-blue-whitepaper.pdf">whitepaper</a>, §1.2 and §3.4; <a href="https://github.com/morpho-org/morpho-blue/blob/8e26ca6a8dbc5089edcd67fb576248810fd2870a/src/libraries/ConstantsLib.sol#L5"><code>MAX_FEE</code></a>). <code>createMarket</code> lists the assumptions about tokens, oracle and IRM that keep the market safe and live (<a href="https://github.com/morpho-org/morpho-blue/blob/8e26ca6a8dbc5089edcd67fb576248810fd2870a/src/interfaces/IMorpho.sol#L104-L130">source</a>). User delegation is all or nothing: an address in <code>isAuthorized</code> can act on every market (<a href="https://github.com/morpho-org/morpho-blue/blob/8e26ca6a8dbc5089edcd67fb576248810fd2870a/src/Morpho.sol#L467-L469">source</a>).</p>
+<p><strong>Incident.</strong> In October 2024 a PAXG/USDC market launched with a mis-scaled oracle lost about $230k. The loss stayed inside that market (<a href="https://x.com/MorphoLabs/status/1845746698393391167">Morpho statement</a>; the amount comes from secondary analyses).</p>
+<h2 id="dydx-v4-and-hyperliquid-briefly">dYdX v4 and Hyperliquid, briefly</h2>
+<p>In dYdX v4, <code>x/clob</code> reaches balances through a narrow <code>SubaccountsKeeper</code> interface that it declares itself (<a href="https://github.com/dydxprotocol/v4-chain/blob/66444258b5e6931eeaf1ab7cf46fa11049ec829a/protocol/x/clob/types/expected_keepers.go">source</a>). That interface holds <code>CanUpdateSubaccounts</code> and <code>UpdateSubaccounts</code>, tagged with an <code>UpdateType</code> such as <code>Match</code>, <code>Transfer</code> or <code>Withdrawal</code>, plus a few fee and insurance-fund transfers. The subaccounts module runs the collateral checks (<a href="https://github.com/dydxprotocol/v4-chain/blob/66444258b5e6931eeaf1ab7cf46fa11049ec829a/protocol/x/subaccounts/types/types.go">source</a>). All modules ship in one binary, so no plugin is hostile. On Hyperliquid, HyperEVM contracts read HyperCore through precompiles and write through <code>CoreWriter</code> at <code>0x3333…3333</code>. They act as an ordinary account, and order actions are &quot;delayed onchain for a few seconds&quot; (<a href="https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/hyperevm/interacting-with-hypercore">docs</a>, page not versioned). Product contracts there get no power over anyone else.</p>
+<h2 id="comparison">Comparison</h2>
+<table>
+<thead>
+<tr>
+<th>Kernel</th>
+<th>What a plugin can debit</th>
+<th>Cap enforced by the kernel</th>
+<th>Plugin-reported numbers trusted</th>
+<th>Kernel upgradeable</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>EVC</td>
+<td>All enabled collateral of accounts that opted in</td>
+<td>None on amount</td>
+<td>Account health (controller decides)</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Synthetix v3</td>
+<td>LP credit of pools that chose the market</td>
+<td>Credit capacity, <code>maxDebtShareValue</code></td>
+<td><code>reportedDebt</code></td>
+<td>Yes (UUPS)</td>
+</tr>
+<tr>
+<td>Uniswap v4</td>
+<td>Swappers and LPs of pools naming the hook</td>
+<td>Net-zero per address</td>
+<td>Hook deltas</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Balancer v3</td>
+<td>Its pool&#39;s balances</td>
+<td>Net-zero, user limits</td>
+<td>Pool math, hook deltas</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Aave v4</td>
+<td>Shared Hub liquidity</td>
+<td><code>drawCap</code>, <code>addCap</code>, premium threshold</td>
+<td>Premium, deficit</td>
+<td>Hub no, Spokes yes</td>
+</tr>
+<tr>
+<td>Morpho Blue</td>
+<td>Its market&#39;s lenders</td>
+<td>Market isolation</td>
+<td>Oracle price</td>
+<td>No</td>
+</tr>
+</tbody></table>
+<h2 id="what-this-means-for-options-core">What this means for options-core</h2>
+<h3 id="a-minimal-kernel-interface">(a) Minimal kernel interface</h3>
+<p>Keep the vault from the synthesis note, with one change: a module never gets power over &quot;all collateral&quot; the way an EVC controller does. It gets power only over amounts committed to it.</p>
+<pre><code class="language-solidity">type PoolId is bytes32; // owner (20 bytes) | index (12 bytes); the owner is read from the id, no registry
+
+interface IKernel {
+	// pool owner or a revocable operator
+	function deposit(PoolId pool, address token, uint256 amount) external;
+	function withdraw(PoolId pool, address token, uint256 amount, address to) external;
+	function commit(PoolId pool, address controller, bytes32 key, address token, uint256 amount) external;
+
+	// controller only: every debit must come from escrow[msg.sender][fromKey]
+	struct Leg { bytes32 fromKey; bytes32 toKey; address token; uint256 amount; }
+	function move(Leg[] calldata legs) external;
+	function release(bytes32 key, PoolId to, address token, uint256 amount) external;
+}
+</code></pre>
+<p>Each leg moves an amount from one bucket to another, so a batch nets to zero by construction. There is no need for Uniswap-style transient deltas. Add an <code>unlock</code> callback only if a module later needs external calls in the middle of settlement, such as swapping collateral. The main invariant for each token is that free balances plus escrows equal the kernel&#39;s token balance. EVC and Aave v4 both have Certora verification reports on their kernels (<a href="https://github.com/euler-xyz/ethereum-vault-connector/tree/838e5f72eaea25fab7d242760245244226096054/audits">EVC audits</a>, <a href="https://github.com/aave/aave-v4/tree/40232a0a91150d8ee5cab42bd3ddd0baf4ffff9f/audits">Aave v4 audits</a>), and this invariant is the natural target for ours. Deposits should credit the measured balance change, as <code>sync</code>/<code>settle</code> does.</p>
+<h3 id="b-capping-a-modules-authority">(b) Capping a module&#39;s authority</h3>
+<ol>
+<li><strong>Isolation by commitment.</strong> The options module can only debit escrow committed to it. A perps user who never committed to it has nothing it can reach. Morpho and Balancer use the same idea, per market and per pool.</li>
+<li><strong>No reported numbers.</strong> The kernel should have no <code>reportDebt</code>, <code>mint</code>, share price or loss socialization. Synthetix and Aave v4 both show how a reported number defeats a cap. If Symmio later wants shared LP backing, build it as its own controller with its own escrow. The kernel still sees only moves.</li>
+<li><strong>Caps belong where liquidity is shared.</strong> Aave needs caps in the Hub because spokes draw other people&#39;s money. Bilateral escrow does not have that problem. Put rollout caps in the controller, as immutable per-version parameters, rather than in an admin role on the kernel.</li>
+<li><strong>Release only by the controller, with an exit at the controller layer.</strong> This matches EVC&#39;s <code>disableController</code> rule and gives the solver its guarantee. The cost is that a buggy controller can freeze funds; it cannot steal from other modules. The kernel cannot offer a Balancer-style recovery mode, because a bilateral escrow has no fair split that is independent of the module. The exit has to be the channel&#39;s challenge path, so the channel controller must be small and immutable.</li>
+</ol>
+<h3 id="c-immutability-and-upgradeability">(c) Immutability and upgradeability</h3>
+<p>Every newer kernel here is immutable: EVC, Morpho, the Uniswap v4 PoolManager, the Balancer v3 Vault and the Aave v4 Hub. Only Synthetix v3&#39;s core can be upgraded. My recommendation:</p>
+<ul>
+<li>Make the kernel immutable, with no owner.</li>
+<li>Make controllers and adjudicators immutable per version, and pin the controller address in each commitment, the way a <code>PoolKey</code> pins a hook and <code>MarketParams</code> pins an oracle.</li>
+<li>If a controller is a proxy, show it in the interface, as EVK does with its <code>upgradeable</code> flag.</li>
+<li>If any emergency power exists, make it expire, like Balancer&#39;s pause window, and never let it block exits.</li>
+</ul>
+<p>The trade-off is that a kernel bug means redeploying and migrating. That is acceptable only if the kernel stays small. Morpho&#39;s whitepaper puts its core at about 650 lines (§3.4).</p>
+<h3 id="d-single-token-or-multi-token">(d) Single-token or multi-token</h3>
+<p>Synthetix accounts in one unit, snxUSD, and that forces an oracle manager into the core. The other kernels keep balances per token and leave pricing to plugins: EVC to controllers, Aave to spokes, Morpho to each market&#39;s oracle. Key balances by token, give the kernel no oracle, and check net-zero per token. Version 1 can accept only USDC in the controller without changing the kernel interface. Cross-collateral margin belongs in a controller or adjudicator. The trade-off is lower capital efficiency for users who hold several tokens. In return, the kernel needs no oracle, and an oracle-free kernel is what makes immutability realistic.</p>
+<p><strong>The single most important implication:</strong> a module can only debit funds that users explicitly committed to it, and the kernel never accepts a module-reported number that moves anyone else&#39;s money.</p>
+</article></main></div><footer class="site-footer"><span>Options Core documentation.</span></footer></body></html>

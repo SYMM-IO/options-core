@@ -5,6 +5,9 @@
 
 pragma solidity >=0.8.19;
 
+import { IBucketFacet } from "../../facets/Bucket/IBucketFacet.sol";
+import { BucketRef, BucketBalanceOp } from "../../types/BucketTypes.sol";
+
 import { LibParty } from "./LibParty.sol";
 
 import { TradeStorage } from "../../storages/TradeStorage.sol";
@@ -77,11 +80,16 @@ library ScheduledReleaseBalanceOps {
 	 * @param _collateral    ERC20 address of the collateral token
 	 */
 	function setup(ScheduledReleaseBalance storage self, address _user, address _collateral) internal {
+		setup(self, _user, 0, _collateral);
+	}
+
+	function setup(ScheduledReleaseBalance storage self, address _user, uint256 bucketId, address _collateral) internal {
 		if (self.collateral != address(0) && self.user != address(0)) return;
 		if (_user == address(0)) revert ValidationErrors.ZeroAddress("user");
 		if (_collateral == address(0)) revert ValidationErrors.ZeroAddress("collateral");
 		self.collateral = _collateral;
 		self.user = _user;
+		self.bucketId = bucketId;
 	}
 
 	// ────────────────────────────────────────────────────────────────────────────
@@ -101,22 +109,34 @@ library ScheduledReleaseBalanceOps {
 		MarginType marginType,
 		IncreaseBalanceReason reason
 	) internal checkSetup(self) {
+		scheduledAdd(self, counterParty, 0, value, marginType, reason);
+	}
+
+	function scheduledAdd(
+		ScheduledReleaseBalance storage self,
+		address counterParty,
+		uint256 counterPartyBucketId,
+		uint256 value,
+		MarginType marginType,
+		IncreaseBalanceReason reason
+	) internal checkSetup(self) {
 		if (value == 0) return;
 		if (counterParty == address(0)) revert ValidationErrors.ZeroAddress("counterParty");
 
 		if (marginType == MarginType.CROSS) {
-			self.crossBalance[counterParty].balance += int256(value);
+			crossEntry(self, counterParty, counterPartyBucketId).balance += int256(value);
 			emit IncreaseBalance(self.user, counterParty, self.collateral, value, reason, true, MarginType.CROSS);
+			_emitBucketChange(self, counterParty, counterPartyBucketId, value, BucketBalanceOp.INCREASE, MarginType.CROSS);
 			return;
 		}
 
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
 		// ensure counter‑party is tracked so that future syncAll calls reach it
-		if (!accountLayout.manualSync[self.user]) addCounterParty(self, counterParty);
+		if (!accountLayout.manualSync[self.user]) addCounterParty(self, counterParty, counterPartyBucketId);
 
 		// keep schedule up‑to‑date first
-		_sync(self, counterParty);
+		_sync(self, counterParty, counterPartyBucketId);
 
 		// zero interval ⇒ treat as instant add
 		if (counterParty.getReleaseInterval() == 0) {
@@ -126,8 +146,9 @@ library ScheduledReleaseBalanceOps {
 		}
 
 		// finally queue the funds
-		self.counterPartySchedules[counterParty].scheduled += value;
+		scheduleEntry(self, counterParty, counterPartyBucketId).scheduled += value;
 		emit IncreaseBalance(self.user, counterParty, self.collateral, value, reason, false, marginType);
+		_emitBucketChange(self, counterParty, counterPartyBucketId, value, BucketBalanceOp.INCREASE, marginType);
 	}
 
 	/// @notice Instantly credit funds to `isolatedBalance`.
@@ -135,6 +156,7 @@ library ScheduledReleaseBalanceOps {
 		if (value == 0) return;
 		self.isolatedBalance += value;
 		emit IncreaseBalance(self.user, address(0), self.collateral, value, reason, true, MarginType.ISOLATED);
+		_emitBucketChange(self, address(0), 0, value, BucketBalanceOp.INCREASE, MarginType.ISOLATED);
 	}
 
 	// ────────────────────────────────────────────────────────────────────────────
@@ -147,6 +169,7 @@ library ScheduledReleaseBalanceOps {
 		if (self.isolatedBalance < value) revert BalanceErrors.InsufficientBalance(self.user, self.collateral, value, self.isolatedBalance);
 		self.isolatedBalance -= value;
 		emit DecreaseBalance(self.user, address(0), self.collateral, value, reason, MarginType.ISOLATED);
+		_emitBucketChange(self, address(0), 0, value, BucketBalanceOp.DECREASE, MarginType.ISOLATED);
 	}
 
 	/**
@@ -161,6 +184,17 @@ library ScheduledReleaseBalanceOps {
 		MarginType marginType,
 		DecreaseBalanceReason reason
 	) internal {
+		subForCounterParty(self, counterParty, 0, value, marginType, reason);
+	}
+
+	function subForCounterParty(
+		ScheduledReleaseBalance storage self,
+		address counterParty,
+		uint256 counterPartyBucketId,
+		uint256 value,
+		MarginType marginType,
+		DecreaseBalanceReason reason
+	) internal {
 		if (value == 0) return;
 		if (marginType == MarginType.CROSS && counterParty == address(0)) revert ValidationErrors.ZeroAddress("counterParty");
 
@@ -170,14 +204,15 @@ library ScheduledReleaseBalanceOps {
 		}
 
 		if (marginType == MarginType.CROSS) {
-			self.crossBalance[counterParty].balance -= int256(value);
+			crossEntry(self, counterParty, counterPartyBucketId).balance -= int256(value);
 			emit DecreaseBalance(self.user, counterParty, self.collateral, value, reason, MarginType.CROSS);
+			_emitBucketChange(self, counterParty, counterPartyBucketId, value, BucketBalanceOp.DECREASE, MarginType.CROSS);
 			return;
 		}
 		// realize matured buckets first
-		sync(self, counterParty);
+		sync(self, counterParty, counterPartyBucketId);
 
-		ScheduledReleaseEntry storage entry = self.counterPartySchedules[counterParty];
+		ScheduledReleaseEntry storage entry = scheduleEntry(self, counterParty, counterPartyBucketId);
 
 		// zero interval ⇒ fallback to simple sub
 		if (entry.releaseInterval == 0) {
@@ -194,6 +229,7 @@ library ScheduledReleaseBalanceOps {
 		if (entry.scheduled >= remaining) {
 			entry.scheduled -= remaining;
 			emit DecreaseBalance(self.user, counterParty, self.collateral, value, reason, marginType);
+			_emitBucketChange(self, counterParty, counterPartyBucketId, value, BucketBalanceOp.DECREASE, marginType);
 			return;
 		}
 		if (entry.scheduled > 0) {
@@ -205,6 +241,7 @@ library ScheduledReleaseBalanceOps {
 		if (entry.transitioning >= remaining) {
 			entry.transitioning -= remaining;
 			emit DecreaseBalance(self.user, counterParty, self.collateral, value, reason, marginType);
+			_emitBucketChange(self, counterParty, counterPartyBucketId, value, BucketBalanceOp.DECREASE, marginType);
 			return;
 		}
 		if (entry.transitioning > 0) {
@@ -216,13 +253,22 @@ library ScheduledReleaseBalanceOps {
 		self.isolatedBalance -= remaining;
 
 		emit DecreaseBalance(self.user, counterParty, self.collateral, value, reason, marginType);
+		_emitBucketChange(self, counterParty, counterPartyBucketId, value, BucketBalanceOp.DECREASE, marginType);
 	}
 
 	/**
 	 * @notice Return in transition for a counter‑party.
 	 */
 	function inTransitionBalance(ScheduledReleaseBalance storage self, address counterParty) internal view returns (uint256) {
-		ScheduledReleaseEntry storage entry = self.counterPartySchedules[counterParty];
+		return inTransitionBalance(self, counterParty, 0);
+	}
+
+	function inTransitionBalance(
+		ScheduledReleaseBalance storage self,
+		address counterParty,
+		uint256 counterPartyBucketId
+	) internal view returns (uint256) {
+		ScheduledReleaseEntry storage entry = scheduleEntry(self, counterParty, counterPartyBucketId);
 		return entry.transitioning + entry.scheduled;
 	}
 
@@ -230,18 +276,27 @@ library ScheduledReleaseBalanceOps {
 	 * @notice Return total balance of user for a counterparty
 	 */
 	function counterPartyBalance(ScheduledReleaseBalance storage self, address counterParty, MarginType marginType) internal view returns (int256) {
+		return counterPartyBalance(self, counterParty, 0, marginType);
+	}
+
+	function counterPartyBalance(
+		ScheduledReleaseBalance storage self,
+		address counterParty,
+		uint256 counterPartyBucketId,
+		MarginType marginType
+	) internal view returns (int256) {
 		if (counterParty == address(0)) {
 			if (marginType == MarginType.ISOLATED) {
 				return int256(self.isolatedBalance);
 			} else {
-				return self.crossBalance[counterParty].balance;
+				return crossEntry(self, counterParty, counterPartyBucketId).balance;
 			}
 		}
-		ScheduledReleaseEntry storage entry = self.counterPartySchedules[counterParty];
+		ScheduledReleaseEntry storage entry = scheduleEntry(self, counterParty, counterPartyBucketId);
 		if (marginType == MarginType.ISOLATED) {
 			return int256(self.isolatedBalance + entry.transitioning + entry.scheduled);
 		} else {
-			return self.crossBalance[counterParty].balance;
+			return crossEntry(self, counterParty, counterPartyBucketId).balance;
 		}
 	}
 
@@ -253,6 +308,10 @@ library ScheduledReleaseBalanceOps {
 	 * @notice Move funds from isolated → cross balance for `counterParty`.
 	 */
 	function allocateBalance(ScheduledReleaseBalance storage self, address counterParty, uint256 amount) internal {
+		allocateBalance(self, counterParty, 0, amount);
+	}
+
+	function allocateBalance(ScheduledReleaseBalance storage self, address counterParty, uint256 counterPartyBucketId, uint256 amount) internal {
 		if (amount == 0) return;
 		if (counterParty == address(0)) revert ValidationErrors.ZeroAddress("counterParty");
 
@@ -260,7 +319,8 @@ library ScheduledReleaseBalanceOps {
 			revert BalanceErrors.InsufficientBalance(self.user, self.collateral, amount, self.isolatedBalance);
 
 		self.isolatedBalance -= amount;
-		self.crossBalance[counterParty].balance += int256(amount);
+		crossEntry(self, counterParty, counterPartyBucketId).balance += int256(amount);
+		_emitBucketChange(self, counterParty, counterPartyBucketId, amount, BucketBalanceOp.ALLOCATE, MarginType.CROSS);
 	}
 
 	/**
@@ -268,11 +328,16 @@ library ScheduledReleaseBalanceOps {
 	 * @dev Should be called via a source that has already verified solvency of user (via a muon signature probably)
 	 */
 	function deallocateBalance(ScheduledReleaseBalance storage self, address counterParty, uint256 amount) internal {
+		deallocateBalance(self, counterParty, 0, amount);
+	}
+
+	function deallocateBalance(ScheduledReleaseBalance storage self, address counterParty, uint256 counterPartyBucketId, uint256 amount) internal {
 		if (amount == 0) return;
 		if (counterParty == address(0)) revert ValidationErrors.ZeroAddress("counterParty");
 
-		self.crossBalance[counterParty].balance -= int256(amount);
+		crossEntry(self, counterParty, counterPartyBucketId).balance -= int256(amount);
 		self.isolatedBalance += amount;
+		_emitBucketChange(self, counterParty, counterPartyBucketId, amount, BucketBalanceOp.DEALLOCATE, MarginType.CROSS);
 	}
 
 	// ────────────────────────────────────────────────────────────────────────────
@@ -284,7 +349,11 @@ library ScheduledReleaseBalanceOps {
 	 * @dev     Thin wrapper around `_sync` with `tryRemoveCounterPartyOnEmpty = true`.
 	 */
 	function sync(ScheduledReleaseBalance storage self, address counterParty) internal {
-		return _sync(self, counterParty);
+		sync(self, counterParty, 0);
+	}
+
+	function sync(ScheduledReleaseBalance storage self, address counterParty, uint256 counterPartyBucketId) internal {
+		return _sync(self, counterParty, counterPartyBucketId);
 	}
 
 	/**
@@ -298,7 +367,13 @@ library ScheduledReleaseBalanceOps {
 			unchecked {
 				--len;
 			}
-			_sync(self, list[len]);
+			_sync(self, list[len], 0);
+		}
+		len = self.bucketedCounterParties.length;
+		while (len != 0) {
+			--len;
+			BucketRef memory cp = self.bucketedCounterParties[len];
+			_sync(self, cp.owner, cp.bucketId);
 		}
 	}
 
@@ -306,15 +381,19 @@ library ScheduledReleaseBalanceOps {
 	 * @notice Core sync routine. Moves funds through the two‑bus pipeline.
 	 */
 	function _sync(ScheduledReleaseBalance storage self, address counterParty) internal {
+		_sync(self, counterParty, 0);
+	}
+
+	function _sync(ScheduledReleaseBalance storage self, address counterParty, uint256 counterPartyBucketId) internal {
 		// insolvent counter‑party ⇒ keep everything locked
-		if (!counterParty.isSolvent(self.user, self.collateral, MarginType.ISOLATED)) {
+		if (!counterParty.isSolvent(counterPartyBucketId, self.user, self.bucketId, self.collateral, MarginType.ISOLATED)) {
 			// OK as no effect when counter party is A in ISOLATED Margin type
 			return;
 		}
 
 		uint256 updatedReleaseInterval = counterParty.getReleaseInterval(); // default account interval or user specific interval if available
 
-		ScheduledReleaseEntry storage entry = self.counterPartySchedules[counterParty];
+		ScheduledReleaseEntry storage entry = scheduleEntry(self, counterParty, counterPartyBucketId);
 
 		// (1) Release interval changed externally → reinitialize everything.
 		if (entry.releaseInterval != updatedReleaseInterval) {
@@ -331,6 +410,7 @@ library ScheduledReleaseBalanceOps {
 				entry.transitioning = 0;
 			}
 			emit SyncBalance(self.user, counterParty, self.collateral);
+			_emitBucketChange(self, counterParty, counterPartyBucketId, 0, BucketBalanceOp.SYNC, MarginType.ISOLATED);
 			return;
 		}
 
@@ -365,9 +445,10 @@ library ScheduledReleaseBalanceOps {
 		// align timestamp to current interval start
 		entry.lastTransitionTimestamp = (block.timestamp / entry.releaseInterval) * entry.releaseInterval;
 
-		tryRemoveCounterParty(self, counterParty);
+		tryRemoveCounterParty(self, counterParty, counterPartyBucketId);
 
 		emit SyncBalance(self.user, counterParty, self.collateral);
+		_emitBucketChange(self, counterParty, counterPartyBucketId, 0, BucketBalanceOp.SYNC, MarginType.ISOLATED);
 	}
 
 	// ────────────────────────────────────────────────────────────────────────────
@@ -378,54 +459,74 @@ library ScheduledReleaseBalanceOps {
 	 * @notice Ensure `counterParty` is present in the tracking list for `marginType`.
 	 */
 	function addCounterParty(ScheduledReleaseBalance storage self, address counterParty) internal {
+		addCounterParty(self, counterParty, 0);
+	}
+
+	function addCounterParty(ScheduledReleaseBalance storage self, address counterParty, uint256 counterPartyBucketId) internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
-
-		if (self.counterPartyIndexes[counterParty] != 0 || AccountStorage.layout().manualSync[self.user]) return; // already present or manual sync is enabled
-		if (self.counterPartyAddresses.length >= accountLayout.maxConnectedCounterParties) {
-			syncAll(self); // sync all to remove any counterparty that has no balance left
-			if (self.counterPartyAddresses.length >= accountLayout.maxConnectedCounterParties)
-				revert BalanceErrors.MaxCounterPartyConnectionsReached(self.counterPartyAddresses.length, accountLayout.maxConnectedCounterParties);
+		uint256 index =
+			counterPartyBucketId == 0 ? self.counterPartyIndexes[counterParty] : self.bucketedCounterPartyIndexes[counterParty][counterPartyBucketId];
+		if (index != 0 || accountLayout.manualSync[self.user]) return;
+		uint256 count = self.counterPartyAddresses.length + self.bucketedCounterParties.length;
+		if (count >= accountLayout.maxConnectedCounterParties) {
+			syncAll(self);
+			count = self.counterPartyAddresses.length + self.bucketedCounterParties.length;
+			if (count >= accountLayout.maxConnectedCounterParties)
+				revert BalanceErrors.MaxCounterPartyConnectionsReached(count, accountLayout.maxConnectedCounterParties);
 		}
-
-		ScheduledReleaseEntry storage entry = self.counterPartySchedules[counterParty];
+		ScheduledReleaseEntry storage entry = scheduleEntry(self, counterParty, counterPartyBucketId);
 		entry.releaseInterval = counterParty.getReleaseInterval();
 		entry.lastTransitionTimestamp =
 			entry.releaseInterval == 0 ? block.timestamp : (block.timestamp / entry.releaseInterval) * entry.releaseInterval;
-
-		// book‑keeping (packed array)
-		uint256 newIndex = self.counterPartyAddresses.length;
-		self.counterPartyAddresses.push(counterParty);
-		self.counterPartyIndexes[counterParty] = newIndex + 1; // store +1 so that 0 means “not present”
+		if (counterPartyBucketId == 0) {
+			self.counterPartyAddresses.push(counterParty);
+			self.counterPartyIndexes[counterParty] = self.counterPartyAddresses.length;
+		} else {
+			self.bucketedCounterParties.push(BucketRef(counterParty, counterPartyBucketId));
+			self.bucketedCounterPartyIndexes[counterParty][counterPartyBucketId] = self.bucketedCounterParties.length;
+		}
 	}
 
 	/**
 	 * @notice Remove `counterParty` from tracking once balances are zero.
 	 */
 	function tryRemoveCounterParty(ScheduledReleaseBalance storage self, address counterParty) internal {
+		tryRemoveCounterParty(self, counterParty, 0);
+	}
+
+	function tryRemoveCounterParty(ScheduledReleaseBalance storage self, address counterParty, uint256 counterPartyBucketId) internal {
 		if (counterParty == address(0)) revert ValidationErrors.ZeroAddress("counterParty");
-
-		ScheduledReleaseEntry storage entry = self.counterPartySchedules[counterParty];
-
-		if (
-			entry.transitioning != 0 ||
-			entry.scheduled != 0 ||
-			TradeStorage.layout().activeTradesOfPartyAWithPartyBCount[self.user][self.collateral][counterParty] != 0
-		) return;
-
-		uint256 idxPlusOne = self.counterPartyIndexes[counterParty];
-		if (idxPlusOne == 0) return; // already removed
-
+		ScheduledReleaseEntry storage entry = scheduleEntry(self, counterParty, counterPartyBucketId);
+		uint256 tradeCount =
+			self.bucketId == 0 && counterPartyBucketId == 0
+				? TradeStorage.layout().activeTradesOfPartyAWithPartyBCount[self.user][self.collateral][counterParty]
+				: TradeStorage.layout().activeTradesOfBucketPairCount[self.user][self.bucketId][self.collateral][counterParty][counterPartyBucketId];
+		if (entry.transitioning != 0 || entry.scheduled != 0 || tradeCount != 0) return;
+		uint256 idxPlusOne =
+			counterPartyBucketId == 0 ? self.counterPartyIndexes[counterParty] : self.bucketedCounterPartyIndexes[counterParty][counterPartyBucketId];
+		if (idxPlusOne == 0) return;
 		uint256 index = idxPlusOne - 1;
-		uint256 lastIndex = self.counterPartyAddresses.length - 1;
-		if (index != lastIndex) {
-			address moved = self.counterPartyAddresses[lastIndex];
-			self.counterPartyAddresses[index] = moved;
-			self.counterPartyIndexes[moved] = index + 1;
+		if (counterPartyBucketId == 0) {
+			uint256 last = self.counterPartyAddresses.length - 1;
+			if (index != last) {
+				address moved = self.counterPartyAddresses[last];
+				self.counterPartyAddresses[index] = moved;
+				self.counterPartyIndexes[moved] = index + 1;
+			}
+			self.counterPartyAddresses.pop();
+			delete self.counterPartyIndexes[counterParty];
+			delete self.counterPartySchedules[counterParty];
+		} else {
+			uint256 last = self.bucketedCounterParties.length - 1;
+			if (index != last) {
+				BucketRef memory moved = self.bucketedCounterParties[last];
+				self.bucketedCounterParties[index] = moved;
+				self.bucketedCounterPartyIndexes[moved.owner][moved.bucketId] = index + 1;
+			}
+			self.bucketedCounterParties.pop();
+			delete self.bucketedCounterPartyIndexes[counterParty][counterPartyBucketId];
+			delete self.bucketedSchedules[counterParty][counterPartyBucketId];
 		}
-
-		self.counterPartyAddresses.pop();
-		delete self.counterPartyIndexes[counterParty];
-		delete self.counterPartySchedules[counterParty];
 	}
 
 	function isolatedLock(ScheduledReleaseBalance storage self, uint256 amount) internal {
@@ -433,35 +534,95 @@ library ScheduledReleaseBalanceOps {
 			revert BalanceErrors.InsufficientBalance(self.user, self.collateral, amount, self.isolatedBalance - self.isolatedLockedBalance);
 		self.isolatedLockedBalance += amount;
 		emit LockBalance(self.user, self.collateral, amount, MarginType.ISOLATED);
+		_emitBucketChange(self, address(0), 0, amount, BucketBalanceOp.LOCK, MarginType.ISOLATED);
 	}
 
 	function isolatedUnlock(ScheduledReleaseBalance storage self, uint256 amount) internal {
 		if (self.isolatedLockedBalance < amount) revert BalanceErrors.InsufficientLockedBalance(self.collateral, amount, self.isolatedLockedBalance);
 		self.isolatedLockedBalance -= amount;
 		emit UnlockBalance(self.user, self.collateral, amount, MarginType.ISOLATED);
+		_emitBucketChange(self, address(0), 0, amount, BucketBalanceOp.UNLOCK, MarginType.ISOLATED);
 	}
 
 	function crossLock(ScheduledReleaseBalance storage self, address counterParty, uint256 amount) internal {
-		CrossEntry storage entry = self.crossBalance[counterParty];
+		crossLock(self, counterParty, 0, amount);
+	}
+
+	function crossLock(ScheduledReleaseBalance storage self, address counterParty, uint256 counterPartyBucketId, uint256 amount) internal {
+		CrossEntry storage entry = crossEntry(self, counterParty, counterPartyBucketId);
 		entry.locked += amount;
 		emit LockBalance(self.user, self.collateral, amount, MarginType.CROSS);
+		_emitBucketChange(self, counterParty, counterPartyBucketId, amount, BucketBalanceOp.LOCK, MarginType.CROSS);
 	}
 
 	function crossUnlock(ScheduledReleaseBalance storage self, address counterParty, uint256 amount) internal {
-		CrossEntry storage entry = self.crossBalance[counterParty];
+		crossUnlock(self, counterParty, 0, amount);
+	}
+
+	function crossUnlock(ScheduledReleaseBalance storage self, address counterParty, uint256 counterPartyBucketId, uint256 amount) internal {
+		CrossEntry storage entry = crossEntry(self, counterParty, counterPartyBucketId);
 		if (entry.locked < amount) revert BalanceErrors.InsufficientLockedBalance(self.collateral, amount, entry.locked);
 		entry.locked -= amount;
 		emit UnlockBalance(self.user, self.collateral, amount, MarginType.CROSS);
+		_emitBucketChange(self, counterParty, counterPartyBucketId, amount, BucketBalanceOp.UNLOCK, MarginType.CROSS);
 	}
 
 	function increaseMM(ScheduledReleaseBalance storage self, address counterParty, uint256 amount) internal {
-		CrossEntry storage entry = self.crossBalance[counterParty];
+		increaseMM(self, counterParty, 0, amount);
+	}
+
+	function increaseMM(ScheduledReleaseBalance storage self, address counterParty, uint256 counterPartyBucketId, uint256 amount) internal {
+		CrossEntry storage entry = crossEntry(self, counterParty, counterPartyBucketId);
 		entry.totalMM += amount;
+		_emitBucketChange(self, counterParty, counterPartyBucketId, amount, BucketBalanceOp.MM_INCREASE, MarginType.CROSS);
 	}
 
 	function decreaseMM(ScheduledReleaseBalance storage self, address counterParty, uint256 amount) internal {
-		CrossEntry storage entry = self.crossBalance[counterParty];
+		decreaseMM(self, counterParty, 0, amount);
+	}
+
+	function decreaseMM(ScheduledReleaseBalance storage self, address counterParty, uint256 counterPartyBucketId, uint256 amount) internal {
+		CrossEntry storage entry = crossEntry(self, counterParty, counterPartyBucketId);
 		if (entry.totalMM < amount) revert BalanceErrors.InsufficientMMBalance(self.collateral, amount, entry.totalMM);
 		entry.totalMM -= amount;
+		_emitBucketChange(self, counterParty, counterPartyBucketId, amount, BucketBalanceOp.MM_DECREASE, MarginType.CROSS);
+	}
+
+	function crossEntry(
+		ScheduledReleaseBalance storage self,
+		address counterParty,
+		uint256 counterPartyBucketId
+	) internal view returns (CrossEntry storage) {
+		if (counterPartyBucketId == 0) return self.crossBalance[counterParty];
+		return self.bucketedCrossBalance[counterParty][counterPartyBucketId];
+	}
+	function scheduleEntry(
+		ScheduledReleaseBalance storage self,
+		address counterParty,
+		uint256 counterPartyBucketId
+	) internal view returns (ScheduledReleaseEntry storage) {
+		if (counterPartyBucketId == 0) return self.counterPartySchedules[counterParty];
+		return self.bucketedSchedules[counterParty][counterPartyBucketId];
+	}
+
+	function _emitBucketChange(
+		ScheduledReleaseBalance storage self,
+		address counterParty,
+		uint256 counterPartyBucketId,
+		uint256 amount,
+		BucketBalanceOp operation,
+		MarginType marginType
+	) private {
+		if (self.bucketId != 0 || counterPartyBucketId != 0)
+			emit IBucketFacet.BucketBalanceChanged(
+				self.user,
+				self.bucketId,
+				counterParty,
+				counterPartyBucketId,
+				self.collateral,
+				amount,
+				operation,
+				marginType
+			);
 	}
 }

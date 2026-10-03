@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Design direction, round two | Options Core</title>
+<link rel="icon" type="image/svg+xml" href="../../assets/symmio-mark.svg"><link rel="stylesheet" href="../../assets/reader.css"><link rel="stylesheet" href="../../assets/docs-portal.css">
+<script>try { if (localStorage.getItem("options-docs-theme") === "light") document.documentElement.dataset.theme = "light"; } catch (_) {}</script>
+<script src="../../assets/chapters.js" defer></script><script src="../../assets/reader.js" defer></script><script src="../../assets/docs-portal.js" defer></script></head>
+<body class="doc-page" data-version="current"><a class="skip-link" href="#full-document">Skip to document</a><header class="docs-header"><div class="doc-topbar"><nav class="docs-trail" aria-label="Breadcrumb"><a class="brand" href="../../index.html"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Options Core</span></a><span class="trail-sep" aria-hidden="true">/</span><a class="trail-release" href="../../index.html">Documentation</a></nav><nav class="top-actions" aria-label="Page actions"><button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button></nav></div></header>
+<div class="reader-shell"><div data-rail-sections hidden><a class="toc-link level-2" href="#document-metadata">Document metadata</a>
+<a class="toc-link level-2" href="#what-naveed-asked-for">What Naveed asked for</a>
+<a class="toc-link level-2" href="#what-round-two-changes">What round two changes</a>
+<a class="toc-link level-2" href="#the-pattern-behind-every-guarantee">The pattern behind every guarantee</a>
+<a class="toc-link level-2" href="#five-principles">Five principles</a>
+<a class="toc-link level-3" href="#1-consent-is-the-proof">1. Consent is the proof</a>
+<a class="toc-link level-3" href="#2-append-dont-execute">2. Append, don&#39;t execute</a>
+<a class="toc-link level-3" href="#3-reserve-once-trade-many-times">3. Reserve once, trade many times</a>
+<a class="toc-link level-3" href="#4-authority-is-capped-by-commitment-and-no-module-reports-numbers">4. Authority is capped by commitment, and no module reports numbers</a>
+<a class="toc-link level-3" href="#5-exits-are-ordered-and-slow-and-never-need-the-solver">5. Exits are ordered and slow, and never need the solver</a>
+<a class="toc-link level-2" href="#the-onion">The onion</a>
+<a class="toc-link level-3" href="#l0-the-vault">L0: the vault</a>
+<a class="toc-link level-3" href="#l1-connections">L1: connections</a>
+<a class="toc-link level-3" href="#l2-obligations-intents-and-three-kinds-of-plugin">L2: obligations, intents and three kinds of plugin</a>
+<a class="toc-link level-3" href="#l3-the-off-chain-protocol-and-the-hub">L3: the off-chain protocol and the hub</a>
+<a class="toc-link level-2" href="#money-moves-three-ways">Money moves three ways</a>
+<a class="toc-link level-2" href="#exits">Exits</a>
+<a class="toc-link level-3" href="#completeness">Completeness</a>
+<a class="toc-link level-2" href="#time">Time</a>
+<a class="toc-link level-2" href="#the-evidence-ladder">The evidence ladder</a>
+<a class="toc-link level-2" href="#who-must-hold-what-data">Who must hold what data</a>
+<a class="toc-link level-2" href="#what-each-side-is-guaranteed">What each side is guaranteed</a>
+<a class="toc-link level-2" href="#what-reaches-the-chain">What reaches the chain</a>
+<a class="toc-link level-2" href="#approaches">Approaches</a>
+<a class="toc-link level-2" href="#remaining-hard-problems">Remaining hard problems</a>
+<a class="toc-link level-2" href="#open-decisions">Open decisions</a></div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1 id="design-direction-round-two">Design direction, round two</h1></div></div></header><article class="doc-article" id="full-document"><noscript><nav aria-label="On this page"><a class="toc-link level-2" href="#document-metadata">Document metadata</a>
+<a class="toc-link level-2" href="#what-naveed-asked-for">What Naveed asked for</a>
+<a class="toc-link level-2" href="#what-round-two-changes">What round two changes</a>
+<a class="toc-link level-2" href="#the-pattern-behind-every-guarantee">The pattern behind every guarantee</a>
+<a class="toc-link level-2" href="#five-principles">Five principles</a>
+<a class="toc-link level-3" href="#1-consent-is-the-proof">1. Consent is the proof</a>
+<a class="toc-link level-3" href="#2-append-dont-execute">2. Append, don&#39;t execute</a>
+<a class="toc-link level-3" href="#3-reserve-once-trade-many-times">3. Reserve once, trade many times</a>
+<a class="toc-link level-3" href="#4-authority-is-capped-by-commitment-and-no-module-reports-numbers">4. Authority is capped by commitment, and no module reports numbers</a>
+<a class="toc-link level-3" href="#5-exits-are-ordered-and-slow-and-never-need-the-solver">5. Exits are ordered and slow, and never need the solver</a>
+<a class="toc-link level-2" href="#the-onion">The onion</a>
+<a class="toc-link level-3" href="#l0-the-vault">L0: the vault</a>
+<a class="toc-link level-3" href="#l1-connections">L1: connections</a>
+<a class="toc-link level-3" href="#l2-obligations-intents-and-three-kinds-of-plugin">L2: obligations, intents and three kinds of plugin</a>
+<a class="toc-link level-3" href="#l3-the-off-chain-protocol-and-the-hub">L3: the off-chain protocol and the hub</a>
+<a class="toc-link level-2" href="#money-moves-three-ways">Money moves three ways</a>
+<a class="toc-link level-2" href="#exits">Exits</a>
+<a class="toc-link level-3" href="#completeness">Completeness</a>
+<a class="toc-link level-2" href="#time">Time</a>
+<a class="toc-link level-2" href="#the-evidence-ladder">The evidence ladder</a>
+<a class="toc-link level-2" href="#who-must-hold-what-data">Who must hold what data</a>
+<a class="toc-link level-2" href="#what-each-side-is-guaranteed">What each side is guaranteed</a>
+<a class="toc-link level-2" href="#what-reaches-the-chain">What reaches the chain</a>
+<a class="toc-link level-2" href="#approaches">Approaches</a>
+<a class="toc-link level-2" href="#remaining-hard-problems">Remaining hard problems</a>
+<a class="toc-link level-2" href="#open-decisions">Open decisions</a></nav></noscript><section class="callout" aria-label="Document metadata"><h2 id="document-metadata">Document metadata</h2><pre><code class="language-yaml">title: Design direction, round two
+tags:
+    - symmio
+    - options-core
+    - research
+date: 2026-10-03
+status: brainstorm, not a spec</code></pre></section>
+<p>This note builds on the round-one notes from 2026-10-02: <a href="00-synthesis-and-design-directions.html">00-synthesis-and-design-directions.html</a>, <a href="../bilateral-settlement-proposal.html">../bilateral-settlement-proposal.html</a> and <a href="../offchain-settlement-references.html">../offchain-settlement-references.html</a>. It folds in four new prior-art notes in this folder:</p>
+<ul>
+<li><a href="01-resource-locks-and-intent-standards.html">01, resource locks and intent standards</a>: The Compact, ERC-7683, OneBalance, Rhinestone, UniswapX, CoW, Anoma.</li>
+<li><a href="02-accounting-kernels-and-plugin-authority.html">02, accounting kernels and plugin authority</a>: Euler EVC, Synthetix v3, Uniswap v4, Balancer v3, Aave v4, Morpho Blue.</li>
+<li><a href="03-otc-derivatives-and-hybrid-venues.html">03, OTC derivatives and hybrid venues</a>: Vertex/Nado, Aevo, Paradex, Orderly, Hyperliquid, dYdX v3, RFQ systems, on-chain options venues.</li>
+<li><a href="04-optimistic-and-attested-settlement.html">04, optimistic and attested settlement</a>: rollup fault proofs, Lightning, Merkle completeness, zkVMs, TEEs, EigenLayer, Muon.</li>
+</ul>
+<p>Nothing here is decided. Contract sketches are illustrations.</p>
+<h2 id="what-naveed-asked-for">What Naveed asked for</h2>
+<ol>
+<li><strong>An accounting core that knows nothing about products.</strong> An address owns pools. One pool connects to another party&#39;s pool. An upper layer says &quot;pool A pays pool B 200 USDC now&quot; and the core makes sure it happens safely.</li>
+<li><strong>Generic intents and positions.</strong> They carry opaque metadata that another layer interprets. Rules follow the Ivy shape, a validator address plus bytes, and can be added or removed without touching the core.</li>
+<li><strong>Off-chain speed, on-chain guarantees.</strong> The off-chain app runs fast and writes to the chain every few minutes or from a queue. Funds never leave the chain, and nothing pays out until it is written. Neither side can be surprised by a sudden state change, and each can force settlement in bounded time if the other turns hostile.</li>
+<li><strong>Claims without full disclosure.</strong> A party can show &quot;we both signed this hash&quot; and get paid without the core knowing what the hash means. Details come out only when needed. Third-party validators can plug in, and the system still works without them.</li>
+</ol>
+<p>On 2026-10-02 Naveed confirmed that v1 may reserve collateral separately for each user-solver relationship (recorded in the bilateral proposal). This note treats that as settled.</p>
+<h2 id="what-round-two-changes">What round two changes</h2>
+<p>Round one&#39;s layering holds up: vault, bilateral channel, pinned adjudicator, product engines. The research sharpened six things.</p>
+<ol>
+<li>Every system that lets a filler act before settlement uses the same three parts, and the only real choice is who co-signs. That makes channels and allocators two settings of one design, not rival designs.</li>
+<li>The vault must never accept a number a module reports. Synthetix v3 and Aave v4 both document how a reported number turns a cap into a suggestion.</li>
+<li>Periodic checkpoints are what settle freshness. Their frequency bounds how much a stale-state attack can win. They are a safety feature, not a speed feature.</li>
+<li>The challenge window has to be hours, with a floor set by the L2&#39;s forced-inclusion delay. The happy path never waits for it.</li>
+<li>Plugins such as oracles, attesters and provers answer computation questions only. None of them can say whether a newer co-signed state exists, so none can shorten the window.</li>
+<li>Exits are ordered. A user&#39;s unilateral exit waits on-chain while the solver posts anything outstanding, as in Vertex&#39;s slow mode, so the solver&#39;s earlier fills always land first.</li>
+</ol>
+<h2 id="the-pattern-behind-every-guarantee">The pattern behind every guarantee</h2>
+<p>Note 01 found one pattern in every system that lets a solver hedge before settlement:</p>
+<ul>
+<li>The user signs something they cannot take back.</li>
+<li>A co-signer who keeps track of what is already promised confirms the funds are not promised elsewhere.</li>
+<li>The user can always leave without the co-signer, but only after a delay longer than any promise still open.</li>
+</ul>
+<p>In a connection, the co-signer is the counterparty and the delay is the challenge window. In The Compact, the co-signer is an allocator and the delay is the reset period. Production derivatives venues use an operator as the co-signer and either trust it or re-execute every trade on-chain (note 03). The design question for options-core is which co-signer to use, and a connection is the only option where nobody outside the trade is trusted.</p>
+<p>Options-core today has this race only in a narrow window. <code>cancelOpenIntent</code> cancels a PENDING intent at once, but a LOCKED intent only moves to CANCEL_PENDING. A solver that waits for its lock to confirm before hedging is safe, but it pays an extra transaction and a block of latency on every trade (note 03). The redesign removes that per-trade lock entirely.</p>
+<h2 id="five-principles">Five principles</h2>
+<h3 id="1-consent-is-the-proof">1. Consent is the proof</h3>
+<p>When the only money moving belongs to the two people who signed, their two signatures are complete evidence. The chain does not need to know why Alice owes the solver 200 USDC if Alice signed a state saying so. This is Naveed&#39;s &quot;not quite zero-knowledge&quot; intuition, and it is sound. The chain verifies who agreed, not what they agreed about.</p>
+<p>Product logic runs on-chain only when the two parties disagree or one of them stops answering. Only then does the hash have to be opened.</p>
+<h3 id="2-append-dont-execute">2. Append, don&#39;t execute</h3>
+<p>The race between chain and off-chain has a precise cause. Today&#39;s fill is a transaction that re-checks state the user can change in the meantime. Any on-chain write whose success depends on state someone else controls can be raced.</p>
+<p>So no write on the hot path may depend on state the counterparty can change alone. Appends such as a checkpoint hash, a fill record or a timestamp cannot revert because of someone else. Validation and execution move to the dispute path, where they run rarely.</p>
+<h3 id="3-reserve-once-trade-many-times">3. Reserve once, trade many times</h3>
+<p>Collateral is committed to a counterparty before that counterparty hedges against it. The lock sits on capacity and happens once, at funding time. After that, trades are signatures.</p>
+<h3 id="4-authority-is-capped-by-commitment-and-no-module-reports-numbers">4. Authority is capped by commitment, and no module reports numbers</h3>
+<p>The vault trusts a module only with funds explicitly committed to it, and it releases those funds only to pools that joined the same commitment. It never accepts a debt, a price or a share value from a module. A buggy options module can misallocate between the two parties of one connection. It can never pay a stranger and never touch perps funds.</p>
+<h3 id="5-exits-are-ordered-and-slow-and-never-need-the-solver">5. Exits are ordered and slow, and never need the solver</h3>
+<p>A user who wants out without the solver&#39;s help files on-chain and waits. During the wait the solver posts whatever it is owed. After the wait anyone can finish the exit. The solver is protected by ordering, and the user is protected by the solver not being needed.</p>
+<h2 id="the-onion">The onion</h2>
+<pre><code class="language-mermaid">flowchart TD
+    subgraph L3[Off-chain]
+        Client[User client / front-end]
+        Solver[Solver engine]
+        Hub[Hub: relay, backup, watcher, batcher&lt;br/&gt;no custody, no signing power]
+    end
+    subgraph L2[Meaning layer, plugins]
+        Val[Rule validators&lt;br/&gt;Ivy-style: validator + kind + bytes]
+        Eng[Product engines&lt;br/&gt;options, perps, anything]
+        Ev[Evidence verifiers&lt;br/&gt;Chainlink, Pyth, Muon, proofs]
+    end
+    subgraph L1[Relationship layer]
+        Conn[Connection controller&lt;br/&gt;checkpoints, fill log, exit]
+        Adj[Adjudicator pinned per connection]
+    end
+    subgraph L0[Accounting core]
+        Vault[Vault&lt;br/&gt;pools, commitments, members]
+    end
+    Client &lt;--&gt; Solver
+    Client --&gt; Hub
+    Solver --&gt; Hub
+    Hub -- batched checkpoints --&gt; Conn
+    Conn -- disputes only --&gt; Adj
+    Adj --&gt; Val
+    Adj --&gt; Eng
+    Adj --&gt; Ev
+    Conn -- release --&gt; Vault
+</code></pre>
+<h3 id="l0-the-vault">L0: the vault</h3>
+<p>The vault is the accounting core. It holds tokens and knows three things.</p>
+<ul>
+<li><strong>Pools.</strong> A pool is <code>(owner, index)</code>. The owner deposits and withdraws its free balance at will. This moves the multi-account idea into the core.</li>
+<li><strong>Commitments.</strong> An owner commits part of a pool&#39;s free balance to a controller under a key, such as a connection id. From then on only that controller can move it.</li>
+<li><strong>Members.</strong> Committing to a key, even zero tokens, makes the pool a member of that key. A controller can release a key&#39;s funds only to member pools.</li>
+</ul>
+<pre><code class="language-solidity">interface IVault {
+	// pool owner, or an operator the owner can revoke
+	function deposit(bytes32 pool, address token, uint256 amount) external;
+	function withdraw(bytes32 pool, address token, uint256 amount, address to) external; // free balance only
+	function commit(bytes32 pool, address controller, bytes32 key, address token, uint256 amount) external; // also joins `key`
+
+	// only the controller that owns `key`; `toPool` must be a member of `key`
+	function release(bytes32 key, bytes32 toPool, address token, uint256 amount) external;
+}
+</code></pre>
+<p>The vault enforces conservation per token, the controller boundary and the member rule. It keeps balances per token, has no oracle and has no admin. Every recent kernel in note 02 except Synthetix v3 is immutable: Euler EVC, Morpho Blue, the Uniswap v4 PoolManager, the Balancer v3 Vault and the Aave v4 Hub. This vault should be too. Deposits credit the measured balance change, as Uniswap v4&#39;s <code>sync</code>/<code>settle</code> does.</p>
+<p>The vault never asks why. &quot;Pool A pays pool B 200&quot; is a controller releasing 200 of a connection&#39;s committed funds to B, where the connection&#39;s state says A owes it.</p>
+<p>The cost of an ownerless vault is that a bug means redeploying and migrating. A recovery mode like Balancer&#39;s would not help, because a bilateral escrow has no fair split that the vault can compute without the connection&#39;s rules. So the exit path has to live in the connection controller, and that contract must stay small and immutable too.</p>
+<h3 id="l1-connections">L1: connections</h3>
+<p>A connection links two pools, usually a user pool and a solver pool. It is a state channel described in Naveed&#39;s terms. Each side commits collateral to it. Cross margin today is already per <code>(partyA, partyB, collateral)</code> (see <code>docs/pages/margin-modes.html</code>), so splitting capital per connection costs nothing compared with the current model.</p>
+<p>On-chain, a connection stores its two pools, its token, one plain signing key per side, its pinned adjudicator, its challenge window, cumulative deposits and withdrawals per side, and the latest checkpoint as <code>(version, stateHash)</code>. Plain keys matter because ERC-1271 and EIP-7702 accounts can change what their signatures mean after the fact. The registered key doubles as the session key a front-end signs with.</p>
+<p>Off-chain, both sides sign a cumulative state:</p>
+<pre><code class="language-solidity">struct ConnectionState {
+	bytes32 connectionId;
+	uint64 epoch;            // bumps on close and reopen
+	uint64 version;          // only goes up
+	int256 netAtoB;          // cumulative realised cash from A to B: premiums, PnL
+	uint256 allowanceA;      // cumulative amount A may withdraw, never decreases
+	uint256 allowanceB;
+	uint256 lockedA;         // sum of lockA over open obligations
+	uint256 lockedB;
+	uint32 obligationCount;  // open obligations, keyed 0..count-1
+	bytes32 obligationsRoot; // sparse Merkle root; leaf {id, engine, codehash, terms, lockA, lockB}
+	bytes32 feesHash;        // cumulative fees per payer and third-party recipient
+	bytes32 memo;            // anything else, such as a trade log hash; never read on-chain
+}
+</code></pre>
+<p>The contract reads the numbers. Everything with product meaning sits behind a hash. Each side signs only if its own free equity stays non-negative, for A that is <code>depositedA - allowanceA - netAtoB - feesA - lockedA &gt;= 0</code>. Deposits only go up, so a state that was valid when signed stays valid.</p>
+<h3 id="l2-obligations-intents-and-three-kinds-of-plugin">L2: obligations, intents and three kinds of plugin</h3>
+<p>An <strong>obligation</strong> is Naveed&#39;s &quot;oath&quot;: pool X will pay pool Y an amount that depends on evidence, backed by locked collateral. An option is one obligation and a perp is another. The connection never parses <code>terms</code>.</p>
+<p>An <strong>intent</strong> is a message the user signs that says &quot;move our connection to a new state that satisfies these rules&quot;.</p>
+<pre><code class="language-solidity">struct Rule {
+	address validator;
+	bytes4 kind;
+	bytes data; // frozen at signing
+}
+
+struct Intent {
+	bytes32 connectionId;
+	uint256 nonce;
+	uint64 deadline;
+	Rule[] rules;
+	bytes32 payloadHash; // the order itself, read only by validators and engines
+}
+</code></pre>
+<p>Each kind of plugin has one job.</p>
+<table>
+<thead>
+<tr>
+<th>Plugin</th>
+<th>Question it answers</th>
+<th>Runs on-chain when</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Rule validator</td>
+<td>Does this fill satisfy this intent?</td>
+<td>A fill is disputed or posted without an ack</td>
+</tr>
+<tr>
+<td>Product engine</td>
+<td>What does this obligation pay, and what must stay locked?</td>
+<td>An obligation settles without both signatures</td>
+</tr>
+<tr>
+<td>Evidence verifier</td>
+<td>Is this price, timestamp or proof genuine?</td>
+<td>An engine needs an outside fact</td>
+</tr>
+</tbody></table>
+<p>Both sides run validators and engines off-chain with <code>eth_call</code> before they sign, so the deployed bytecode stays the single definition of a rule. It executes inside a transaction only in a dispute. From Ivy, keep the rule that each slot carries its provenance: frozen config, data the counterparty signed, and unsigned data from the submitter. Each validator sees only its own slot.</p>
+<p>ERC-7683&#39;s 2026 rewrite is a warning about generic envelopes. It dropped <code>orderDataType + orderData</code> because the opaque bytes never made solvers generic. A bare <code>bytes4 kind</code> has the same problem unless validators return something a solver can act on. For options-core that is acceptable, since our solvers are specialists, but it is worth knowing.</p>
+<p>Plugins are pinned by address and code hash per connection or per obligation. New rules can appear any time for new intents. An open obligation keeps the plugins it was signed with. Rhinestone&#39;s threat model shows why: an admin who can retire an adapter between fill and claim strands the filler.</p>
+<h3 id="l3-the-off-chain-protocol-and-the-hub">L3: the off-chain protocol and the hub</h3>
+<p>The roles are asymmetric on purpose. The solver sequences the connection, and only the solver proposes new states. The user signs intents and co-signs states. Two parties never propose the same version at once, and the user&#39;s client stays simple: replay the intent against the previous state, check the result, sign.</p>
+<p>The <strong>hub</strong> is an optional service that Symmio or anyone can run. It relays messages, keeps an encrypted backup of every signed state and leaf for both sides, watches for stale exits and answers them, and batches checkpoints. It holds no custody and no signing power. If it disappears, each side still holds what it needs. This is the &quot;Kafka every five minutes&quot; part of Naveed&#39;s picture, without having to trust it.</p>
+<h2 id="money-moves-three-ways">Money moves three ways</h2>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Evidence</th>
+<th>On-chain work</th>
+<th>Wait</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Consent</td>
+<td>Both signatures on a state</td>
+<td>Two signature checks, apply numbers</td>
+<td>None</td>
+</tr>
+<tr>
+<td>Contract</td>
+<td>A co-signed obligation plus oracle evidence</td>
+<td>Engine computes the payout</td>
+<td>None for the payout itself</td>
+</tr>
+<tr>
+<td>Claim</td>
+<td>One party&#39;s latest co-signed state</td>
+<td>Store it, open the challenge window</td>
+<td>The window</td>
+</tr>
+</tbody></table>
+<p>Withdrawal uses cumulative accounting. <code>allowanceA</code> only goes up, and both sides sign it. When the solver co-signs a state that raises Alice&#39;s allowance, Alice can withdraw the difference at once, with no window. Every later state carries an allowance at least as high, so an old state cannot pay twice and a newer one cannot claw it back. Moving capital from one solver to another becomes one solver signature plus one transaction.</p>
+<h2 id="exits">Exits</h2>
+<p>A unilateral exit works like Vertex&#39;s slow mode extended to positions.</p>
+<ol>
+<li>The exiting party posts its latest co-signed state with a small bond. The connection freezes new exposure.</li>
+<li>For the window <code>W</code>, the other side or any watcher can answer with a newer co-signed state, fill-log entries the exiter left out, or obligations the exiter omitted. A stale claim forfeits the bond to the counterparty.</li>
+<li>After <code>W</code>, anyone can finalise. Free cash goes back to each pool at once.</li>
+<li>Each open obligation settles on its own schedule. A fully collateralised option waits for expiry, then settles through its engine and an oracle price. The solver plays no part.</li>
+</ol>
+<p><strong>Sizing <code>W</code>.</strong> Rollups set a week because the window must outlast an attacker&#39;s ability to censor challengers (note 04). For a contract on an L2, the relevant censor is the sequencer. A censored user can force a transaction in after about 24 hours on Arbitrum One and about 12 hours by default on OP Stack. A window shorter than that trusts the sequencer. Start at 24 to 48 hours, make it a per-connection parameter with a protocol floor, and accept that this is slow. The happy path never waits for it. Across shows the other end of the range. It posts a root about every 32 minutes with a 30-minute dispute window, but it runs on L1, where no sequencer can censor the disputer, and its data is public so anyone can recheck it. Neither condition holds for a private bilateral connection on an L2.</p>
+<p><strong>Why checkpoints matter.</strong> A state older than the last checkpoint is rejected outright. With checkpoints every five minutes, a stale exit can only replay something under five minutes old, and the most it can win is the cash that moved since then. That is the real reason for the periodic write.</p>
+<p><strong>The cost lands on margin.</strong> A solver cannot close out a vanished user faster than <code>W</code>. Fully paid long options do not care. Short options and perps need collateral that covers a window&#39;s worth of price movement, or a pre-authorised close on objective oracle evidence written into the obligation&#39;s terms.</p>
+<h3 id="completeness">Completeness</h3>
+<p>A claimant could reveal only the obligations that pay them. Four mechanisms close this, each cheap on its own:</p>
+<ul>
+<li><code>obligationCount</code> and the per-side <code>locked</code> sums are in the signed state, so a reveal that skips a slot or does not add up fails on-chain.</li>
+<li>Each obligation has its own <code>lockA</code> and <code>lockB</code>, so resolving one never touches another&#39;s backing. Hiding a losing obligation just keeps its lock frozen.</li>
+<li>The counterparty holds every leaf and can reveal the omitted ones during the window.</li>
+<li>A settled obligation&#39;s id goes into a nullifier set, so it cannot be claimed again under a later root.</li>
+</ul>
+<p>A cap on open obligations per connection keeps the worst-case dispute inside one block&#39;s gas.</p>
+<h2 id="time">Time</h2>
+<p>Signatures prove who agreed, not when. Whoever signs last holds an option until the deadline, and withholding a signature can stretch it.</p>
+<ol>
+<li><strong>Cooperative path.</strong> The user&#39;s client acknowledges a fill within milliseconds by co-signing the new state. Nothing else happens.</li>
+<li><strong>Fallback.</strong> If the user does not acknowledge, the solver appends the full fill (intent, fill, new state) to the connection&#39;s fill log before <code>deadline + grace</code>. An append cannot revert because of anything the user does, so the hedge is safe. A fill that was neither acknowledged nor appended in time is void, which caps the solver&#39;s own optionality at <code>deadline + grace</code>.</li>
+</ol>
+<p>The fill log stores content, not a hash. With a hash alone, the solver could keep a fill secret and decide later whether to reveal it.</p>
+<p>One residual trust remains. The append needs the sequencer to include it within the grace period. That risk falls on the solver alone, and only when the user is also unresponsive. It should be written down rather than engineered away.</p>
+<h2 id="the-evidence-ladder">The evidence ladder</h2>
+<p>From note 04, ordered from what the core always supports to what an adjudicator can add:</p>
+<table>
+<thead>
+<tr>
+<th>Rung</th>
+<th>Evidence</th>
+<th>What it settles</th>
+<th>Time to final</th>
+<th>In v1</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>Both-signed state</td>
+<td>Everything the two parties agreed</td>
+<td>Next block</td>
+<td>Core</td>
+</tr>
+<tr>
+<td>2</td>
+<td>One-party claim plus window</td>
+<td>Freshness, by letting the other side object</td>
+<td><code>W</code></td>
+<td>Core</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Third-party attestation</td>
+<td>A computation, such as a payout or margin</td>
+<td>Seconds</td>
+<td>Plug-in</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Validity proof</td>
+<td>A computation, keeping inputs private</td>
+<td>Proving time</td>
+<td>Later</td>
+</tr>
+</tbody></table>
+<p>Rungs 3 and 4 answer &quot;what does this pay&quot; or &quot;is this book above margin&quot;. Neither can answer &quot;is there a newer state both sides signed?&quot; Only the counterparty knows that. So no plug-in shortens <code>W</code>. Every plug-in result must be escalatable to the on-chain engine before the window ends. Remove every plug-in and the system still settles through rungs 1 and 2, only more slowly and in public. That is Naveed&#39;s &quot;even if we remove them, the system still works&quot;, made precise.</p>
+<p>Specific findings that set these limits:</p>
+<ul>
+<li>Muon has no slashing for false signatures, and our <code>MuonOracle</code> trusts one gateway key plus a <code>SETTER_ROLE</code> that can swap both keys. Muon can be one evidence verifier among Chainlink and Pyth. It cannot be the judge.</li>
+<li>TEE attestation fell to sub-$1,000 hardware attacks in 2025 and 2026, and BuilderNet stopped running its nodes in TEEs. A solver running its own TEE has the physical access those attacks need. Leave TEEs out.</li>
+<li>zkVM proving is now cheap, under a cent to check a hundred signatures and recompute a portfolio, and verifying costs about 270k gas. But SP1 and RISC Zero shipped critical soundness bugs in 2025, so the verifier must stay upgradeable, which brings back an admin key. Worth prototyping later for private margin checks on large books. Not in the trust path for v1.</li>
+</ul>
+<h2 id="who-must-hold-what-data">Who must hold what data</h2>
+<ul>
+<li><strong>Each party</strong> keeps the latest co-signed state, both signatures, every leaf with its key, and the oracle data its obligations settle against. A party that loses this cannot win a dispute. An encrypted client backup is part of the protocol.</li>
+<li><strong>The hub</strong> keeps that backup for both sides and can answer a stale exit with only the latest state hash and signatures, as a Lightning watchtower does.</li>
+<li><strong>The chain</strong> keeps the state hash, version, obligation count, per-side sums, fill log and nullifiers.</li>
+<li><strong>Published data</strong> helps indexers, but blobs are kept for only about 18 days, which is shorter than a monthly option. Somebody has to archive.</li>
+</ul>
+<h2 id="what-each-side-is-guaranteed">What each side is guaranteed</h2>
+<p>For the user:</p>
+<ul>
+<li>Nothing changes without the user&#39;s signature or a fill of an intent the user signed.</li>
+<li>Co-signed allowance is withdrawable at once.</li>
+<li>If the solver stops cooperating, free cash comes back after <code>W</code>, about one to two days. Each open option settles at its own expiry through its engine.</li>
+<li>The solver&#39;s committed collateral backs every obligation, and the solver cannot withdraw it alone.</li>
+<li>The rules of an open obligation cannot be upgraded underneath it.</li>
+</ul>
+<p>For the solver:</p>
+<ul>
+<li>Collateral committed to the connection cannot leave without the solver&#39;s signature, and any unilateral exit waits <code>W</code>.</li>
+<li>A signed intent stays fillable until its deadline, and the user cannot cancel it alone.</li>
+<li>A fill becomes binding by acknowledgement or by appending it in time. Nothing the user does can revert the append.</li>
+<li>Every fill lands before any exit the user files.</li>
+</ul>
+<h2 id="what-reaches-the-chain">What reaches the chain</h2>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Sender</th>
+<th>Frequency</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Deposit, open connection, add collateral</td>
+<td>Either side</td>
+<td>When funding</td>
+</tr>
+<tr>
+<td>Checkpoint batch</td>
+<td>Hub or solver</td>
+<td>Every few minutes</td>
+</tr>
+<tr>
+<td>Cooperative withdrawal</td>
+<td>Either side</td>
+<td>When taking money out</td>
+</tr>
+<tr>
+<td>Fill-log append</td>
+<td>Solver</td>
+<td>Only when the user did not acknowledge</td>
+</tr>
+<tr>
+<td>Exit, answer, resolve obligation</td>
+<td>Either side or hub</td>
+<td>Only in a dispute or a hostile exit</td>
+</tr>
+</tbody></table>
+<p>A trade in the happy path costs no gas. A checkpoint is two signature checks and one storage write per changed connection. That needs a benchmark.</p>
+<p>This is unusual, and worth saying plainly. Every operator-run derivatives venue in note 03 still writes every trade on-chain. Vertex/Nado re-verifies each order, Aevo posts each match and Orderly uploads each trade. Only proof-based systems like StarkEx and Paradex skip per-trade writes. Symmio&#39;s bilateral model is what makes skipping them possible here without proofs, because there is no shared order book whose state everyone has to agree on.</p>
+<h2 id="approaches">Approaches</h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>A. Connections</th>
+<th>B. Connections plus an allocator</th>
+<th>C. Sequenced shared ledger</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Idea</td>
+<td>Each user-solver pair funds a connection; counterparty co-signs</td>
+<td>Idle balance shared under an allocator; on a fill the allocator co-signs and margin moves into a connection</td>
+<td>An operator orders every action and posts batches, with re-execution or validity proofs</td>
+</tr>
+<tr>
+<td>Who co-signs</td>
+<td>The counterparty</td>
+<td>Allocator during the fill, counterparty after</td>
+<td>The operator</td>
+</tr>
+<tr>
+<td>Extra trust</td>
+<td>None</td>
+<td>Solvers trust the allocator not to over-promise</td>
+<td>Operator, plus proofs or a verifier quorum</td>
+</tr>
+<tr>
+<td>Capital</td>
+<td>Split per solver, same as today&#39;s cross margin</td>
+<td>Shared until filled</td>
+<td>Fully shared, cross-margin across solvers</td>
+</tr>
+<tr>
+<td>Per-trade gas</td>
+<td>None</td>
+<td>None</td>
+<td>Per trade, or proofs</td>
+</tr>
+<tr>
+<td>User exit</td>
+<td><code>W</code>, one to two days</td>
+<td>Allocator reset period for idle funds, <code>W</code> for positions</td>
+<td>Slow mode, three days at Vertex; none at Aevo, Paradex, Orderly</td>
+</tr>
+<tr>
+<td>Build size</td>
+<td>Vault, connection, one engine, client SDK, hub</td>
+<td>A plus allocator service and bond</td>
+<td>An exchange: sequencer, risk engine, DA, provers</td>
+</tr>
+</tbody></table>
+<p><strong>I recommend A for v1.</strong> It is the only option with no trusted party, it matches how Symmio already margins per pair, and it maps one-to-one onto Naveed&#39;s words: pools, connections between pools, oaths between them.</p>
+<p>B is the natural second step if quoting from many solvers against one balance matters. Note 01 sketches it: the vault, not the allocator, enforces the exit rules, the allocator cannot cancel a fill it co-signed, and a bond backs its promises with equivocation proofs. It is a second controller on the same vault, so choosing A now costs nothing later.</p>
+<p>C is a different product. It is how you build an exchange, and it brings back the operator Naveed wants to stop trusting.</p>
+<h2 id="remaining-hard-problems">Remaining hard problems</h2>
+<ol>
+<li><strong>Third-party fees.</strong> Fee terms ride in the intent, set by the front-end and signed by the user. Fees accrue in the state per recipient, and recipient pools join the connection key so the vault can pay them. Under-reporting needs both parties to collude and is visible to the front-end that relayed the intent. Whether to enforce harder, for example by having the front-end co-sign, is open.</li>
+<li><strong>Many solvers for one order.</strong> In A, competition moves from on-chain locking to off-chain quoting. Solvers quote, the user picks one, and the user signs an intent to that connection only. Nobody hedges an order they might lose. Bebop and Hashflow show short quote lifetimes are what makes this work.</li>
+<li><strong>No on-chain position objects.</strong> Positions live in the state root. Transfers, NFTs and other contracts that read positions need a co-signed move that gives one obligation its own commitment key. That needs a vault <code>move</code> that keeps the member rule, which v1 can skip.</li>
+<li><strong>Upgrades.</strong> The vault is immutable. Controllers are versioned and deployed side by side. Plugins are pinned by code hash. A live connection moves to a new version by a co-signed close and reopen.</li>
+<li><strong>The off-chain protocol becomes the product.</strong> The contracts shrink. The client SDK, state storage, hub, batcher and watcher need a spec as careful as the contracts, with shared test vectors.</li>
+</ol>
+<h2 id="open-decisions">Open decisions</h2>
+<ol>
+<li><strong>v1 products.</strong> Fully collateralised options only, or short options and perps with margin from the start. This decides whether the first engine needs liquidation and how <code>W</code> feeds into margin.</li>
+<li><strong>Chain.</strong> It sets the floor on <code>W</code>: about 12 hours on OP Stack chains such as Base, about 24 hours on Arbitrum One.</li>
+<li><strong>Allocator at launch.</strong> Whether any v1 flow needs one balance quoted by many solvers, which is approach B.</li>
+<li><strong>Data.</strong> Hash-only checkpoints with client backup and a hub archive, or leaves published with each checkpoint for indexers.</li>
+<li><strong>Fees.</strong> Trust-based enforcement through solver whitelisting, or front-end co-signing.</li>
+<li><strong>Hub.</strong> Who runs it, and whether the protocol should assume one exists.</li>
+</ol>
+</article></main></div><footer class="site-footer"><span>Options Core documentation.</span></footer></body></html>

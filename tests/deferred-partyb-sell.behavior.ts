@@ -79,8 +79,8 @@ describe("Deferred PartyB sell escrow", function () {
 		const collateral = await context.collateral.getAddress()
 		const feeToken = await context.collateralNL.getAddress()
 
-		const collateralLockedBefore = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, collateral)
-		const feeLockedBefore = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, feeToken)
+		const collateralLockedBefore = await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, collateral)
+		const feeLockedBefore = await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, feeToken)
 
 		await expect(partyA1.sendOpenIntent(request)).not.to.revert(ethers)
 
@@ -90,8 +90,8 @@ describe("Deferred PartyB sell escrow", function () {
 		const solverFee =
 			(BigInt(request.quantity.toString()) * BigInt(request.price.toString()) * BigInt(request.solverFee.openFee.toString())) / e(1) / e(1)
 
-		const collateralLockedAfter = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, collateral)
-		const feeLockedAfter = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, feeToken)
+		const collateralLockedAfter = await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, collateral)
+		const feeLockedAfter = await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, feeToken)
 
 		expect(collateralLockedAfter - collateralLockedBefore).to.equal(request.mm)
 		expect(feeLockedAfter - feeLockedBefore).to.equal(platformFee + affiliateFee + solverFee)
@@ -103,8 +103,8 @@ describe("Deferred PartyB sell escrow", function () {
 		const feeToken = await context.collateralNL.getAddress()
 		const fillPrice = e(12)
 
-		const collateralLockedBefore = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, collateral)
-		const feeLockedBefore = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, feeToken)
+		const collateralLockedBefore = await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, collateral)
+		const feeLockedBefore = await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, feeToken)
 		const escrowBeforeFill = await context.viewFacet.getOpenIntentEscrow(intentId)
 
 		await partyB2.lockOpenIntent(intentId)
@@ -112,11 +112,11 @@ describe("Deferred PartyB sell escrow", function () {
 
 		const trade = await context.viewFacet.getTrade(1)
 		const escrow = await context.viewFacet.getOpenIntentEscrow(intentId)
-		const partyACollateralCross = await context.viewFacet.getCrossBalance(partyA1.address, collateral, partyB2.address)
-		const partyAFeeCross = await context.viewFacet.getCrossBalance(partyA1.address, feeToken, partyB2.address)
-		const partyBFeeCross = await context.viewFacet.getCrossBalance(partyB2.address, feeToken, partyA1.address)
-		const collateralLockedAfter = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, collateral)
-		const feeLockedAfter = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, feeToken)
+		const partyACollateralCross = await context.viewFacet["getCrossBalance(address,address,address)"](partyA1.address, collateral, partyB2.address)
+		const partyAFeeCross = await context.viewFacet["getCrossBalance(address,address,address)"](partyA1.address, feeToken, partyB2.address)
+		const partyBFeeCross = await context.viewFacet["getCrossBalance(address,address,address)"](partyB2.address, feeToken, partyA1.address)
+		const collateralLockedAfter = await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, collateral)
+		const feeLockedAfter = await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, feeToken)
 
 		const premium = (BigInt(request.quantity.toString()) * fillPrice) / e(1)
 		const solverFee = openFeeAmount(BigInt(request.quantity.toString()), fillPrice, BigInt(request.solverFee.openFee.toString()))
@@ -146,8 +146,8 @@ describe("Deferred PartyB sell escrow", function () {
 		const consumedMM = (originalMM * fillQuantity) / originalQuantity
 		const consumedLimitFee = totalOpenFeeAmount(fillQuantity, BigInt(request.price.toString()), solverOpenFee)
 
-		const collateralLockedBefore = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, collateral)
-		const feeLockedBefore = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, feeToken)
+		const collateralLockedBefore = await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, collateral)
+		const feeLockedBefore = await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, feeToken)
 		const escrowBeforeFill = await context.viewFacet.getOpenIntentEscrow(intentId)
 
 		await partyB1.lockOpenIntent(intentId)
@@ -159,9 +159,9 @@ describe("Deferred PartyB sell escrow", function () {
 		const trade = await context.viewFacet.getTrade(1)
 		const originalEscrow = await context.viewFacet.getOpenIntentEscrow(intentId)
 		const childEscrow = await context.viewFacet.getOpenIntentEscrow(childIntentId)
-		const partyACollateralCross = await context.viewFacet.getCrossBalance(partyA1.address, collateral, partyB1.address)
-		const partyAFeeCross = await context.viewFacet.getCrossBalance(partyA1.address, feeToken, partyB1.address)
-		const partyBFeeCross = await context.viewFacet.getCrossBalance(partyB1.address, feeToken, partyA1.address)
+		const partyACollateralCross = await context.viewFacet["getCrossBalance(address,address,address)"](partyA1.address, collateral, partyB1.address)
+		const partyAFeeCross = await context.viewFacet["getCrossBalance(address,address,address)"](partyA1.address, feeToken, partyB1.address)
+		const partyBFeeCross = await context.viewFacet["getCrossBalance(address,address,address)"](partyB1.address, feeToken, partyA1.address)
 
 		const premium = (fillQuantity * fillPrice) / e(1)
 		const solverFee = openFeeAmount(fillQuantity, fillPrice, solverOpenFee)
@@ -188,8 +188,12 @@ describe("Deferred PartyB sell escrow", function () {
 		expect(childEscrow.mm).to.equal(escrowBeforeFill.mm - consumedMM)
 		expect(childEscrow.feeLockAmount).to.equal(escrowBeforeFill.feeLockAmount - consumedLimitFee)
 
-		expect(await context.viewFacet.getIsolatedLockedBalance(partyA1.address, collateral)).to.equal(collateralLockedBefore - consumedMM)
-		expect(await context.viewFacet.getIsolatedLockedBalance(partyA1.address, feeToken)).to.equal(feeLockedBefore - consumedLimitFee)
+		expect(await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, collateral)).to.equal(
+			collateralLockedBefore - consumedMM,
+		)
+		expect(await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, feeToken)).to.equal(
+			feeLockedBefore - consumedLimitFee,
+		)
 		expect(partyACollateralCross.totalMM).to.equal(consumedMM)
 		expect(partyACollateralCross.balance).to.equal(consumedMM + premium)
 		expect(partyAFeeCross.balance).to.equal(0)
@@ -210,8 +214,8 @@ describe("Deferred PartyB sell escrow", function () {
 		const childIntentId = await context.viewFacet.getLastOpenIntentId()
 		const childIntentBeforeFill = await context.viewFacet.getOpenIntent(childIntentId)
 		const childEscrowBeforeFill = await context.viewFacet.getOpenIntentEscrow(childIntentId)
-		const collateralLockedBeforeChildFill = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, collateral)
-		const feeLockedBeforeChildFill = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, feeToken)
+		const collateralLockedBeforeChildFill = await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, collateral)
+		const feeLockedBeforeChildFill = await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, feeToken)
 
 		await partyB2.lockOpenIntent(childIntentId)
 		await partyB2.fillOpenIntent(childIntentId, childIntentBeforeFill.tradeAgreements.quantity, e(15))
@@ -219,18 +223,18 @@ describe("Deferred PartyB sell escrow", function () {
 		const childIntentAfterFill = await context.viewFacet.getOpenIntent(childIntentId)
 		const childEscrowAfterFill = await context.viewFacet.getOpenIntentEscrow(childIntentId)
 		const secondTrade = await context.viewFacet.getTrade(2)
-		const partyB1CollateralCross = await context.viewFacet.getCrossBalance(partyA1.address, collateral, partyB1.address)
-		const partyB2CollateralCross = await context.viewFacet.getCrossBalance(partyA1.address, collateral, partyB2.address)
+		const partyB1CollateralCross = await context.viewFacet["getCrossBalance(address,address,address)"](partyA1.address, collateral, partyB1.address)
+		const partyB2CollateralCross = await context.viewFacet["getCrossBalance(address,address,address)"](partyA1.address, collateral, partyB2.address)
 
 		expect(childIntentAfterFill.status).to.equal(IntentStatus.FILLED)
 		expect(childEscrowAfterFill.exists).to.equal(false)
 		expect(secondTrade.partyB).to.equal(partyB2.address)
 		expect(secondTrade.tradeAgreements.quantity).to.equal(childIntentBeforeFill.tradeAgreements.quantity)
 		expect(secondTrade.tradeAgreements.mm).to.equal(childEscrowBeforeFill.mm)
-		expect(await context.viewFacet.getIsolatedLockedBalance(partyA1.address, collateral)).to.equal(
+		expect(await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, collateral)).to.equal(
 			collateralLockedBeforeChildFill - childEscrowBeforeFill.mm,
 		)
-		expect(await context.viewFacet.getIsolatedLockedBalance(partyA1.address, feeToken)).to.equal(
+		expect(await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, feeToken)).to.equal(
 			feeLockedBeforeChildFill - childEscrowBeforeFill.feeLockAmount,
 		)
 		expect(partyB1CollateralCross.totalMM).to.equal(e(2))
@@ -249,8 +253,8 @@ describe("Deferred PartyB sell escrow", function () {
 
 		const childIntentId = await context.viewFacet.getLastOpenIntentId()
 		const childEscrowBeforeCancel = await context.viewFacet.getOpenIntentEscrow(childIntentId)
-		const collateralLockedBeforeCancel = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, collateral)
-		const feeLockedBeforeCancel = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, feeToken)
+		const collateralLockedBeforeCancel = await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, collateral)
+		const feeLockedBeforeCancel = await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, feeToken)
 
 		await partyA1.sendCancelOpenIntent([childIntentId])
 
@@ -258,10 +262,10 @@ describe("Deferred PartyB sell escrow", function () {
 		const childEscrowAfterCancel = await context.viewFacet.getOpenIntentEscrow(childIntentId)
 		expect(childIntent.status).to.equal(IntentStatus.CANCELED)
 		expect(childEscrowAfterCancel.exists).to.equal(false)
-		expect(await context.viewFacet.getIsolatedLockedBalance(partyA1.address, collateral)).to.equal(
+		expect(await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, collateral)).to.equal(
 			collateralLockedBeforeCancel - childEscrowBeforeCancel.mm,
 		)
-		expect(await context.viewFacet.getIsolatedLockedBalance(partyA1.address, feeToken)).to.equal(
+		expect(await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, feeToken)).to.equal(
 			feeLockedBeforeCancel - childEscrowBeforeCancel.feeLockAmount,
 		)
 	})
@@ -277,8 +281,8 @@ describe("Deferred PartyB sell escrow", function () {
 
 		await partyB1.lockOpenIntent(intentId)
 		const escrowBeforeCancel = await context.viewFacet.getOpenIntentEscrow(intentId)
-		const collateralLockedBeforeCancel = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, collateral)
-		const feeLockedBeforeCancel = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, feeToken)
+		const collateralLockedBeforeCancel = await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, collateral)
+		const feeLockedBeforeCancel = await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, feeToken)
 
 		await partyA1.sendCancelOpenIntent([intentId])
 		await partyB1.fillOpenIntent(intentId, fillQuantity, fillPrice)
@@ -288,16 +292,16 @@ describe("Deferred PartyB sell escrow", function () {
 		const childIntent = await context.viewFacet.getOpenIntent(childIntentId)
 		const originalEscrow = await context.viewFacet.getOpenIntentEscrow(intentId)
 		const childEscrow = await context.viewFacet.getOpenIntentEscrow(childIntentId)
-		const partyACollateralCross = await context.viewFacet.getCrossBalance(partyA1.address, collateral, partyB1.address)
+		const partyACollateralCross = await context.viewFacet["getCrossBalance(address,address,address)"](partyA1.address, collateral, partyB1.address)
 
 		expect(originalIntent.status).to.equal(IntentStatus.FILLED)
 		expect(childIntent.status).to.equal(IntentStatus.CANCELED)
 		expect(originalEscrow.exists).to.equal(false)
 		expect(childEscrow.exists).to.equal(false)
-		expect(await context.viewFacet.getIsolatedLockedBalance(partyA1.address, collateral)).to.equal(
+		expect(await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, collateral)).to.equal(
 			collateralLockedBeforeCancel - escrowBeforeCancel.mm,
 		)
-		expect(await context.viewFacet.getIsolatedLockedBalance(partyA1.address, feeToken)).to.equal(
+		expect(await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, feeToken)).to.equal(
 			feeLockedBeforeCancel - escrowBeforeCancel.feeLockAmount,
 		)
 		expect(partyACollateralCross.totalMM).to.equal(e(2))
@@ -308,16 +312,16 @@ describe("Deferred PartyB sell escrow", function () {
 		const collateral = await context.collateral.getAddress()
 		const feeToken = await context.collateralNL.getAddress()
 
-		const collateralLockedBeforeCancel = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, collateral)
-		const feeLockedBeforeCancel = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, feeToken)
+		const collateralLockedBeforeCancel = await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, collateral)
+		const feeLockedBeforeCancel = await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, feeToken)
 		const escrowBeforeCancel = await context.viewFacet.getOpenIntentEscrow(intentId)
 
 		await partyA1.sendCancelOpenIntent([intentId])
 
 		const intent = await context.viewFacet.getOpenIntent(intentId)
 		const escrowAfterCancel = await context.viewFacet.getOpenIntentEscrow(intentId)
-		const collateralLockedAfterCancel = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, collateral)
-		const feeLockedAfterCancel = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, feeToken)
+		const collateralLockedAfterCancel = await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, collateral)
+		const feeLockedAfterCancel = await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, feeToken)
 
 		expect(intent.status).to.equal(IntentStatus.CANCELED)
 		expect(escrowAfterCancel.exists).to.equal(false)
@@ -332,16 +336,16 @@ describe("Deferred PartyB sell escrow", function () {
 
 		await partyB1.lockOpenIntent(intentId)
 
-		const collateralLockedBeforeCancel = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, collateral)
-		const feeLockedBeforeCancel = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, feeToken)
+		const collateralLockedBeforeCancel = await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, collateral)
+		const feeLockedBeforeCancel = await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, feeToken)
 		const escrowBeforeCancel = await context.viewFacet.getOpenIntentEscrow(intentId)
 
 		await partyA1.sendCancelOpenIntent([intentId])
 
 		const cancelPendingIntent = await context.viewFacet.getOpenIntent(intentId)
 		expect(cancelPendingIntent.status).to.equal(IntentStatus.CANCEL_PENDING)
-		expect(await context.viewFacet.getIsolatedLockedBalance(partyA1.address, collateral)).to.equal(collateralLockedBeforeCancel)
-		expect(await context.viewFacet.getIsolatedLockedBalance(partyA1.address, feeToken)).to.equal(feeLockedBeforeCancel)
+		expect(await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, collateral)).to.equal(collateralLockedBeforeCancel)
+		expect(await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, feeToken)).to.equal(feeLockedBeforeCancel)
 
 		await partyB1.acceptCancelOpenIntent(intentId)
 
@@ -349,10 +353,10 @@ describe("Deferred PartyB sell escrow", function () {
 		const escrowAfterAccept = await context.viewFacet.getOpenIntentEscrow(intentId)
 		expect(canceledIntent.status).to.equal(IntentStatus.CANCELED)
 		expect(escrowAfterAccept.exists).to.equal(false)
-		expect(await context.viewFacet.getIsolatedLockedBalance(partyA1.address, collateral)).to.equal(
+		expect(await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, collateral)).to.equal(
 			collateralLockedBeforeCancel - escrowBeforeCancel.mm,
 		)
-		expect(await context.viewFacet.getIsolatedLockedBalance(partyA1.address, feeToken)).to.equal(
+		expect(await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, feeToken)).to.equal(
 			feeLockedBeforeCancel - escrowBeforeCancel.feeLockAmount,
 		)
 	})
@@ -362,8 +366,8 @@ describe("Deferred PartyB sell escrow", function () {
 		const collateral = await context.collateral.getAddress()
 		const feeToken = await context.collateralNL.getAddress()
 		const escrowBeforeExpire = await context.viewFacet.getOpenIntentEscrow(intentId)
-		const collateralLockedBeforeExpire = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, collateral)
-		const feeLockedBeforeExpire = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, feeToken)
+		const collateralLockedBeforeExpire = await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, collateral)
+		const feeLockedBeforeExpire = await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, feeToken)
 
 		await networkHelpers.time.increase(141)
 		await partyA1.expireOpenIntent([intentId])
@@ -373,10 +377,10 @@ describe("Deferred PartyB sell escrow", function () {
 
 		expect(intent.status).to.equal(IntentStatus.EXPIRED)
 		expect(escrowAfterExpire.exists).to.equal(false)
-		expect(await context.viewFacet.getIsolatedLockedBalance(partyA1.address, collateral)).to.equal(
+		expect(await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, collateral)).to.equal(
 			collateralLockedBeforeExpire - escrowBeforeExpire.mm,
 		)
-		expect(await context.viewFacet.getIsolatedLockedBalance(partyA1.address, feeToken)).to.equal(
+		expect(await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, feeToken)).to.equal(
 			feeLockedBeforeExpire - escrowBeforeExpire.feeLockAmount,
 		)
 	})
@@ -391,8 +395,8 @@ describe("Deferred PartyB sell escrow", function () {
 		await partyA1.sendCancelOpenIntent([intentId])
 
 		const escrowBeforeForceCancel = await context.viewFacet.getOpenIntentEscrow(intentId)
-		const collateralLockedBeforeForceCancel = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, collateral)
-		const feeLockedBeforeForceCancel = await context.viewFacet.getIsolatedLockedBalance(partyA1.address, feeToken)
+		const collateralLockedBeforeForceCancel = await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, collateral)
+		const feeLockedBeforeForceCancel = await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, feeToken)
 
 		await networkHelpers.time.increase(2)
 		await partyA1.forceCancelOpenIntent(intentId.toString())
@@ -402,10 +406,10 @@ describe("Deferred PartyB sell escrow", function () {
 
 		expect(intent.status).to.equal(IntentStatus.CANCELED)
 		expect(escrowAfterForceCancel.exists).to.equal(false)
-		expect(await context.viewFacet.getIsolatedLockedBalance(partyA1.address, collateral)).to.equal(
+		expect(await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, collateral)).to.equal(
 			collateralLockedBeforeForceCancel - escrowBeforeForceCancel.mm,
 		)
-		expect(await context.viewFacet.getIsolatedLockedBalance(partyA1.address, feeToken)).to.equal(
+		expect(await context.viewFacet["getIsolatedLockedBalance(address,address)"](partyA1.address, feeToken)).to.equal(
 			feeLockedBeforeForceCancel - escrowBeforeForceCancel.feeLockAmount,
 		)
 	})

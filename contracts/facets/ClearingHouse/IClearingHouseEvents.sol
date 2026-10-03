@@ -7,6 +7,15 @@ pragma solidity >=0.8.19;
 import { MarginType } from "../../types/BaseTypes.sol";
 
 interface IClearingHouseEvents {
+	event BucketLiquidationStatusChanged(
+		uint256 indexed liquidationId,
+		address indexed partyA,
+		address indexed partyB,
+		uint256 partyABucketId,
+		uint256 partyBBucketId,
+		address collateral,
+		uint8 status
+	);
 	event FlagIsolatedPartyBLiquidation(address indexed operator, address indexed partyB, address indexed collateral);
 	event UnflagIsolatedPartyBLiquidation(address indexed operator, address indexed partyB, address indexed collateral);
 	event LiquidateIsolatedPartyB(

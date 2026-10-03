@@ -4,6 +4,8 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
+import { BucketRef } from "./BucketTypes.sol";
+
 // ────────────────────────────────────────────────────────────────────────────────
 // ↑↑  CORE DATA STRUCTURES  ↑↑
 // ────────────────────────────────────────────────────────────────────────────────
@@ -57,6 +59,11 @@ struct ScheduledReleaseBalance {
 	// ─── enumeration helpers (packed array + 1‑based index map) ───────────────
 	address[] counterPartyAddresses;
 	mapping(address => uint256) counterPartyIndexes; // 0 ⇒ not present
+	uint256 bucketId;
+	mapping(address => mapping(uint256 => CrossEntry)) bucketedCrossBalance;
+	mapping(address => mapping(uint256 => ScheduledReleaseEntry)) bucketedSchedules;
+	BucketRef[] bucketedCounterParties;
+	mapping(address => mapping(uint256 => uint256)) bucketedCounterPartyIndexes;
 }
 
 // ────────────────────────────────────────────────────────────────────────────────

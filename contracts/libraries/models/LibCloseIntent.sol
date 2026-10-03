@@ -83,7 +83,7 @@ library LibCloseIntentOps {
 	function getFeesFromUser(CloseIntent memory self, uint256 quantity, uint256 price) internal returns (uint256[3] memory) {
 		Trade storage trade = TradeStorage.layout().trades[self.tradeId];
 		FeeStructure memory s = self.feeStructure;
-		ScheduledReleaseBalance storage bal = trade.partyA.balanceOf(s.feeToken);
+		ScheduledReleaseBalance storage bal = trade.partyA.balanceOf(trade.partyABucketId, s.feeToken);
 
 		uint256[3] memory fees = [
 			calculateFee(self, s.platformFee.closeFee, quantity, price),
@@ -97,7 +97,8 @@ library LibCloseIntentOps {
 			DecreaseBalanceReason.SOLVER_FEE
 		];
 
-		for (uint8 i; i < 3; ++i) bal.subForCounterParty(trade.partyB, fees[i], trade.tradeAgreements.marginType, decReasons[i]);
+		for (uint8 i; i < 3; ++i)
+			bal.subForCounterParty(trade.partyB, trade.partyBBucketId, fees[i], trade.tradeAgreements.marginType, decReasons[i]);
 		return fees;
 	}
 }

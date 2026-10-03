@@ -48,7 +48,9 @@ export default async function (args: SendOpenIntentArgs, hre: HardhatRuntimeEnvi
 	const [admin] = await ethers.getSigners()
 	const partyAOpenFacet = (await ethers.getContractAt("PartyAOpenFacet", String(loadAddresses().symmioAddress))).connect(admin)
 
-	const tx = await partyAOpenFacet.sendOpenIntent(
+	const tx = await partyAOpenFacet[
+		"sendOpenIntent(address[],uint256,uint256,uint256,uint256,uint256,uint256,uint8,uint8,(uint256,uint256),(uint256,uint256),uint256,address,address,bytes)"
+	](
 		partyBsWhiteList,
 		symbolId,
 		price,

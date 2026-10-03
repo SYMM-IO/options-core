@@ -97,72 +97,72 @@
 <tbody><tr>
 <td><code>tests/account-facet.behavior.ts</code></td>
 <td>Deposits, withdrawals, allocations, cross balances, suspension.</td>
-<td><code>flows/account-balances.md</code></td>
+<td><code>docs/pages/account-balances.html</code></td>
 </tr>
 <tr>
 <td><code>tests/partyA-open-facet.behavior.ts</code></td>
 <td><code>sendOpenIntent</code>, <code>cancelOpenIntent</code>, <code>expireOpenIntent</code>.</td>
-<td><code>flows/open-intents.md</code></td>
+<td><code>docs/pages/open-intents.html</code></td>
 </tr>
 <tr>
 <td><code>tests/partyB-open-facet.behavior.ts</code></td>
 <td><code>lockOpenIntent</code>, <code>unlockOpenIntent</code>, <code>fillOpenIntent</code>, <code>acceptCancelOpenIntent</code>.</td>
-<td><code>flows/open-intents.md</code></td>
+<td><code>docs/pages/open-intents.html</code></td>
 </tr>
 <tr>
 <td><code>tests/deferred-partyb-sell.behavior.ts</code></td>
 <td>Deferred Party B sell escrow: isolated lock, fill conversion to cross, partial fills with residual escrow, cancel/expire/force-cancel release, bound-Party-A rejection.</td>
-<td><code>flows/open-intents.md</code></td>
+<td><code>docs/pages/open-intents.html</code></td>
 </tr>
 <tr>
 <td><code>tests/partyA-close-facet.behavior.ts</code></td>
 <td><code>sendCloseIntent</code>, <code>cancelCloseIntent</code>, <code>expireCloseIntent</code>.</td>
-<td><code>flows/close-and-settlement.md</code></td>
+<td><code>docs/pages/close-and-settlement.html</code></td>
 </tr>
 <tr>
 <td><code>tests/partyB-close-facet.behavior.ts</code></td>
 <td><code>fillCloseIntent</code>, <code>acceptCancelCloseIntent</code>.</td>
-<td><code>flows/close-and-settlement.md</code></td>
+<td><code>docs/pages/close-and-settlement.html</code></td>
 </tr>
 <tr>
 <td><code>tests/lib-closeIntent.behavior.ts</code></td>
 <td><code>LibCloseIntent</code> storage operations through <code>CloseIntentOpsMock</code>.</td>
-<td><code>flows/close-and-settlement.md</code></td>
+<td><code>docs/pages/close-and-settlement.html</code></td>
 </tr>
 <tr>
 <td><code>tests/trade-settlement.ts</code></td>
 <td><code>TradeFacet</code> settlement, exercise, expiry, NFT sync.</td>
-<td><code>flows/close-and-settlement.md</code></td>
+<td><code>docs/pages/close-and-settlement.html</code></td>
 </tr>
 <tr>
 <td><code>tests/force-action.behavior.ts</code></td>
 <td><code>ForceActionsFacet.forceCancelOpenIntent</code> and timeouts.</td>
-<td><code>flows/liquidation-and-force-actions.md</code></td>
+<td><code>docs/pages/liquidation-and-force-actions.html</code></td>
 </tr>
 <tr>
 <td><code>tests/clearing-house.ts</code></td>
 <td><code>ClearingHouseFacet</code> flagging, liquidation, confiscation.</td>
-<td><code>flows/liquidation-and-force-actions.md</code></td>
+<td><code>docs/pages/liquidation-and-force-actions.html</code></td>
 </tr>
 <tr>
 <td><code>tests/bridge-facet.behavior.ts</code></td>
 <td>Bridge transfer windows, allowance checks.</td>
-<td><code>flows/account-balances.md</code></td>
+<td><code>docs/pages/account-balances.html</code></td>
 </tr>
 <tr>
 <td><code>tests/helpers/instant-layer.behavior.ts</code></td>
 <td><code>InstantLayer</code> template/batch execution, signed operations.</td>
-<td><code>flows/instant-actions.md</code></td>
+<td><code>docs/pages/instant-actions.html</code></td>
 </tr>
 <tr>
 <td><code>tests/helpers/multi-account.behavior.ts</code></td>
 <td><code>MultiAccount</code> deploy/forward, ERC-1271, InstantLayer routing.</td>
-<td><code>flows/instant-actions.md</code></td>
+<td><code>docs/pages/instant-actions.html</code></td>
 </tr>
 <tr>
 <td><code>tests/helpers/symmio-partyb.behavior.ts</code></td>
 <td><code>SymmioPartyB</code> selector restrictions, multicast, approvals.</td>
-<td><code>flows/instant-actions.md</code></td>
+<td><code>docs/pages/instant-actions.html</code></td>
 </tr>
 </tbody></table>
 <p>Top-level <code>tests/main.ts</code> registers every group under the <code>UNIT_TEST</code> branch. There is no <code>describe.only</code>. <code>hardhat.config.ts</code> sets <code>test.mocha.forbidOnly</code> to <code>!!process.env.CI</code>, so when <code>CI</code> is set a stray <code>.only</code> fails the run.</p>

@@ -4,13 +4,14 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
+import { LibBucket } from "./LibBucket.sol";
+
 import { LibParty } from "../models/LibParty.sol";
 import { LibTradeOps } from "../models/LibTrade.sol";
 import { LibCloseIntentOps } from "../models/LibCloseIntent.sol";
 import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance.sol";
 
 import { TradeStorage } from "../../storages/TradeStorage.sol";
-import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { SymbolStorage, Symbol } from "../../storages/SymbolStorage.sol";
 import { CloseIntentStorage } from "../../storages/CloseIntentStorage.sol";
 import { FeeManagementStorage } from "../../storages/FeeManagementStorage.sol";
@@ -52,7 +53,6 @@ library LibPartyBClose {
 
 	function fillCloseIntent(address sender, uint256 intentId, uint256 quantity, uint256 price) internal {
 		CloseIntentStorage.Layout storage closeIntentLayout = CloseIntentStorage.layout();
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		FeeManagementStorage.Layout storage feeLayout = FeeManagementStorage.layout();
 		CloseIntent storage intent = closeIntentLayout.closeIntents[intentId];
 		Trade storage trade = TradeStorage.layout().trades[intent.tradeId];
@@ -66,9 +66,9 @@ library LibPartyBClose {
 
 		// Verify that both parties are not in liquidation process
 		if (marginType == MarginType.CROSS) {
-			trade.partyA.requireSolvent(trade.partyB, symbol.collateral, marginType);
+			trade.partyA.requireSolvent(trade.partyABucketId, trade.partyB, trade.partyBBucketId, symbol.collateral, marginType);
 		}
-		trade.partyB.requireSolvent(trade.partyA, symbol.collateral, marginType);
+		trade.partyB.requireSolvent(trade.partyBBucketId, trade.partyA, trade.partyABucketId, symbol.collateral, marginType);
 
 		// Quantity must be >0 and ≤ remaining unfilled amount
 		if (quantity == 0 || quantity > (intent.quantity - intent.filledAmount)) {
@@ -100,8 +100,8 @@ library LibPartyBClose {
 
 		/* ---------------------------------------- BALANCES ---------------------------------------- */
 
-		ScheduledReleaseBalance storage partyABalance = trade.partyA.balanceOf(symbol.collateral);
-		ScheduledReleaseBalance storage partyBBalance = trade.partyB.balanceOf(symbol.collateral);
+		ScheduledReleaseBalance storage partyABalance = trade.partyA.balanceOf(trade.partyABucketId, symbol.collateral);
+		ScheduledReleaseBalance storage partyBBalance = trade.partyB.balanceOf(trade.partyBBucketId, symbol.collateral);
 
 		uint256 closePremium = (quantity * price) / 1e18;
 
@@ -110,15 +110,15 @@ library LibPartyBClose {
 			if (marginType == MarginType.ISOLATED) {
 				partyBBalance.instantIsolatedAdd(openPremium, IncreaseBalanceReason.PREMIUM);
 			} else {
-				partyBBalance.scheduledAdd(trade.partyA, openPremium, marginType, IncreaseBalanceReason.PREMIUM);
+				partyBBalance.scheduledAdd(trade.partyA, trade.partyABucketId, openPremium, marginType, IncreaseBalanceReason.PREMIUM);
 			}
 
-			partyBBalance.subForCounterParty(trade.partyA, closePremium, marginType, DecreaseBalanceReason.PREMIUM);
-			partyABalance.scheduledAdd(trade.partyB, closePremium, marginType, IncreaseBalanceReason.PREMIUM);
+			partyBBalance.subForCounterParty(trade.partyA, trade.partyABucketId, closePremium, marginType, DecreaseBalanceReason.PREMIUM);
+			partyABalance.scheduledAdd(trade.partyB, trade.partyBBucketId, closePremium, marginType, IncreaseBalanceReason.PREMIUM);
 		} else {
-			partyABalance.decreaseMM(trade.partyB, trade.calculateProportionalMM(quantity));
-			partyABalance.subForCounterParty(trade.partyB, closePremium, marginType, DecreaseBalanceReason.PREMIUM);
-			partyBBalance.scheduledAdd(trade.partyA, closePremium, marginType, IncreaseBalanceReason.PREMIUM);
+			partyABalance.decreaseMM(trade.partyB, trade.partyBBucketId, trade.calculateProportionalMM(quantity));
+			partyABalance.subForCounterParty(trade.partyB, trade.partyBBucketId, closePremium, marginType, DecreaseBalanceReason.PREMIUM);
+			partyBBalance.scheduledAdd(trade.partyA, trade.partyABucketId, closePremium, marginType, IncreaseBalanceReason.PREMIUM);
 		}
 
 		// Collect close-fees from Party A
@@ -144,14 +144,39 @@ library LibPartyBClose {
 			affiliateFeeCollectorBalance.instantIsolatedAdd(fees[1], IncreaseBalanceReason.AFFILIATE_FEE);
 
 			// Pay solver fees
-			ScheduledReleaseBalance storage solverFeeCollectorBalance = trade.partyB.balanceOf(feeToken);
-			solverFeeCollectorBalance.setup(trade.partyB, feeToken);
+			ScheduledReleaseBalance storage solverFeeCollectorBalance = trade.partyB.balanceOf(trade.partyBBucketId, feeToken);
+			solverFeeCollectorBalance.setup(trade.partyB, trade.partyBBucketId, feeToken);
 			if (marginType == MarginType.ISOLATED) {
 				solverFeeCollectorBalance.instantIsolatedAdd(fees[2], IncreaseBalanceReason.SOLVER_FEE);
 			} else {
-				solverFeeCollectorBalance.scheduledAdd(trade.partyA, fees[2], MarginType.CROSS, IncreaseBalanceReason.SOLVER_FEE);
+				solverFeeCollectorBalance.scheduledAdd(
+					trade.partyA,
+					trade.partyABucketId,
+					fees[2],
+					MarginType.CROSS,
+					IncreaseBalanceReason.SOLVER_FEE
+				);
 			}
 		}
+
+		LibBucket.requireNativeTradeBacking(
+			intent.tradeId,
+			trade.partyA,
+			trade.partyABucketId,
+			trade.partyB,
+			trade.partyBBucketId,
+			symbol.collateral,
+			intent.feeStructure.feeToken
+		);
+		LibBucket.requireNativeTradeBacking(
+			intent.tradeId,
+			trade.partyB,
+			trade.partyBBucketId,
+			trade.partyA,
+			trade.partyABucketId,
+			symbol.collateral,
+			intent.feeStructure.feeToken
+		);
 
 		/* ---------------------------------------- UPDATE ---------------------------------------- */
 
@@ -168,8 +193,8 @@ library LibPartyBClose {
 
 		// For cross-margin, increment bilateral nonce to invalidate off-chain sigs
 		if (marginType == MarginType.CROSS) {
-			accountLayout.nonces[trade.partyA][trade.partyB] += 1;
-			accountLayout.nonces[trade.partyB][trade.partyA] += 1;
+			LibBucket.incrementNonce(trade.partyA, trade.partyABucketId, trade.partyB, trade.partyBBucketId);
+			LibBucket.incrementNonce(trade.partyB, trade.partyBBucketId, trade.partyA, trade.partyABucketId);
 		}
 
 		/* ---------------------------------------- COMPLETION ---------------------------------------- */

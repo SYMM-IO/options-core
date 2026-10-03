@@ -27,6 +27,26 @@ interface IPartyAOpenFacet is IPartyAOpenEvents {
 		bytes memory userData
 	) external returns (uint256);
 
+	function sendOpenIntent(
+		uint256 partyABucketId,
+		address partyB,
+		uint256 partyBBucketId,
+		uint256 symbolId,
+		uint256 price,
+		uint256 quantity,
+		uint256 strikePrice,
+		uint256 expirationTimestamp,
+		uint256 mm,
+		TradeSide tradeSide,
+		MarginType marginType,
+		ExerciseFee memory exerciseFee,
+		Fee memory solverFee,
+		uint256 deadline,
+		address feeToken,
+		address affiliate,
+		bytes memory userData
+	) external returns (uint256);
+
 	function expireOpenIntent(uint256[] calldata expiredIntentIds) external;
 
 	function cancelOpenIntent(uint256[] calldata intentIds) external;

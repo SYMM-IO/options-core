@@ -256,8 +256,8 @@ export function shouldBehaveLikeControlFacet(): void {
 			.withArgs(user2.address, false)
 		await expect(context.controlFacet.suspendWithdrawal(44, true)).to.emit(context.controlFacet, "WithdrawalSuspended").withArgs(44, true)
 
-		expect(await context.viewFacet.isAddressSuspended(user1.address)).to.equal(true)
-		expect(await context.viewFacet.isAddressSuspended(user2.address)).to.equal(false)
+		expect(await context.viewFacet["isAddressSuspended(address)"](user1.address)).to.equal(true)
+		expect(await context.viewFacet["isAddressSuspended(address)"](user2.address)).to.equal(false)
 		expect(await context.viewFacet.isWithdrawalSuspended(44)).to.equal(true)
 	})
 
@@ -279,7 +279,11 @@ export function shouldBehaveLikeControlFacet(): void {
 			.to.be.revertedWithCustomError(context.controlFacet, "ZeroAddress")
 			.withArgs("collateral")
 
-		await expect(context.accountFacet.connect(partyA.getSigner).externalTransfer(collateral, context.signers.partyA2.address, 10, target))
+		await expect(
+			context.accountFacet
+				.connect(partyA.getSigner)
+				["externalTransfer(address,address,uint256,address)"](collateral, context.signers.partyA2.address, 10, target),
+		)
 			.to.be.revertedWithCustomError(context.accountFacet, "ExternalTransferTargetNotWhitelisted")
 			.withArgs(target, collateral)
 		await expect(context.controlFacet.setExternalTransferTargetValidationStatus(target, collateral, true))
@@ -287,7 +291,9 @@ export function shouldBehaveLikeControlFacet(): void {
 			.withArgs(target, collateral, true)
 
 		const targetBalanceBefore = await context.collateral.balanceOf(target)
-		await context.accountFacet.connect(partyA.getSigner).externalTransfer(collateral, context.signers.partyA2.address, 10, target)
+		await context.accountFacet
+			.connect(partyA.getSigner)
+			["externalTransfer(address,address,uint256,address)"](collateral, context.signers.partyA2.address, 10, target)
 		expect((await context.collateral.balanceOf(target)) - targetBalanceBefore).to.equal(10)
 	})
 }

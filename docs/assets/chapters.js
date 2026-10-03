@@ -31,6 +31,11 @@ window.OPTIONS_DOCS_CHAPTERS = [
 		"Account And Balance Flows"
 	],
 	[
+		"native-buckets",
+		"Flows",
+		"Native funding buckets in the Options Diamond"
+	],
+	[
 		"open-intents",
 		"Flows",
 		"Open Intent Flow"

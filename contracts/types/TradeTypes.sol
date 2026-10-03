@@ -32,6 +32,9 @@ struct Trade {
 	address affiliate;
 	TradeStatus status;
 	FeeStructure feeStructure;
+	uint256 partyABucketId;
+	uint256 partyBBucketId;
+	uint256 relationshipId;
 }
 
 struct SettlementState {

@@ -39,6 +39,9 @@ struct OpenIntent {
 	address affiliate;
 	bytes userData;
 	OpenIntentStatus status;
+	uint256 partyABucketId;
+	uint256 partyBBucketId;
+	uint256 relationshipId;
 }
 
 struct OpenIntentEscrow {

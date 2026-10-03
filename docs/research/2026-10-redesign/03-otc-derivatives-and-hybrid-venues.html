@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Hybrid derivatives venues and RFQ systems: execution, settlement and escape hatches | Options Core</title>
+<link rel="icon" type="image/svg+xml" href="../../assets/symmio-mark.svg"><link rel="stylesheet" href="../../assets/reader.css"><link rel="stylesheet" href="../../assets/docs-portal.css">
+<script>try { if (localStorage.getItem("options-docs-theme") === "light") document.documentElement.dataset.theme = "light"; } catch (_) {}</script>
+<script src="../../assets/chapters.js" defer></script><script src="../../assets/reader.js" defer></script><script src="../../assets/docs-portal.js" defer></script></head>
+<body class="doc-page" data-version="current"><a class="skip-link" href="#full-document">Skip to document</a><header class="docs-header"><div class="doc-topbar"><nav class="docs-trail" aria-label="Breadcrumb"><a class="brand" href="../../index.html"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Options Core</span></a><span class="trail-sep" aria-hidden="true">/</span><a class="trail-release" href="../../index.html">Documentation</a></nav><nav class="top-actions" aria-label="Page actions"><button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button></nav></div></header>
+<div class="reader-shell"><div data-rail-sections hidden><a class="toc-link level-2" href="#document-metadata">Document metadata</a>
+<a class="toc-link level-2" href="#baseline-symmio-options-today">Baseline: Symmio options today</a>
+<a class="toc-link level-2" href="#hybrid-venues-with-an-operator">Hybrid venues with an operator</a>
+<a class="toc-link level-3" href="#vertex-now-nado-on-ink-the-key-reference">Vertex, now Nado on Ink (the key reference)</a>
+<a class="toc-link level-3" href="#aevo">Aevo</a>
+<a class="toc-link level-3" href="#paradex-orderly-and-hyperliquid">Paradex, Orderly and Hyperliquid</a>
+<a class="toc-link level-3" href="#dydx-v3-on-starkex">dYdX v3 on StarkEx</a>
+<a class="toc-link level-2" href="#rfq-settlement">RFQ settlement</a>
+<a class="toc-link level-2" href="#on-chain-options-venues-with-rfq-or-otc">On-chain options venues with RFQ or OTC</a>
+<a class="toc-link level-2" href="#comparison">Comparison</a>
+<a class="toc-link level-2" href="#what-this-means-for-options-core">What this means for options-core</a></div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1 id="hybrid-derivatives-venues-and-rfq-systems-execution-settlement-and-escape-hatches">Hybrid derivatives venues and RFQ systems: execution, settlement and escape hatches</h1></div></div></header><article class="doc-article" id="full-document"><noscript><nav aria-label="On this page"><a class="toc-link level-2" href="#document-metadata">Document metadata</a>
+<a class="toc-link level-2" href="#baseline-symmio-options-today">Baseline: Symmio options today</a>
+<a class="toc-link level-2" href="#hybrid-venues-with-an-operator">Hybrid venues with an operator</a>
+<a class="toc-link level-3" href="#vertex-now-nado-on-ink-the-key-reference">Vertex, now Nado on Ink (the key reference)</a>
+<a class="toc-link level-3" href="#aevo">Aevo</a>
+<a class="toc-link level-3" href="#paradex-orderly-and-hyperliquid">Paradex, Orderly and Hyperliquid</a>
+<a class="toc-link level-3" href="#dydx-v3-on-starkex">dYdX v3 on StarkEx</a>
+<a class="toc-link level-2" href="#rfq-settlement">RFQ settlement</a>
+<a class="toc-link level-2" href="#on-chain-options-venues-with-rfq-or-otc">On-chain options venues with RFQ or OTC</a>
+<a class="toc-link level-2" href="#comparison">Comparison</a>
+<a class="toc-link level-2" href="#what-this-means-for-options-core">What this means for options-core</a></nav></noscript><section class="callout" aria-label="Document metadata"><h2 id="document-metadata">Document metadata</h2><pre><code class="language-yaml">title: Hybrid derivatives venues and RFQ systems, execution versus settlement and escape hatches
+tags:
+    - symmio
+    - options-core
+    - research
+date: 2026-10-03
+status: research note</code></pre></section>
+<p>This note asks how venues that match or quote off-chain keep funds on-chain, how they protect the maker between quote and settlement, and how a user gets out when the operator stops. Nitro, Celer, ERC-7824/Yellow, Derive, DLCs, Perennial and StarkEx internals are covered in earlier notes. Every source was checked on 2026-10-03, and code links are pinned to the commit I read. &quot;Unverified&quot; marks anything I could not confirm from a primary source.</p>
+<h2 id="baseline-symmio-options-today">Baseline: Symmio options today</h2>
+<ul>
+<li>PartyA calls <code>sendOpenIntent</code>, which locks the premium (buyer) or maintenance margin (seller). A whitelisted PartyB then calls <code>lockOpenIntent</code> and <code>fillOpenIntent</code>. Expiry settlement is <code>executeTrade</code> with a Muon <code>SettlementPriceSig</code> (<a href="https://docs.symm.io/options-protocol-architecture/technical-architecture/intent-based-trading-system">options intent docs</a>). Muon prices carry a TSS Schnorr signature plus a gateway ECDSA signature (<a href="https://docs.symm.io/options-protocol-architecture/technical-architecture/oracle-integration">oracle docs</a>).</li>
+<li>In this repo, <code>cancelOpenIntent</code> moves a PENDING intent straight to CANCELED and unlocks its funds. A LOCKED intent only moves to CANCEL_PENDING (<code>contracts/libraries/core/LibPartyAOpen.sol</code>, <code>cancelOpenIntent</code>). The race window is therefore between the solver seeing a PENDING intent and its lock landing. A solver that hedges only after the lock confirms is safe, but it pays an extra transaction and a block of latency on every trade (my reading of the code).</li>
+<li>Bind mode removes Muon checks between PartyA and its bound PartyB. Instant action mode lets operators batch signed <code>sendQuote → lockQuote → openPosition</code> into one transaction. Leaving instant mode is propose → wait → deactivate, so that it &quot;cannot be used to front-run pending Instant Layer operations&quot; (<a href="https://docs.symm.io/contract-documentation/symmio-perps-v0.8.5/diamond-core-facets/binding-facet">Binding Facet, perps v0.8.5</a>).</li>
+</ul>
+<h2 id="hybrid-venues-with-an-operator">Hybrid venues with an operator</h2>
+<h3 id="vertex-now-nado-on-ink-the-key-reference">Vertex, now Nado on Ink (the key reference)</h3>
+<p><strong>Status.</strong> The Vertex team joined the Ink Foundation, the foundation behind Kraken&#39;s L2, on 2025-07-08 (<a href="https://x.com/inkfndhq/status/1942585610092662802">Ink Foundation</a>). Vertex wound down its EVM deployments and sunset VRTX (<a href="https://www.theblock.co/post/361570/vertex-to-sunset-vrtx-token-move-perp-dex-onto-kraken-backed-ink-layer-2">The Block</a>, secondary). The successor exchange is Nado on Ink. Its contracts share Vertex&#39;s <code>Endpoint</code>, <code>Clearinghouse</code> and slow-mode code, down to the same &quot;hardcoded to three days&quot; comment. I read Vertex at commit <code>e138181</code> (2025-05-14) and Nado at commit <code>380b0bc</code> (2026-09-10).</p>
+<p><strong>Mechanism.</strong> An off-chain sequencer matches orders in 5–15 ms and batches them for on-chain settlement on Ink (<a href="https://docs.nado.xyz/core/orderbook-architecture">Nado architecture</a>). The sequencer calls <code>submitTransactionsChecked</code> with a strictly increasing submission index. Each batch needs a Schnorr aggregate signature from more than half of a registered verifier set (<a href="https://github.com/nadohq/nado-contracts/blob/380b0bc3c6b9a78ab0b72e0b078e593d409544df/core/contracts/Endpoint.sol#L288-L300">Endpoint L288</a>, <a href="https://github.com/nadohq/nado-contracts/blob/380b0bc3c6b9a78ab0b72e0b078e593d409544df/core/contracts/Verifier.sol#L163-L175">Verifier L163–175</a>). Each <code>MatchOrders</code> item carries both users&#39; signed orders, and <code>OffchainExchange.matchOrders</code> verifies them again on-chain (<a href="https://github.com/nadohq/nado-contracts/blob/380b0bc3c6b9a78ab0b72e0b078e593d409544df/core/contracts/OffchainExchange.sol#L640">L640</a>). Every trade is written to chain and re-executed there. Batching spreads the transaction overhead across trades, but each order still pays for its own signature check and state update.</p>
+<p><strong>Slow mode.</strong> Any user can call <code>submitSlowModeTransaction</code> directly on the <code>Endpoint</code>. It charges a $1 fee and appends the request to an on-chain FIFO queue with <code>executableAt = now + 3 days</code> (<a href="https://github.com/nadohq/nado-contracts/blob/380b0bc3c6b9a78ab0b72e0b078e593d409544df/core/contracts/common/Constants.sol#L50">Constants L23, L50</a>; <a href="https://github.com/vertex-protocol/vertex-contracts/blob/e138181537bb023bd9d776016270a9362caad3c6/core/contracts/Endpoint.sol#L331-L395">Vertex Endpoint L331–395</a>). The sequencer drains the queue by putting an <code>ExecuteSlowMode</code> item in its batch. That item always pops the head of the queue and may run before the delay expires. If the sequencer has not drained the queue after three days, anyone can call <code>executeSlowModeTransaction()</code> (<a href="https://github.com/nadohq/nado-contracts/blob/380b0bc3c6b9a78ab0b72e0b078e593d409544df/core/contracts/Endpoint.sol#L199-L215">Endpoint L199–215, L248</a>). Nado documents this as its on-chain withdrawal path (<a href="https://docs.nado.xyz/developer-resources/api/withdrawing-on-chain">withdrawing on-chain</a>).</p>
+<p>Slow mode has three limits:</p>
+<ul>
+<li>The user-facing slow-mode types are withdraw, link-signer and deposit. There is no slow-mode path that closes a position.</li>
+<li>A withdrawal still has to pass the initial-health check against the last on-chain prices (<a href="https://github.com/nadohq/nado-contracts/blob/380b0bc3c6b9a78ab0b72e0b078e593d409544df/core/contracts/Clearinghouse.sol#L425">Clearinghouse L425</a>).</li>
+<li>A slow-mode transaction that reverts is consumed and dropped, not retried (<a href="https://github.com/vertex-protocol/vertex-contracts/blob/e138181537bb023bd9d776016270a9362caad3c6/core/contracts/Endpoint.sol#L415-L436">Vertex L415–436</a>).</li>
+</ul>
+<p><strong>Maker protection.</strong> The sequencer controls ordering. Withdrawals go through the same stream as matches, whether they come from the API or slow mode, so a trade the sequencer has already matched lands before any later withdrawal. Nothing is reserved on-chain per order; the off-chain engine&#39;s margin check is trusted.</p>
+<p><strong>Oracle.</strong> Prices arrive as sequencer-submitted <code>UpdatePrice</code> items, and <code>Clearinghouse.updatePrice</code> only checks <code>price &gt; 0</code> (<a href="https://github.com/nadohq/nado-contracts/blob/380b0bc3c6b9a78ab0b72e0b078e593d409544df/core/contracts/Clearinghouse.sol#L364-L381">L364–381</a>). The docs name Stork, Pyth and RedStone, with updates &quot;bundled with actions through Nado&#39;s sequencer&quot; (<a href="https://docs.nado.xyz/core/oracles">oracles</a>). I found no on-chain oracle signature check on this path. Price integrity rests on the verifier quorum.</p>
+<h3 id="aevo">Aevo</h3>
+<p>Aevo runs an off-chain order book and risk engine. &quot;Once a maker and taker order gets matched, only then do they get posted&quot; to contracts on the Aevo L2, an OP-stack rollup operated with Conduit, and Aevo pays the trading gas (<a href="https://www.aevo.xyz/docs/llms-full.txt">Aevo docs, Exchange Structure and Layer 2 Architecture</a>). The risk engine checks margin before an order enters the book, and the RFQ quote API reports the margin required to keep a quote open (<a href="https://api-docs.aevo.xyz/reference/postquotes">POST /quotes</a>). Aevo OTC is an RFQ desk for altcoin options with custom strikes and expiries up to three months, settled on the same L2. Options cash-settle in USDC against Aevo&#39;s own index, which is a filtered mean of CEX prices (same docs, Index Price).</p>
+<p>On exit:</p>
+<ul>
+<li>The rollup allows forced inclusion through L1 with up to a 12-hour delay.</li>
+<li>Only permissioned proposers post state roots, so if they stop, &quot;withdrawals are frozen.&quot;</li>
+<li>A 4/11 Conduit multisig can upgrade the contracts with no delay (<a href="https://l2beat.com/scaling/projects/aevo">L2BEAT</a>).</li>
+<li>Aevo describes withdrawals as operator-processed, and random &quot;flagged&quot; withdrawals wait 60 minutes. I found no documented exchange-level forced withdrawal (unverified whether the exchange contracts have one).</li>
+</ul>
+<h3 id="paradex-orderly-and-hyperliquid">Paradex, Orderly and Hyperliquid</h3>
+<p><strong>Paradex.</strong> Paradex runs a Starknet appchain and its own sequencer. State is proven with STARKs, and data is posted encrypted, with the keys held by a three-member privacy council. L2BEAT reports &quot;no mechanism to have transactions be included if the sequencer is down or censoring,&quot; and withdrawals freeze if the proposer fails (<a href="https://l2beat.com/scaling/projects/paradex">L2BEAT</a>). Dated options settle at 08:00 UTC on a 30-minute TWAP of Paradex&#39;s spot oracle (<a href="https://docs.paradex.trade/trading/dated-options/overview">dated options</a>).</p>
+<p><strong>Orderly.</strong> Orderly has three layers: asset vaults on each chain, a ledger on Orderly&#39;s settlement chain, and an engine layer that runs the order book (<a href="https://orderly.network/docs/build-on-omnichain/building-on-omnichain">architecture</a>). Trades reach the ledger as batched uploads. Only the operator can submit them, and each must carry the engine&#39;s signature (<a href="https://github.com/OrderlyNetwork/contract-evm/blob/7ac1f70080e781a1c9e8c76778daa4bb2e1491c6/src/OperatorManager.sol#L37-L40">OperatorManager L37–40</a>, <a href="https://github.com/OrderlyNetwork/contract-evm/blob/7ac1f70080e781a1c9e8c76778daa4bb2e1491c6/src/OperatorManagerImplA.sol#L83-L90">ImplA L83–90</a>). Vault <code>withdraw</code> can only be called by the cross-chain manager (<a href="https://github.com/OrderlyNetwork/contract-evm/blob/7ac1f70080e781a1c9e8c76778daa4bb2e1491c6/src/vaultSide/Vault.sol#L479">Vault L479</a>). There is a <code>checkEngineDown()</code> view that returns true after 3 days without operator activity, but nothing in the repo calls it (<a href="https://github.com/OrderlyNetwork/contract-evm/blob/7ac1f70080e781a1c9e8c76778daa4bb2e1491c6/src/OperatorManager.sol#L303-L306">L303–306</a>). Users have no escape hatch.</p>
+<p><strong>Hyperliquid.</strong> The order book and margin engine run inside HyperBFT consensus, so validators do the matching rather than a single off-chain operator (<a href="https://hyperliquid.gitbook.io/hyperliquid-docs/hypercore/overview">overview</a>). The oracle price is a stake-weighted median of prices that validators submit every 3 seconds (<a href="https://hyperliquid.gitbook.io/hyperliquid-docs/hypercore/oracle">oracle</a>). A withdrawal to Arbitrum needs signatures from 2/3 of validator power and then waits out a dispute period, during which lockers can freeze the bridge (<a href="https://github.com/hyperliquid-dex/contracts/blob/d7e66aa751ffbd19bfd2b90fd5d9a3d8f32d99ee/Bridge2.sol#L3-L56">Bridge2.sol</a>). A user cannot force an exit if validators refuse to sign.</p>
+<h3 id="dydx-v3-on-starkex">dYdX v3 on StarkEx</h3>
+<p>A user files a forced withdrawal or forced trade on L1. If the operator does not serve it within <code>FREEZE_GRACE_PERIOD</code> (14 days for dYdX v3), anyone can freeze the exchange. After a freeze, users withdraw with a Merkle proof, and positions close at &quot;the average price from the last batch state update&quot; (<a href="https://l2beat.com/scaling/projects/dydx">L2BEAT</a>, <a href="https://docs.starkware.co/starkex/perpetual/shared/forced-operations_overview.html">StarkEx forced operations</a>). A forced trade needs a counterparty&#39;s signature. dYdX v3 shut down on &quot;October 28th&quot; and is &quot;processing withdrawals in escape-hatch mode&quot; (L2BEAT; the page gives no year, 2024 is my recollection and unverified). It is the only escape hatch here that is in production use.</p>
+<h2 id="rfq-settlement">RFQ settlement</h2>
+<p><strong>Hashflow.</strong> Makers stream price levels. On an RFQ, the maker has 750 ms to return a signed quote with <code>quoteExpiry</code> and a nonce, and the trader submits it (<a href="https://docs.hashflow.com/hashflow/market-making/getting-started-api-v3">maker docs</a>). Nonces must strictly increase per trader (<a href="https://github.com/hashflownetwork/x-protocol/blob/e41cfaadac7d9bacfa368be904a93bd98b5a2df6/evm/contracts/pools/HashflowPool.sol#L461-L469">HashflowPool L461–469</a>). A maker&#39;s funds can sit in an &quot;external account&quot; that also serves other venues, so a quote can fail on-chain. A separate <code>signQuote</code> step accepts a <code>market_conditions</code> refusal, which works as a form of last look. The docs list the error but do not describe the flow fully.</p>
+<p><strong>Bebop.</strong> Makers sign firm quotes that <code>BebopSettlement</code> settles atomically, and any failed leg reverts the whole trade (<a href="https://docs.bebop.xyz/core-concepts/settlement-smart-contracts">settlement</a>). Standard validity is 60 s on most L2s. &quot;Short expiry&quot; quotes last 3 s on Arbitrum and Base and get tighter pricing &quot;because the market maker&#39;s risk window is smaller&quot; (<a href="https://docs.bebop.xyz/rfq-api/guides/short-expiry">short expiry</a>).</p>
+<p><strong>0x Settler.</strong> The maker signs a Permit2 <code>PermitWitnessTransferFrom</code> whose witness is the order (taker, amounts, partial-fill flag), with an unordered nonce and a deadline. Permit2 guarantees one fill, expiry and maker authorisation, without custody or escrow (<a href="https://github.com/0xProject/0x-settler/blob/e8097b11135c08ba7645125a3e975b3b75984335/README.md#rfq">README, RFQ</a>).</p>
+<p><strong>The shared pattern.</strong> The maker signs first and the taker submits. For the quote&#39;s lifetime, the maker has given the taker a free option, which it prices through short TTLs. It hedges after the fill (Hashflow pushes <code>trade</code> events) or pre-hedges at its own risk. The maker ends up with an unwanted hedge only if it chose to hedge before the fill.</p>
+<p><strong>Last look reverses it.</strong> In AirSwap&#39;s LastLook protocol, &quot;the client is the signer and the server is the sender&quot; (<a href="https://about.airswap.xyz/technology/protocols">protocols</a>). Variational is a bilateral derivatives RFQ protocol close to Symmio&#39;s model. The taker approves the contract calls, but &quot;no funds will actually be moved until the maker last look stage.&quot; At that stage, collateral moves from both parties into a settlement pool (<a href="https://docs.variational.io/variational-protocol/key-concepts/trading-via-rfq">RFQ</a>, <a href="https://docs.variational.io/variational-protocol/key-concepts/settlement-pools">settlement pools</a>). Unless the taker&#39;s collateral already sits in an existing pool, this is Symmio&#39;s race again.</p>
+<h2 id="on-chain-options-venues-with-rfq-or-otc">On-chain options venues with RFQ or OTC</h2>
+<p><strong>Rysk V12 (HyperEVM).</strong> Makers submit signed quotes with <code>nonce</code> and <code>validUntil</code> during a 2-second aggregation window. Before finalising a quote, Rysk &quot;verifies that the market maker has sufficient USDT0 deposited&quot; in its accounting contract. The taker confirms to Rysk&#39;s system, which settles on-chain (<a href="https://docs.rysk.finance/getting-started/protocol-and-product/makers-how-to-integrate-in-the-rfq">maker docs</a>). Options are European, fully collateralised and physically settled on Opyn-derived Gamma contracts. The expiry price comes from Stork and Pyth (<a href="https://docs.rysk.finance/getting-started/protocol-and-product/how-it-works">how it works</a>). Exercise currently means contacting the team and approving funds before expiry. The deposit check happens off-chain, and who submits the settlement transaction is undocumented (probably Rysk&#39;s backend, unverified).</p>
+<p><strong>Premia v3.</strong> Maker quotes (<code>QuoteOB</code>: provider, optional taker, price, size, deadline, salt) are EIP-712 signed and published as events on Arbitrum Nova. They fill on Arbitrum One through <code>fillQuoteOB</code> (<a href="https://docs.premia.blue/the-premia-protocol/concepts/orderbook-and-request-for-quote-rfq">docs</a>, <a href="https://github.com/Premian-Labs/v3-contracts/blob/fe3b821ab87a0b98cb6f1142134e2ddaadbc4c4d/contracts/pool/IPoolInternal.sol#L76-L106">IPoolInternal L76–106</a>). Collateral is pulled from the maker&#39;s wallet at fill time. If the maker has moved funds, the validity check returns <code>InsufficientCollateralBalance</code> or <code>InsufficientCollateralAllowance</code> (<a href="https://github.com/Premian-Labs/v3-contracts/blob/fe3b821ab87a0b98cb6f1142134e2ddaadbc4c4d/contracts/pool/PoolInternal.sol#L2007-L2075">PoolInternal L2007–2075</a>). The settlement price is read once from a Chainlink-based adapter at maturity and cached (<a href="https://github.com/Premian-Labs/v3-contracts/blob/fe3b821ab87a0b98cb6f1142134e2ddaadbc4c4d/contracts/pool/PoolInternal.sol#L1337-L1346">L1337–1346</a>). The repo&#39;s last commit is from 2024-07.</p>
+<p><strong>Thetanuts V4 (Base).</strong> In OptionBook, makers sign orders and takers call <code>fillOrder()</code>. Each fill deploys an option contract with collateral locked. Options are cash-settled against Chainlink, and &quot;settlement is processed daily by Thetanuts&quot; (<a href="https://docs.thetanuts.finance/for-builders/overview">overview</a>, <a href="https://docs.thetanuts.finance/sdk/optionbook/overview">OptionBook</a>). The RFQ factory runs a sealed-bid auction: makers post encrypted EIP-712 offers on-chain and reveal them later, then anyone can call <code>settleQuotation()</code>. Collateral is &quot;pulled from the seller at settlement, not at RFQ creation&quot; (<a href="https://docs.thetanuts.finance/sdk/rfq-factory/lifecycle">lifecycle</a>). The builder guide warns that the &quot;audit has not been completed yet.&quot;</p>
+<p><strong>Panoptic V2.</strong> Panoptic has no quotes. Perpetual options are built from Uniswap v3 and v4 liquidity, with streaming premia and no fixed expiry. The docs note that &quot;oracle-free pricing does not mean there are no risk oracles&quot;: solvency checks use prices derived from the AMM (<a href="https://panoptic.xyz/docs/intro">intro</a>).</p>
+<p><strong>Stryke (formerly Dopex) CLAMM.</strong> Options are bought against concentrated LP liquidity, with daily and weekly expiries at 08:00 UTC (<a href="https://docs.stryke.xyz/products-overview/product-overview-clamm/for-option-traders">traders</a>). Pricing is Black-Scholes with IV pushed by whitelisted <code>ivSetter</code> addresses (<a href="https://github.com/stryke-xyz/clamm/blob/5c270f88cfc94e8ab126eaba80464053921873cc/src/DopexV2OptionMarket.sol#L832-L836">DopexV2OptionMarket L832–836</a>).</p>
+<p><strong>Arrow Markets (Avalanche).</strong> Arrow sends RFQs to makers and creates the option on-chain after the best quote. At expiry, the contract &quot;collects funds from the market makers.&quot; The docs acknowledge &quot;default risk,&quot; so makers are not fully pre-collateralised (<a href="https://docs.arrow.markets/arrow-markets/arrow/user-flow">user flow</a>).</p>
+<p><strong>Valorem.</strong> Valorem Trade is &quot;a signature relay&quot; for trading Valorem Clear options, &quot;settled on chain via Seaport&quot; (<a href="https://github.com/valorem-labs-inc/trade-interfaces">README</a>). The repos were last pushed in 2024-01, and current status is unverified.</p>
+<p><strong>Paradigm.</strong> Paradigm&#39;s current docs list only Unified Markets (RFQ and order books), Delta-1 Spreads and MPX. A Market Maker Protection rule cancels a desk&#39;s orders after two fills within one second (<a href="https://docs.paradigm.co/paradigm-overview">overview</a>, <a href="https://docs.paradigm.co/high-level-notes/maker-protection">MMP</a>). I found no current DeFi settlement product. The historical Ribbon integration used an AirSwap-derived <code>Swap</code> contract. Bidders signed bids off-chain, and the vault settled a batch with <code>settleOffer(swapId, Bid[])</code>, pulling funds from each bidder at that moment. One bidder who had moved funds reverts the whole batch (<a href="https://github.com/ribbon-finance/ribbon-v2/blob/9a7c788f123cf1e82b207b1ddbcddcab14727019/contracts/utils/Swap.sol#L194-L240">Swap.sol L194–240</a>).</p>
+<h2 id="comparison">Comparison</h2>
+<table>
+<thead>
+<tr>
+<th>Venue</th>
+<th>Who submits</th>
+<th>On-chain per trade</th>
+<th>Maker protection before settlement</th>
+<th>Exit if operator stops</th>
+<th>Settlement price</th>
+<th>Trust</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Vertex / Nado</td>
+<td>Sequencer, quorum-signed batches</td>
+<td>Each signed order re-verified, batched</td>
+<td>Sequencer orders all balance changes</td>
+<td>Slow mode: user files, anyone executes after 3 days, withdraw only</td>
+<td>Sequencer-pushed</td>
+<td>Sequencer and verifier set</td>
+</tr>
+<tr>
+<td>Aevo</td>
+<td>Operator</td>
+<td>Each match posted to own L2</td>
+<td>Off-chain engine holds margin</td>
+<td>Rollup forced tx 12 h; app-level exit not documented</td>
+<td>Own CEX index</td>
+<td>Operator, instant upgrades</td>
+</tr>
+<tr>
+<td>Paradex</td>
+<td>Operator</td>
+<td>Appchain tx, STARK-proven</td>
+<td>Off-chain engine</td>
+<td>None (L2BEAT)</td>
+<td>Own oracle, 30-min TWAP</td>
+<td>Operator, privacy council</td>
+</tr>
+<tr>
+<td>Orderly</td>
+<td>Operator, engine-signed</td>
+<td>Batched uploads</td>
+<td>Off-chain engine</td>
+<td>None; <code>checkEngineDown</code> unused</td>
+<td>Engine-signed upload</td>
+<td>Operator</td>
+</tr>
+<tr>
+<td>Hyperliquid</td>
+<td>Validators</td>
+<td>Native L1</td>
+<td>Same state machine</td>
+<td>None beyond 2/3 validators</td>
+<td>Validator median</td>
+<td>Validator set</td>
+</tr>
+<tr>
+<td>dYdX v3</td>
+<td>Operator</td>
+<td>STARK-proven batches</td>
+<td>Off-chain engine</td>
+<td>Forced request, freeze at 14 days, Merkle exit</td>
+<td>Last batch price</td>
+<td>Proof system plus freeze</td>
+</tr>
+<tr>
+<td>Hashflow / Bebop / 0x</td>
+<td>Taker</td>
+<td>One tx per trade</td>
+<td>Maker signs first, short TTL, nonce</td>
+<td>Nothing to exit, no custody</td>
+<td>n/a</td>
+<td>None beyond contracts</td>
+</tr>
+<tr>
+<td>Variational</td>
+<td>Maker (last look)</td>
+<td>Per trade (granularity unverified)</td>
+<td>Maker last look</td>
+<td>Not documented</td>
+<td>In-house oracle</td>
+<td>Operator oracle</td>
+</tr>
+<tr>
+<td>Rysk</td>
+<td>Rysk backend (unverified)</td>
+<td>Per trade</td>
+<td>Off-chain check of maker deposit</td>
+<td>Collateral locked to expiry</td>
+<td>Stork and Pyth</td>
+<td>Operator for exercise</td>
+</tr>
+<tr>
+<td>Premia v3</td>
+<td>Taker</td>
+<td>Per fill</td>
+<td>Signed quote; collateral pulled at fill</td>
+<td>Settle at maturity</td>
+<td>Chainlink</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>Thetanuts V4</td>
+<td>Taker, or anyone after reveal</td>
+<td>Per fill or auction</td>
+<td>Signed order; RFQ collateral pulled at settlement</td>
+<td>Settle at expiry</td>
+<td>Chainlink</td>
+<td>Daily settlement by team</td>
+</tr>
+</tbody></table>
+<h2 id="what-this-means-for-options-core">What this means for options-core</h2>
+<p><strong>(a) The hedge-then-fill race.</strong> No venue makes the maker&#39;s hedge safe by being faster. The venues use one of two approaches instead.</p>
+<ol>
+<li>Operator venues control the ordering of every balance change, withdrawals included, so a matched trade always lands before a later withdrawal. Vertex/Nado puts this in contracts: a user&#39;s on-chain withdrawal enters a FIFO queue that only the sequencer can drain early.</li>
+<li>RFQ venues invert who submits. The maker signs first, the taker sends the transaction, and the maker hedges after the fill.</li>
+</ol>
+<p>Where a signed quote does not reserve collateral, fills fail the same way Symmio&#39;s do: Premia makers, Thetanuts RFQ sellers, Variational takers, Hashflow external accounts and Ribbon bidders.</p>
+<p>The pattern that fits options-core is per-channel slow mode. Collateral behind a user-signed intent can change in only two ways: by a solver-posted fill, or by a user exit request that waits in an on-chain FIFO queue for a delay D. The bound solver drains that queue in order, and anyone can execute a request once D has passed. The solver can hedge as soon as it holds the signed intent. Any exit the user files lands after the fill or cannot execute before D. The current instant-mode cooldown is a coarse version of this. Slow mode works per action, is visible on-chain and is guaranteed to execute. A cheaper alternative where a block of latency is acceptable is the RFQ direction: the solver signs a short-lived quote, the user or a relayer submits it, and the solver hedges after the fill.</p>
+<p><strong>(b) Per-trade gas and latency.</strong> Every operator venue I checked still writes every trade to chain: Vertex/Nado re-verify each order, Aevo posts each match and Orderly uploads each trade. Their speed comes from three things:</p>
+<ul>
+<li>A single submitter, so there is no lock→open handshake.</li>
+<li>Many trades batched into one transaction.</li>
+<li>Users get confirmations from the off-chain engine before the chain sees the trade.</li>
+</ul>
+<p>The equivalent step for options-core is one solver-posted batch carrying user-signed intents and fills, which replaces three transactions per trade. Skipping per-trade writes altogether needs the co-signed checkpoints from the earlier notes. Among these venues, only proof-based systems (StarkEx, Paradex) do that.</p>
+<p><strong>(c) Exit when the solver or operator turns hostile.</strong> Only two exits work without the operator. Vertex/Nado slow mode takes 3 days, is user-triggered, withdraws collateral only and is health-checked. StarkEx freezes after 14 days, then lets users exit with a Merkle proof, closing positions at the last price. Aevo, Paradex, Orderly and Hyperliquid have no exit a user can force at the application level.</p>
+<p>Withdrawing free collateral is not enough while positions are open. Options have a better fallback than perps: fully collateralised positions can wait until expiry and settle from an oracle without the operator, as Premia, Thetanuts and Rysk do. options-core already has <code>executeTrade</code> with Muon prices and force-cancel timeouts. The exit design must guarantee that settlement, liquidation and queue execution never need the solver. Vertex&#39;s price path should not be copied, because its on-chain price is whatever the sequencer submits.</p>
+<p>For D, Vertex chose 3 days. options-core only needs D to exceed the solver&#39;s worst-case time to post outstanding fills, plus margin for L2 congestion. That points to hours rather than days, but D is a parameter to test, not a finding.</p>
+<p><strong>Most important implication:</strong> make the user&#39;s exit ordered, not instant. If a user&#39;s exit request must wait in an on-chain queue that the solver drains first, every fill the solver signed earlier lands before the exit. That removes the race without trusting the solver, and once the delay passes, anyone can execute the exit.</p>
+</article></main></div><footer class="site-footer"><span>Options Core documentation.</span></footer></body></html>

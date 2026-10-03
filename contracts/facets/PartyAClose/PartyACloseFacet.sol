@@ -39,7 +39,7 @@ contract PartyACloseFacet is Accessibility, Pausable, IPartyACloseFacet {
 		uint256 quantity,
 		uint256 price,
 		uint256 deadline
-	) external whenPartyNotPaused(msg.sender) onlyPartyAOfTrade(tradeId) whenInstantModeIsNotActive(msg.sender) returns (uint256 intentId) {
+	) external whenPartyNotPaused(msg.sender) onlyPartyAOfTrade(tradeId) returns (uint256 intentId) {
 		intentId = LibPartyAClose.sendCloseIntent(msg.sender, tradeId, quantity, price, deadline);
 		emit SendCloseIntent(tradeId, intentId, price, quantity, deadline);
 	}
@@ -65,7 +65,7 @@ contract PartyACloseFacet is Accessibility, Pausable, IPartyACloseFacet {
 	 *      - Or CANCEL_PENDING state if awaiting PartyB's acceptance
 	 * @param intentIds Array of close intent IDs to be canceled
 	 */
-	function cancelCloseIntent(uint256[] calldata intentIds) external whenPartyNotPaused(msg.sender) whenInstantModeIsNotActive(msg.sender) {
+	function cancelCloseIntent(uint256[] calldata intentIds) external whenPartyNotPaused(msg.sender) {
 		for (uint256 i; i < intentIds.length; i++) {
 			CloseIntentStatus result = LibPartyAClose.cancelCloseIntent(msg.sender, intentIds[i]);
 			if (result == CloseIntentStatus.EXPIRED) {

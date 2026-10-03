@@ -50,4 +50,42 @@ interface IAccountEvents {
 
 	event AllocateToReserveBalance(address indexed user, address indexed collateral, uint256 amount, uint256 newBalance);
 	event DeallocateFromReserveBalance(address indexed user, address indexed collateral, uint256 amount, uint256 newBalance);
+
+	event BucketDeposit(address indexed payer, address indexed user, uint256 indexed bucketId, address collateral, uint256 amount);
+	event BucketInternalTransfer(
+		address indexed owner,
+		uint256 bucketId,
+		address indexed receiver,
+		uint256 receiverBucketId,
+		address indexed collateral,
+		uint256 amount
+	);
+	event BucketWithdrawInitiated(
+		uint256 indexed id,
+		address indexed owner,
+		uint256 indexed bucketId,
+		address to,
+		address collateral,
+		uint256 amount
+	);
+	event BucketAllocation(
+		address indexed owner,
+		uint256 bucketId,
+		address indexed counterParty,
+		uint256 counterPartyBucketId,
+		address indexed collateral,
+		uint256 amount,
+		bool allocated
+	);
+	event BucketReserveChanged(address indexed owner, uint256 indexed bucketId, address indexed collateral, uint256 amount, bool allocated);
+	event BucketVirtualDeposit(address indexed payer, address indexed user, uint256 indexed bucketId, address collateral, uint256 amount);
+	event BucketExternalTransfer(
+		address indexed owner,
+		uint256 bucketId,
+		address indexed user,
+		address indexed collateral,
+		uint256 amount,
+		address target
+	);
+	event BucketExpressWithdrawInitiated(uint256 indexed id, address indexed owner, uint256 indexed bucketId, address provider, bytes userData);
 }

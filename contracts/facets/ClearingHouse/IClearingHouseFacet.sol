@@ -59,4 +59,58 @@ interface IClearingHouseFacet is IClearingHouseEvents {
 	function closeTrades(uint256 liquidationId, uint256[] calldata tradeIds, uint256[] calldata prices) external;
 
 	function allocateFromReserveToCross(address party, address counterParty, address collateral, uint256 amount) external;
+
+	function flagCrossPartyBLiquidation(address partyB, uint256 partyBBucketId, address partyA, uint256 partyABucketId, address collateral) external;
+
+	function unflagCrossPartyBLiquidation(
+		address partyB,
+		uint256 partyBBucketId,
+		address partyA,
+		uint256 partyABucketId,
+		address collateral
+	) external;
+
+	function liquidateCrossPartyB(
+		address partyB,
+		uint256 partyBBucketId,
+		address partyA,
+		uint256 partyABucketId,
+		address collateral,
+		int256 upnl,
+		uint256 collateralPrice
+	) external;
+
+	function flagPartyALiquidation(address partyA, uint256 partyABucketId, address partyB, uint256 partyBBucketId, address collateral) external;
+
+	function unflagPartyALiquidation(address partyA, uint256 partyABucketId, address partyB, uint256 partyBBucketId, address collateral) external;
+
+	function confiscate(
+		uint256 liquidationId,
+		address party,
+		uint256 partyBucketId,
+		address[] calldata counterParties,
+		uint256[] calldata counterPartyBucketIds,
+		uint256[] calldata amounts,
+		MarginType marginType
+	) external;
+
+	function distributeCollateral(
+		uint256 liquidationId,
+		address partyB,
+		uint256 partyBBucketId,
+		address collateral,
+		MarginType marginType,
+		address[] calldata partyAs,
+		uint256[] calldata partyABucketIds,
+		uint256[] calldata amounts
+	) external;
+
+	function allocateFromReserveToCross(
+		address party,
+		uint256 partyBucketId,
+		address counterParty,
+		uint256 counterPartyBucketId,
+		address collateral,
+		uint256 amount
+	) external;
 }

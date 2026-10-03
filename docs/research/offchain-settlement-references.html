@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Off-chain OTC settlement with on-chain collateral | Options Core</title>
+<link rel="icon" type="image/svg+xml" href="../assets/symmio-mark.svg"><link rel="stylesheet" href="../assets/reader.css"><link rel="stylesheet" href="../assets/docs-portal.css">
+<script>try { if (localStorage.getItem("options-docs-theme") === "light") document.documentElement.dataset.theme = "light"; } catch (_) {}</script>
+<script src="../assets/chapters.js" defer></script><script src="../assets/reader.js" defer></script><script src="../assets/docs-portal.js" defer></script></head>
+<body class="doc-page" data-version="current"><a class="skip-link" href="#full-document">Skip to document</a><header class="docs-header"><div class="doc-topbar"><nav class="docs-trail" aria-label="Breadcrumb"><a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Options Core</span></a><span class="trail-sep" aria-hidden="true">/</span><a class="trail-release" href="../index.html">Documentation</a></nav><nav class="top-actions" aria-label="Page actions"><button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button></nav></div></header>
+<div class="reader-shell"><div data-rail-sections hidden><a class="toc-link level-2" href="#what-the-primary-sources-actually-describe">What the primary sources actually describe</a>
+<a class="toc-link level-3" href="#nitro-separates-signed-state-funding-and-adjudication">Nitro separates signed state, funding, and adjudication</a>
+<a class="toc-link level-3" href="#celer-closely-matches-conditional-financial-obligations">Celer closely matches conditional financial obligations</a>
+<a class="toc-link level-3" href="#erc-7824-is-a-draft-reference-and-current-yellow-differs">ERC-7824 is a draft reference, and current Yellow differs</a>
+<a class="toc-link level-3" href="#derive-separates-accounts-instruments-and-risk-policy">Derive separates accounts, instruments, and risk policy</a>
+<a class="toc-link level-3" href="#discreet-log-contracts-offer-a-related-disclosure-model">Discreet log contracts offer a related disclosure model</a>
+<a class="toc-link level-3" href="#perennial-illustrates-why-a-signed-intent-is-not-reserved-collateral">Perennial illustrates why a signed intent is not reserved collateral</a>
+<a class="toc-link level-3" href="#starkex-shows-what-a-shared-off-chain-ledger-adds">StarkEx shows what a shared off-chain ledger adds</a>
+<a class="toc-link level-2" href="#design-conclusions-for-options-core">Design conclusions for Options Core</a>
+<a class="toc-link level-3" href="#reserve-enforceable-capacity-before-the-solver-hedges">Reserve enforceable capacity before the solver hedges</a>
+<a class="toc-link level-3" href="#decide-exactly-what-evidence-authorizes-a-debit">Decide exactly what evidence authorizes a debit</a>
+<a class="toc-link level-3" href="#an-ordinary-jointly-signed-checkpoint-is-not-an-immediate-withdrawal-authorization">An ordinary jointly signed checkpoint is not an immediate withdrawal authorization</a>
+<a class="toc-link level-3" href="#a-five-minute-batch-interval-is-not-a-five-minute-recovery-guarantee">A five-minute batch interval is not a five-minute recovery guarantee</a>
+<a class="toc-link level-3" href="#derivative-liabilities-survive-checkpoints-and-exit-requests">Derivative liabilities survive checkpoints and exit requests</a>
+<a class="toc-link level-3" href="#solve-the-chain-race-without-promising-atomic-execution-at-a-cex">Solve the chain race without promising atomic execution at a CEX</a>
+<a class="toc-link level-2" href="#recommended-scope">Recommended scope</a></div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1 id="off-chain-otc-settlement-with-on-chain-collateral">Off-chain OTC settlement with on-chain collateral</h1></div></div></header><article class="doc-article" id="full-document"><noscript><nav aria-label="On this page"><a class="toc-link level-2" href="#what-the-primary-sources-actually-describe">What the primary sources actually describe</a>
+<a class="toc-link level-3" href="#nitro-separates-signed-state-funding-and-adjudication">Nitro separates signed state, funding, and adjudication</a>
+<a class="toc-link level-3" href="#celer-closely-matches-conditional-financial-obligations">Celer closely matches conditional financial obligations</a>
+<a class="toc-link level-3" href="#erc-7824-is-a-draft-reference-and-current-yellow-differs">ERC-7824 is a draft reference, and current Yellow differs</a>
+<a class="toc-link level-3" href="#derive-separates-accounts-instruments-and-risk-policy">Derive separates accounts, instruments, and risk policy</a>
+<a class="toc-link level-3" href="#discreet-log-contracts-offer-a-related-disclosure-model">Discreet log contracts offer a related disclosure model</a>
+<a class="toc-link level-3" href="#perennial-illustrates-why-a-signed-intent-is-not-reserved-collateral">Perennial illustrates why a signed intent is not reserved collateral</a>
+<a class="toc-link level-3" href="#starkex-shows-what-a-shared-off-chain-ledger-adds">StarkEx shows what a shared off-chain ledger adds</a>
+<a class="toc-link level-2" href="#design-conclusions-for-options-core">Design conclusions for Options Core</a>
+<a class="toc-link level-3" href="#reserve-enforceable-capacity-before-the-solver-hedges">Reserve enforceable capacity before the solver hedges</a>
+<a class="toc-link level-3" href="#decide-exactly-what-evidence-authorizes-a-debit">Decide exactly what evidence authorizes a debit</a>
+<a class="toc-link level-3" href="#an-ordinary-jointly-signed-checkpoint-is-not-an-immediate-withdrawal-authorization">An ordinary jointly signed checkpoint is not an immediate withdrawal authorization</a>
+<a class="toc-link level-3" href="#a-five-minute-batch-interval-is-not-a-five-minute-recovery-guarantee">A five-minute batch interval is not a five-minute recovery guarantee</a>
+<a class="toc-link level-3" href="#derivative-liabilities-survive-checkpoints-and-exit-requests">Derivative liabilities survive checkpoints and exit requests</a>
+<a class="toc-link level-3" href="#solve-the-chain-race-without-promising-atomic-execution-at-a-cex">Solve the chain race without promising atomic execution at a CEX</a>
+<a class="toc-link level-2" href="#recommended-scope">Recommended scope</a></nav></noscript><p>Research checked on 2026-10-02. This note compares published designs for architectural discussion. It does not establish that their current deployments implement every documented guarantee, or that their contracts are safe to reuse unchanged.</p>
+<p>The agreed v1 direction is separate collateral for each user-solver relationship. A funded bilateral state channel with an application-specific dispute resolver is the closest reference design. A separate accounting contract can hold assets and enforce collateral boundaries while users and solvers exchange signed agreements off-chain. Derive provides a useful comparison for separating subaccounts, assets, and margin rules. Shared collateral across solvers remains a separate design problem. The <a href="bilateral-settlement-proposal.html">concrete proposal</a> maps this research to the inspected Options Core, Perps Core, and Ivy code.</p>
+<h2 id="what-the-primary-sources-actually-describe">What the primary sources actually describe</h2>
+<h3 id="nitro-separates-signed-state-funding-and-adjudication">Nitro separates signed state, funding, and adjudication</h3>
+<p>Nitro treats channel state and channel funding as distinct. Participants should enter the running phase only after sufficient direct deposits, allocations, or guarantees back the channel. Its on-chain adjudicator can retain a compact fingerprint while callers supply the corresponding state and outcome when needed. The participants therefore still need the underlying data. <a href="https://docs.statechannels.org/protocol-tutorial/0040-lifecycle-of-a-channel/">Nitro channel lifecycle</a></p>
+<p>A jointly signed final state can conclude a channel immediately. An ordinary supported state instead enters a challenge process when cooperation fails. A newer supported state can defeat a stale challenge. Nitro explicitly makes the challenge period a tradeoff between recovery speed and the time an honest participant needs to detect and answer a challenge. These are state-channel Nitro documents, not Arbitrum Nitro documents. <a href="https://docs.statechannels.org/protocol-tutorial/0070-finalizing-a-channel/">Nitro finalization</a></p>
+<p>Design implication: agreeing off-chain can create an enforceable claim before routine on-chain settlement, but only inside a funded channel whose dispute rules and evidence are already defined.</p>
+<h3 id="celer-closely-matches-conditional-financial-obligations">Celer closely matches conditional financial obligations</h3>
+<p>Celer&#39;s June 15, 2018 draft describes payment commitments conditioned on another application&#39;s result. A state proof contains accumulated updates, a sequence number, a Merkle root of pending conditions, and signatures. Conditions expose a timeout, a finalization query, and a result query; resolving a condition group produces a state update. Applications can remain off-chain during cooperation if their state is verifiable on-chain when required. Sections 2.1.3 through 2.1.5 also describe cooperative settlement and challenged withdrawals. <a href="https://celer.network/doc/CelerNetwork-Whitepaper.pdf#page=12">Celer whitepaper, pages 11-19</a></p>
+<p>The same document explicitly identifies liquidity lockup, unavailable local state, and being offline longer than a dispute timeout as costs of this model. Its proposed hub alternative warns that unrestricted repeated spending can exceed any finite fraud bond. This is a historical protocol proposal, not evidence about today&#39;s Celer products. <a href="https://celer.network/doc/CelerNetwork-Whitepaper.pdf#page=10">Celer whitepaper, pages 9 and 20</a></p>
+<p>Design implication: a generic conditional-payment layer is plausible, but a condition needs a concrete resolution procedure and the claimant needs its evidence.</p>
+<h3 id="erc-7824-is-a-draft-reference-and-current-yellow-differs">ERC-7824 is a draft reference, and current Yellow differs</h3>
+<p>The ERC-7824 draft separates custody, channel lifecycle, and an <code>IAdjudicator</code> that interprets application data. Channel configuration binds participants, adjudicator, challenge period, and nonce. State includes a version, allocation list, application bytes, and signatures. The draft also requires state storage and challenge monitoring. The inspected text is pinned to <code>fa387f3f13f6496a99f67250c728fe665279ff25</code>. <a href="https://github.com/layer-3/ERCs/blob/fa387f3f13f6496a99f67250c728fe665279ff25/ERCS/erc-7824.md">Draft specification</a></p>
+<p>Its Ethereum ERC repository PR was open and unmerged when checked. Treat it as design material, not an adopted standard or a validated contract implementation. <a href="https://github.com/ethereum/ERCs/pull/728">ERC repository PR #728</a></p>
+<p>Yellow&#39;s current v1 migration documentation explicitly replaces the older Custody/Adjudicator model with ChannelHub validators and engine logic. Its home channel is between a user and a Nitronode; app sessions receive committed channel funds. The documentation distinguishes obtaining a mutually signed state from enforcing that state on-chain. These version differences matter when evaluating examples written for <code>@erc7824/nitrolite</code> 0.5.x. <a href="https://docs.yellow.org/nitrolite/learn/whats-new-from-0.5.3/">Yellow v1 migration overview</a></p>
+<p>Design implication: use the custody/adjudication separation as a comparison. Do not assume current Yellow app sessions automatically supply the same bilateral derivative adjudication rights as the older draft interfaces.</p>
+<h3 id="derive-separates-accounts-instruments-and-risk-policy">Derive separates accounts, instruments, and risk policy</h3>
+<p>Derive&#39;s March 8, 2024 technical overview, originally about Lyra v2, describes NFT subaccounts holding signed asset balances, asset hooks, and manager hooks. Managers define margin rules, settlement, and liquidations. This is a close precedent for keeping options/perpetual semantics outside generic account storage. The article also describes governance-approved integrations performing part of portfolio risk computation off-chain, plus oracle dependencies. Its risk guarantees therefore cannot be reduced to custody alone. This is a versioned design reference, not a claim about all current Derive deployments. <a href="https://insights.derive.xyz/a-technical-overview-of-lyra-v2/">Derive technical overview</a></p>
+<p>Design implication: separate account storage from asset and risk interpretation, while keeping each account&#39;s chosen manager and that manager&#39;s authority explicit.</p>
+<h3 id="discreet-log-contracts-offer-a-related-disclosure-model">Discreet log contracts offer a related disclosure model</h3>
+<p>Thaddeus Dryja&#39;s original Bitcoin DLC paper describes counterparties funding a shared output and preparing outcome-dependent transactions whose execution depends on an oracle&#39;s published signature. The oracle need not know the counterparties&#39; particular contract. This illustrates how bilateral financial obligations can settle without routinely publishing their full commercial terms. It relies on prearranged payouts, funding, and oracle assumptions; it is not a generic EVM adjudication interface or a replacement for a derivatives risk model. <a href="https://adiabat.github.io/dlc.pdf">Original DLC paper</a></p>
+<h3 id="perennial-illustrates-why-a-signed-intent-is-not-reserved-collateral">Perennial illustrates why a signed intent is not reserved collateral</h3>
+<p>In the inspected Perennial source, an intent is verified and then both sides pass through <code>_updateIntent</code>. That path loads current market/account context, applies the proposed update, and runs <code>InvariantLib.validate</code>. Even its overload accepting trader and solver signatures still uses those execution paths. The inspected repository head was <code>99780561f7dc50257b79845cba649ca8f5add6ff</code>, dated May 16, 2025. <a href="https://github.com/equilibria-xyz/perennial-v2/blob/99780561f7dc50257b79845cba649ca8f5add6ff/packages/core/contracts/Market.sol">Perennial Market.sol</a></p>
+<p>Design implication: signatures authorize a later execution. By themselves, they do not establish that the execution will remain valid after unrelated state changes. This is the distinction relevant to the solver&#39;s hedge-before-settlement race.</p>
+<h3 id="starkex-shows-what-a-shared-off-chain-ledger-adds">StarkEx shows what a shared off-chain ledger adds</h3>
+<p>StarkEx keeps order execution off-chain and submits batched state updates. Its contracts retain assets and state commitments, and accept updates after validity-proof verification. That proof system is doing work that an ordinary signature or hash cannot do for a shared ledger. <a href="https://docs.starkware.co/starkex/overview.html">StarkEx overview</a></p>
+<p>Validity and recoverability are separate. StarkEx&#39;s rollup mode publishes balance changes sufficient to reconstruct the balance tree, rather than every individual transaction. Its validium mode relies on a data availability committee. Users still need the appropriate data to construct escape proofs. <a href="https://docs.starkware.co/starkex/con_data_availability.html">StarkEx data availability</a></p>
+<p>StarkEx also specifies forced operations. If an operator fails to serve a request before the grace period ends, users can freeze the application and escape. During normal operation, a request can instead be served by proving it invalid. Processing is not a promise to execute an impossible withdrawal. The documented emergency path values synthetic assets using the last oracle tick. <a href="https://docs.starkware.co/starkex/perpetual/shared/forced-operations_overview.html">StarkEx forced operations</a></p>
+<p>For ordinary full withdrawal with open synthetic positions, the user may first need a forced trade. Its terms require the other side&#39;s agreement and the result must satisfy the documented margin conditions. An exit mechanism does not manufacture a willing counterparty. <a href="https://docs.starkware.co/starkex/perpetual/perpetual-trading-forced-withdrawal-and-forced-trade.html">StarkEx forced withdrawal and trade</a></p>
+<p>Design implication: a common off-chain account system can work, but it needs a complete execution, proof, data availability, and escape design. Those responsibilities are much larger than running a batching queue.</p>
+<h2 id="design-conclusions-for-options-core">Design conclusions for Options Core</h2>
+<p>The conclusions below are recommendations and deductions from the mechanisms above, not claims that any referenced protocol implements this exact design.</p>
+<h3 id="reserve-enforceable-capacity-before-the-solver-hedges">Reserve enforceable capacity before the solver hedges</h3>
+<p>Suppose Alice deposits 1,000 USDC, then independently signs an 800 USDC commitment for each of two solvers. Both signatures can be genuine while both commitments cannot be paid. A global nonce can select a winner when submitted on-chain, but then the losing solver never had the requested execution guarantee.</p>
+<p>Three workable choices are:</p>
+<table>
+<thead>
+<tr>
+<th>Collateral model</th>
+<th>What prevents conflicting commitments</th>
+<th>Main cost</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Separate funded bilateral channels</td>
+<td>Each channel has exclusive backing; its participants validate subsequent states</td>
+<td>Capital is divided between counterparties</td>
+</tr>
+<tr>
+<td>One shared account with globally agreed state</td>
+<td>Every risk-relevant update belongs to one ordered, enforceable history</td>
+<td>Requires a clearing/consensus/proof design and a complete exit mechanism</td>
+</tr>
+<tr>
+<td>A trusted or bonded reservation service</td>
+<td>Solvers rely on a service&#39;s reservation promise</td>
+<td>Explicit service credit/trust risk unless additional proof and collateral mechanisms close the gap</td>
+</tr>
+</tbody></table>
+<p>A one-time funding or capacity-allocation transaction can support many later trades. The necessary lock is on reusable capacity, not necessarily on every individual intent.</p>
+<h3 id="decide-exactly-what-evidence-authorizes-a-debit">Decide exactly what evidence authorizes a debit</h3>
+<table>
+<thead>
+<tr>
+<th>Evidence</th>
+<th>What the accounting system can conclude</th>
+<th>What remains to be supplied</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Both parties sign an explicit settlement allocation</td>
+<td>The relevant parties consented to that outcome</td>
+<td>Domain binding, exclusive backing, freshness/finality, and protection of other claims</td>
+</tr>
+<tr>
+<td>A signed conditional agreement plus resolver evidence</td>
+<td>A previously authorized condition produced a payable result</td>
+<td>Terms, oracle policy, condition evaluator, and timeout/default rules</td>
+</tr>
+<tr>
+<td>An optimistic unilateral claim</td>
+<td>The claim may finalize if no valid challenge arrives</td>
+<td>Available evidence, funded challenge mechanism, sufficient response time, and an actual adjudication rule</td>
+</tr>
+<tr>
+<td>A validity proof</td>
+<td>A defined computation accepted the transition</td>
+<td>Correct verification rules, public inputs, data availability, and liveness/exit handling</td>
+</tr>
+</tbody></table>
+<p>An opaque hash commits to data; it does not establish the meaning or truth of that data. Both parties can keep commercial details out of routine settlement by signing the explicit resulting allocation and a terms commitment. If they later disagree about a conditional obligation, the system needs sufficient evidence to resolve it. Revealing the evidence, accepting an agreed oracle/validator, and verifying a proof are different trust and privacy choices.</p>
+<p>Removing a resolver must not retroactively remove the only way to enforce an existing agreement. Bind existing agreements to a specific resolver version and fallback policy. Future agreements can choose different rules.</p>
+<h3 id="an-ordinary-jointly-signed-checkpoint-is-not-an-immediate-withdrawal-authorization">An ordinary jointly signed checkpoint is not an immediate withdrawal authorization</h3>
+<p>Consider states 40 and 41. Both are jointly signed; state 41 transfers 200 USDC from Alice to Bob. The chain has only seen state 39. Alice must not be able to post state 40 and immediately withdraw the amount state 41 transferred merely because <code>40 &gt; 39</code>.</p>
+<p>The chain cannot know that state 41 exists until someone supplies it. An ordinary checkpoint therefore cannot release collateral in a way that defeats a newer enforceable state. A dispute delay, a properly terminal cooperative close, or a separately designed withdrawal authorization must establish finality first. A closing or resizing protocol must also prevent later states from relying on collateral it releases. This follows directly from Nitro&#39;s stale-state challenge model.</p>
+<p>Likewise, applying each signed balance delta as an independent payment invites double payment on retries. Use a defined state/version or cumulative accounting model and bind it to the channel&#39;s funding epoch. Exact duplicate, stale, conflicting, and skipped submissions need explicit handling.</p>
+<h3 id="a-five-minute-batch-interval-is-not-a-five-minute-recovery-guarantee">A five-minute batch interval is not a five-minute recovery guarantee</h3>
+<p>Routine batching determines when a cooperative operator posts updates. The dispute window determines how long an honest participant has to answer a hostile or stale claim. Choosing one does not choose the other.</p>
+<p>A useful recovery promise is conditional and specific: after an exit request freezes new liabilities for the relevant channel, an honest party holding the required evidence can enforce the agreed outcome through a bounded procedure, assuming the underlying chain includes its transactions and the agreed oracle/fallback is usable. The procedure must bound challenge extensions and the gas needed to resolve outstanding obligations.</p>
+<p>Users must retain signed states, terms, and required witnesses, or have a recovery service that actually makes them available. A state root in a contract and data in the solver&#39;s Kafka cluster are insufficient if the solver can withhold everything needed to prove a withdrawal. Participants may need watchtowers to meet the dispute deadline.</p>
+<h3 id="derivative-liabilities-survive-checkpoints-and-exit-requests">Derivative liabilities survive checkpoints and exit requests</h3>
+<p>A checkpoint recording a paid premium must also preserve the live option obligation. Recording cash balances alone would let a writer withdraw collateral and abandon the option. A channel needs a commitment to its unresolved obligations, their reserved backing, and the rules for extinguishing them.</p>
+<p>For a first version, fully collateralized contracts with bounded maximum payouts make the assurance precise. A 1,000 USDC reserve can secure a maximum 1,000 USDC contractual liability. Finite collateral cannot guarantee an uncapped USDC-denominated loss under arbitrary price movements. Cross-margining and liquidation improve capital use but add oracle, price-gap, execution, and loss-allocation assumptions.</p>
+<p>Define separately the right to withdraw free collateral, the right to settle a matured claim, and the right to terminate or transfer an open position. Unilateral early termination needs an agreed valuation or auction rule. Neither a channel nor a batching system automatically creates one. External hedge profits are not usable collateral unless the protocol can actually reach them.</p>
+<h3 id="solve-the-chain-race-without-promising-atomic-execution-at-a-cex">Solve the chain race without promising atomic execution at a CEX</h3>
+<p>Once a solver holds an enforceable acceptance backed by reserved channel funds, Alice cannot invalidate that claim by withdrawing those same funds or promising them elsewhere. That addresses the race described in the design discussion.</p>
+<p>It does not make an on-chain trade atomic with a Binance hedge. The solver can still suffer hedge rejection, slippage, venue downtime, or hedge completion without the desired subsequent action. The trading protocol must define when acceptance becomes binding, who bears hedge risk, and any deadline or compensation rule. A user&#39;s signed offer can give a solver a time-limited right to accept; that commercial consequence should be explicit.</p>
+<h2 id="recommended-scope">Recommended scope</h2>
+<p>Keep conservation, exclusive backing, and bounded allocation changes in accounting. Give each product resolver authority only over its agreed channel and reserved amounts. Bind the channel to its participants, funding epoch, asset, resolver configuration, and dispute policy before relying on off-chain execution. Support cooperative settlement and an independently exercisable exit path.</p>
+<p>Begin with one settlement asset and capped or fully collateralized liabilities. The remaining product decisions are which obligations have bounded maximum loss, how users recover while offline, and how open positions are valued when either party refuses to cooperate.</p>
+</article></main></div><footer class="site-footer"><span>Options Core documentation.</span></footer></body></html>

@@ -3,6 +3,7 @@
 // Copyright (c) 2023 Symmetry Labs AG
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
+import { LibBucket } from "../libraries/core/LibBucket.sol";
 
 import { LibAccessibility } from "../libraries/core/LibAccessibility.sol";
 import { LibParty } from "../libraries/models/LibParty.sol";
@@ -64,6 +65,7 @@ abstract contract Accessibility {
 		Withdraw storage withdrawObject = AccountStorage.layout().withdrawals[withdrawId];
 		StateControlStorage.Layout storage stateControlLayout = StateControlStorage.layout();
 		if (stateControlLayout.suspendedAddresses[withdrawObject.user]) revert SystemErrors.UserSuspended(withdrawObject.user);
+		LibBucket.requireNotSuspended(withdrawObject.user, withdrawObject.bucketId);
 		if (stateControlLayout.suspendedAddresses[withdrawObject.to]) revert SystemErrors.UserSuspended(withdrawObject.to);
 		if (stateControlLayout.suspendedWithdrawal[withdrawId]) revert SystemErrors.WithdrawalSuspended(withdrawId);
 	}

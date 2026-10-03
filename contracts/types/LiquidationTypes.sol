@@ -28,4 +28,7 @@ struct LiquidationDetail {
 	address partyB;
 	LiquidationSide side;
 	LiquidationStatus status;
+	uint256 partyABucketId;
+	uint256 partyBBucketId;
+	bool isBucketLiquidation;
 }

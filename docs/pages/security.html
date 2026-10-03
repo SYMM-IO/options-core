@@ -551,7 +551,7 @@
 </tr>
 </tbody></table>
 <h2 id="10-signature-schemes-risk">10. Signature Schemes Risk</h2>
-<p>For deeper recap see <code>docs/concepts/oracle-and-signatures.md</code> (planned). Three independent signature schemes are in use:</p>
+<p>For deeper recap see <code>docs/pages/oracle-and-signatures.html</code>. Three independent signature schemes are in use:</p>
 <ul>
 <li><strong>Muon TSS</strong> for <code>UpnlSig</code> and <code>SettlementPriceSig</code> (<code>contracts/libraries/services/LibMuon.sol</code>, verified through <code>MuonOracle.sol:38-43</code> which combines a Schnorr signature with a gateway ECDSA signature). Risks: TSS quorum compromise, gateway compromise (gateway alone cannot forge), expired signatures (<code>ExpiredSignature</code> at <code>LibMuon.sol:32,66</code>), and replay (settlement-side replay blocked by <code>isSigUsed</code>; uPnL replay blocked by bilateral nonce — <code>LibMuon.sol:85</code>).</li>
 <li><strong>EIP-712 / EIP-1271</strong> for <code>InstantLayer</code> signed operations (<code>contracts/helpers/InstantLayer.sol</code>). Risks: signer key compromise, deadline expiry (<code>DeadlineExpired</code> at <code>:387</code>), nonce/salt collisions (replay blocked at <code>:401-402</code>, ordering at <code>:410</code>).</li>

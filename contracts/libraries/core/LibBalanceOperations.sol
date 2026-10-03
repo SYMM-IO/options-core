@@ -4,6 +4,9 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
+import { LibBucket } from "./LibBucket.sol";
+import { BucketRef } from "../../types/BucketTypes.sol";
+
 import { LibParty } from "../models/LibParty.sol";
 import { LibDecimals } from "../utils/LibDecimals.sol";
 import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance.sol";
@@ -30,22 +33,33 @@ library LibBalanceOperations {
 	using LibParty for address;
 
 	function deposit(address collateral, address user, uint256 amount) internal {
-		_deposit(collateral, user, amount, true);
+		_deposit(collateral, user, 0, amount, true);
 	}
 
 	function virtualDepositFor(address collateral, address user, uint256 amount) internal {
-		_deposit(collateral, user, amount, false);
+		_deposit(collateral, user, 0, amount, false);
 	}
 
-	function _deposit(address collateral, address user, uint256 amount, bool doTransfer) internal {
+	function deposit(address collateral, address user, uint256 bucketId, uint256 amount) internal {
+		_deposit(collateral, user, bucketId, amount, true);
+	}
+
+	function virtualDepositFor(address collateral, address user, uint256 bucketId, uint256 amount) internal {
+		_deposit(collateral, user, bucketId, amount, false);
+	}
+
+	function _deposit(address collateral, address user, uint256 bucketId, uint256 amount, bool doTransfer) internal {
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 
 		if (!appLayout.whiteListedCollateral[collateral]) revert ValidationErrors.CollateralNotWhitelisted(collateral);
 		if (amount == 0) revert ValidationErrors.ZeroAmount();
 		if (user == address(0)) revert ValidationErrors.ZeroAddress("user");
-		user.requireSolvent(address(0), collateral, MarginType.ISOLATED);
+		LibBucket.requireNotSuspended(user, bucketId);
+		user.requireSolvent(bucketId, address(0), 0, collateral, MarginType.ISOLATED);
+		if (user == msg.sender) LibBucket.register(user, bucketId);
+		else LibBucket.requireRegistered(user, bucketId);
 
-		ScheduledReleaseBalance storage balance = user.balanceOf(collateral);
+		ScheduledReleaseBalance storage balance = user.balanceOf(bucketId, collateral);
 
 		uint256 amountWith18Decimals = LibDecimals.normalizeAmount(collateral, amount);
 		if (!user.isPartyB() && (balance.isolatedBalance + amountWith18Decimals > appLayout.balanceLimitPerUser[collateral]))
@@ -57,18 +71,32 @@ library LibBalanceOperations {
 
 		if (doTransfer) IERC20(collateral).safeTransferFrom(msg.sender, address(this), amount);
 
-		balance.setup(user, collateral);
+		balance.setup(user, bucketId, collateral);
 		balance.instantIsolatedAdd(amountWith18Decimals, IncreaseBalanceReason.DEPOSIT);
 	}
 
 	function internalTransfer(address collateral, address sender, address receiver, uint256 amount) internal {
-		AppStorage.Layout storage appLayout = AppStorage.layout();
+		internalTransfer(collateral, sender, 0, receiver, 0, amount);
+	}
 
+	function internalTransfer(
+		address collateral,
+		address sender,
+		uint256 senderBucketId,
+		address receiver,
+		uint256 receiverBucketId,
+		uint256 amount
+	) internal {
+		AppStorage.Layout storage appLayout = AppStorage.layout();
 		if (amount == 0) revert ValidationErrors.ZeroAmount();
 		if (receiver == address(0)) revert ValidationErrors.ZeroAddress("user");
+		LibBucket.requireNotSuspended(sender, senderBucketId);
+		LibBucket.requireNotSuspended(receiver, receiverBucketId);
+		LibBucket.requireRegistered(sender, senderBucketId);
+		LibBucket.requireRegistered(receiver, receiverBucketId);
 
-		ScheduledReleaseBalance storage sourceBalance = sender.balanceOf(collateral);
-		ScheduledReleaseBalance storage targetBalance = receiver.balanceOf(collateral);
+		ScheduledReleaseBalance storage sourceBalance = sender.balanceOf(senderBucketId, collateral);
+		ScheduledReleaseBalance storage targetBalance = receiver.balanceOf(receiverBucketId, collateral);
 
 		sourceBalance.syncAll();
 
@@ -79,11 +107,14 @@ library LibBalanceOperations {
 			revert BalanceErrors.BalanceLimitExceeded(int256(targetBalance.isolatedBalance), amount, appLayout.balanceLimitPerUser[collateral]);
 
 		sourceBalance.isolatedSub(amount, DecreaseBalanceReason.INTERNAL_TRANSFER);
-		targetBalance.setup(receiver, collateral);
+		targetBalance.setup(receiver, receiverBucketId, collateral);
 		targetBalance.instantIsolatedAdd(amount, IncreaseBalanceReason.INTERNAL_TRANSFER);
 	}
 
 	function externalTransfer(address collateral, address sender, address receiver, uint256 amount, address target) internal {
+		externalTransfer(collateral, sender, 0, receiver, amount, target);
+	}
+	function externalTransfer(address collateral, address sender, uint256 bucketId, address receiver, uint256 amount, address target) internal {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
 		if (amount == 0) revert ValidationErrors.ZeroAmount();
@@ -92,7 +123,12 @@ library LibBalanceOperations {
 		if (!accountLayout.externalTransferTargets[target][collateral])
 			revert ValidationErrors.ExternalTransferTargetNotWhitelisted(target, collateral);
 
-		ScheduledReleaseBalance storage sourceBalance = sender.balanceOf(collateral);
+		LibBucket.requireRegistered(sender, bucketId);
+		LibBucket.requireNotSuspended(sender, bucketId);
+		ScheduledReleaseBalance storage sourceBalance = sender.balanceOf(bucketId, collateral);
+		sender.requireSolvent(bucketId, address(0), 0, collateral, MarginType.ISOLATED);
+		uint256 available = sourceBalance.isolatedBalance - sourceBalance.isolatedLockedBalance;
+		if (amount > available) revert BalanceErrors.InsufficientBalance(sender, collateral, amount, available);
 		sourceBalance.isolatedSub(amount, DecreaseBalanceReason.EXTERNAL_TRANSFER);
 
 		uint256 amountInCollateralDecimals = LibDecimals.denormalizeAmount(collateral, amount);
@@ -109,18 +145,31 @@ library LibBalanceOperations {
 		address provider,
 		bytes memory userData
 	) internal returns (uint256 currentId) {
+		return initiateWithdraw(sender, 0, collateral, amount, to, provider, userData);
+	}
+
+	function initiateWithdraw(
+		address sender,
+		uint256 bucketId,
+		address collateral,
+		uint256 amount,
+		address to,
+		address provider,
+		bytes memory userData
+	) internal returns (uint256 currentId) {
 		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 
+		LibBucket.requireNotSuspended(sender, bucketId);
 		if (to == address(0)) revert ValidationErrors.ZeroAddress("to");
 		if (amount == 0) revert ValidationErrors.ZeroAmount();
 
-		ScheduledReleaseBalance storage balance = sender.balanceOf(collateral);
+		ScheduledReleaseBalance storage balance = sender.balanceOf(bucketId, collateral);
 
 		if (!accountLayout.manualSync[sender]) balance.syncAll();
 
 		uint256 available = balance.isolatedBalance - balance.isolatedLockedBalance;
 		if (available < amount) revert BalanceErrors.InsufficientBalance(sender, collateral, amount, available);
-		sender.requireSolvent(address(0), collateral, MarginType.ISOLATED);
+		sender.requireSolvent(bucketId, address(0), 0, collateral, MarginType.ISOLATED);
 
 		bool isVirtual = false;
 		if (provider != address(0)) {
@@ -147,7 +196,8 @@ library LibBalanceOperations {
 			userData: userData,
 			timestamp: block.timestamp,
 			status: WithdrawStatus.INITIATED,
-			isVirtual: isVirtual
+			isVirtual: isVirtual,
+			bucketId: bucketId
 		});
 
 		accountLayout.withdrawals[currentId] = withdrawObject;
@@ -223,7 +273,7 @@ library LibBalanceOperations {
 
 		if (withdrawal.provider != address(0)) revert BalanceErrors.ExpressWithdrawCancellationNotAllowed(withdrawal.provider);
 
-		ScheduledReleaseBalance storage balance = withdrawal.user.balanceOf(withdrawal.collateral);
+		ScheduledReleaseBalance storage balance = withdrawal.user.balanceOf(withdrawal.bucketId, withdrawal.collateral);
 
 		ValidationErrors.requireStatus("WithdrawStatus", uint8(withdrawal.status), uint8(WithdrawStatus.INITIATED));
 
@@ -233,7 +283,7 @@ library LibBalanceOperations {
 				withdrawal.amount,
 				appLayout.balanceLimitPerUser[withdrawal.collateral]
 			);
-		withdrawal.user.requireSolvent(address(0), withdrawal.collateral, MarginType.ISOLATED);
+		withdrawal.user.requireSolvent(withdrawal.bucketId, address(0), 0, withdrawal.collateral, MarginType.ISOLATED);
 
 		withdrawal.status = WithdrawStatus.CANCELED;
 		balance.instantIsolatedAdd(withdrawal.amount, IncreaseBalanceReason.DEPOSIT);
@@ -241,5 +291,10 @@ library LibBalanceOperations {
 
 	function syncBalances(address collateral, address partyA, address[] calldata partyBs) internal {
 		for (uint256 i = 0; i < partyBs.length; i++) partyA.balanceOf(collateral).sync(partyBs[i]);
+	}
+
+	function syncBalances(address collateral, address owner, uint256 bucketId, BucketRef[] calldata counterParties) internal {
+		for (uint256 i; i < counterParties.length; i++)
+			owner.balanceOf(bucketId, collateral).sync(counterParties[i].owner, counterParties[i].bucketId);
 	}
 }

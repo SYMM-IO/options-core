@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="A design discussion about generic accounting, funded bilateral agreements, off-chain trading, and on-chain enforcement for Options Core.">
+  <title>A core built around agreements · Options Core</title>
+  <style>
+    :root { color-scheme: light; --paper:#f7f6f2; --surface:#fffefa; --ink:#252c29; --muted:#59645e; --accent:#246451; --line:#d5ddd4; --tint:#e9f0e9; --reading-size:18px; }
+    @media (prefers-color-scheme:dark) { :root:not([data-theme="light"]) { color-scheme:dark; --paper:#171c1a; --surface:#202824; --ink:#e7ebe5; --muted:#adb9b0; --accent:#9dccb5; --line:#3c4a41; --tint:#263a30; } }
+    :root[data-theme="dark"] { color-scheme:dark; --paper:#171c1a; --surface:#202824; --ink:#e7ebe5; --muted:#adb9b0; --accent:#9dccb5; --line:#3c4a41; --tint:#263a30; }
+    * { box-sizing:border-box; }
+    html { scroll-padding-top:1.5rem; }
+    body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; -webkit-font-smoothing:antialiased; }
+    [hidden] { display:none !important; }
+    a { color:var(--accent); text-underline-offset:.2em; text-decoration-thickness:1px; overflow-wrap:anywhere; }
+    a:hover { text-decoration-thickness:2px; }
+    :focus-visible { outline:3px solid var(--accent); outline-offset:5px; border-radius:3px; }
+    ::selection { color:var(--ink); background:var(--tint); }
+    .skip { position:absolute; inset-block-start:-100px; inset-inline-start:20px; padding:12px; background:var(--surface); z-index:3; }
+    .skip:focus { inset-block-start:12px; }
+    .shell { width:min(100%,760px); margin-inline:auto; padding-inline:max(24px,env(safe-area-inset-left)); }
+    .masthead { padding-block:22px; display:flex; align-items:center; justify-content:space-between; gap:16px; border-bottom:1px solid var(--line); }
+    .wordmark { font-size:13px; font-weight:650; letter-spacing:.09em; text-transform:uppercase; }
+    .edition { font-size:13px; color:var(--muted); }
+    header { padding-block:52px 30px; }
+    .eyebrow { margin:0 0 18px; color:var(--accent); font-size:13px; font-weight:650; letter-spacing:.08em; text-transform:uppercase; }
+    h1 { margin:0; max-width:13ch; font-family:Georgia,"Times New Roman",serif; font-weight:400; font-size:clamp(38px,7.5vw,60px); line-height:1.08; letter-spacing:-.035em; text-wrap:balance; }
+    .deck { margin:23px 0; max-width:42ch; color:var(--muted); font-size:20px; line-height:1.55; }
+    .meta { display:flex; flex-wrap:wrap; gap:8px 18px; color:var(--muted); font-size:13px; line-height:1.5; }
+    .reader-controls { display:flex; flex-wrap:wrap; gap:10px; margin-block:25px 0; }
+    button { min-height:44px; padding:10px 15px; border:1px solid var(--line); border-radius:8px; color:var(--ink); background:var(--surface); font:500 14px/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; cursor:pointer; }
+    button[aria-pressed="true"] { background:var(--tint); border-color:var(--accent); }
+    nav { margin-block:0 38px; padding:4px 18px; background:var(--surface); border:1px solid var(--line); border-radius:10px; }
+    summary { min-height:48px; padding-block:14px; cursor:pointer; font-size:15px; font-weight:600; }
+    nav ol { padding-inline-start:25px; margin:0 0 16px; }
+    nav li { padding-block:3px; font-size:15px; line-height:1.5; }
+    nav a { display:block; padding-block:7px; }
+    article { font-size:var(--reading-size); line-height:1.72; overflow-wrap:break-word; }
+    article p { margin:0 0 1.2em; }
+    article strong { font-weight:650; }
+    article section { margin-block:52px; scroll-margin-top:24px; }
+    h2 { margin:0 0 24px; font-size:clamp(25px,5vw,31px); line-height:1.22; font-weight:600; letter-spacing:-.025em; text-wrap:balance; }
+    .section-no { display:block; margin-block-end:10px; color:var(--accent); font-size:12px; font-weight:650; letter-spacing:.1em; }
+    h3 { font-size:1em; line-height:1.4; margin:0 0 10px; }
+    ul,ol { padding-inline-start:1.3em; }
+    article li { margin-block:10px; padding-inline-start:3px; }
+    .key { margin-block:28px; padding:22px 24px; border-inline-start:3px solid var(--accent); background:var(--tint); border-radius:0 8px 8px 0; }
+    .key p:last-child { margin-bottom:0; }
+    .definition { margin-block:22px; }
+    .definition dt { color:var(--accent); font-weight:650; margin-block-start:20px; }
+    .definition dd { margin:4px 0 0; }
+    figure { margin:28px 0; }
+    .architecture { list-style:none; padding:0; margin:0; }
+    .architecture li { position:relative; margin:0 0 29px; padding:17px 20px; border:1px solid var(--line); border-radius:9px; background:var(--surface); }
+    .architecture li:not(:last-child)::after { content:"↓"; position:absolute; inset-block-end:-30px; inset-inline-start:calc(50% - 8px); color:var(--accent); line-height:28px; }
+    .architecture strong { display:block; font-size:16px; }
+    .architecture span { display:block; margin-top:3px; font-size:15px; line-height:1.5; color:var(--muted); }
+    figcaption { color:var(--muted); font-size:14px; line-height:1.6; margin-block-start:12px; }
+    .allocation { padding:20px; border:1px solid var(--line); background:var(--surface); border-radius:10px; margin-block:24px; }
+    .allocation p { font-size:14px; margin:0 0 16px; color:var(--muted); }
+    .allocation dl { margin:0; }
+    .allocation dl div { display:flex; flex-wrap:wrap; justify-content:space-between; gap:5px 16px; padding-block:9px; font-size:16px; }
+    .allocation dd { margin:0; font-weight:650; font-variant-numeric:tabular-nums; }
+    .allocation dt { color:var(--muted); }
+    .allocation-bar { display:flex; height:8px; border-radius:4px; overflow:hidden; margin-block:16px 3px; }
+    .allocation-bar span:nth-child(1) { width:30%; background:var(--accent); }
+    .allocation-bar span:nth-child(2) { width:20%; background:#92b3a0; }
+    .allocation-bar span:nth-child(3) { width:50%; background:var(--line); }
+    .cards { display:grid; gap:14px; margin-block:24px; }
+    .card { padding:21px; border:1px solid var(--line); border-radius:10px; background:var(--surface); }
+    .card p { margin:0; }
+    .states { border:1px solid var(--line); border-radius:10px; background:var(--surface); padding:18px; font-size:15px; font-variant-numeric:tabular-nums; margin-block:24px; }
+    .state-row { display:grid; grid-template-columns:.85fr 1fr 1fr; gap:10px; padding-block:10px; }
+    .state-row:first-child { color:var(--muted); font-size:13px; }
+    .state-row:last-child { color:var(--accent); font-weight:650; }
+    .state-row span:not(:first-child) { text-align:end; }
+    .states small { display:block; margin-top:10px; color:var(--muted); font-size:13px; }
+    .sources { list-style:none; padding:0; }
+    .sources li { padding:20px 0; margin:0; border-bottom:1px solid var(--line); }
+    .sources a { font-weight:600; display:inline-block; padding-block:5px; }
+    .sources p { margin:5px 0 0; }
+    blockquote { margin:28px 0; padding:24px; border-inline-start:3px solid var(--accent); background:var(--tint); border-radius:0 9px 9px 0; font-family:Georgia,"Times New Roman",serif; font-size:1.2em; line-height:1.6; }
+    .code-notes { font-size:14px; color:var(--muted); border-top:1px solid var(--line); padding-top:15px; }
+    code { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:.85em; overflow-wrap:anywhere; }
+    footer { padding-block:28px max(40px,env(safe-area-inset-bottom)); margin-top:40px; border-top:1px solid var(--line); color:var(--muted); font-size:14px; line-height:1.6; }
+    footer a { display:inline-block; padding-block:10px; }
+    @media (min-width:650px) { .cards.pair { grid-template-columns:1fr 1fr; } .shell { padding-inline:38px; } }
+    @media (max-width:359px) { .shell { padding-inline:18px; } header { padding-top:36px; } .key,blockquote { padding:18px; } .edition { font-size:12px; } }
+    @media print { :root { color-scheme:light; --paper:#fff; --surface:#fff; --ink:#111; --muted:#444; --accent:#174d3d; --line:#ccc; --tint:#f1f5f1; --reading-size:11pt; } .shell { width:100%; max-width:none; padding:0; } .reader-controls,nav,.skip,footer a { display:none !important; } header { padding-top:20px; } article section { margin-block:26px; } h1 { font-size:35pt; } h2 { font-size:20pt; break-after:avoid; } .card,.key,.states,blockquote { break-inside:avoid; } }
+  </style>
+</head>
+<body id="top">
+  <a class="skip" href="#article">Skip to the article</a>
+  <div class="shell">
+    <div class="masthead"><span class="wordmark">Options Core</span><span class="edition">Design discussion · 02 Oct 2026</span></div>
+    <header>
+      <p class="eyebrow">Off-chain trading / On-chain enforcement</p>
+      <h1>A core built around agreements</h1>
+      <p class="deck">Generic accounting, reserved collateral, and enforceable promises between two parties.</p>
+      <div class="meta"><span>Architecture proposal</span><span>Separate collateral per relationship</span></div>
+      <div class="reader-controls" hidden>
+        <button id="text-size" type="button" aria-pressed="false">Larger text</button>
+        <button id="theme" type="button" aria-pressed="false">Dark mode</button>
+      </div>
+    </header>
+    <nav aria-label="Article contents"><details><summary>In this article</summary><ol>
+      <li><a href="#direction">The design direction</a></li>
+      <li><a href="#architecture">The architecture</a></li>
+      <li><a href="#funding">Reserve once, trade many times</a></li>
+      <li><a href="#authorization">What authorizes a payment?</a></li>
+      <li><a href="#rules">What to take from Ivy</a></li>
+      <li><a href="#checkpoints">The stale-state problem</a></li>
+      <li><a href="#exit">Leaving with live options</a></li>
+      <li><a href="#research">Related systems and sources</a></li>
+      <li><a href="#guarantee">The guarantee to aim for</a></li>
+      <li><a href="#first-version">The first version</a></li>
+    </ol></details></nav>
+    <main id="article"><article>
+      <section id="direction">
+        <h2><span class="section-no" aria-hidden="true">01</span>The design direction</h2>
+        <p>I would redesign this around <strong>funded bilateral agreements</strong>, with options and perpetuals as product modules.</p>
+        <p>Your decision to reserve collateral separately for each user–solver relationship makes that a practical starting point. We can move most trading activity off-chain while keeping custody and enforcement on-chain. ZK proofs are not necessary for the first version.</p>
+        <div class="key"><p><strong>The solver should hold an enforceable, funded agreement before hedging.</strong> The later blockchain transaction records or resolves that agreement. Its enforceability must not depend on the user still having an available balance when the transaction arrives.</p></div>
+        <p>I examined Options Core, Perps Core, and Ivy. Options already separates intents from trades, but its agreement type and balance model still contain product-specific assumptions. InstantLayer batches signed calls through the existing on-chain lifecycle. Binding and withdrawal restrictions address parts of the race, but the proposed design needs a more general agreement and dispute protocol.</p>
+        <p>The distinction I would introduce is between an intent, an agreement, and a position.</p>
+        <dl class="definition">
+          <dt>Intent</dt><dd>An offer: "I am willing to enter this arrangement under these conditions."</dd>
+          <dt>Agreement</dt><dd>The accepted obligation: "These pools are now bound by these terms."</dd>
+          <dt>Position</dt><dd>The options or perpetuals module's interpretation of that agreement.</dd>
+        </dl>
+        <p>Cancelling an intent must never erase an agreement already accepted against it.</p>
+      </section>
+      <section id="architecture">
+        <h2><span class="section-no" aria-hidden="true">02</span>The architecture</h2>
+        <p>The architecture I would aim for looks like this:</p>
+        <figure aria-label="Four layers, from applications to accounting">
+          <ol class="architecture">
+            <li><strong>Off-chain apps and solvers</strong><span>Negotiation, signing, hedging, and publication.</span></li>
+            <li><strong>Product modules</strong><span>Intents, agreements, risk, and payoff.</span></li>
+            <li><strong>Bilateral channels</strong><span>Signed states and dispute resolution.</span></li>
+            <li><strong>Accounting</strong><span>Accounts, pools, escrow, and withdrawals.</span></li>
+          </ol>
+          <figcaption>When an obligation is disputed, the channel calls its agreed product resolver to establish the outcome.</figcaption>
+        </figure>
+        <p>The accounting module should understand ownership, assets, reserved funds, and authorized transfers. It should enforce conservation separately for each token. It should have no reason to understand strikes, funding rates, or implied volatility.</p>
+        <p>However, "an upper layer told me to transfer money" needs a precise authorization rule. A module should receive authority over a particular relationship's escrow, under terms its owners accepted. Giving plugins unrestricted access to all account balances would undermine the separation.</p>
+        <p>The channel module handles signatures, state ordering, checkpoints, disputes, and finalization. Product modules supply the meaning of obligations and how to resolve them.</p>
+      </section>
+      <section id="funding">
+        <h2><span class="section-no" aria-hidden="true">03</span>Reserve once, trade many times</h2>
+        <p>Here is how this could address your hedge race. Suppose Alice deposits 10,000 USDC:</p>
+        <div class="allocation">
+          <p>Alice's 10,000 USDC deposit</p>
+          <dl><div><dt>Reserved for solver B</dt><dd>3,000 USDC</dd></div><div><dt>Reserved for solver C</dt><dd>2,000 USDC</dd></div><div><dt>Still free</dt><dd>5,000 USDC</dd></div></dl>
+          <div class="allocation-bar" aria-hidden="true"><span></span><span></span><span></span></div>
+        </div>
+        <p>B separately reserves collateral for its obligations to Alice. Once those reservations are confirmed on-chain, Alice and B can exchange many signed updates without a transaction for every intent, lock, fill, or close.</p>
+        <p>Alice cannot withdraw B's reserved collateral or use it with C. B cannot reuse its backing elsewhere either.</p>
+        <p>Inside that relationship, both parties sign cumulative states containing their balance allocation, outstanding obligations, and reserved collateral. The solver hedges after obtaining the required acceptance evidence. Every five minutes, a publisher can submit the latest checkpoint.</p>
+        <p>That moves the on-chain reservation from <strong>each individual trade to reusable relationship capacity</strong>.</p>
+        <p>It still leaves ordinary hedge execution risk with the solver. Binance can reject an order, its price can move, or the venue can become unavailable. What this design addresses is the user invalidating an accepted agreement by spending its backing elsewhere.</p>
+      </section>
+      <section id="authorization">
+        <h2><span class="section-no" aria-hidden="true">04</span>What authorizes a payment?</h2>
+        <p>Your idea of the core accepting something without understanding the underlying trade is also workable, with a distinction. There are two useful settlement paths:</p>
+        <div class="cards pair">
+          <div class="card"><h3>Cooperative settlement</h3><p>The affected parties sign an explicit, final allocation of their escrow.</p></div>
+          <div class="card"><h3>Unilateral enforcement</h3><p>A previously accepted agreement and an agreed resolver establish the payable outcome.</p></div>
+        </div>
+        <p>For cooperative settlement, the kernel does not need to reconstruct every trade. Alice and B can agree on the result.</p>
+        <p>For unilateral enforcement, the losing party's fresh signature cannot be required. The claimant needs an enforceable earlier agreement and evidence that its payment condition occurred. An options resolver might verify the committed terms and an expiry-price observation, then calculate the payout.</p>
+        <p>Other resolver implementations could accept an oracle quorum or a validity proof. Those carry different trust assumptions.</p>
+        <div class="key"><p><strong>A hash alone establishes neither entitlement nor correctness.</strong> It commits to data. Someone still has to establish why that commitment authorizes this particular transfer.</p></div>
+        <p>That also answers the "even if we remove the plugins" part. Basic mutually authorized transfers can remain available. Existing conditional agreements must retain their agreed enforcement mechanism. Removing a resolver cannot remove a counterparty's payment obligation.</p>
+      </section>
+      <section id="rules">
+        <h2><span class="section-no" aria-hidden="true">05</span>What to take from Ivy</h2>
+        <p>Ivy gives us a useful pattern here. Its validator interface accepts generic data through read-only calls, while the Hub retains mandatory checks. I would carry that separation forward, with distinct responsibilities for:</p>
+        <ul><li>Conditions for accepting an intent.</li><li>Valid transitions of an existing agreement.</li><li>Collateral requirements.</li><li>Final payout and dispute resolution.</li></ul>
+        <p>A premium-floor validator should not also become an unrestricted payment authority. Rules for future agreements can evolve; existing agreements retain the rules they accepted unless the affected parties agree to migrate.</p>
+      </section>
+      <section id="checkpoints">
+        <h2><span class="section-no" aria-hidden="true">06</span>The stale-state problem</h2>
+        <p>There is one subtle issue that deserves particular attention: <strong>two valid signatures do not prove that a state is the latest state.</strong></p>
+        <p>Imagine both parties signed:</p>
+        <div class="states" role="table" aria-label="Two signed allocations, amounts in USDC">
+          <div class="state-row" role="row"><span role="columnheader">State</span><span role="columnheader">Alice</span><span role="columnheader">Solver B</span></div>
+          <div class="state-row" role="row"><span role="rowheader">10</span><span role="cell">3,500</span><span role="cell">6,500</span></div>
+          <div class="state-row" role="row"><span role="rowheader">11</span><span role="cell">3,200</span><span role="cell">6,800</span></div>
+          <small>All amounts in USDC. The chain has only seen state 9.</small>
+        </div>
+        <p>Alice submits state 10. Its signatures are valid. Its sequence number is newer than the on-chain record. But immediately releasing 3,500 would prevent B from enforcing state 11.</p>
+        <p>Consequently:</p>
+        <ul><li>An ordinary checkpoint cannot automatically make all its balances withdrawable.</li><li>Unilateral withdrawal needs an opportunity to present newer evidence.</li><li>An immediate cooperative close needs a distinct, irrevocable closing agreement.</li><li>Partial withdrawals need their own protocol so subsequent states cannot spend the released backing.</li></ul>
+        <p>This is why the closest reference is a state-channel adjudicator. Nitro explicitly separates jointly signed final states from challenged ordinary states. <a href="https://docs.statechannels.org/protocol-tutorial/0070-finalizing-a-channel/">Read Nitro's finalization protocol</a>.</p>
+      </section>
+      <section id="exit">
+        <h2><span class="section-no" aria-hidden="true">07</span>Leaving with live options</h2>
+        <p>The other difficult part is what "I can get my money whenever I want" means while positions remain open.</p>
+        <p>For settled cash, either party should be able to recover its entitlement without further cooperation.</p>
+        <p>For a live option, the protocol must preserve the future obligation. A checkpoint that records the premium but forgets the option would let the writer withdraw its backing.</p>
+        <p>There are two coherent exit policies:</p>
+        <div class="cards pair">
+          <div class="card"><h3>Preserve the agreement</h3><p>Move its enforceable state and backing on-chain; retain its exercise and expiry terms. Release unencumbered funds.</p></div>
+          <div class="card"><h3>Terminate early</h3><p>Apply an early-close mechanism agreed when the option was created.</p></div>
+        </div>
+        <p><strong>For the first version, I favor preserving live agreements during an exit.</strong> It gives us a clearer promise.</p>
+        <p>An early close requires more design. Using spot intrinsic value would discard an option's remaining time value. We would need an agreed valuation, auction, or other executable close mechanism. That is a product decision with economic consequences.</p>
+        <p>Similarly, finite collateral cannot guarantee an unlimited payout. Fully funded, bounded-payoff contracts support a much stronger initial guarantee than leveraged perpetuals or uncapped cash-settled liabilities. Margin and liquidation can improve capital efficiency later, but introduce price-gap and loss-allocation assumptions.</p>
+      </section>
+      <section id="research">
+        <h2><span class="section-no" aria-hidden="true">08</span>Related systems and sources</h2>
+        <p>The external research supports this direction, with different systems answering different parts of the problem:</p>
+        <ul class="sources">
+          <li><a href="https://docs.statechannels.org/protocol-tutorial/0020-execution-rules/">Nitro state channels</a><p>Signed off-chain states, application-specific rules, and on-chain adjudication.</p></li>
+          <li><a href="https://celer.network/celercore/channel/app">Celer conditional payments</a><p>Particularly close to your accounting idea: payment conditions depend on an application's finalized outcome through a small interface.</p></li>
+          <li><a href="https://insights.derive.xyz/a-technical-overview-of-lyra-v2/">Derive / Lyra v2 architecture</a><p>Separates subaccounts, assets, and managers that implement margin and settlement policy.</p></li>
+          <li><a href="https://developers.uniswap.org/docs/liquidity/uniswapx/concepts/architecture">UniswapX architecture</a><p>Extensible signed orders and settlement reactors. Inputs are pulled during execution, so this mechanism alone does not provide your advance collateral guarantee.</p></li>
+          <li><a href="https://docs.starkware.co/starkex/perpetual/shared/forced-operations_overview.html">StarkEx forced operations</a><p>Shows why exits need explicit processing, validity, and emergency-resolution rules. A forced request does not guarantee that an otherwise invalid withdrawal succeeds.</p></li>
+        </ul>
+        <p>My recommendation is to combine the funded-channel approach with your generic accounting and rule interfaces.</p>
+      </section>
+      <section id="guarantee">
+        <h2><span class="section-no" aria-hidden="true">09</span>The guarantee to aim for</h2>
+        <p>The intended guarantee should be specific:</p>
+        <blockquote>Once an agreement is accepted within funded capacity, neither party can repurpose its backing. Either party can enforce the agreed outcome without obtaining another signature from the counterparty.</blockquote>
+        <p>That guarantee depends on participants retaining their evidence, being able to submit transactions within the dispute window, and having a usable oracle or agreed fallback. A watchtower can help with monitoring. A hash on-chain and all the underlying data in the solver's Kafka cluster would not suffice.</p>
+        <p>Also, the five-minute publication interval and the dispute window serve different purposes. We should choose them independently. A publisher's schedule is an operational target; recovery must work when that publisher disappears.</p>
+      </section>
+      <section id="first-version">
+        <h2><span class="section-no" aria-hidden="true">10</span>The first version</h2>
+        <p>I would start with one settlement token, exclusive bilateral escrow, cumulative signed states, cooperative closing, unilateral adjudication, and one fully funded options product.</p>
+        <p>A second simple agreement implementation would then demonstrate that the accounting module is genuinely independent of options. Before broadening it, we should model stale states, conflicting commitments, missing counterparties, duplicate submissions, and exits with live obligations.</p>
+        <p>The detailed architecture proposal and source-backed research are saved in the repository. Only those research documents were added during the design discussion; contract code was unchanged.</p>
+      </section>
+      <details class="code-notes"><summary>Code and research references</summary>
+        <p>The original answer referenced these local files. Paths are included for later lookup; this page does not require the repositories to be available.</p>
+        <ul><li>Options Core agreement fields: <code>contracts/types/BaseTypes.sol:42</code></li><li>Options Core batch execution: <code>contracts/helpers/InstantLayer.sol:354</code></li><li>Ivy validator interface: <code>ivy/vaults/contracts/interfaces/IIvyBidValidator.sol:6</code></li><li>Design proposal: <code>docs/research/bilateral-settlement-proposal.html</code></li><li>Research notes: <code>docs/research/offchain-settlement-references.html</code></li></ul>
+      </details>
+    </article></main>
+    <footer><p>Options Core · Architecture discussion<br>Prepared 2 October 2026. Proposal, not an implemented protocol.</p><a href="#top">Back to the beginning ↑</a></footer>
+  </div>
+  <script>
+    (() => {
+      const root = document.documentElement;
+      const themeButton = document.getElementById('theme');
+      const sizeButton = document.getElementById('text-size');
+      const read = key => { try { return localStorage.getItem(key); } catch { return null; } };
+      const write = (key, value) => { try { localStorage.setItem(key, value); } catch {} };
+      const savedTheme = read('bilateral-reader-theme');
+      if (savedTheme === 'dark' || savedTheme === 'light') root.dataset.theme = savedTheme;
+      const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
+      const dark = () => root.dataset.theme ? root.dataset.theme === 'dark' : systemDark.matches;
+      const syncTheme = () => themeButton.setAttribute('aria-pressed', String(dark()));
+      const setSize = large => { root.style.setProperty('--reading-size', large ? '21px' : '18px'); sizeButton.setAttribute('aria-pressed', String(large)); };
+      setSize(read('bilateral-reader-large') === 'true');
+      syncTheme();
+      themeButton.addEventListener('click', () => { root.dataset.theme = dark() ? 'light' : 'dark'; write('bilateral-reader-theme', root.dataset.theme); syncTheme(); });
+      sizeButton.addEventListener('click', () => { const large = sizeButton.getAttribute('aria-pressed') !== 'true'; setSize(large); write('bilateral-reader-large', String(large)); });
+      if (systemDark.addEventListener) systemDark.addEventListener('change', syncTheme);
+      document.querySelector('.reader-controls').hidden = false;
+      document.querySelectorAll('nav a').forEach(link => link.addEventListener('click', () => { document.querySelector('nav details').open = false; }));
+    })();
+  </script>
+</body>
+</html>

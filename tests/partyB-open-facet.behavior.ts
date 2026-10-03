@@ -151,7 +151,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 
 		it("Should be failed when PartyB in Emergency Mode", async () => {
-			await context.controlFacet.activePartyBEmergencyMode(partyB1.getSigner)
+			await context.controlFacet["activePartyBEmergencyMode(address)"](partyB1.getSigner)
 			await expect(partyB1.lockOpenIntent(1)).to.be.revertedWithCustomError(context.partyBOpenFacet, "PartyBInEmergencyMode")
 		})
 
@@ -306,12 +306,28 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			const intent2 = await context.viewFacet.getOpenIntent(2)
 			const intent3 = await context.viewFacet.getOpenIntent(3)
 
-			await context.clearingHouse.flagCrossPartyBLiquidation(partyB1.address, intent2.partyA, await context.collateral.getAddress())
-			await context.clearingHouse.flagCrossPartyBLiquidation(partyB2.address, intent3.partyA, await context.collateral.getAddress())
+			await context.clearingHouse["flagCrossPartyBLiquidation(address,address,address)"](
+				partyB1.address,
+				intent2.partyA,
+				await context.collateral.getAddress(),
+			)
+			await context.clearingHouse["flagCrossPartyBLiquidation(address,address,address)"](
+				partyB2.address,
+				intent3.partyA,
+				await context.collateral.getAddress(),
+			)
 			await expect(partyB1.lockOpenIntent(2)).to.be.revertedWithCustomError(context.partyBOpenFacet, "NotSolvent")
 			await expect(partyB2.lockOpenIntent(3)).to.be.revertedWithCustomError(context.partyBOpenFacet, "NotSolvent")
-			await context.clearingHouse.unflagCrossPartyBLiquidation(partyB1.address, intent2.partyA, await context.collateral.getAddress())
-			await context.clearingHouse.unflagCrossPartyBLiquidation(partyB2.address, intent3.partyA, await context.collateral.getAddress())
+			await context.clearingHouse["unflagCrossPartyBLiquidation(address,address,address)"](
+				partyB1.address,
+				intent2.partyA,
+				await context.collateral.getAddress(),
+			)
+			await context.clearingHouse["unflagCrossPartyBLiquidation(address,address,address)"](
+				partyB2.address,
+				intent3.partyA,
+				await context.collateral.getAddress(),
+			)
 			await expect(partyB1.lockOpenIntent(2)).not.to.revert(ethers)
 			await expect(partyB2.lockOpenIntent(3)).not.to.revert(ethers)
 		})
@@ -320,8 +336,8 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			await expect(partyB1.lockOpenIntent(1)).not.to.revert(ethers)
 
 			const intent = await context.viewFacet.getOpenIntent(1)
-			const activeIntents = await context.viewFacet.getActiveOpenIntents(intent.partyB, 0, 100)
-			const activeIntentsIDs = await context.viewFacet.getActiveOpenIntentIds(intent.partyB)
+			const activeIntents = await context.viewFacet["getActiveOpenIntents(address,uint256,uint256)"](intent.partyB, 0, 100)
+			const activeIntentsIDs = await context.viewFacet["getActiveOpenIntentIds(address)"](intent.partyB)
 
 			console.log("Active Open Intents IDs Count:", activeIntentsIDs.length)
 			console.log("Active Open Intents Count:", activeIntents.length)
@@ -361,7 +377,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 
 		it("Should be failed when PartyB in Emergency Mode", async () => {
-			await context.controlFacet.activePartyBEmergencyMode(partyB1.address)
+			await context.controlFacet["activePartyBEmergencyMode(address)"](partyB1.address)
 			await expect(partyB1.fillOpenIntent(1, 100, 7)).to.be.revertedWithCustomError(context.partyBOpenFacet, "PartyBInEmergencyMode")
 		})
 
@@ -475,8 +491,8 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		it("Should create a canceled child intent when PartyB partially fills a cancel-pending intent", async () => {
 			const intentId = 1n
 			const openIntent = await context.viewFacet.getOpenIntent(intentId)
-			const activePartyAIdsBefore = await context.viewFacet.getActiveOpenIntentIds(openIntent.partyA)
-			const activePartyBIdsBefore = await context.viewFacet.getActiveOpenIntentIds(openIntent.partyB)
+			const activePartyAIdsBefore = await context.viewFacet["getActiveOpenIntentIds(address)"](openIntent.partyA)
+			const activePartyBIdsBefore = await context.viewFacet["getActiveOpenIntentIds(address)"](openIntent.partyB)
 
 			await expect(partyA1.sendCancelOpenIntent([intentId])).not.to.revert(ethers)
 			expect((await context.viewFacet.getOpenIntent(intentId)).status).to.equal(IntentStatus.CANCEL_PENDING)
@@ -489,8 +505,8 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			const childIntentId = await context.viewFacet.getLastOpenIntentId()
 			const childIntent = await context.viewFacet.getOpenIntent(childIntentId)
 			const trade = await context.viewFacet.getTrade(await context.viewFacet.getLastTradeId())
-			const activePartyAIdsAfter = await context.viewFacet.getActiveOpenIntentIds(openIntent.partyA)
-			const activePartyBIdsAfter = await context.viewFacet.getActiveOpenIntentIds(openIntent.partyB)
+			const activePartyAIdsAfter = await context.viewFacet["getActiveOpenIntentIds(address)"](openIntent.partyA)
+			const activePartyBIdsAfter = await context.viewFacet["getActiveOpenIntentIds(address)"](openIntent.partyB)
 
 			expect(activePartyAIdsBefore).to.include(intentId)
 			expect(activePartyBIdsBefore).to.include(intentId)
@@ -606,13 +622,19 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 		it("Should Unlocked Premium From Party A as expected in Isolated Mode", async () => {
 			const openIntent = await context.viewFacet.getOpenIntent(1)
-			const partyALockedBalanceBefore = await context.viewFacet.getIsolatedLockedBalance(openIntent.partyA, await context.collateral.getAddress())
+			const partyALockedBalanceBefore = await context.viewFacet["getIsolatedLockedBalance(address,address)"](
+				openIntent.partyA,
+				await context.collateral.getAddress(),
+			)
 
 			const quantity = openIntent.tradeAgreements.quantity / 2n
 			const price = openIntent.price / 2n
 			await expect(partyB1.fillOpenIntent(1, quantity, price)).not.to.revert(ethers)
 
-			const partyALockedBalanceAfter = await context.viewFacet.getIsolatedLockedBalance(openIntent.partyA, await context.collateral.getAddress())
+			const partyALockedBalanceAfter = await context.viewFacet["getIsolatedLockedBalance(address,address)"](
+				openIntent.partyA,
+				await context.collateral.getAddress(),
+			)
 			const premium = await context.viewFacet.getOpenIntentPremium(1)
 
 			console.log("partyA Locked Balance Before", partyALockedBalanceBefore)
@@ -624,13 +646,19 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			const scale = 2n
 			const isolatedIntentID = 1
 			const openIntent = await context.viewFacet.getOpenIntent(isolatedIntentID)
-			const partyABalanceBefore = await context.viewFacet.getIsolatedBalance(openIntent.partyA, await context.collateral.getAddress())
+			const partyABalanceBefore = await context.viewFacet["getIsolatedBalance(address,address)"](
+				openIntent.partyA,
+				await context.collateral.getAddress(),
+			)
 
 			const quantity = openIntent.tradeAgreements.quantity / scale
 			const price = openIntent.price / scale
 			await expect(partyB1.fillOpenIntent(openIntent.id, quantity, price)).not.to.revert(ethers)
 
-			const partyABalanceAfter = await context.viewFacet.getIsolatedBalance(openIntent.partyA, await context.collateral.getAddress())
+			const partyABalanceAfter = await context.viewFacet["getIsolatedBalance(address,address)"](
+				openIntent.partyA,
+				await context.collateral.getAddress(),
+			)
 			const premium = await context.viewFacet.getOpenIntentPremium(openIntent.id)
 
 			console.log("partyA Locked Balance Before", partyABalanceBefore)
@@ -642,7 +670,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			const scale = 2n
 			const crossBuyIntentID = 2
 			const openIntent = await context.viewFacet.getOpenIntent(crossBuyIntentID)
-			const partyACrossBalanceBefore = await context.viewFacet.getCrossBalance(
+			const partyACrossBalanceBefore = await context.viewFacet["getCrossBalance(address,address,address)"](
 				openIntent.partyA,
 				await context.collateral.getAddress(),
 				openIntent.partyB,
@@ -652,7 +680,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			const price = openIntent.price / scale
 			await expect(partyB1.fillOpenIntent(crossBuyIntentID, quantity, price)).not.to.revert(ethers)
 
-			const partyACrossBalanceAfter = await context.viewFacet.getCrossBalance(
+			const partyACrossBalanceAfter = await context.viewFacet["getCrossBalance(address,address,address)"](
 				openIntent.partyA,
 				await context.collateral.getAddress(),
 				openIntent.partyB,
@@ -671,7 +699,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			const scale = 2n
 			const crossBuyIntentID = 2
 			const openIntent = await context.viewFacet.getOpenIntent(crossBuyIntentID)
-			const partyACrossBalanceBefore = await context.viewFacet.getCrossBalance(
+			const partyACrossBalanceBefore = await context.viewFacet["getCrossBalance(address,address,address)"](
 				openIntent.partyA,
 				await context.collateral.getAddress(),
 				openIntent.partyB,
@@ -681,7 +709,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			const price = openIntent.price / scale
 			await expect(partyB1.fillOpenIntent(crossBuyIntentID, quantity, price)).not.to.revert(ethers)
 
-			const partyACrossBalanceAfter = await context.viewFacet.getCrossBalance(
+			const partyACrossBalanceAfter = await context.viewFacet["getCrossBalance(address,address,address)"](
 				openIntent.partyA,
 				await context.collateral.getAddress(),
 				openIntent.partyB,
@@ -697,7 +725,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			const scale = 2n
 			const crossBuyIntentID = 2
 			const openIntent = await context.viewFacet.getOpenIntent(crossBuyIntentID)
-			const partyACrossBalanceBefore = await context.viewFacet.getCrossBalance(
+			const partyACrossBalanceBefore = await context.viewFacet["getCrossBalance(address,address,address)"](
 				openIntent.partyA,
 				await context.collateral.getAddress(),
 				openIntent.partyB,
@@ -707,7 +735,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			const price = openIntent.price / scale
 			await expect(partyB1.fillOpenIntent(crossBuyIntentID, quantity, price)).not.to.revert(ethers)
 
-			const partyACrossBalanceAfter = await context.viewFacet.getCrossBalance(
+			const partyACrossBalanceAfter = await context.viewFacet["getCrossBalance(address,address,address)"](
 				openIntent.partyA,
 				await context.collateral.getAddress(),
 				openIntent.partyB,
@@ -721,7 +749,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 		it("Should Unlocked Maintenance Margin for Party A as expected in Cross Sell", async () => {
 			const openIntent = await context.viewFacet.getOpenIntent(3)
-			const partyACrossBalanceBefore = await context.viewFacet.getCrossBalance(
+			const partyACrossBalanceBefore = await context.viewFacet["getCrossBalance(address,address,address)"](
 				openIntent.partyA,
 				await context.collateral.getAddress(),
 				openIntent.partyB,
@@ -731,7 +759,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			const price = openIntent.price * 2n
 			await expect(partyB2.fillOpenIntent(3, quantity, price)).not.to.revert(ethers)
 
-			const partyACrossBalanceAfter = await context.viewFacet.getCrossBalance(
+			const partyACrossBalanceAfter = await context.viewFacet["getCrossBalance(address,address,address)"](
 				openIntent.partyA,
 				await context.collateral.getAddress(),
 				openIntent.partyB,
@@ -746,7 +774,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 		it("Should Increased Total Maintenance Margin for Party A as expected in Cross Sell", async () => {
 			const openIntent = await context.viewFacet.getOpenIntent(3)
-			const partyACrossBalanceBefore = await context.viewFacet.getCrossBalance(
+			const partyACrossBalanceBefore = await context.viewFacet["getCrossBalance(address,address,address)"](
 				openIntent.partyA,
 				await context.collateral.getAddress(),
 				openIntent.partyB,
@@ -756,7 +784,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			const price = openIntent.price * 2n
 			await expect(partyB2.fillOpenIntent(3, quantity, price)).not.to.revert(ethers)
 
-			const partyACrossBalanceAfter = await context.viewFacet.getCrossBalance(
+			const partyACrossBalanceAfter = await context.viewFacet["getCrossBalance(address,address,address)"](
 				openIntent.partyA,
 				await context.collateral.getAddress(),
 				openIntent.partyB,
@@ -771,7 +799,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 		it("Should Unlock Fees from PartyA in Isolated as Expected", async () => {
 			let intent = await context.viewFacet.getOpenIntent(1) // intent Before Fill
-			const balanceBefore = await context.viewFacet.getIsolatedLockedBalance(intent.partyA, context.collateralNL)
+			const balanceBefore = await context.viewFacet["getIsolatedLockedBalance(address,address)"](intent.partyA, context.collateralNL)
 
 			const quantity = e(10) // Partial Fill
 			const price = intent.price / 2n // Lower Price in Buy Trade
@@ -788,13 +816,13 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 				)) *
 					parseUnits("1", 18))
 
-			const balanceAfter = await context.viewFacet.getIsolatedLockedBalance(intent.partyA, context.collateralNL)
+			const balanceAfter = await context.viewFacet["getIsolatedLockedBalance(address,address)"](intent.partyA, context.collateralNL)
 			expect(balanceBefore - balanceAfter).to.be.equal(affiliateFee + platformFee + solverFee)
 		})
 
 		it("Should Unlock Fees from PartyA in Cross Margin as Expected", async () => {
 			let intent = await context.viewFacet.getOpenIntent(2)
-			const balanceBefore = await context.viewFacet.getCrossBalance(intent.partyA, context.collateralNL, intent.partyB)
+			const balanceBefore = await context.viewFacet["getCrossBalance(address,address,address)"](intent.partyA, context.collateralNL, intent.partyB)
 
 			const quantity = e(10)
 			const price = intent.price / 2n
@@ -811,7 +839,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 				)) *
 					parseUnits("1", 18))
 
-			const balanceAfter = await context.viewFacet.getCrossBalance(intent.partyA, context.collateralNL, intent.partyB)
+			const balanceAfter = await context.viewFacet["getCrossBalance(address,address,address)"](intent.partyA, context.collateralNL, intent.partyB)
 			expect(balanceBefore.locked - balanceAfter.locked).to.be.equal(affiliateFee + platformFee + solverFee)
 		})
 
@@ -819,7 +847,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			const scale = 1n
 			const intentID = 1
 			let intent = await context.viewFacet.getOpenIntent(intentID)
-			const balanceBefore = await context.viewFacet.getIsolatedBalance(intent.partyA, context.collateralNL)
+			const balanceBefore = await context.viewFacet["getIsolatedBalance(address,address)"](intent.partyA, context.collateralNL)
 
 			const quantity = e(10)
 			const price = intent.price / scale
@@ -831,7 +859,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			const solverFee =
 				(quantity * price * intent.feeStructure.solverFee.openFee) / (intent.feeStructure.tokenPriceInCollateral * parseUnits("1", 18))
 
-			const balanceAfter = await context.viewFacet.getIsolatedBalance(intent.partyA, context.collateralNL)
+			const balanceAfter = await context.viewFacet["getIsolatedBalance(address,address)"](intent.partyA, context.collateralNL)
 			expect(balanceBefore - balanceAfter).to.be.equal(intentAffiliateFee + intentPlatformFee + solverFee)
 		})
 
@@ -861,7 +889,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			await partyB2.lockOpenIntent(intentID)
 
 			let intent = await context.viewFacet.getOpenIntent(intentID)
-			const balanceBefore = await context.viewFacet.getIsolatedBalance(intent.partyA, context.collateralNL)
+			const balanceBefore = await context.viewFacet["getIsolatedBalance(address,address)"](intent.partyA, context.collateralNL)
 
 			const quantity = intent.tradeAgreements.quantity / 3n
 			const price = intent.price / priceScale
@@ -873,7 +901,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			const solverFee =
 				(quantity * price * intent.feeStructure.solverFee.openFee) / (intent.feeStructure.tokenPriceInCollateral * parseUnits("1", 18))
 
-			const balanceAfter = await context.viewFacet.getIsolatedBalance(intent.partyA, context.collateralNL)
+			const balanceAfter = await context.viewFacet["getIsolatedBalance(address,address)"](intent.partyA, context.collateralNL)
 			expect(balanceBefore - balanceAfter).to.be.equal(intentAffiliateFee + intentPlatformFee + solverFee)
 		})
 
@@ -882,15 +910,24 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 			await context.controlFacet.setAffiliateFeesCollector(openIntent.affiliate, openIntent.affiliate)
 
-			const affiliateBalanceBefore = await context.viewFacet.getIsolatedBalance(openIntent.affiliate, await context.collateralNL.getAddress())
+			const affiliateBalanceBefore = await context.viewFacet["getIsolatedBalance(address,address)"](
+				openIntent.affiliate,
+				await context.collateralNL.getAddress(),
+			)
 
 			const priceScale = 1n
 			const quantity = openIntent.tradeAgreements.quantity / 5n
 			const price = openIntent.price / priceScale
 			await expect(partyB1.fillOpenIntent(1, quantity, price)).not.to.revert(ethers)
 
-			const affiliateBalanceAfter = await context.viewFacet.getIsolatedBalance(openIntent.affiliate, await context.collateralNL.getAddress())
-			const partyAFeeBalance = await context.viewFacet.getIsolatedBalance(partyA1.address, await context.collateralNL.getAddress())
+			const affiliateBalanceAfter = await context.viewFacet["getIsolatedBalance(address,address)"](
+				openIntent.affiliate,
+				await context.collateralNL.getAddress(),
+			)
+			const partyAFeeBalance = await context.viewFacet["getIsolatedBalance(address,address)"](
+				partyA1.address,
+				await context.collateralNL.getAddress(),
+			)
 
 			const intentTradingFee = await context.viewFacet.getOpenIntentPlatformFee(openIntent.id) //Platform Fee
 			const intentAffiliateFee = await context.viewFacet.getOpenIntentAffiliateFee(openIntent.id) //Affiliate Fee
@@ -913,15 +950,24 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			await context.controlFacet.setDefaultFeeCollector(partyA2.address)
 
 			const openIntent = await context.viewFacet.getOpenIntent(1)
-			const defaultFeeBalanceBefore = await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateralNL.getAddress())
+			const defaultFeeBalanceBefore = await context.viewFacet["getIsolatedBalance(address,address)"](
+				partyA2.address,
+				await context.collateralNL.getAddress(),
+			)
 
 			const priceScale = 1n
 			const quantity = openIntent.tradeAgreements.quantity / 5n
 			const price = openIntent.price / priceScale
 			await expect(partyB1.fillOpenIntent(1, quantity, price)).not.to.revert(ethers)
 
-			const defaultFeeBalanceAfter = await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateralNL.getAddress())
-			const partyAFeeBalance = await context.viewFacet.getIsolatedBalance(partyA1.address, await context.collateralNL.getAddress())
+			const defaultFeeBalanceAfter = await context.viewFacet["getIsolatedBalance(address,address)"](
+				partyA2.address,
+				await context.collateralNL.getAddress(),
+			)
+			const partyAFeeBalance = await context.viewFacet["getIsolatedBalance(address,address)"](
+				partyA1.address,
+				await context.collateralNL.getAddress(),
+			)
 
 			const intentPlatformFee = await context.viewFacet.getOpenIntentPlatformFee(openIntent.id) //Platform Fee
 			const intentPlatformFeeCalculated =
@@ -940,7 +986,10 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 		it("Should Pay Fees To Party B as expected", async () => {
 			const openIntent = await context.viewFacet.getOpenIntent(1)
-			const partyBFeeBalanceBefore = await context.viewFacet.getIsolatedBalance(openIntent.partyB, await context.collateralNL.getAddress())
+			const partyBFeeBalanceBefore = await context.viewFacet["getIsolatedBalance(address,address)"](
+				openIntent.partyB,
+				await context.collateralNL.getAddress(),
+			)
 
 			const priceScale = 1n
 			const quantity = openIntent.tradeAgreements.quantity / 2n
@@ -948,8 +997,11 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			await expect(partyB1.fillOpenIntent(1, quantity, price)).not.to.revert(ethers)
 
 			expect(openIntent.feeStructure.feeToken).to.be.equal(await context.collateralNL.getAddress())
-			const partyBFeeBalanceAfter = await context.viewFacet.getIsolatedBalance(openIntent.partyB, await context.collateralNL.getAddress())
-			const partyBCrossFeeBalanceAfter = await context.viewFacet.getCrossBalance(
+			const partyBFeeBalanceAfter = await context.viewFacet["getIsolatedBalance(address,address)"](
+				openIntent.partyB,
+				await context.collateralNL.getAddress(),
+			)
+			const partyBCrossFeeBalanceAfter = await context.viewFacet["getCrossBalance(address,address,address)"](
 				openIntent.partyB,
 				await context.collateralNL.getAddress(),
 				openIntent.partyA,
@@ -972,7 +1024,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		it("Should Decreased Premium from Party B as expected in Sell Trade", async () => {
 			const openIntent = await context.viewFacet.getOpenIntent(3)
 
-			const partyBCrossBalanceBefore = await context.viewFacet.getCrossBalance(
+			const partyBCrossBalanceBefore = await context.viewFacet["getCrossBalance(address,address,address)"](
 				openIntent.partyB,
 				await context.collateral.getAddress(),
 				openIntent.partyA,
@@ -983,7 +1035,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			const price = openIntent.price * priceScale
 			await expect(partyB2.fillOpenIntent(3, quantity, price)).not.to.revert(ethers)
 
-			const partyBCrossBalanceAfter = await context.viewFacet.getCrossBalance(
+			const partyBCrossBalanceAfter = await context.viewFacet["getCrossBalance(address,address,address)"](
 				openIntent.partyB,
 				await context.collateral.getAddress(),
 				openIntent.partyA,
@@ -998,7 +1050,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 		it("Should Pay Premium to Party A as expected in Sell Trade", async () => {
 			const openIntent = await context.viewFacet.getOpenIntent(3)
-			const partyACrossBalanceBefore = await context.viewFacet.getCrossBalance(
+			const partyACrossBalanceBefore = await context.viewFacet["getCrossBalance(address,address,address)"](
 				openIntent.partyA,
 				await context.collateral.getAddress(),
 				openIntent.partyB,
@@ -1009,7 +1061,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			const price = openIntent.price * 2n
 			await expect(partyB2.fillOpenIntent(3, quantity, price)).not.to.revert(ethers)
 
-			const partyACrossBalanceAfter = await context.viewFacet.getCrossBalance(
+			const partyACrossBalanceAfter = await context.viewFacet["getCrossBalance(address,address,address)"](
 				openIntent.partyA,
 				await context.collateral.getAddress(),
 				openIntent.partyB,
@@ -1025,7 +1077,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 		it("Should Prevent Withdraw whit Solvency violation when Premium payed to Party A in Sell Trade", async () => {
 			const openIntent = await context.viewFacet.getOpenIntent(3)
-			const partyACrossBalanceBefore = await context.viewFacet.getCrossBalance(
+			const partyACrossBalanceBefore = await context.viewFacet["getCrossBalance(address,address,address)"](
 				openIntent.partyA,
 				await context.collateral.getAddress(),
 				openIntent.partyB,
@@ -1035,7 +1087,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			const price = openIntent.price * 2n
 			await expect(partyB2.fillOpenIntent(3, quantity, price)).not.to.revert(ethers)
 
-			const partyACrossBalanceAfter = await context.viewFacet.getCrossBalance(
+			const partyACrossBalanceAfter = await context.viewFacet["getCrossBalance(address,address,address)"](
 				openIntent.partyA,
 				await context.collateral.getAddress(),
 				openIntent.partyB,
@@ -1048,9 +1100,14 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 			expect(partyACrossBalanceAfter.balance - partyACrossBalanceBefore.balance).to.equal(premium)
 
-			const partyABalanceBefore = await context.viewFacet.getIsolatedBalance(openIntent.partyA, await context.collateral.getAddress())
+			const partyABalanceBefore = await context.viewFacet["getIsolatedBalance(address,address)"](
+				openIntent.partyA,
+				await context.collateral.getAddress(),
+			)
 
-			await context.accountFacet.connect(partyA2.getSigner).initiateWithdraw(context.collateral, partyABalanceBefore, partyA1.address)
+			await context.accountFacet
+				.connect(partyA2.getSigner)
+				["initiateWithdraw(address,uint256,address)"](context.collateral, partyABalanceBefore, partyA1.address)
 
 			const newBlock = (await getLatestBlockTime()) + 130
 			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlock])
@@ -1060,7 +1117,10 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 			await context.accountFacet.connect(partyA2.getSigner).completeWithdraw(1)
 
-			const partyABalanceAfter = await context.viewFacet.getIsolatedBalance(openIntent.partyA, await context.collateral.getAddress())
+			const partyABalanceAfter = await context.viewFacet["getIsolatedBalance(address,address)"](
+				openIntent.partyA,
+				await context.collateral.getAddress(),
+			)
 			const targetBalanceAfter = await context.collateral.balanceOf(partyA1.address)
 
 			console.log("Source Deposit Balance Before", partyABalanceBefore)
@@ -1073,25 +1133,25 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 		it("Should Update Nonce for Party A as expected in Cross Margin", async () => {
 			const openIntent = await context.viewFacet.getOpenIntent(3)
-			const nonceBefore = await context.viewFacet.getNonce(openIntent.partyA, openIntent.partyB)
+			const nonceBefore = await context.viewFacet["getNonce(address,address)"](openIntent.partyA, openIntent.partyB)
 
 			const quantity = openIntent.tradeAgreements.quantity / 2n
 			const price = openIntent.price * 2n
 			await expect(partyB2.fillOpenIntent(3, quantity, price)).not.to.revert(ethers)
 
-			const nonceAfter = await context.viewFacet.getNonce(openIntent.partyA, openIntent.partyB)
+			const nonceAfter = await context.viewFacet["getNonce(address,address)"](openIntent.partyA, openIntent.partyB)
 			expect(nonceAfter - nonceBefore).to.be.equal(1)
 		})
 
 		it("Should Update Nonce for Party B as expected in Cross Margin", async () => {
 			const openIntent = await context.viewFacet.getOpenIntent(3)
-			const nonceBefore = await context.viewFacet.getNonce(openIntent.partyB, openIntent.partyA)
+			const nonceBefore = await context.viewFacet["getNonce(address,address)"](openIntent.partyB, openIntent.partyA)
 
 			const quantity = openIntent.tradeAgreements.quantity / 2n
 			const price = openIntent.price * 2n
 			await expect(partyB2.fillOpenIntent(3, quantity, price)).not.to.revert(ethers)
 
-			const nonceAfter = await context.viewFacet.getNonce(openIntent.partyB, openIntent.partyA)
+			const nonceAfter = await context.viewFacet["getNonce(address,address)"](openIntent.partyB, openIntent.partyA)
 			expect(nonceAfter - nonceBefore).to.be.equal(1)
 		})
 
@@ -1200,8 +1260,8 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			const intentID = 3
 			let openIntent = await context.viewFacet.getOpenIntent(intentID)
 
-			let activeIntents: OpenIntentStruct[] = await context.viewFacet.getActiveOpenIntents(openIntent.partyA, 0, 100)
-			let activeIntentsIDs: bigint[] = await context.viewFacet.getActiveOpenIntentIds(openIntent.partyA)
+			let activeIntents: OpenIntentStruct[] = await context.viewFacet["getActiveOpenIntents(address,uint256,uint256)"](openIntent.partyA, 0, 100)
+			let activeIntentsIDs: bigint[] = await context.viewFacet["getActiveOpenIntentIds(address)"](openIntent.partyA)
 
 			console.log("Active Open Intents IDs Count:", activeIntentsIDs.length)
 			console.log("Active Open Intents Count:", activeIntents.length)
@@ -1220,8 +1280,8 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			await expect(partyB2.fillOpenIntent(openIntent.id, quantity, price)).not.to.revert(ethers)
 
 			openIntent = await context.viewFacet.getOpenIntent(intentID)
-			activeIntents = await context.viewFacet.getActiveOpenIntents(openIntent.partyA, 0, 100)
-			activeIntentsIDs = await context.viewFacet.getActiveOpenIntentIds(openIntent.partyA)
+			activeIntents = await context.viewFacet["getActiveOpenIntents(address,uint256,uint256)"](openIntent.partyA, 0, 100)
+			activeIntentsIDs = await context.viewFacet["getActiveOpenIntentIds(address)"](openIntent.partyA)
 
 			console.log("Active Open Intents IDs Count:", activeIntentsIDs.length)
 			console.log("Active Open Intents Count:", activeIntents.length)
@@ -1238,8 +1298,8 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			const intentID = 3
 			let openIntent = await context.viewFacet.getOpenIntent(intentID)
 
-			let activeIntents: OpenIntentStruct[] = await context.viewFacet.getActiveOpenIntents(openIntent.partyA, 0, 100)
-			let activeIntentsIDs: bigint[] = await context.viewFacet.getActiveOpenIntentIds(openIntent.partyA)
+			let activeIntents: OpenIntentStruct[] = await context.viewFacet["getActiveOpenIntents(address,uint256,uint256)"](openIntent.partyA, 0, 100)
+			let activeIntentsIDs: bigint[] = await context.viewFacet["getActiveOpenIntentIds(address)"](openIntent.partyA)
 
 			console.log("Active Open Intents IDs Count:", activeIntentsIDs.length)
 			console.log("Active Open Intents Count:", activeIntents.length)
@@ -1257,8 +1317,8 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 			await expect(partyB2.fillOpenIntent(openIntent.id, quantity, price)).not.to.revert(ethers)
 
 			openIntent = await context.viewFacet.getOpenIntent(intentID)
-			activeIntents = await context.viewFacet.getActiveOpenIntents(openIntent.partyA, 0, 100)
-			activeIntentsIDs = await context.viewFacet.getActiveOpenIntentIds(openIntent.partyA)
+			activeIntents = await context.viewFacet["getActiveOpenIntents(address,uint256,uint256)"](openIntent.partyA, 0, 100)
+			activeIntentsIDs = await context.viewFacet["getActiveOpenIntentIds(address)"](openIntent.partyA)
 
 			console.log("Active Open Intents IDs Count:", activeIntentsIDs.length)
 			console.log("Active Open Intents Count:", activeIntents.length)
@@ -1322,14 +1382,14 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		})
 
 		it("Should change intent status to PENDING", async () => {
-			const activePartyBIdsBefore = await context.viewFacet.getActiveOpenIntentIds(partyB1.address)
+			const activePartyBIdsBefore = await context.viewFacet["getActiveOpenIntentIds(address)"](partyB1.address)
 			const lockedIntent = await context.viewFacet.getOpenIntent(1)
 			const lockedAt = lockedIntent.statusModifyTimestamp
 
 			await expect(partyB1.unlockOpenIntent("1")).not.to.revert(ethers)
 
 			const intent = await context.viewFacet.getOpenIntent(1)
-			const activePartyBIdsAfter = await context.viewFacet.getActiveOpenIntentIds(partyB1.address)
+			const activePartyBIdsAfter = await context.viewFacet["getActiveOpenIntentIds(address)"](partyB1.address)
 
 			expect(activePartyBIdsBefore).to.include(1n)
 			expect(intent.status).to.equal(IntentStatus.PENDING) //IntentStatus.PENDING
@@ -1384,7 +1444,7 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 		it("Should remove intent", async () => {
 			expect(await partyA1.sendCancelOpenIntent(["1"])).not.to.revert(ethers)
 			expect(await partyB1.acceptCancelOpenIntent(1)).not.to.revert(ethers)
-			let activeIntentIds: BigInt[] = await context.viewFacet.getActiveOpenIntentIds(partyA1.getSigner)
+			let activeIntentIds: BigInt[] = await context.viewFacet["getActiveOpenIntentIds(address)"](partyA1.getSigner)
 
 			for (let a of activeIntentIds) {
 				expect(a).not.to.be.equal(1)
@@ -1405,8 +1465,14 @@ export function shouldBehaveLikePartyBOpenFacet(): void {
 
 		it("should fail on Fee not paid accordingly  ", async function () {
 			// take snapshot
-			let initialIsolatedBalancePartyA = await context.viewFacet.getIsolatedBalance(partyA1.getSigner, await context.collateral.getAddress())
-			let initialIsolatedBalancePartyB = await context.viewFacet.getIsolatedBalance(partyB1.getSigner, await context.collateral.getAddress())
+			let initialIsolatedBalancePartyA = await context.viewFacet["getIsolatedBalance(address,address)"](
+				partyA1.getSigner,
+				await context.collateral.getAddress(),
+			)
+			let initialIsolatedBalancePartyB = await context.viewFacet["getIsolatedBalance(address,address)"](
+				partyB1.getSigner,
+				await context.collateral.getAddress(),
+			)
 
 			// const latestBlock = await getLatestBlockTime()
 			// const requestIsolated = openIntentRequestBuilder()

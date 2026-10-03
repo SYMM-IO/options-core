@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Redesign brainstorm: synthesis and design directions | Options Core</title>
+<link rel="icon" type="image/svg+xml" href="../../assets/symmio-mark.svg"><link rel="stylesheet" href="../../assets/reader.css"><link rel="stylesheet" href="../../assets/docs-portal.css">
+<script>try { if (localStorage.getItem("options-docs-theme") === "light") document.documentElement.dataset.theme = "light"; } catch (_) {}</script>
+<script src="../../assets/chapters.js" defer></script><script src="../../assets/reader.js" defer></script><script src="../../assets/docs-portal.js" defer></script></head>
+<body class="doc-page" data-version="current"><a class="skip-link" href="#full-document">Skip to document</a><header class="docs-header"><div class="doc-topbar"><nav class="docs-trail" aria-label="Breadcrumb"><a class="brand" href="../../index.html"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Options Core</span></a><span class="trail-sep" aria-hidden="true">/</span><a class="trail-release" href="../../index.html">Documentation</a></nav><nav class="top-actions" aria-label="Page actions"><button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button></nav></div></header>
+<div class="reader-shell"><div data-rail-sections hidden><a class="toc-link level-2" href="#document-metadata">Document metadata</a>
+<a class="toc-link level-2" href="#the-request">The request</a>
+<a class="toc-link level-2" href="#where-the-code-is-today">Where the code is today</a>
+<a class="toc-link level-2" href="#the-main-idea-the-chain-is-the-court-and-the-escrow-not-the-ledger">The main idea: the chain is the court and the escrow, not the ledger</a>
+<a class="toc-link level-2" href="#why-the-race-happens-and-what-removes-it">Why the race happens and what removes it</a>
+<a class="toc-link level-2" href="#layers">Layers</a>
+<a class="toc-link level-3" href="#vault">Vault</a>
+<a class="toc-link level-3" href="#channel">Channel</a>
+<a class="toc-link level-3" href="#adjudicator-and-engines">Adjudicator and engines</a>
+<a class="toc-link level-3" href="#intents-and-rules">Intents and rules</a>
+<a class="toc-link level-2" href="#a-trade-from-start-to-finish">A trade from start to finish</a>
+<a class="toc-link level-2" href="#what-reaches-the-chain">What reaches the chain</a>
+<a class="toc-link level-2" href="#what-each-side-is-guaranteed">What each side is guaranteed</a>
+<a class="toc-link level-2" href="#time-is-the-one-thing-two-parties-cannot-settle-between-themselves">Time is the one thing two parties cannot settle between themselves</a>
+<a class="toc-link level-2" href="#three-ways-to-build-the-off-chain-part">Three ways to build the off-chain part</a>
+<a class="toc-link level-2" href="#prior-art">Prior art</a>
+<a class="toc-link level-2" href="#hard-problems">Hard problems</a>
+<a class="toc-link level-2" href="#decisions-to-make-next">Decisions to make next</a></div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1 id="redesign-brainstorm-synthesis-and-design-directions">Redesign brainstorm: synthesis and design directions</h1></div></div></header><article class="doc-article" id="full-document"><noscript><nav aria-label="On this page"><a class="toc-link level-2" href="#document-metadata">Document metadata</a>
+<a class="toc-link level-2" href="#the-request">The request</a>
+<a class="toc-link level-2" href="#where-the-code-is-today">Where the code is today</a>
+<a class="toc-link level-2" href="#the-main-idea-the-chain-is-the-court-and-the-escrow-not-the-ledger">The main idea: the chain is the court and the escrow, not the ledger</a>
+<a class="toc-link level-2" href="#why-the-race-happens-and-what-removes-it">Why the race happens and what removes it</a>
+<a class="toc-link level-2" href="#layers">Layers</a>
+<a class="toc-link level-3" href="#vault">Vault</a>
+<a class="toc-link level-3" href="#channel">Channel</a>
+<a class="toc-link level-3" href="#adjudicator-and-engines">Adjudicator and engines</a>
+<a class="toc-link level-3" href="#intents-and-rules">Intents and rules</a>
+<a class="toc-link level-2" href="#a-trade-from-start-to-finish">A trade from start to finish</a>
+<a class="toc-link level-2" href="#what-reaches-the-chain">What reaches the chain</a>
+<a class="toc-link level-2" href="#what-each-side-is-guaranteed">What each side is guaranteed</a>
+<a class="toc-link level-2" href="#time-is-the-one-thing-two-parties-cannot-settle-between-themselves">Time is the one thing two parties cannot settle between themselves</a>
+<a class="toc-link level-2" href="#three-ways-to-build-the-off-chain-part">Three ways to build the off-chain part</a>
+<a class="toc-link level-2" href="#prior-art">Prior art</a>
+<a class="toc-link level-2" href="#hard-problems">Hard problems</a>
+<a class="toc-link level-2" href="#decisions-to-make-next">Decisions to make next</a></nav></noscript><section class="callout" aria-label="Document metadata"><h2 id="document-metadata">Document metadata</h2><pre><code class="language-yaml">title: Redesign brainstorm, synthesis and design directions
+tags:
+    - symmio
+    - options-core
+    - research
+date: 2026-10-02
+status: brainstorm, not a spec</code></pre></section>
+<p>This note collects the redesign conversation of 2026-10-02 and the six research notes next to it. It is a brainstorm. Nothing here is decided, and the contract sketches are illustrations.</p>
+<h2 id="the-request">The request</h2>
+<p>Naveed wants options-core rebuilt around three ideas.</p>
+<ol>
+<li>A small accounting core that knows nothing about options or perps. Addresses own pools. An upper layer tells the core to move funds from one pool to another, and the core makes sure that happens.</li>
+<li>A generic intent layer. An intent carries rules, and each rule is a validator address plus bytes. Ivy vaults already use this shape for bid rules. The core never interprets a rule.</li>
+<li>Off-chain speed with on-chain guarantees. User and solver sign things off-chain. The chain gets a write every few minutes. Funds never leave the chain. The solver can hedge without racing the chain. The user can get their money in bounded time even if the solver turns hostile.</li>
+</ol>
+<p>Assumptions I made that Naveed still needs to confirm:</p>
+<ul>
+<li>Collateral committed to one solver is not shared with another solver.</li>
+<li>This is a fresh design. It does not need to stay compatible with deployed Symmio contracts.</li>
+<li>It deploys on EVM L2s, where gas is cheap but not free.</li>
+<li>Muon stays available as one oracle choice and is not mandatory.</li>
+</ul>
+<h2 id="where-the-code-is-today">Where the code is today</h2>
+<ul>
+<li>options-core is one Diamond. Opening a position takes three transactions: <code>sendOpenIntent</code>, <code>lockOpenIntent</code>, <code>fillOpenIntent</code>. The InstantLayer can batch signed calls into one transaction, but the Diamond still executes every call.</li>
+<li>Accounting, the intent state machines and the option logic share storage and call each other directly.</li>
+<li>Some pieces of the new idea already exist. <code>crossBalance[counterparty]</code> is a per-solver bucket. Instant action mode blocks the user&#39;s direct calls and takes a cooldown to leave. perps-core 0.8.6 has bind mode, where a user binds to one solver and that solver trades without Muon signatures.</li>
+<li>Bind mode buys speed with trust. Its own docs say the bound solver &quot;can then pass any value they choose to the contract method&quot;.</li>
+<li>Trust is concentrated elsewhere too. The Diamond owner can replace any facet. The clearing house role picks liquidation prices. Muon signs uPnL and settlement prices.</li>
+</ul>
+<p>The codebase has been moving toward &quot;one user paired with one solver&quot; for a while. The redesign makes that pairing the foundation, and it removes the need to trust the solver inside the pairing.</p>
+<h2 id="the-main-idea-the-chain-is-the-court-and-the-escrow-not-the-ledger">The main idea: the chain is the court and the escrow, not the ledger</h2>
+<p>Today the chain records every step of every trade. That is why every step costs gas, and why the solver has to win a race against the chain.</p>
+<p>The contracts only have three jobs.</p>
+<ol>
+<li>Custody. The funds exist and nobody can pledge them twice.</li>
+<li>Commitment. One party cannot deny or change what both agreed.</li>
+<li>Resolution. When they disagree, or one disappears, funds still move the way the agreement says.</li>
+</ol>
+<p>Matching, pricing, quoting, hedging and risk checks can all happen off-chain.</p>
+<p>The observation that makes this safe: in a bilateral system with separated collateral, a state signed by both parties needs no further validation. Nobody else&#39;s money is involved. Re-executing the trade on-chain adds gas and no safety. Product logic only has to run on-chain when the two parties disagree.</p>
+<p>There is one exception. Fees owed to third parties, the platform and affiliates, are somebody else&#39;s money. See the hard problems section.</p>
+<h2 id="why-the-race-happens-and-what-removes-it">Why the race happens and what removes it</h2>
+<p>The race today: the solver reads chain state, hedges on Binance, then sends the fill. In between, the user withdraws or trades with another solver. The fill reverts and the solver holds a hedge it does not want.</p>
+<p>The cause is that the collateral behind the fill sits in state that someone else can change at once, without the solver&#39;s consent.</p>
+<p>One rule fixes it. Inside a channel, anything that reduces one party&#39;s protection needs that party&#39;s signature, or a notice period long enough for them to react. Adding collateral needs neither.</p>
+<p>The user cannot pull collateral out from under a signed intent. The solver signs a fill knowing the state cannot move. Nobody sends a lock transaction, because the channel is the lock.</p>
+<p>The cost is that collateral is split per solver. Allocated balances work the same way today, so this is not a regression.</p>
+<h2 id="layers">Layers</h2>
+<pre><code class="language-mermaid">flowchart TD
+    subgraph OffChain[Off-chain, fast]
+        Intent[Intents and fills]
+        State[Co-signed channel state]
+    end
+    subgraph OnChain[On-chain]
+        Engines[Engines and rule validators&lt;br/&gt;options, perps, anything]
+        Adj[Adjudicator&lt;br/&gt;the judge a channel agreed to]
+        Chan[Channel controller&lt;br/&gt;checkpoints, challenge, exit]
+        Vault[Vault&lt;br/&gt;pools, deposits, withdrawals]
+    end
+    Intent --&gt; State
+    State -- periodic checkpoint --&gt; Chan
+    Chan -- only in a dispute --&gt; Adj
+    Adj --&gt; Engines
+    Chan -- move, release --&gt; Vault
+</code></pre>
+<h3 id="vault">Vault</h3>
+<ul>
+<li>A pool is <code>(owner, id)</code>, with a balance per token. The owner deposits and withdraws free balance at will.</li>
+<li>The owner can commit funds to a controller under a key. Only that controller can move or release committed funds.</li>
+<li>The vault has no product knowledge, no oracle, and no role with power over user funds. It can be small enough to be immutable.</li>
+</ul>
+<p>A sketch of the interface, to show its size:</p>
+<pre><code class="language-solidity">interface IVault {
+	function deposit(bytes32 pool, address token, uint256 amount) external;
+	function withdraw(bytes32 pool, address token, uint256 amount, address to) external;
+	function commit(bytes32 pool, address controller, bytes32 key, address token, uint256 amount) external;
+
+	// callable only by the controller that holds the commitment
+	function move(bytes32 fromKey, bytes32 toKey, address token, uint256 amount) external;
+	function release(bytes32 key, bytes32 pool, address token, uint256 amount) external;
+}
+</code></pre>
+<h3 id="channel">Channel</h3>
+<p>The channel controller is the first controller. A channel links two pools and holds what each committed.</p>
+<p>On-chain, per channel: the two pools, the token, the adjudicator address, the challenge period, one signer key per side, cumulative deposits and withdrawals per side, and the version and hash of the last checkpoint.</p>
+<p>Off-chain, signed by both sides:</p>
+<pre><code class="language-solidity">struct ChannelState {
+	bytes32 channelId;
+	uint64 version; // only goes up
+	int256 netAtoB; // cumulative cash moved from A to B: premiums, realised PnL, fees
+	uint256 withdrawableA; // cumulative amount A may take out
+	uint256 withdrawableB;
+	bytes32 positionsRoot; // open positions, each leaf is {engine, data}
+	bytes32 feesRoot; // cumulative fees owed to third parties
+}
+</code></pre>
+<p><code>netAtoB</code> is cumulative on purpose. A deposit lands on-chain without needing a new signed state, and an old proof can never pay twice.</p>
+<p>Money moves in three ways.</p>
+<ol>
+<li>Both sign. The checkpoint applies at once.</li>
+<li>One party submits the latest co-signed state and waits out the challenge window. During the window anyone holding a newer co-signed state can replace it. The window answers one question only: is there a newer state?</li>
+<li>Whatever the frozen state does not settle by itself goes to the adjudicator, which rules on positions using their data and oracle proofs.</li>
+</ol>
+<p>Smart-account signatures can change meaning over time, because ERC-1271 is evaluated when the call happens. So each side registers a plain signing key for the channel when it opens. That key doubles as the session key that lets a front-end sign at speed.</p>
+<h3 id="adjudicator-and-engines">Adjudicator and engines</h3>
+<p>The adjudicator is a contract address fixed when the channel opens. Changing it takes both signatures. Each channel knows its judge before the first trade.</p>
+<ul>
+<li>The first adjudicator runs fully on-chain. It takes revealed positions and calls one engine per position.</li>
+<li>An engine is a product module. It answers two questions: what does this position pay given this oracle proof, and how much must stay locked until it settles.</li>
+<li>Later adjudicators can accept a Muon attestation of whole-book margin, or a validity proof, without touching the vault or the channel.</li>
+</ul>
+<pre><code class="language-solidity">interface IEngine {
+	// payout owed by one side to the other for a position, given an oracle proof
+	function settle(bytes calldata position, bytes calldata oracleProof) external view returns (int256 amountAtoB, bool isFinal);
+
+	// what each side must keep locked while the position is open
+	function locked(bytes calldata position) external view returns (uint256 lockedA, uint256 lockedB);
+}
+</code></pre>
+<p>Options and perps are two engines. A new product is a new engine. The vault and the channel do not change.</p>
+<h3 id="intents-and-rules">Intents and rules</h3>
+<p>An intent is a message the user signs. It authorises the solver to move the channel to a new state that satisfies the rules.</p>
+<pre><code class="language-solidity">struct Rule {
+	address validator;
+	bytes4 kind; // lets one validator serve several rule types, as in Ivy
+	bytes data;
+}
+
+struct Intent {
+	bytes32 channelId;
+	uint256 nonce;
+	uint64 deadline;
+	Rule[] rules;
+	bytes32 payloadHash; // the order itself, read only by validators and engines
+}
+</code></pre>
+<ul>
+<li>Validators are view functions, called with STATICCALL, the way Ivy&#39;s <code>IIvyBidValidator</code> works.</li>
+<li>Both sides run the validators off-chain with <code>eth_call</code>. The bytecode stays the single definition of what a rule means.</li>
+<li>A validator only runs inside a transaction when someone disputes a fill.</li>
+<li>The solver signs a fill. The user&#39;s client acknowledges it by co-signing the new state. If the user does not answer, the solver posts the fill on-chain before the deadline plus a short grace period, and that makes it binding.</li>
+</ul>
+<p>Solvers keep the flow they have today: see a binding intent, hedge, then fill. The difference is that the fill is a signature, not a transaction.</p>
+<h2 id="a-trade-from-start-to-finish">A trade from start to finish</h2>
+<p>A call option is a paid right to buy at a fixed price later. Alice pays 50 USDC today for the right to buy 1 ETH at 3,000 next Friday. If ETH is at 3,200 on Friday, that right is worth 200. If ETH is below 3,000, it is worth nothing and Alice has lost the 50.</p>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant A as Alice (client)
+    participant S as Solver
+    participant X as Hedge venue
+    participant C as Chain
+
+    A-&gt;&gt;C: deposit 1,000, open channel with S, commit 1,000
+    S-&gt;&gt;C: commit 5,000 to the channel
+    A-&gt;&gt;S: signed intent: buy the call, premium at most 50, valid 30s
+    S-&gt;&gt;X: hedge
+    S-&gt;&gt;A: signed fill: version 1, net A to B = 50, positions = [call]
+    A-&gt;&gt;S: co-sign version 1
+    Note over A,S: more trades, all off-chain
+    S-&gt;&gt;C: every few minutes: batch checkpoint of changed channels
+    Note over A,S: Friday, ETH settles at 3,200
+    S-&gt;&gt;A: version N: net A to B = 50 - 200 = -150, positions = []
+    A-&gt;&gt;S: co-sign, with withdrawable A = 1,150
+    A-&gt;&gt;C: checkpoint version N, 1,150 released to Alice&#39;s pool
+</code></pre>
+<p>If the solver vanishes on Thursday, Alice does not need it.</p>
+<ol>
+<li>Alice submits the last co-signed state on-chain and waits the challenge window.</li>
+<li>Alice&#39;s free cash is released when the window ends.</li>
+<li>After expiry Alice reveals the call and the oracle&#39;s Friday price. The options engine computes 200, and the channel pays it from the solver&#39;s committed collateral.</li>
+</ol>
+<p>Alice&#39;s worst case is the challenge window plus the time left until expiry. If Alice vanishes instead, the solver collects what it is owed the same way.</p>
+<h2 id="what-reaches-the-chain">What reaches the chain</h2>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Who sends it</th>
+<th>Frequency</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Deposit, open channel, add collateral</td>
+<td>Either side</td>
+<td>When funding</td>
+</tr>
+<tr>
+<td>Checkpoint of co-signed states</td>
+<td>Usually the solver</td>
+<td>Every few minutes, batched</td>
+</tr>
+<tr>
+<td>Withdrawal</td>
+<td>Either side</td>
+<td>When taking money out</td>
+</tr>
+<tr>
+<td>Post an unacknowledged fill</td>
+<td>Solver</td>
+<td>Only when the user is unresponsive</td>
+</tr>
+<tr>
+<td>Challenge, respond, reveal positions, settle</td>
+<td>Either side</td>
+<td>Only in a dispute</td>
+</tr>
+</tbody></table>
+<p>A trade in the happy path costs no gas. My estimate for a batched checkpoint is about ten thousand gas per changed channel: one signature check and one storage update. That number needs a benchmark.</p>
+<h2 id="what-each-side-is-guaranteed">What each side is guaranteed</h2>
+<p>For the solver:</p>
+<ul>
+<li>Collateral committed to the channel cannot leave without the solver&#39;s signature or a full notice period.</li>
+<li>A signed intent stays valid until its deadline. The user cannot cancel it alone.</li>
+<li>A fill becomes binding by acknowledgement or by posting it on-chain in time. No revert can undo a hedge.</li>
+</ul>
+<p>For the user:</p>
+<ul>
+<li>Nothing changes without the user&#39;s signature or a valid intent the user signed.</li>
+<li>A fill the solver sat on is void if it was neither acknowledged nor posted by the deadline plus grace.</li>
+<li>The solver&#39;s committed collateral backs the user&#39;s claims and the solver cannot withdraw it alone.</li>
+<li>Exit never depends on the solver: challenge, wait, settle through the adjudicator.</li>
+<li>The rules of an open channel cannot be upgraded underneath it.</li>
+</ul>
+<h2 id="time-is-the-one-thing-two-parties-cannot-settle-between-themselves">Time is the one thing two parties cannot settle between themselves</h2>
+<p>Signatures prove who agreed. They do not prove when. A solver could sign a fill after the intent expired and claim it signed earlier.</p>
+<p>The chain is the fallback clock. A message that depends on a deadline counts only if the counterparty acknowledged it, or if it was posted on-chain before the deadline plus a grace period. In the cooperative case nothing is posted.</p>
+<p>A notary can serve as a faster clock later. A threshold network such as Muon could timestamp message hashes in milliseconds. It could censor or backdate, and it could never move funds or forge a trade. That is a much smaller trust than it holds today.</p>
+<h2 id="three-ways-to-build-the-off-chain-part">Three ways to build the off-chain part</h2>
+<p><strong>A. Batched replay.</strong> The chain stays the ledger and catches up later. An operator posts batches of signed actions and the contracts execute each one. It is the InstantLayer taken further. Everything stays visible and the model is familiar. It still pays gas per trade, product logic stays on the hot path, and it still needs the channel lock so a replay cannot fail.</p>
+<p><strong>B. Co-signed channels with a pluggable adjudicator.</strong> The design in this note. Cheapest and fastest, and it matches the layering Naveed described. It adds two risks that do not exist today: each side must keep its own state, and each side must be reachable during a challenge window.</p>
+<p><strong>C. Proved batches.</strong> An operator runs the whole state machine off-chain and posts validity proofs, as a rollup or validium does. It gives the highest throughput and allows shared margin across solvers. It needs a prover, a data-availability layer and a sequencer, and it fits an exchange better than bilateral OTC.</p>
+<p>I recommend B. The adjudicator slot leaves room for A-style on-chain engines now and C-style proofs later, so choosing B does not close the other doors.</p>
+<h2 id="prior-art">Prior art</h2>
+<!-- PRIOR-ART -->
+
+<h2 id="hard-problems">Hard problems</h2>
+<ol>
+<li><strong>State custody.</strong> If only a hash is on-chain and the user loses their copy of the positions, they cannot prove what they hold. Publishing the position data with each checkpoint solves it and keeps indexers working. Hash-only can stay as an opt-in for parties who want privacy.</li>
+<li><strong>Liveness.</strong> A solver could open a challenge with an old state while the user is away. Frequent checkpoints shrink the exposure to the trades since the last one. Anyone can answer with a newer co-signed state, so a front-end or a watch service can defend users without holding keys. Solvers should post a bond that is slashed for submitting a stale state.</li>
+<li><strong>Third-party fees.</strong> Two parties who co-sign could under-report fees. Fees can ride in the state as a cumulative amount per recipient. Affiliates see the intents they relay, so they can audit. Published data lets anyone recompute.</li>
+<li><strong>Margin and liquidation.</strong> A long option that is fully paid needs neither. A short position does. The choices are capped payoffs with full collateral, a margin rule based on spot price only, or a Muon attestation of whole-book margin. Each is a different adjudicator.</li>
+<li><strong>Many solvers competing for one order.</strong> A channel has one solver. Competition moves to the moment the user funds a channel, or the user keeps channels with a few solvers and the front-end routes between them. An allocator that co-signs locks, in the style of The Compact, can add instant competition later.</li>
+<li><strong>The off-chain protocol becomes the product.</strong> The contracts shrink. Solvers and front-ends need a signing service, state storage, a checkpoint batcher and a watcher. That protocol needs a spec as careful as the contracts.</li>
+<li><strong>No on-chain position objects.</strong> Trade NFTs and contracts that read positions stop working as they do now. A position can be moved into its own on-chain escrow when someone needs that.</li>
+<li><strong>Upgrades.</strong> Pinning rules per channel protects users from admin keys. It also means a bug fix cannot be pushed into live channels. Migration has to be a co-signed close and reopen.</li>
+</ol>
+<h2 id="decisions-to-make-next">Decisions to make next</h2>
+<ol>
+<li>What the periodic write contains: a hash only, the hash plus published position data, or every action replayed.</li>
+<li>Whether the first version supports margin and liquidation, or only fully collateralized positions.</li>
+<li>Who judges disputes in the first version: on-chain engines with a price oracle, or Muon attestations.</li>
+<li>Whether many-solver competition per order is needed on day one.</li>
+<li>How platform and affiliate fees are enforced.</li>
+<li>Whether the vault is immutable.</li>
+</ol>
+</article></main></div><footer class="site-footer"><span>Options Core documentation.</span></footer></body></html>

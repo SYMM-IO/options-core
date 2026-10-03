@@ -3,6 +3,8 @@
 // Copyright (c) 2023 Symmetry Labs AG
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
+import { LibBucket } from "../../libraries/core/LibBucket.sol";
+import { BucketStorage } from "../../storages/BucketStorage.sol";
 
 import { LibParty } from "../../libraries/models/LibParty.sol";
 import { LibAccessibility } from "../../libraries/core/LibAccessibility.sol";
@@ -937,5 +939,21 @@ contract ControlFacet is Accessibility, Ownable, IControlFacet {
 	function setCallFromInstantLayer(bool _callFromInstantLayer) external onlyRole(LibAccessibility.INSTANT_LAYER_ROLE) {
 		if (_callFromInstantLayer && StateControlStorage.layout().instantLayerPaused) revert SystemErrors.InstantLayerPaused();
 		AppStorage.layout().callFromInstantLayer = _callFromInstantLayer;
+	}
+
+	function suspendBucket(address owner, uint256 bucketId, bool suspended) external onlyRole(LibAccessibility.SUSPENDER_ROLE) {
+		LibBucket.requireRegistered(owner, bucketId);
+		BucketStorage.layout().suspendedBuckets[owner][bucketId] = suspended;
+		emit BucketSuspended(owner, bucketId, suspended);
+	}
+	function activePartyBEmergencyMode(address owner, uint256 bucketId) external onlyRole(LibAccessibility.PAUSER_ROLE) {
+		LibBucket.requireRegistered(owner, bucketId);
+		BucketStorage.layout().partyBEmergencyBuckets[owner][bucketId] = true;
+		emit BucketPartyBEmergencyChanged(owner, bucketId, true);
+	}
+	function deactivePartyBEmergencyMode(address owner, uint256 bucketId) external onlyRole(LibAccessibility.UNPAUSER_ROLE) {
+		LibBucket.requireRegistered(owner, bucketId);
+		BucketStorage.layout().partyBEmergencyBuckets[owner][bucketId] = false;
+		emit BucketPartyBEmergencyChanged(owner, bucketId, false);
 	}
 }

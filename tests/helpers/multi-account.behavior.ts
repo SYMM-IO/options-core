@@ -68,23 +68,26 @@ export function shouldBehaveLikeMultiAccount(): void {
 			.strikePrice(e(1))
 			.build()
 
-		openIntentCallData = partyAOpenFacet.interface.encodeFunctionData("sendOpenIntent", [
-			request.partyBsWhiteList,
-			request.symbolId,
-			request.price,
-			request.quantity,
-			request.strikePrice,
-			request.expirationTimestamp,
-			request.mm,
-			request.tradeSide,
-			request.marginType,
-			request.exerciseFee,
-			request.solverFee,
-			request.deadline,
-			request.feeToken,
-			request.affiliate,
-			request.userData,
-		])
+		openIntentCallData = partyAOpenFacet.interface.encodeFunctionData(
+			"sendOpenIntent(address[],uint256,uint256,uint256,uint256,uint256,uint256,uint8,uint8,(uint256,uint256),(uint256,uint256),uint256,address,address,bytes)",
+			[
+				request.partyBsWhiteList,
+				request.symbolId,
+				request.price,
+				request.quantity,
+				request.strikePrice,
+				request.expirationTimestamp,
+				request.mm,
+				request.tradeSide,
+				request.marginType,
+				request.exerciseFee,
+				request.solverFee,
+				request.deadline,
+				request.feeToken,
+				request.affiliate,
+				request.userData,
+			],
+		)
 		lockIntentCallData = partyBOpenFacet.interface.encodeFunctionData("lockOpenIntent", [1])
 		fillIntentCallData = partyBOpenFacet.interface.encodeFunctionData("fillOpenIntent", [1, e(100), 7])
 
@@ -127,8 +130,12 @@ export function shouldBehaveLikeMultiAccount(): void {
 			await expect(context.collateral.connect(partyA1.getSigner).approve(context.common.diamondAddress, ethers.MaxUint256)).not.to.revert(ethers)
 			await expect(context.collateral.connect(partyA1.getSigner).mint(accounts[0].account, e(30))).not.to.revert(ethers)
 			await expect(context.collateralNL.connect(partyA1.getSigner).mint(accounts[0].account, e(30))).not.to.revert(ethers)
-			await context.accountFacet.connect(partyA1.getSigner).depositFor(await context.collateral.getAddress(), accounts[0].account, e(20))
-			await context.accountFacet.connect(partyA1.getSigner).depositFor(await context.collateralNL.getAddress(), accounts[0].account, e(20))
+			await context.accountFacet
+				.connect(partyA1.getSigner)
+				["depositFor(address,address,uint256)"](await context.collateral.getAddress(), accounts[0].account, e(20))
+			await context.accountFacet
+				.connect(partyA1.getSigner)
+				["depositFor(address,address,uint256)"](await context.collateralNL.getAddress(), accounts[0].account, e(20))
 		})
 
 		it("should fail when not Expected msg sender", async () => {
@@ -148,8 +155,14 @@ export function shouldBehaveLikeMultiAccount(): void {
 			console.log("User Collateral Balance:", await context.collateral.balanceOf(partyA1.address))
 			console.log("User Collateral Balance:", await context.collateral.balanceOf(partyA1.address))
 			console.log("PartyA Collateral Balance:", await context.collateral.balanceOf(accounts[0].account))
-			console.log("User Collateral Balance in Symmio:", await context.viewFacet.getIsolatedBalance(partyA1.address, context.collateral))
-			console.log("PartyA Collateral Balance in Symmio:", await context.viewFacet.getIsolatedBalance(accounts[0].account, context.collateral))
+			console.log(
+				"User Collateral Balance in Symmio:",
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyA1.address, context.collateral),
+			)
+			console.log(
+				"PartyA Collateral Balance in Symmio:",
+				await context.viewFacet["getIsolatedBalance(address,address)"](accounts[0].account, context.collateral),
+			)
 
 			await expect(context.multiAccount.connect(partyA1.getSigner)._call(accounts[0].account, [openIntentCallData])).not.to.revert(ethers)
 			// try{

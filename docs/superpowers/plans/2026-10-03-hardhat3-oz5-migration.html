@@ -1,0 +1,2094 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Hardhat 3 + OpenZeppelin 5 Migration Implementation Plan | Options Core</title>
+<link rel="icon" type="image/svg+xml" href="../../assets/symmio-mark.svg"><link rel="stylesheet" href="../../assets/reader.css"><link rel="stylesheet" href="../../assets/docs-portal.css">
+<script>try { if (localStorage.getItem("options-docs-theme") === "light") document.documentElement.dataset.theme = "light"; } catch (_) {}</script>
+<script src="../../assets/chapters.js" defer></script><script src="../../assets/reader.js" defer></script><script src="../../assets/docs-portal.js" defer></script></head>
+<body class="doc-page" data-version="current"><a class="skip-link" href="#full-document">Skip to document</a><header class="docs-header"><div class="doc-topbar"><nav class="docs-trail" aria-label="Breadcrumb"><a class="brand" href="../../index.html"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Options Core</span></a><span class="trail-sep" aria-hidden="true">/</span><a class="trail-release" href="../../index.html">Documentation</a></nav><nav class="top-actions" aria-label="Page actions"><button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button></nav></div></header>
+<div class="reader-shell"><div data-rail-sections hidden><a class="toc-link level-2" href="#decisions-already-made-do-not-revisit">Decisions (already made, do not revisit)</a>
+<a class="toc-link level-2" href="#global-constraints">Global Constraints</a>
+<a class="toc-link level-2" href="#review-focus">Review Focus</a>
+<a class="toc-link level-2" href="#file-structure">File Structure</a>
+<a class="toc-link level-2" href="#phase-1--on-hardhat-2">Phase 1 — on Hardhat 2</a>
+<a class="toc-link level-3" href="#task-1-clean-baseline-delete-dead-tests-fix-the-two-real-type-errors-enforce-tsc">Task 1: Clean baseline (delete dead tests, fix the two real type errors, enforce <code>tsc</code>)</a>
+<a class="toc-link level-3" href="#task-2-compiler-0819--0825-with-evmversion-cancun">Task 2: Compiler 0.8.19 → 0.8.25 with <code>evmVersion: cancun</code></a>
+<a class="toc-link level-3" href="#task-3-characterization-tests-for-openzeppelin-sensitive-behavior-still-on-openzeppelin-4">Task 3: Characterization tests for OpenZeppelin-sensitive behavior (still on OpenZeppelin 4)</a>
+<a class="toc-link level-3" href="#task-4-openzeppelin-496--561">Task 4: OpenZeppelin 4.9.6 → 5.6.1</a>
+<a class="toc-link level-3" href="#task-5-shared-deploy-library-tests-stop-calling-rundeploy">Task 5: Shared deploy library (tests stop calling <code>run(&quot;deploy:…&quot;)</code>)</a>
+<a class="toc-link level-2" href="#phase-2--hardhat-3">Phase 2 — Hardhat 3</a>
+<a class="toc-link level-3" href="#task-6-hardhat-3-core-packages-esm-config-tasks-scripts">Task 6: Hardhat 3 core: packages, ESM, config, tasks, scripts</a>
+<a class="toc-link level-3" href="#task-7-convert-the-test-suite-to-hardhat-3">Task 7: Convert the test suite to Hardhat 3</a>
+<a class="toc-link level-3" href="#task-8-remaining-majors-unused-packages-ci-docs-formatting">Task 8: Remaining majors, unused packages, CI, docs, formatting</a>
+<a class="toc-link level-2" href="#after-the-plan">After the plan</a></div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1 id="hardhat-3--openzeppelin-5-migration-implementation-plan">Hardhat 3 + OpenZeppelin 5 Migration Implementation Plan</h1></div></div></header><article class="doc-article" id="full-document"><noscript><nav aria-label="On this page"><a class="toc-link level-2" href="#decisions-already-made-do-not-revisit">Decisions (already made, do not revisit)</a>
+<a class="toc-link level-2" href="#global-constraints">Global Constraints</a>
+<a class="toc-link level-2" href="#review-focus">Review Focus</a>
+<a class="toc-link level-2" href="#file-structure">File Structure</a>
+<a class="toc-link level-2" href="#phase-1--on-hardhat-2">Phase 1 — on Hardhat 2</a>
+<a class="toc-link level-3" href="#task-1-clean-baseline-delete-dead-tests-fix-the-two-real-type-errors-enforce-tsc">Task 1: Clean baseline (delete dead tests, fix the two real type errors, enforce <code>tsc</code>)</a>
+<a class="toc-link level-3" href="#task-2-compiler-0819--0825-with-evmversion-cancun">Task 2: Compiler 0.8.19 → 0.8.25 with <code>evmVersion: cancun</code></a>
+<a class="toc-link level-3" href="#task-3-characterization-tests-for-openzeppelin-sensitive-behavior-still-on-openzeppelin-4">Task 3: Characterization tests for OpenZeppelin-sensitive behavior (still on OpenZeppelin 4)</a>
+<a class="toc-link level-3" href="#task-4-openzeppelin-496--561">Task 4: OpenZeppelin 4.9.6 → 5.6.1</a>
+<a class="toc-link level-3" href="#task-5-shared-deploy-library-tests-stop-calling-rundeploy">Task 5: Shared deploy library (tests stop calling <code>run(&quot;deploy:…&quot;)</code>)</a>
+<a class="toc-link level-2" href="#phase-2--hardhat-3">Phase 2 — Hardhat 3</a>
+<a class="toc-link level-3" href="#task-6-hardhat-3-core-packages-esm-config-tasks-scripts">Task 6: Hardhat 3 core: packages, ESM, config, tasks, scripts</a>
+<a class="toc-link level-3" href="#task-7-convert-the-test-suite-to-hardhat-3">Task 7: Convert the test suite to Hardhat 3</a>
+<a class="toc-link level-3" href="#task-8-remaining-majors-unused-packages-ci-docs-formatting">Task 8: Remaining majors, unused packages, CI, docs, formatting</a>
+<a class="toc-link level-2" href="#after-the-plan">After the plan</a></nav></noscript><blockquote>
+<p><strong>For agentic workers:</strong> REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (<code>- [ ]</code>) syntax for tracking.</p>
+</blockquote>
+<p><strong>Goal:</strong> Move options-core from Hardhat 2 / OpenZeppelin 4.9 / solc 0.8.19 / CommonJS to Hardhat 3.18 / OpenZeppelin 5.6.1 / solc 0.8.25 / ESM / TypeScript 7, with every existing test still passing and type-checking enforced.</p>
+<p><strong>Architecture:</strong> Two phases, each ending green. Phase 1 (Tasks 1–5) stays on Hardhat 2 and changes everything that can be verified with the existing harness: dead-code cleanup, compiler bump, characterization tests, the OpenZeppelin 5 contract changes, and a shared deploy library that tests call directly instead of going through <code>run(&quot;deploy:…&quot;)</code>. Phase 2 (Tasks 6–8) swaps the toolchain: Hardhat 3 core and tasks, then the test suite (via a one-off codemod), then the remaining package majors, CI and docs.</p>
+<p><strong>Tech Stack:</strong> Hardhat 3.18 (<code>hardhat-toolbox-mocha-ethers</code> 4), ethers 6.17, mocha 12, chai 6, TypeScript 7.0.2, <code>@openzeppelin/hardhat-upgrades</code> 4.1, OpenZeppelin Contracts 5.6.1, solc 0.8.25 (<code>evmVersion: cancun</code>, <code>viaIR</code>), Node 24.</p>
+<p><strong>Spec:</strong> No separate spec document. The decisions below come from the 2026-10-02 session (agent reports: codebase inventory, upstream research, and a Hardhat 3 spike that proved every pattern used in Phase 2).</p>
+<h2 id="decisions-already-made-do-not-revisit">Decisions (already made, do not revisit)</h2>
+<ul>
+<li>Everything lands on <code>develop</code> (there is no <code>main</code>). Do the work on branch <code>chore/hh3-oz5-migration</code> cut from <code>develop</code>.</li>
+<li>The two transparent proxies on Base (<code>MultiAccount</code> 0x7981…10C2, <code>SymmioPartyB</code> 0x676F…Cc4A) are <strong>disposable</strong>. They will be redeployed fresh, so <code>MultiAccount</code> and <code>SymmioPartyB</code> move fully to OpenZeppelin 5 with no v4 → v5 upgrade path.</li>
+<li>The never-run signed-intent tests (<code>instant-action-open</code>, <code>instant-action-close</code>, <code>instant-actions-partyb-open-facet</code>), their builders and <code>tests/utils/hash.ts</code> are <strong>deleted</strong>.</li>
+<li>Packages with no imports anywhere are removed rather than upgraded.</li>
+</ul>
+<h2 id="global-constraints">Global Constraints</h2>
+<ul>
+<li>Node ≥ 22.13 is required by Hardhat 3, and lint-staged 17 needs ≥ 22.22.1. Local is v24.21.0; CI images become <code>node:24</code>.</li>
+<li>Solidity <code>0.8.25</code>, <code>evmVersion: &quot;cancun&quot;</code>, <code>viaIR: true</code>, optimizer <code>{ enabled: true, runs: 200 }</code>, <code>metadata.bytecodeHash: &quot;none&quot;</code>.</li>
+<li><code>@openzeppelin/contracts</code> and <code>@openzeppelin/contracts-upgradeable</code> pinned <strong>exactly</strong> to <code>5.6.1</code> (<code>npm i -E</code>).</li>
+<li>Never install <code>@nomicfoundation/hardhat-toolbox@7</code> or <code>@nomicfoundation/hardhat-chai-matchers@3</code>. Both are placeholder packages that exit with code 1. Use <code>@nomicfoundation/hardhat-toolbox-mocha-ethers@^4.0.0</code> and <code>@nomicfoundation/hardhat-ethers-chai-matchers@^3.0.11</code>.</li>
+<li>In Hardhat 3, always get a connection with <code>network.getOrCreate()</code> / <code>hre.network.getOrCreate()</code>. Never use <code>network.create()</code> or the deprecated <code>network.connect()</code>. <code>create()</code> gives the caller its own private chain, so a task called from a test would deploy somewhere the test can&#39;t see.</li>
+<li>Run tests with <code>TEST_MODE=UNIT_TEST</code>. <code>tests/main.ts</code> throws otherwise.</li>
+<li>The passing-test count never drops. The baseline is <strong>521</strong>. Task 3 adds 14 (→ 535), Task 4 adds 2 signature tests (→ 537) and Task 7 adds 1 (→ 538). If the baseline you measure in Task 1 differs, carry your measured numbers forward instead.</li>
+<li>Diamond storage layouts (<code>contracts/storages/*</code>) must not change. The live diamond is upgraded in place with <code>diamondCut</code>.</li>
+<li>Match the repo style: tabs, double quotes, no semicolons in TS, <code>printWidth: 150</code> (<code>.prettierrc.yml</code>). <strong>Don&#39;t</strong> run Prettier on whole files mid-migration, because 40 files already drift from Prettier 3.9 and reformatting would bury the real diffs. Task 8 does one repo-wide formatting commit at the end.</li>
+<li><code>types/</code> (TypeChain output) is gitignored and generated by compiling. Compile before any <code>tsc</code> run.</li>
+<li>Nothing is pushed. The remote currently fails TLS (<code>zxcode.xyz</code> certificate mismatch).</li>
+</ul>
+<h2 id="review-focus">Review Focus</h2>
+<ol>
+<li><strong>Tests that silently stop running under Hardhat 3.</strong> File pickup, the <code>TEST_MODE</code> gate or a stray <code>.only</code> could quietly shrink the suite, as happened once already with a leftover <code>describe.only</code>. A reasonable person expects &quot;all green&quot; to mean all 538 tests ran. Task 7 asserts the exact passing count, not just &quot;0 failing&quot;.</li>
+<li><strong>Tasks and tests running on different chains.</strong> If any code path uses <code>network.create()</code>, a task invoked from a test deploys to a separate chain. Address-based checks can falsely pass because CREATE addresses are deterministic. Task 7 adds a test that deploys through a real task and reads the contract&#39;s <code>name()</code> from the test connection.</li>
+<li><strong>Revert-matcher rewrite changing meaning.</strong> <code>.to.be.reverted</code> / <code>.not.reverted</code> become <code>.revert(ethers)</code>. A regex that also touches <code>revertedWith…</code>, or misses a variant, silently weakens assertions. Task 7 counts matchers before and after the codemod and requires the counts to match, with zero <code>.reverted</code> left.</li>
+<li><strong>Reentrancy protection after the switch to <code>ReentrancyGuardTransient</code> behind a proxy.</strong> No existing test re-enters <code>SymmioPartyB</code>, so a guard that never fires would go unnoticed. Task 3 adds a re-entering callee test on OpenZeppelin 4, and Task 4 tightens it to <code>ReentrancyGuardReentrantCall</code>.</li>
+<li><strong>Missing secrets in CI.</strong> Hardhat 3&#39;s keystore plugin prompts for a password when a <code>configVariable</code> is missing, and in non-interactive runs it dies with &quot;unsettled top-level await&quot;. Test runs on the in-process network must never resolve <code>PRIVATE_KEY</code> / <code>ETHERSCAN_API_KEY</code>. Task 8 runs the suite with both unset and stdin closed.</li>
+</ol>
+<hr>
+<h2 id="file-structure">File Structure</h2>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Responsibility</th>
+<th>Task</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>contracts/mocks/MockTradeNFTSymmio.sol</code> (new)</td>
+<td>Records <code>transferTradeFromNFT</code> callbacks, including the NFT owner at call time, and drives <code>mint</code>/<code>transferTradeNFT</code> as Symmio</td>
+<td>3</td>
+</tr>
+<tr>
+<td><code>contracts/mocks/MockReentrantCallee.sol</code> (new)</td>
+<td>Multicast target that can re-enter <code>SymmioPartyB._call</code></td>
+<td>3</td>
+</tr>
+<tr>
+<td><code>tests/helpers/trade-nft.behavior.ts</code> (new)</td>
+<td>TradeNFT characterization suite; there was no TradeNFT coverage before</td>
+<td>3</td>
+</tr>
+<tr>
+<td><code>tests/helpers/symmio-partyb-reentrancy.behavior.ts</code> (new)</td>
+<td>Reentrancy-guard suite for <code>SymmioPartyB</code> behind its proxy</td>
+<td>3</td>
+</tr>
+<tr>
+<td><code>contracts/helpers/{TradeNFT,MultiAccount,SymmioPartyB,InstantLayer,MuonOracle}.sol</code></td>
+<td>OpenZeppelin 5 API changes</td>
+<td>4</td>
+</tr>
+<tr>
+<td><code>tasks/deployment/deploy-lib.ts</code> (new)</td>
+<td>Every deploy routine as a plain function of <code>(ethers[, upgrades], …)</code>, shared by tasks and tests</td>
+<td>5</td>
+</tr>
+<tr>
+<td><code>tests/utils/time.ts</code> (moved from <code>utils/time.ts</code>)</td>
+<td>Test-only chain-time helpers</td>
+<td>5</td>
+</tr>
+<tr>
+<td><code>tasks/index.ts</code></td>
+<td>Hardhat 3 task definitions (builders); the action bodies live in the existing per-task files</td>
+<td>6</td>
+</tr>
+<tr>
+<td><code>tasks/utils/args.ts</code> (new)</td>
+<td><code>requireArg</code> for task options that used to be required <code>addParam</code>s</td>
+<td>6</td>
+</tr>
+<tr>
+<td><code>tools/hh3-codemod.mjs</code> (new, deleted at end of Task 7)</td>
+<td>One-off import/matcher rewrite</td>
+<td>6, 7</td>
+</tr>
+<tr>
+<td><code>tests/connection.ts</code> (new)</td>
+<td>The single shared Hardhat 3 connection: <code>ethers</code>, <code>networkHelpers</code>, <code>upgradesApi</code></td>
+<td>7</td>
+</tr>
+<tr>
+<td><code>tests/helpers/connection.behavior.ts</code> (new)</td>
+<td>Same-chain check between tasks and tests</td>
+<td>7</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="phase-1--on-hardhat-2">Phase 1 — on Hardhat 2</h2>
+<h3 id="task-1-clean-baseline-delete-dead-tests-fix-the-two-real-type-errors-enforce-tsc">Task 1: Clean baseline (delete dead tests, fix the two real type errors, enforce <code>tsc</code>)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Delete: <code>tests/instant-action-close.behavior.ts</code>, <code>tests/instant-action-open.behavior.ts</code>, <code>tests/instant-actions-partyb-open-facet.behavior.ts</code>, <code>tests/utils/hash.ts</code>, <code>tests/models/builders/signed-close-intent.builder.ts</code>, <code>tests/models/builders/signed-fill-close-intent-by-id.builder.ts</code>, <code>tests/models/builders/signed-fill-intent.builder.ts</code>, <code>tests/models/builders/signed-open-intent.builder.ts</code>, <code>tests/models/builders/signed-simple-action-intent.builder.ts</code>, <code>utils/gas.ts</code></li>
+<li>Modify: <code>tests/bridge-facet.behavior.ts:25-30</code>, <code>tasks/helper/send_open_intent.ts</code>, <code>scripts/helper/send_open_intent.ts</code>, dead imports in 10 test files (listed in Step 4), <code>package.json</code> (scripts, devDependencies)</li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li><p>Produces: <code>npm run typecheck</code> → <code>tsc --noEmit -p .</code> with <strong>0 errors</strong>. Every later task must keep it at 0. The <code>send-open-intent</code> task gains optional <code>solverfeeopen</code> / <code>solverfeeclose</code> params (default <code>&quot;0&quot;</code>).</p>
+</li>
+<li><p><input disabled="" type="checkbox">
+<strong>Step 1: Create the branch and record the baseline</strong></p>
+</li>
+</ul>
+<pre><code class="language-bash">git switch -c chore/hh3-oz5-migration develop
+npx hardhat compile
+TEST_MODE=UNIT_TEST npx hardhat test 2&gt;&amp;1 | tail -5
+npx tsc --noEmit -p . 2&gt;&amp;1 | grep -c &#39;error TS&#39;
+</code></pre>
+<p>Expected: <code>521 passing</code>, <code>0 failing</code>, and <strong>137</strong> tsc errors. Write the passing count down. It is this plan&#39;s invariant.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 2: Delete the dead test files and the unused ethers-v5 gas util</strong></li>
+</ul>
+<p>Nothing imports these (<code>grep -rl</code> for each basename turns up only the other dead files). The one apparent hit for <code>hash</code> in <code>tasks/utils/diamond-cut.ts</code> is the string <code>&quot;sighash&quot;</code>, not an import.</p>
+<pre><code class="language-bash">git rm tests/instant-action-close.behavior.ts tests/instant-action-open.behavior.ts tests/instant-actions-partyb-open-facet.behavior.ts \
+  tests/utils/hash.ts \
+  tests/models/builders/signed-close-intent.builder.ts tests/models/builders/signed-fill-close-intent-by-id.builder.ts \
+  tests/models/builders/signed-fill-intent.builder.ts tests/models/builders/signed-open-intent.builder.ts \
+  tests/models/builders/signed-simple-action-intent.builder.ts \
+  utils/gas.ts
+npx tsc --noEmit -p . 2&gt;&amp;1 | grep &#39;error TS&#39;
+</code></pre>
+<p>Expected: exactly 2 errors, one in <code>tasks/helper/send_open_intent.ts</code> (TS2345) and one in <code>tests/bridge-facet.behavior.ts</code> (TS2345).</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 3: Fix the two real type errors</strong></li>
+</ul>
+<p><code>tests/bridge-facet.behavior.ts</code>: <code>PartyBConfig</code> no longer has <code>symbolType</code>. Delete the <code>symbolType: 0,</code> line so the call reads:</p>
+<pre><code class="language-ts">		await context.controlFacet.setPartyBConfig(partyB1.getSigner, {
+			isActive: true,
+			lossCoverage: 0,
+			oracleId: 1,
+		})
+</code></pre>
+<p><code>tasks/helper/send_open_intent.ts</code>: <code>sendOpenIntent</code> now takes <code>Fee calldata solverFee</code> (<code>{ openFee, closeFee }</code>) between <code>exerciseFee</code> and <code>deadline</code>. Add two optional params after <code>exercisefeecap</code>:</p>
+<pre><code class="language-ts">	.addParam(&quot;exercisefeecap&quot;, &quot;Cap of exercise fee&quot;)
+	.addOptionalParam(&quot;solverfeeopen&quot;, &quot;Solver open fee&quot;, &quot;0&quot;)
+	.addOptionalParam(&quot;solverfeeclose&quot;, &quot;Solver close fee&quot;, &quot;0&quot;)
+</code></pre>
+<p>Add <code>solverfeeopen</code> and <code>solverfeeclose</code> to the destructured <code>args</code>, build the struct next to <code>exerciseFee</code>, and pass it in position:</p>
+<pre><code class="language-ts">		const solverFee = {
+			openFee: BigInt(solverfeeopen),
+			closeFee: BigInt(solverfeeclose),
+		}
+</code></pre>
+<pre><code class="language-ts">			exerciseFee,
+			solverFee,
+			BigInt(deadline),
+</code></pre>
+<p><code>scripts/helper/send_open_intent.ts</code>: add <code>const solverFeeOpen = &quot;0&quot;</code> and <code>const solverFeeClose = &quot;0&quot;</code> next to the other constants, and pass <code>solverfeeopen: solverFeeOpen, solverfeeclose: solverFeeClose,</code> in the <code>run(&quot;send-open-intent&quot;, {…})</code> object.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 4: Remove dead imports and port the one live ethers-v5 call</strong></li>
+</ul>
+<p>All of these are unused (confirmed with <code>tsc --noUnusedLocals</code>), except <code>hexZeroPad</code>. Delete each line:</p>
+<pre><code>tests/partyB-close-facet.behavior.ts:15  import { extendConfig, extendProvider } from &quot;hardhat/config&quot;
+tests/partyB-close-facet.behavior.ts:16  import { int } from &quot;hardhat/internal/core/params/argumentTypes&quot;
+tests/partyA-open-facet.behavior.ts:13   import { BigNumber } from &quot;@ethersproject/bignumber&quot;
+tests/partyA-open-facet.behavior.ts:14   import { bigint, int } from &quot;hardhat/internal/core/params/argumentTypes&quot;
+tests/partyA-open-facet.behavior.ts:15   import { partyAOpen } from &quot;../types/contracts/facets&quot;
+tests/bridge-facet.behavior.ts:10        import { bigint } from &quot;hardhat/internal/core/params/argumentTypes&quot;
+tests/trade-settlement.ts:17             import { bigint } from &quot;hardhat/internal/core/params/argumentTypes&quot;
+tests/partyB-open-facet.behavior.ts:12   import { bigint, int } from &quot;hardhat/internal/core/params/argumentTypes&quot;
+tests/partyB-open-facet.behavior.ts:13   import { config } from &quot;dotenv&quot;
+tests/partyB-open-facet.behavior.ts:18   import { tradeNftSol } from &quot;../types/contracts/helpers&quot;
+tests/partyB-open-facet.behavior.ts:19   import { exitOnError } from &quot;winston&quot;
+tests/partyB-open-facet.behavior.ts:20   import { account } from &quot;../types/contracts/facets&quot;
+tests/account-facet.behavior.ts:9        import { withDefaults } from &quot;@openzeppelin/hardhat-upgrades/dist/utils&quot;
+tests/account-facet.behavior.ts:12       import { zeroPad } from &quot;@ethersproject/bytes&quot;
+tests/clearing-house.ts:27               import { address } from &quot;hardhat/internal/core/config/config-validation&quot;
+tests/clearing-house.ts:29               import { clearingHouse, view } from &quot;../types/contracts/facets&quot;
+tests/clearing-house.ts:30               import { configure, exceptions } from &quot;winston&quot;
+tests/clearing-house.ts:31               import { Console } from &quot;console&quot;
+tests/clearing-house.ts:32               import { Context } from &quot;mocha&quot;
+tests/clearing-house.ts:34               import { bigint } from &quot;hardhat/internal/core/params/argumentTypes&quot;
+tests/helpers/instant-layer.behavior.ts:12  import { bigint, int } from &quot;hardhat/internal/core/params/argumentTypes&quot;
+tests/helpers/instant-layer.behavior.ts:13  import { config } from &quot;dotenv&quot;
+tests/helpers/instant-layer.behavior.ts:23  import { trace } from &quot;console&quot;
+tests/helpers/instant-layer.behavior.ts:24  import { hexZeroPad, zeroPad } from &quot;@ethersproject/bytes&quot;
+tests/helpers/instant-layer.behavior.ts:25  import { Context } from &quot;mocha&quot;
+tests/helpers/instant-layer.behavior.ts:26  import { asyncWrapProviders } from &quot;async_hooks&quot;
+tests/helpers/symmio-partyb.behavior.ts:12  import { bigint, int } from &quot;hardhat/internal/core/params/argumentTypes&quot;
+tests/helpers/symmio-partyb.behavior.ts:13  import { config } from &quot;dotenv&quot;
+tests/helpers/symmio-partyb.behavior.ts:23  import { trace } from &quot;console&quot;
+tests/helpers/symmio-partyb.behavior.ts:24  import { hexZeroPad, zeroPad } from &quot;@ethersproject/bytes&quot;
+tests/helpers/symmio-partyb.behavior.ts:25  import { Context } from &quot;mocha&quot;
+</code></pre>
+<p>Line numbers shift as you delete, so delete bottom-up within each file or match on the text. Then, in <code>tests/helpers/instant-layer.behavior.ts</code> and <code>tests/helpers/symmio-partyb.behavior.ts</code>, add <code>zeroPadValue</code> to the file&#39;s existing <code>import { … } from &quot;ethers&quot;</code> line and rename the 4 call sites. <code>zeroPadValue</code> is the ethers v6 equivalent of v5 <code>hexZeroPad</code>: it left-pads to N bytes.</p>
+<pre><code class="language-bash">sed -i &#39;&#39; &#39;s/hexZeroPad(/zeroPadValue(/g&#39; tests/helpers/instant-layer.behavior.ts tests/helpers/symmio-partyb.behavior.ts
+grep -rn &#39;hardhat/internal\|@ethersproject\|from &quot;winston&quot;\|from &quot;dotenv&quot;\|types/contracts/facets&quot;\|types/contracts/helpers&quot;\|withDefaults\|hexZeroPad&#39; tests utils
+</code></pre>
+<p>Expected: no output.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 5: Drop the now-unused ethers v5 packages and add the <code>typecheck</code> script</strong></li>
+</ul>
+<pre><code class="language-bash">npm rm @ethersproject/abi @ethersproject/abstract-signer @ethersproject/bignumber @ethersproject/bytes @ethersproject/providers
+npm pkg set scripts.typecheck=&quot;tsc --noEmit -p .&quot;
+</code></pre>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 6: Verify</strong></li>
+</ul>
+<pre><code class="language-bash">npx hardhat compile &amp;&amp; npm run typecheck &amp;&amp; TEST_MODE=UNIT_TEST npx hardhat test 2&gt;&amp;1 | tail -5
+</code></pre>
+<p>Expected: <code>typecheck</code> exits 0 with no output, and the suite reports <code>521 passing</code>, <code>0 failing</code>. Deleted files contained no running tests, so the count must not move.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 7: Commit</strong></li>
+</ul>
+<pre><code class="language-bash">git add -A tests tasks scripts utils package.json package-lock.json
+git commit -m &quot;Delete dead signed-intent tests and enforce clean typecheck&quot;
+</code></pre>
+<hr>
+<h3 id="task-2-compiler-0819--0825-with-evmversion-cancun">Task 2: Compiler 0.8.19 → 0.8.25 with <code>evmVersion: cancun</code></h3>
+<p>OpenZeppelin 5.6.1 needs ≥ 0.8.24, and <code>Bytes</code>/<code>Arrays</code> use <code>mcopy</code>, which needs Cancun. Base (Ecotone) and Polygon PoS (Napoli) both support Cancun opcodes. This task changes only the compiler, so any codegen regression shows up on its own, separate from the OpenZeppelin API changes.</p>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>hardhat.config.ts</code> (<code>solidity</code> block)</li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li><p>Produces: artifacts compiled with solc 0.8.25 / cancun. Task 4 depends on this.</p>
+</li>
+<li><p><input disabled="" type="checkbox">
+<strong>Step 1: Change the compiler settings</strong></p>
+</li>
+</ul>
+<p>In <code>hardhat.config.ts</code>, set <code>version: &quot;0.8.25&quot;</code> and add <code>evmVersion</code> to <code>settings</code>:</p>
+<pre><code class="language-ts">	solidity: {
+		version: &quot;0.8.25&quot;,
+		settings: {
+			evmVersion: &quot;cancun&quot;,
+			metadata: {
+</code></pre>
+<p>Leave the rest of the block (<code>bytecodeHash</code>, optimizer, <code>viaIR</code>) unchanged. No pragma edits are needed: every pragma in <code>contracts/</code> (<code>&gt;=0.8.19</code>, <code>&gt;=0.8.18</code>, <code>^0.8.19</code>, <code>^0.8.0</code>, <code>&gt;=0.7.0 &lt;0.9.0</code>) accepts 0.8.25.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 2: Compile from clean</strong></li>
+</ul>
+<pre><code class="language-bash">npx hardhat clean &amp;&amp; npx hardhat compile 2&gt;&amp;1 | tail -20
+</code></pre>
+<p>Expected: compiles. New warnings are acceptable, so read them. Errors (for example &quot;Stack too deep&quot; under viaIR) are not: stop and report them rather than restructuring contract code.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 3: Run the suite</strong></li>
+</ul>
+<pre><code class="language-bash">npm run typecheck &amp;&amp; TEST_MODE=UNIT_TEST npx hardhat test 2&gt;&amp;1 | tail -5
+</code></pre>
+<p>Expected: <code>521 passing</code>, <code>0 failing</code>. A deployment failure with a message about contract size means a facet grew past 24 KB under the new compiler (<code>allowUnlimitedContractSize: false</code>). Stop and report it with the facet name.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 4: Commit</strong></li>
+</ul>
+<pre><code class="language-bash">git add hardhat.config.ts
+git commit -m &quot;Compile with solc 0.8.25 targeting cancun&quot;
+</code></pre>
+<hr>
+<h3 id="task-3-characterization-tests-for-openzeppelin-sensitive-behavior-still-on-openzeppelin-4">Task 3: Characterization tests for OpenZeppelin-sensitive behavior (still on OpenZeppelin 4)</h3>
+<p>TradeNFT has no tests, and nothing exercises the reentrancy guards. Task 4 rewrites both, so first pin today&#39;s behavior and prove the tests pass against OpenZeppelin 4.</p>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>contracts/mocks/MockTradeNFTSymmio.sol</code>, <code>contracts/mocks/MockReentrantCallee.sol</code>, <code>tests/helpers/trade-nft.behavior.ts</code>, <code>tests/helpers/symmio-partyb-reentrancy.behavior.ts</code></li>
+<li>Modify: <code>tests/main.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li><p>Consumes: <code>initializeTestFixture</code>, <code>RunContext</code> (<code>context.symmioPartyB</code>, <code>context.signers.admin</code>).</p>
+</li>
+<li><p>Produces: <code>shouldBehaveLikeTradeNFT()</code> and <code>shouldGuardSymmioPartyBAgainstReentrancy()</code>, both wired into <code>tests/main.ts</code>. Task 4 tightens 3 of their assertions from OpenZeppelin 4 revert strings to OpenZeppelin 5 custom errors.</p>
+</li>
+<li><p><input disabled="" type="checkbox">
+<strong>Step 1: Write the mocks</strong></p>
+</li>
+</ul>
+<p><code>contracts/mocks/MockTradeNFTSymmio.sol</code>:</p>
+<pre><code class="language-solidity">// SPDX-License-Identifier: GPL-3.0-or-later
+pragma solidity &gt;=0.8.19;
+
+import { IERC721 } from &quot;@openzeppelin/contracts/token/ERC721/IERC721.sol&quot;;
+
+interface ITradeNFTForMock {
+	function mintNFTForTrade(address partyA, uint256 tradeId) external;
+
+	function transferTradeNFT(address from, address to, uint256 tradeId) external;
+}
+
+/// @notice Stands in for Symmio in TradeNFT tests. Records every callback with the NFT owner at call time,
+///         which pins whether the callback runs before or after ownership moves.
+contract MockTradeNFTSymmio {
+	struct TransferCall {
+		address from;
+		address to;
+		uint256 tradeId;
+		address ownerAtCall;
+	}
+
+	TransferCall[] public calls;
+	ITradeNFTForMock public nft;
+
+	function setNFT(address nft_) external {
+		nft = ITradeNFTForMock(nft_);
+	}
+
+	function transferTradeFromNFT(address from, address to, uint256 tradeId) external {
+		calls.push(TransferCall(from, to, tradeId, IERC721(address(nft)).ownerOf(tradeId)));
+	}
+
+	function callCount() external view returns (uint256) {
+		return calls.length;
+	}
+
+	function mint(address to, uint256 tradeId) external {
+		nft.mintNFTForTrade(to, tradeId);
+	}
+
+	function moveTrade(address from, address to, uint256 tradeId) external {
+		nft.transferTradeNFT(from, to, tradeId);
+	}
+}
+</code></pre>
+<p><code>contracts/mocks/MockReentrantCallee.sol</code>:</p>
+<pre><code class="language-solidity">// SPDX-License-Identifier: GPL-3.0-or-later
+pragma solidity &gt;=0.8.19;
+
+interface IReentryTarget {
+	function _call(bytes[] calldata _callDatas) external;
+}
+
+/// @notice Multicast target that optionally re-enters the caller&#39;s `_call` with an empty batch.
+///         An empty batch succeeds on its own, so a revert can only come from the reentrancy guard.
+contract MockReentrantCallee {
+	bool public reenter;
+	uint256 public hits;
+
+	function setReenter(bool reenter_) external {
+		reenter = reenter_;
+	}
+
+	function ping() external {
+		hits++;
+		if (reenter) IReentryTarget(msg.sender)._call(new bytes[](0));
+	}
+}
+</code></pre>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 2: Write the TradeNFT suite</strong></li>
+</ul>
+<p><code>tests/helpers/trade-nft.behavior.ts</code>:</p>
+<pre><code class="language-ts">import { loadFixture } from &quot;@nomicfoundation/hardhat-network-helpers&quot;
+import { expect } from &quot;chai&quot;
+import { ZeroAddress } from &quot;ethers&quot;
+import { ethers } from &quot;hardhat&quot;
+
+async function deployTradeNFTFixture() {
+	const [deployer, alice, bob, operator] = await ethers.getSigners()
+	const symmio = await (await ethers.getContractFactory(&quot;MockTradeNFTSymmio&quot;)).deploy()
+	await symmio.waitForDeployment()
+	const nft = await (await ethers.getContractFactory(&quot;TradeNFT&quot;)).deploy(await symmio.getAddress())
+	await nft.waitForDeployment()
+	await symmio.setNFT(await nft.getAddress())
+	await symmio.mint(alice.address, 1n)
+	return { deployer, alice, bob, operator, symmio, nft }
+}
+
+export function shouldBehaveLikeTradeNFT(): void {
+	it(&quot;rejects a zero Symmio address&quot;, async function () {
+		const factory = await ethers.getContractFactory(&quot;TradeNFT&quot;)
+		await expect(factory.deploy(ZeroAddress)).to.be.revertedWithCustomError(factory, &quot;InvalidSymmioAddress&quot;)
+	})
+
+	it(&quot;makes the deployer the owner&quot;, async function () {
+		const { deployer, nft } = await loadFixture(deployTradeNFTFixture)
+		expect(await nft.owner()).to.equal(deployer.address)
+	})
+
+	it(&quot;only lets Symmio mint&quot;, async function () {
+		const { alice, symmio, nft } = await loadFixture(deployTradeNFTFixture)
+		await expect(nft.connect(alice).mintNFTForTrade(alice.address, 2n))
+			.to.be.revertedWithCustomError(nft, &quot;UnauthorizedSender&quot;)
+			.withArgs(alice.address, await symmio.getAddress())
+	})
+
+	it(&quot;mints through Symmio without calling back into Symmio&quot;, async function () {
+		const { bob, symmio, nft } = await loadFixture(deployTradeNFTFixture)
+		await expect(symmio.mint(bob.address, 2n)).to.emit(nft, &quot;TradeNFTMinted&quot;).withArgs(bob.address, 2n)
+		expect(await nft.ownerOf(2n)).to.equal(bob.address)
+		expect(await symmio.callCount()).to.equal(0n)
+	})
+
+	it(&quot;syncs a holder&#39;s transfer to Symmio before ownership moves&quot;, async function () {
+		const { alice, bob, symmio, nft } = await loadFixture(deployTradeNFTFixture)
+		await expect(nft.connect(alice).transferFrom(alice.address, bob.address, 1n))
+			.to.emit(nft, &quot;TradeNFTTransferred&quot;)
+			.withArgs(1n, alice.address, bob.address)
+		expect(await symmio.callCount()).to.equal(1n)
+		const call = await symmio.calls(0)
+		expect(call.from).to.equal(alice.address)
+		expect(call.to).to.equal(bob.address)
+		expect(call.tradeId).to.equal(1n)
+		expect(call.ownerAtCall).to.equal(alice.address)
+		expect(await nft.ownerOf(1n)).to.equal(bob.address)
+	})
+
+	it(&quot;syncs safeTransferFrom to Symmio&quot;, async function () {
+		const { alice, bob, symmio, nft } = await loadFixture(deployTradeNFTFixture)
+		await nft.connect(alice)[&quot;safeTransferFrom(address,address,uint256)&quot;](alice.address, bob.address, 1n)
+		expect(await symmio.callCount()).to.equal(1n)
+		expect(await nft.ownerOf(1n)).to.equal(bob.address)
+	})
+
+	it(&quot;syncs an approved operator&#39;s transfer to Symmio&quot;, async function () {
+		const { alice, bob, operator, symmio, nft } = await loadFixture(deployTradeNFTFixture)
+		await nft.connect(alice).approve(operator.address, 1n)
+		await nft.connect(operator).transferFrom(alice.address, bob.address, 1n)
+		const call = await symmio.calls(0)
+		expect(call.from).to.equal(alice.address)
+		expect(call.to).to.equal(bob.address)
+		expect(await nft.ownerOf(1n)).to.equal(bob.address)
+	})
+
+	it(&quot;does not call back when Symmio moves the trade&quot;, async function () {
+		const { alice, bob, symmio, nft } = await loadFixture(deployTradeNFTFixture)
+		await expect(symmio.moveTrade(alice.address, bob.address, 1n)).not.to.emit(nft, &quot;TradeNFTTransferred&quot;)
+		expect(await nft.ownerOf(1n)).to.equal(bob.address)
+		expect(await symmio.callCount()).to.equal(0n)
+	})
+
+	it(&quot;ignores a Symmio move of an unminted trade&quot;, async function () {
+		const { alice, bob, symmio, nft } = await loadFixture(deployTradeNFTFixture)
+		await expect(symmio.moveTrade(alice.address, bob.address, 99n)).not.to.be.reverted
+		expect(await nft.balanceOf(bob.address)).to.equal(0n)
+	})
+
+	it(&quot;rejects a transfer by someone who is neither owner nor approved&quot;, async function () {
+		const { alice, bob, symmio, nft } = await loadFixture(deployTradeNFTFixture)
+		await expect(nft.connect(bob).transferFrom(alice.address, bob.address, 1n)).to.be.revertedWith(
+			&quot;ERC721: caller is not token owner or approved&quot;,
+		)
+		expect(await symmio.callCount()).to.equal(0n)
+		expect(await nft.ownerOf(1n)).to.equal(alice.address)
+	})
+
+	it(&quot;rejects a transfer that names the wrong current owner&quot;, async function () {
+		const { alice, bob, symmio, nft } = await loadFixture(deployTradeNFTFixture)
+		await expect(nft.connect(alice).transferFrom(bob.address, alice.address, 1n)).to.be.revertedWith(
+			&quot;ERC721: transfer from incorrect owner&quot;,
+		)
+		expect(await symmio.callCount()).to.equal(0n)
+	})
+
+	it(&quot;reports ERC165, ERC721 and ERC721Enumerable support&quot;, async function () {
+		const { nft } = await loadFixture(deployTradeNFTFixture)
+		expect(await nft.supportsInterface(&quot;0x01ffc9a7&quot;)).to.equal(true) // IERC165
+		expect(await nft.supportsInterface(&quot;0x80ac58cd&quot;)).to.equal(true) // IERC721
+		expect(await nft.supportsInterface(&quot;0x780e9d63&quot;)).to.equal(true) // IERC721Enumerable
+		expect(await nft.supportsInterface(&quot;0xffffffff&quot;)).to.equal(false)
+	})
+}
+</code></pre>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 3: Write the reentrancy suite</strong></li>
+</ul>
+<p><code>tests/helpers/symmio-partyb-reentrancy.behavior.ts</code>:</p>
+<pre><code class="language-ts">import { loadFixture } from &quot;@nomicfoundation/hardhat-network-helpers&quot;
+import { expect } from &quot;chai&quot;
+import { ethers } from &quot;hardhat&quot;
+import { initializeTestFixture } from &quot;../initialize-test.fixture&quot;
+import { RunContext } from &quot;../run-context&quot;
+
+export function shouldGuardSymmioPartyBAgainstReentrancy(): void {
+	let context: RunContext
+	let calleeAddress: string
+	let pingCallData: string
+
+	beforeEach(async function () {
+		context = await loadFixture(initializeTestFixture)
+		const { admin } = context.signers
+		const callee = await (await ethers.getContractFactory(&quot;MockReentrantCallee&quot;)).deploy()
+		await callee.waitForDeployment()
+		calleeAddress = await callee.getAddress()
+		pingCallData = callee.interface.encodeFunctionData(&quot;ping&quot;)
+
+		const partyB = context.symmioPartyB.connect(admin)
+		await partyB.grantRole(await partyB.TRUSTED_ROLE(), admin.address)
+		await partyB.setMulticastWhitelist(calleeAddress, true)
+	})
+
+	it(&quot;executes a whitelisted multicast that does not re-enter&quot;, async function () {
+		const callee = await ethers.getContractAt(&quot;MockReentrantCallee&quot;, calleeAddress)
+		await expect(context.symmioPartyB.connect(context.signers.admin)._multicastCall([calleeAddress], [pingCallData])).not.to.be.reverted
+		expect(await callee.hits()).to.equal(1n)
+	})
+
+	it(&quot;rejects a callee that re-enters _call during _multicastCall&quot;, async function () {
+		const callee = await ethers.getContractAt(&quot;MockReentrantCallee&quot;, calleeAddress)
+		await callee.setReenter(true)
+		await expect(context.symmioPartyB.connect(context.signers.admin)._multicastCall([calleeAddress], [pingCallData])).to.be.revertedWith(
+			&quot;ReentrancyGuard: reentrant call&quot;,
+		)
+		expect(await callee.hits()).to.equal(0n)
+	})
+}
+</code></pre>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 4: Wire both into <code>tests/main.ts</code></strong></li>
+</ul>
+<p>Add the imports after the <code>shouldBehaveLikeControlFacet</code> import:</p>
+<pre><code class="language-ts">import { shouldBehaveLikeTradeNFT } from &quot;./helpers/trade-nft.behavior&quot;
+import { shouldGuardSymmioPartyBAgainstReentrancy } from &quot;./helpers/symmio-partyb-reentrancy.behavior&quot;
+</code></pre>
+<p>and add these blocks after the <code>&quot;Symmio Clearing House&quot;</code> block, inside the <code>if</code>:</p>
+<pre><code class="language-ts">		describe(&quot;Trade NFT&quot;, async function () {
+			shouldBehaveLikeTradeNFT()
+		})
+
+		describe(&quot;Symmio PartyB reentrancy&quot;, async function () {
+			shouldGuardSymmioPartyBAgainstReentrancy()
+		})
+</code></pre>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 5: Run the new suites against OpenZeppelin 4</strong></li>
+</ul>
+<pre><code class="language-bash">npx hardhat compile &amp;&amp; npm run typecheck
+TEST_MODE=UNIT_TEST npx hardhat test --grep &quot;Trade NFT|Symmio PartyB reentrancy&quot; 2&gt;&amp;1 | tail -25
+</code></pre>
+<p>Expected: <code>14 passing</code>, <code>0 failing</code>. These are characterization tests. If one fails, the test is wrong about today&#39;s behavior, not the contract. Fix the test (and say why in the commit) unless the failure exposes a real contract bug; in that case stop and report it.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 6: Run everything</strong></li>
+</ul>
+<pre><code class="language-bash">TEST_MODE=UNIT_TEST npx hardhat test 2&gt;&amp;1 | tail -5
+</code></pre>
+<p>Expected: <code>535 passing</code>, <code>0 failing</code>.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 7: Commit</strong></li>
+</ul>
+<pre><code class="language-bash">git add contracts/mocks/MockTradeNFTSymmio.sol contracts/mocks/MockReentrantCallee.sol tests/helpers/trade-nft.behavior.ts tests/helpers/symmio-partyb-reentrancy.behavior.ts tests/main.ts
+git commit -m &quot;Add TradeNFT and PartyB reentrancy characterization tests&quot;
+</code></pre>
+<hr>
+<h3 id="task-4-openzeppelin-496--561">Task 4: OpenZeppelin 4.9.6 → 5.6.1</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>package.json</code>, <code>contracts/helpers/TradeNFT.sol</code>, <code>contracts/helpers/MultiAccount.sol:28-41</code>, <code>contracts/helpers/SymmioPartyB.sol:25-43,130,196,208</code>, <code>contracts/helpers/InstantLayer.sol:28-32,57,561</code>, <code>contracts/helpers/MuonOracle.sol:7-17</code>, <code>tests/helpers/symmio-partyb.behavior.ts:212-214</code>, <code>tests/helpers/trade-nft.behavior.ts</code>, <code>tests/helpers/symmio-partyb-reentrancy.behavior.ts</code></li>
+<li>Local only (gitignored): <code>.openzeppelin/base.json</code> → <code>.openzeppelin/legacy-oz4/base.json</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li><p>Consumes: Task 2&#39;s compiler settings and Task 3&#39;s suites.</p>
+</li>
+<li><p>Produces: contracts on OpenZeppelin 5.6.1. <code>SymmioPartyB</code> and <code>InstantLayer</code> use <code>ReentrancyGuardTransient</code> (stateless, no initializer). <code>TradeNFT</code> overrides <code>_update(address,uint256,address)</code>.</p>
+</li>
+<li><p><input disabled="" type="checkbox">
+<strong>Step 1: Snapshot the OpenZeppelin 4 <code>EnumerableSet.Set</code> struct (layout check for the live diamond)</strong></p>
+</li>
+</ul>
+<p><code>AccessControlStorage</code> keeps an <code>EnumerableSet.AddressSet</code> in diamond storage, and the live diamond gets new facets via <code>diamondCut</code>. The struct layout must stay the same.</p>
+<pre><code class="language-bash">sed -n &#39;/struct Set {/,/}/p&#39; node_modules/@openzeppelin/contracts/utils/structs/EnumerableSet.sol &gt; /tmp/oz4-set.txt; cat /tmp/oz4-set.txt
+</code></pre>
+<p>Expected: <code>bytes32[] _values;</code> then <code>mapping(bytes32 =&gt; uint256) _indexes;</code>.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 2: Install OpenZeppelin 5.6.1 (exact) and move the old Base manifest aside</strong></li>
+</ul>
+<pre><code class="language-bash">npm i -D -E @openzeppelin/contracts@5.6.1 @openzeppelin/contracts-upgradeable@5.6.1
+mkdir -p .openzeppelin/legacy-oz4 &amp;&amp; mv .openzeppelin/base.json .openzeppelin/legacy-oz4/base.json
+sed -n &#39;/struct Set {/,/}/p&#39; node_modules/@openzeppelin/contracts/utils/structs/EnumerableSet.sol
+</code></pre>
+<p>Expected: <code>bytes32[] _values;</code> then <code>mapping(bytes32 value =&gt; uint256) _positions;</code>. The types and order match the snapshot; only the names differ, so the storage is identical. If the types or order differ, stop and report.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 3: Compile to see the full break list</strong></li>
+</ul>
+<pre><code class="language-bash">npx hardhat compile 2&gt;&amp;1 | grep -E &#39;Error|--&gt;&#39; | head -40
+</code></pre>
+<p>Expected: errors in only the five helper contracts below (paths that moved, <code>Counters</code>, <code>_beforeTokenTransfer</code>, <code>_exists</code>, <code>Ownable</code> constructor, <code>toEthSignedMessageHash</code>, <code>*Upgradeable</code> interfaces). An error anywhere else (a facet, a library, storage) is unexpected. Stop and report it.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 4: <code>TradeNFT.sol</code></strong></li>
+</ul>
+<p>Replace the import block:</p>
+<pre><code class="language-solidity">import { Ownable } from &quot;@openzeppelin/contracts/access/Ownable.sol&quot;;
+import { ERC721 } from &quot;@openzeppelin/contracts/token/ERC721/ERC721.sol&quot;;
+import { IERC721 } from &quot;@openzeppelin/contracts/token/ERC721/IERC721.sol&quot;;
+import { ERC721Enumerable } from &quot;@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol&quot;;
+</code></pre>
+<p>Delete <code>using Counters for Counters.Counter;</code> (no counter variable exists).</p>
+<p>Constructor: OpenZeppelin 5 requires an explicit initial owner. <code>msg.sender</code> keeps OpenZeppelin 4&#39;s behavior:</p>
+<pre><code class="language-solidity">	constructor(address symmio_) ERC721(&quot;Trade Ownership NFT&quot;, &quot;TRNFT&quot;) Ownable(msg.sender) {
+</code></pre>
+<p>In <code>transferTradeNFT</code>, <code>_exists</code> was removed:</p>
+<pre><code class="language-solidity">		if (_ownerOf(tradeId) == address(0)) return;
+</code></pre>
+<p>Replace the whole <code>_beforeTokenTransfer</code> function, including its doc comment, with:</p>
+<pre><code class="language-solidity">	/**
+	 * @dev OpenZeppelin 5 transfer hook. Runs on mint, transfer and burn.
+	 *      Synchronizes trade ownership with Symmio during user-initiated transfers.
+	 *
+	 * @param to      Address receiving the token (zero during burning).
+	 * @param tokenId Unique identifier of the token being transferred.
+	 * @param auth    Caller to authorize, or zero for internal transfers that skip the check.
+	 *
+	 * @dev Authorization is checked before calling Symmio so an unauthorized caller never reaches
+	 *      `symmio.transferTradeFromNFT`, matching the OpenZeppelin 4 ordering. The callback runs
+	 *      before ownership moves, so Symmio still sees `from` as the owner.
+	 */
+	function _update(address to, uint256 tokenId, address auth) internal override returns (address) {
+		address from = _ownerOf(tokenId);
+
+		if (from != address(0) &amp;&amp; to != address(0) &amp;&amp; !transferInitiatedInSymmio) {
+			if (auth != address(0)) _checkAuthorized(from, auth, tokenId);
+			symmio.transferTradeFromNFT(from, to, tokenId);
+			emit TradeNFTTransferred(tokenId, from, to);
+		}
+
+		return super._update(to, tokenId, auth);
+	}
+</code></pre>
+<p>Keep <code>supportsInterface(...) public view override</code>. If the compiler asks for an explicit base list, use <code>override(ERC721Enumerable)</code>.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 5: <code>MultiAccount.sol</code></strong></li>
+</ul>
+<p>Replace lines 28–32:</p>
+<pre><code class="language-solidity">import { Initializable } from &quot;@openzeppelin/contracts/proxy/utils/Initializable.sol&quot;;
+import { IERC20 } from &quot;@openzeppelin/contracts/token/ERC20/IERC20.sol&quot;;
+import { PausableUpgradeable } from &quot;@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol&quot;;
+import { AccessControlUpgradeable } from &quot;@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol&quot;;
+import { SafeERC20 } from &quot;@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol&quot;;
+</code></pre>
+<p>and line 41:</p>
+<pre><code class="language-solidity">	using SafeERC20 for IERC20;
+</code></pre>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 6: <code>SymmioPartyB.sol</code></strong></li>
+</ul>
+<p>Replace lines 25–29, leaving the <code>IERC1271</code> import above them as it is:</p>
+<pre><code class="language-solidity">import { Initializable } from &quot;@openzeppelin/contracts/proxy/utils/Initializable.sol&quot;;
+import { IERC20 } from &quot;@openzeppelin/contracts/token/ERC20/IERC20.sol&quot;;
+import { PausableUpgradeable } from &quot;@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol&quot;;
+import { ReentrancyGuardTransient } from &quot;@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol&quot;;
+import { AccessControlEnumerableUpgradeable } from &quot;@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol&quot;;
+</code></pre>
+<p>In the inheritance list, replace <code>ReentrancyGuardUpgradeable,</code> with <code>ReentrancyGuardTransient,</code>. Delete <code>__ReentrancyGuard_init();</code> from <code>initialize</code>, because the transient guard has no initializer or state. Replace both <code>IERC20Upgradeable(token)</code> with <code>IERC20(token)</code> (lines 196 and 208).</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 7: <code>InstantLayer.sol</code></strong></li>
+</ul>
+<p>Replace lines 28–32:</p>
+<pre><code class="language-solidity">import { AccessControlEnumerable } from &quot;@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol&quot;;
+import { ReentrancyGuardTransient } from &quot;@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol&quot;;
+import { SignatureChecker } from &quot;@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol&quot;;
+import { EIP712 } from &quot;@openzeppelin/contracts/utils/cryptography/EIP712.sol&quot;;
+import { MessageHashUtils } from &quot;@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol&quot;;
+</code></pre>
+<p>Line 57: <code>contract InstantLayer is AccessControlEnumerable, ReentrancyGuardTransient, EIP712 {</code>
+Line 561: <code>return SignatureChecker.isValidSignatureNow(signer, MessageHashUtils.toEthSignedMessageHash(hash), signature);</code>
+(<code>ECDSA</code> was used only on line 561, so its import is gone.)</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 8: <code>MuonOracle.sol</code></strong></li>
+</ul>
+<p>Replace the two OpenZeppelin imports:</p>
+<pre><code class="language-solidity">import { AccessControlEnumerable } from &quot;@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol&quot;;
+import { ECDSA } from &quot;@openzeppelin/contracts/utils/cryptography/ECDSA.sol&quot;;
+import { MessageHashUtils } from &quot;@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol&quot;;
+</code></pre>
+<p>and under <code>using ECDSA for bytes32;</code> add:</p>
+<pre><code class="language-solidity">	using MessageHashUtils for bytes32;
+</code></pre>
+<p><code>hash.toEthSignedMessageHash()</code> now resolves to <code>MessageHashUtils</code>, and <code>hash.recover(sig)</code> to <code>ECDSA</code> (same single-return signature in 5.6.1). No test deploys MuonOracle, so a compile is the only check this change gets. Say so in the commit message.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 9: Compile</strong></li>
+</ul>
+<pre><code class="language-bash">npx hardhat compile 2&gt;&amp;1 | tail -15
+</code></pre>
+<p>Expected: success. The transient-storage warning from OpenZeppelin&#39;s <code>TransientSlot.sol</code> is expected noise and can&#39;t be silenced.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 10: Run the suite to see which assertions OpenZeppelin 5 changed</strong></li>
+</ul>
+<pre><code class="language-bash">TEST_MODE=UNIT_TEST npx hardhat test 2&gt;&amp;1 | grep -E &#39;passing|failing&#39;
+</code></pre>
+<p>Expected: <code>531 passing</code>, <code>4 failing</code>. All 4 failures are OpenZeppelin 4 revert strings: one in <code>symmio-partyb.behavior.ts</code>, two in <code>trade-nft.behavior.ts</code> and one in <code>symmio-partyb-reentrancy.behavior.ts</code>. If <code>upgrades.deployProxy</code> fails validation on <code>ReentrancyGuardTransient</code> instead (the spike validated it on plugin 4.1, not 3.9.1), almost every suite fails in the fixture. Stop and report. <strong>Don&#39;t</strong> add <code>unsafeAllow</code>. If anything else fails, stop and report it.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 11: Update the assertions to OpenZeppelin 5 custom errors</strong></li>
+</ul>
+<p><code>tests/helpers/symmio-partyb.behavior.ts</code> (~line 212):</p>
+<pre><code class="language-ts">			await expect(context.symmioPartyB.connect(partyA1.getSigner)._call([lockIntentCallData]))
+				.to.be.revertedWithCustomError(context.symmioPartyB, &quot;AccessControlUnauthorizedAccount&quot;)
+				.withArgs(partyA1.address, managerRole)
+</code></pre>
+<p><code>tests/helpers/trade-nft.behavior.ts</code>:</p>
+<pre><code class="language-ts">		await expect(nft.connect(bob).transferFrom(alice.address, bob.address, 1n))
+			.to.be.revertedWithCustomError(nft, &quot;ERC721InsufficientApproval&quot;)
+			.withArgs(bob.address, 1n)
+</code></pre>
+<pre><code class="language-ts">		await expect(nft.connect(alice).transferFrom(bob.address, alice.address, 1n))
+			.to.be.revertedWithCustomError(nft, &quot;ERC721IncorrectOwner&quot;)
+			.withArgs(bob.address, 1n, alice.address)
+</code></pre>
+<p><code>tests/helpers/symmio-partyb-reentrancy.behavior.ts</code>:</p>
+<pre><code class="language-ts">		await expect(
+			context.symmioPartyB.connect(context.signers.admin)._multicastCall([calleeAddress], [pingCallData]),
+		).to.be.revertedWithCustomError(context.symmioPartyB, &quot;ReentrancyGuardReentrantCall&quot;)
+</code></pre>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 12: Verify</strong></li>
+</ul>
+<pre><code class="language-bash">npm run typecheck &amp;&amp; TEST_MODE=UNIT_TEST npx hardhat test 2&gt;&amp;1 | tail -5
+</code></pre>
+<p>Expected: <code>535 passing</code>, <code>0 failing</code>.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 13: Commit</strong></li>
+</ul>
+<pre><code class="language-bash">git add package.json package-lock.json contracts/helpers tests/helpers
+git commit -m &quot;Upgrade to OpenZeppelin 5.6.1
+
+MultiAccount and SymmioPartyB are redeployed fresh (the Base proxies are
+abandoned), so there is no v4 to v5 storage upgrade path. SymmioPartyB and
+InstantLayer use ReentrancyGuardTransient. MuonOracle&#39;s MessageHashUtils
+switch is compile-checked only; no test deploys MuonOracle.&quot;
+</code></pre>
+<hr>
+<h3 id="task-5-shared-deploy-library-tests-stop-calling-rundeploy">Task 5: Shared deploy library (tests stop calling <code>run(&quot;deploy:…&quot;)</code>)</h3>
+<p>Under Hardhat 3, a task opens its own connection, so tests that deploy through <code>run(...)</code> are the main way to end up on the wrong chain. Moving every deploy routine into plain functions now, while Hardhat 2 can still verify it, shrinks Task 7 to an import swap. This task also does the other changes that already work on Hardhat 2: <code>network.provider.send</code> becomes <code>ethers.provider.send</code>, <code>utils/e.ts</code> stops importing <code>hardhat</code>, and <code>utils/time.ts</code> moves under <code>tests/</code>.</p>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>tasks/deployment/deploy-lib.ts</code></li>
+<li>Modify: all 10 files in <code>tasks/deployment/</code>, <code>tests/run-context.ts</code>, <code>tests/initialize-test.fixture.ts</code>, <code>utils/e.ts</code>, every test file with <code>network.provider.send</code></li>
+<li>Move: <code>utils/time.ts</code> → <code>tests/utils/time.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces (Task 6 changes only the two type aliases; Task 7 relies on the names):</li>
+</ul>
+<pre><code class="language-ts">export type Ethers  // HH2: HardhatRuntimeEnvironment[&quot;ethers&quot;];  HH3: HardhatEthers
+export type Upgrades // HH2: HardhatRuntimeEnvironment[&quot;upgrades&quot;]; HH3: HardhatUpgrades
+export async function deployDiamond(ethers: Ethers, logData: boolean): Promise&lt;Diamond&gt;
+export async function deployLibMocks(ethers: Ethers): Promise&lt;Map&lt;string, string&gt;&gt;
+export async function deploySignatureVerifier(ethers: Ethers): Promise&lt;SignatureVerifier&gt;
+export async function deployFakeOracle(ethers: Ethers): Promise&lt;FakeOracle&gt;
+export async function deployHookHandler(ethers: Ethers): Promise&lt;MockHookHandler&gt;
+export async function deployStablecoin(ethers: Ethers, name: string, symbol: string): Promise&lt;FakeStablecoin&gt;
+export async function deployInstantLayer(ethers: Ethers, symmio: string, admin: string): Promise&lt;InstantLayer&gt;
+export async function deployMultiAccount(ethers: Ethers, upgrades: Upgrades, symmio: string, admin: string, tradeNft: string): Promise&lt;MultiAccount&gt;
+export async function deploySymmioPartyB(ethers: Ethers, upgrades: Upgrades, symmio: string, admin: string): Promise&lt;SymmioPartyB&gt;
+</code></pre>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 1: Write <code>tasks/deployment/deploy-lib.ts</code></strong></li>
+</ul>
+<p>The bodies move over from the current tasks unchanged, with logs kept for parity. The unused <code>totalGasUsed</code> bookkeeping in the diamond task is dropped, and proxies are returned as typed <code>getContractAt</code> handles instead of untyped <code>Contract</code>s.</p>
+<pre><code class="language-ts">import type { HardhatRuntimeEnvironment } from &quot;hardhat/types&quot;
+
+import { DEPLOYMENT_LOG_FILE, FacetNames } from &quot;../../common/constants&quot;
+import type {
+	Diamond,
+	FakeOracle,
+	FakeStablecoin,
+	InstantLayer,
+	MockHookHandler,
+	MultiAccount,
+	SignatureVerifier,
+	SymmioPartyB,
+} from &quot;../../types&quot;
+import { FacetCutAction, getSelectors } from &quot;../utils/diamond-cut&quot;
+import { writeData } from &quot;../utils/fs&quot;
+
+export type Ethers = HardhatRuntimeEnvironment[&quot;ethers&quot;]
+export type Upgrades = HardhatRuntimeEnvironment[&quot;upgrades&quot;]
+
+export async function deployDiamond(ethers: Ethers, logData: boolean): Promise&lt;Diamond&gt; {
+	const [owner] = await ethers.getSigners()
+
+	const diamondCutFacet = await (await ethers.getContractFactory(&quot;DiamondCutFacet&quot;)).deploy()
+	await diamondCutFacet.waitForDeployment()
+	console.log(&quot;DiamondCutFacet deployed:&quot;, await diamondCutFacet.getAddress())
+
+	const diamond = await (await ethers.getContractFactory(&quot;Diamond&quot;)).deploy(owner.address, await diamondCutFacet.getAddress())
+	await diamond.waitForDeployment()
+	console.log(&quot;Diamond deployed:&quot;, await diamond.getAddress())
+
+	const diamondInit = await (await ethers.getContractFactory(&quot;DiamondInit&quot;)).deploy()
+	await diamondInit.waitForDeployment()
+	console.log(&quot;DiamondInit deployed:&quot;, await diamondInit.getAddress())
+
+	const cut: Array&lt;{ facetAddress: string; action: FacetCutAction; functionSelectors: string[] }&gt; = []
+	const deployedFacets: Array&lt;{ name: string; address: string }&gt; = []
+	for (const facetName of FacetNames) {
+		const facet = await (await ethers.getContractFactory(facetName)).deploy()
+		await facet.waitForDeployment()
+		console.log(`${facetName} deployed: ${await facet.getAddress()}`)
+		cut.push({
+			facetAddress: await facet.getAddress(),
+			action: FacetCutAction.Add,
+			functionSelectors: getSelectors(ethers, facet as any).selectors,
+		})
+		deployedFacets.push({ name: facetName, address: await facet.getAddress() })
+	}
+
+	const diamondCut = await ethers.getContractAt(&quot;IDiamondCut&quot;, await diamond.getAddress())
+	const tx = await diamondCut.diamondCut(cut, await diamondInit.getAddress(), diamondInit.interface.encodeFunctionData(&quot;init&quot;))
+	const receipt = await tx.wait()
+	if (!receipt?.status) throw Error(`Diamond upgrade failed: ${tx.hash}`)
+	console.log(&quot;Completed Diamond Cut&quot;)
+
+	if (logData) {
+		writeData(DEPLOYMENT_LOG_FILE, [
+			{ name: &quot;DiamondCut&quot;, address: await diamondCutFacet.getAddress(), constructorArguments: [] },
+			{ name: &quot;Diamond&quot;, address: await diamond.getAddress(), constructorArguments: [owner.address, await diamondCutFacet.getAddress()] },
+			...deployedFacets.map(facet =&gt; ({ name: facet.name, address: facet.address, constructorArguments: [] })),
+		])
+		console.log(&quot;Deployed addresses written to json file&quot;)
+	}
+
+	return diamond
+}
+
+export async function deployLibMocks(ethers: Ethers): Promise&lt;Map&lt;string, string&gt;&gt; {
+	const mocks = new Map&lt;string, string&gt;()
+	for (const name of [&quot;CloseIntentOpsMock&quot;]) {
+		const mock = await (await ethers.getContractFactory(name)).deploy()
+		await mock.waitForDeployment()
+		mocks.set(name, await mock.getAddress())
+		console.log(`${name} deployed: ${await mock.getAddress()}`)
+	}
+	return mocks
+}
+
+export async function deploySignatureVerifier(ethers: Ethers): Promise&lt;SignatureVerifier&gt; {
+	const verifier = await (await ethers.getContractFactory(&quot;SignatureVerifier&quot;)).deploy()
+	await verifier.waitForDeployment()
+	return verifier
+}
+
+export async function deployFakeOracle(ethers: Ethers): Promise&lt;FakeOracle&gt; {
+	const oracle = await (await ethers.getContractFactory(&quot;FakeOracle&quot;)).deploy()
+	await oracle.waitForDeployment()
+	console.log(&quot;FakeOracle deployed:&quot;, await oracle.getAddress())
+	return oracle
+}
+
+export async function deployHookHandler(ethers: Ethers): Promise&lt;MockHookHandler&gt; {
+	const hookHandler = await (await ethers.getContractFactory(&quot;MockHookHandler&quot;)).deploy()
+	await hookHandler.waitForDeployment()
+	console.log(&quot;HookHandler deployed:&quot;, await hookHandler.getAddress())
+	return hookHandler
+}
+
+export async function deployStablecoin(ethers: Ethers, name: string, symbol: string): Promise&lt;FakeStablecoin&gt; {
+	const stablecoin = await (await ethers.getContractFactory(&quot;FakeStablecoin&quot;)).deploy(name, symbol)
+	await stablecoin.waitForDeployment()
+	console.log(&quot;FakeStablecoin deployed:&quot;, await stablecoin.getAddress())
+	return stablecoin
+}
+
+export async function deployInstantLayer(ethers: Ethers, symmio: string, admin: string): Promise&lt;InstantLayer&gt; {
+	const instantLayer = await (await ethers.getContractFactory(&quot;InstantLayer&quot;)).deploy(symmio, admin)
+	await instantLayer.waitForDeployment()
+	console.log(&quot;InstantLayer deployed:&quot;, await instantLayer.getAddress())
+	return instantLayer
+}
+
+export async function deployMultiAccount(ethers: Ethers, upgrades: Upgrades, symmio: string, admin: string, tradeNft: string): Promise&lt;MultiAccount&gt; {
+	const partyA = await ethers.getContractFactory(&quot;SymmioPartyA&quot;)
+	const factory = await ethers.getContractFactory(&quot;MultiAccount&quot;)
+	const proxy = await upgrades.deployProxy(factory, [admin, symmio, partyA.bytecode, tradeNft], { initializer: &quot;initialize&quot; })
+	await proxy.waitForDeployment()
+	const address = await proxy.getAddress()
+	console.log(&quot;MultiAccount deployed to&quot;, {
+		proxy: address,
+		admin: await upgrades.erc1967.getAdminAddress(address),
+		implementation: await upgrades.erc1967.getImplementationAddress(address),
+	})
+	return ethers.getContractAt(&quot;MultiAccount&quot;, address)
+}
+
+export async function deploySymmioPartyB(ethers: Ethers, upgrades: Upgrades, symmio: string, admin: string): Promise&lt;SymmioPartyB&gt; {
+	const factory = await ethers.getContractFactory(&quot;SymmioPartyB&quot;)
+	const proxy = await upgrades.deployProxy(factory, [admin, symmio], { initializer: &quot;initialize&quot; })
+	await proxy.waitForDeployment()
+	const address = await proxy.getAddress()
+	console.log(&quot;SymmioPartyB deployed to&quot;, {
+		proxy: address,
+		admin: await upgrades.erc1967.getAdminAddress(address),
+		implementation: await upgrades.erc1967.getImplementationAddress(address),
+	})
+	return ethers.getContractAt(&quot;SymmioPartyB&quot;, address)
+}
+</code></pre>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 2: Make each deploy task a thin wrapper (Hardhat 2 API)</strong></li>
+</ul>
+<p>Replace each file&#39;s whole contents:</p>
+<p><code>tasks/deployment/diamond-deploy.task.ts</code></p>
+<pre><code class="language-ts">import { task, types } from &quot;hardhat/config&quot;
+import { deployDiamond } from &quot;./deploy-lib&quot;
+
+task(&quot;deploy:diamond&quot;, &quot;Deploys the Diamond contract&quot;)
+	.addParam(&quot;logData&quot;, &quot;Write the deployed addresses to a data file&quot;, true, types.boolean)
+	.setAction(async ({ logData }, { ethers }) =&gt; deployDiamond(ethers, logData))
+</code></pre>
+<p><code>tasks/deployment/deploy-lib-mocks.task.ts</code></p>
+<pre><code class="language-ts">import { task } from &quot;hardhat/config&quot;
+import { deployLibMocks } from &quot;./deploy-lib&quot;
+
+task(&quot;deploy:mocks&quot;, &quot;Deploys the Mock contract&quot;).setAction(async (_, { ethers }) =&gt; deployLibMocks(ethers))
+</code></pre>
+<p><code>tasks/deployment/deploy-signature-verifier.task.ts</code></p>
+<pre><code class="language-ts">import { task } from &quot;hardhat/config&quot;
+import { deploySignatureVerifier } from &quot;./deploy-lib&quot;
+
+task(&quot;deploy:SignatureVerifier&quot;, &quot;Deploys the SignatureVerifier contract&quot;).setAction(async (_, { ethers }) =&gt; deploySignatureVerifier(ethers))
+</code></pre>
+<p><code>tasks/deployment/oracle.task.ts</code></p>
+<pre><code class="language-ts">import { task } from &quot;hardhat/config&quot;
+import { deployFakeOracle } from &quot;./deploy-lib&quot;
+
+task(&quot;deploy:oracle&quot;, &quot;Deploys the FakeOracle&quot;).setAction(async (_, { ethers }) =&gt; deployFakeOracle(ethers))
+</code></pre>
+<p><code>tasks/deployment/hook-handler.task.ts</code></p>
+<pre><code class="language-ts">import { task } from &quot;hardhat/config&quot;
+import { deployHookHandler } from &quot;./deploy-lib&quot;
+
+task(&quot;deploy:hookHandler&quot;, &quot;Deploys the Hook Handler&quot;).setAction(async (_, { ethers }) =&gt; deployHookHandler(ethers))
+</code></pre>
+<p><code>tasks/deployment/stable-coin.task.ts</code></p>
+<pre><code class="language-ts">import { task } from &quot;hardhat/config&quot;
+import { deployStablecoin } from &quot;./deploy-lib&quot;
+
+task(&quot;deploy:stablecoin&quot;, &quot;Deploys the FakeStablecoin&quot;)
+	.addParam(&quot;name&quot;, &quot;The token&#39;s name&quot;)
+	.addParam(&quot;symbol&quot;, &quot;The token&#39;s symbol&quot;)
+	.setAction(async ({ name, symbol }, { ethers }) =&gt; deployStablecoin(ethers, name, symbol))
+</code></pre>
+<p><code>tasks/deployment/instantLayer.ts</code></p>
+<pre><code class="language-ts">import { task } from &quot;hardhat/config&quot;
+import { deployInstantLayer } from &quot;./deploy-lib&quot;
+
+task(&quot;deploy:InstantLayer&quot;, &quot;Deploys the InstantLayer contract&quot;)
+	.addParam(&quot;symmioaddress&quot;, &quot;The address of the Symmio contract&quot;)
+	.addParam(&quot;admin&quot;, &quot;The admin address&quot;)
+	.setAction(async ({ symmioaddress, admin }, { ethers }) =&gt; deployInstantLayer(ethers, symmioaddress, admin))
+</code></pre>
+<p><code>tasks/deployment/multiAccount.ts</code></p>
+<pre><code class="language-ts">import { task } from &quot;hardhat/config&quot;
+import { deployMultiAccount } from &quot;./deploy-lib&quot;
+
+task(&quot;deploy:multiAccount&quot;, &quot;Deploys the MultiAccount&quot;)
+	.addParam(&quot;symmioaddress&quot;, &quot;The address of the Symmio contract&quot;)
+	.addParam(&quot;admin&quot;, &quot;The admin address&quot;)
+	.addParam(&quot;tradenftaddress&quot;, &quot;The trade NFT address&quot;)
+	.setAction(async ({ symmioaddress, admin, tradenftaddress }, { ethers, upgrades }) =&gt;
+		deployMultiAccount(ethers, upgrades, symmioaddress, admin, tradenftaddress),
+	)
+</code></pre>
+<p><code>tasks/deployment/partyB.ts</code></p>
+<pre><code class="language-ts">import { task } from &quot;hardhat/config&quot;
+import { deploySymmioPartyB } from &quot;./deploy-lib&quot;
+
+task(&quot;deploy:symmioPartyB&quot;, &quot;Deploys the SymmioPartyB&quot;)
+	.addParam(&quot;symmioaddress&quot;, &quot;The address of the Symmio contract&quot;)
+	.addParam(&quot;admin&quot;, &quot;The admin address&quot;)
+	.setAction(async ({ symmioaddress, admin }, { ethers, upgrades }) =&gt; deploySymmioPartyB(ethers, upgrades, symmioaddress, admin))
+</code></pre>
+<p>(<code>deploy.task.ts</code> and <code>verify/verify.ts</code> stay as they are until Task 6. The unused <code>logData</code> params on mocks, InstantLayer, MultiAccount and PartyB are dropped; nothing read them.)</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 3: Point the fixtures at the library</strong></li>
+</ul>
+<p><code>tests/run-context.ts</code>: change the hardhat import to <code>import { ethers, upgrades } from &quot;hardhat&quot;</code>, add</p>
+<pre><code class="language-ts">import {
+	deployFakeOracle,
+	deployHookHandler,
+	deployInstantLayer,
+	deployLibMocks,
+	deployMultiAccount,
+	deploySignatureVerifier,
+	deployStablecoin,
+	deploySymmioPartyB,
+} from &quot;../tasks/deployment/deploy-lib&quot;
+</code></pre>
+<p>and replace the <code>run(...)</code> calls in <code>createRunContext</code>:</p>
+<pre><code class="language-ts">	const mocks = await deployLibMocks(ethers)
+	const verifier = await deploySignatureVerifier(ethers)
+	const oracle = await deployFakeOracle(ethers)
+	const hookHandler = await deployHookHandler(ethers)
+
+	const stableCoin = await deployStablecoin(ethers, &quot;MyFakeStablecoin&quot;, &quot;FUSD&quot;)
+	const stableCoinNL = await deployStablecoin(ethers, &quot;StablecoinNotListed&quot;, &quot;NLUSD&quot;)
+</code></pre>
+<pre><code class="language-ts">	const admin = context.signers.admin.address
+	const instantLayer = await deployInstantLayer(ethers, context.common.diamondAddress, admin)
+	const multiAccount = await deployMultiAccount(ethers, upgrades, context.common.diamondAddress, admin, ZeroAddress)
+	const symmioPartyB = await deploySymmioPartyB(ethers, upgrades, context.common.diamondAddress, admin)
+</code></pre>
+<p><code>tests/initialize-test.fixture.ts</code>: drop <code>run</code> from the hardhat import (keep <code>ethers</code> only if the file still uses it; <code>npm run typecheck</code> will say), import <code>deployDiamond</code> from <code>&quot;../tasks/deployment/deploy-lib&quot;</code>, and replace the first line of the function with:</p>
+<pre><code class="language-ts">	const diamond: Diamond = await deployDiamond(ethers, false)
+</code></pre>
+<p>Tests no longer overwrite <code>tasks/data/deployed.json</code> (gitignored; only <code>verify:deployment</code> reads it).</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 4: Move <code>utils/time.ts</code> under <code>tests/</code> and drop <code>hardhat</code> from <code>utils/e.ts</code></strong></li>
+</ul>
+<pre><code class="language-bash">git mv utils/time.ts tests/utils/time.ts
+sed -i &#39;&#39; &#39;s#from &quot;\.\./utils/time&quot;#from &quot;./utils/time&quot;#&#39; tests/*.ts
+sed -i &#39;&#39; &#39;s#from &quot;\.\./\.\./utils/time&quot;#from &quot;../utils/time&quot;#&#39; tests/helpers/*.ts tests/models/*.ts
+grep -rn &#39;utils/time&quot;&#39; tests tasks scripts
+</code></pre>
+<p>Expected: every hit is a <code>./utils/time</code> or <code>../utils/time</code> relative to <code>tests/</code>, and none come from <code>tasks/</code> or <code>scripts/</code>.</p>
+<p><code>utils/e.ts</code>:</p>
+<pre><code class="language-ts">import { parseEther } from &quot;ethers&quot;
+
+export function e(value: string | number) {
+	return parseEther(value + &quot;&quot;)
+}
+</code></pre>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 5: <code>network.provider.send</code> → <code>ethers.provider.send</code> (works on both Hardhat 2 and 3)</strong></li>
+</ul>
+<pre><code class="language-bash">grep -rl &#39;network\.provider\.send(&#39; tests | xargs sed -i &#39;&#39; &#39;s/network\.provider\.send(/ethers.provider.send(/g&#39;
+grep -rl &#39;import { ethers, network } from &quot;hardhat&quot;&#39; tests | xargs sed -i &#39;&#39; &#39;s/import { ethers, network } from &quot;hardhat&quot;/import { ethers } from &quot;hardhat&quot;/&#39;
+grep -rn &#39;\bnetwork\.&#39; tests
+</code></pre>
+<p>Expected: no output.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 6: Verify</strong></li>
+</ul>
+<pre><code class="language-bash">npx hardhat compile &amp;&amp; npm run typecheck &amp;&amp; TEST_MODE=UNIT_TEST npx hardhat test 2&gt;&amp;1 | tail -5
+grep -rn &#39;run(&#39; tests | grep -v &#39;\.run\|// &#39;
+npx hardhat deploy:symmioPartyB --symmioaddress 0x0000000000000000000000000000000000000001 --admin 0x0000000000000000000000000000000000000002
+</code></pre>
+<p>Expected: <code>537 passing</code>, <code>0 failing</code>; the <code>run(</code> grep finds nothing; the task prints a proxy/admin/implementation object.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 7: Commit</strong></li>
+</ul>
+<pre><code class="language-bash">git add -A tasks/deployment tests utils
+git commit -m &quot;Extract deploy routines into a shared library used by tasks and tests&quot;
+</code></pre>
+<hr>
+<h2 id="phase-2--hardhat-3">Phase 2 — Hardhat 3</h2>
+<h3 id="task-6-hardhat-3-core-packages-esm-config-tasks-scripts">Task 6: Hardhat 3 core: packages, ESM, config, tasks, scripts</h3>
+<p>After this task <code>compile</code>, <code>typecheck</code> (outside <code>tests/</code>) and every task work. <strong>The test suite is red until Task 7</strong>; say so in the commit message.</p>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>package.json</code>, <code>hardhat.config.ts</code>, <code>tsconfig.json</code>, <code>tasks/index.ts</code>, every file in <code>tasks/deployment/</code>, <code>tasks/verify/verify.ts</code>, <code>tasks/helper/*.ts</code>, <code>scripts/*.ts</code>, <code>scripts/helper/*.ts</code>, <code>.env.example</code></li>
+<li>Create: <code>tasks/utils/args.ts</code>, <code>tools/hh3-codemod.mjs</code></li>
+<li>Delete: <code>.solcover.js</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li><p>Consumes: <code>deploy-lib.ts</code> (Task 5).</p>
+</li>
+<li><p>Produces:</p>
+<ul>
+<li>Task ids unchanged. Option names unchanged, except: <code>deploy:diamond</code> takes <code>--skip-log</code> instead of <code>--log-data true</code>; <code>verify:deployment</code> takes no args.</li>
+<li><code>deploy:stablecoin</code> accepts <code>--name</code>/<code>--symbol</code> and resolves to a <code>FakeStablecoin</code>, which Task 7&#39;s chain test uses via <code>hre.tasks.getTask(&quot;deploy:stablecoin&quot;).run({ name, symbol })</code>.</li>
+<li><code>tools/hh3-codemod.mjs</code> with the <code>--extensions-only</code> and full modes that Task 7 runs.</li>
+</ul>
+</li>
+<li><p><input disabled="" type="checkbox">
+<strong>Step 1: Clean and swap packages</strong></p>
+</li>
+</ul>
+<pre><code class="language-bash">npx hardhat clean; rm -rf types cache artifacts coverage coverage.json .solcover.js
+npm rm hardhat @nomicfoundation/hardhat-toolbox @nomicfoundation/hardhat-chai-matchers @nomicfoundation/hardhat-ethers \
+  @nomicfoundation/hardhat-ignition @nomicfoundation/hardhat-ignition-ethers @nomicfoundation/ignition-core \
+  @nomicfoundation/hardhat-network-helpers @nomicfoundation/hardhat-verify @openzeppelin/hardhat-upgrades \
+  @typechain/ethers-v6 @typechain/hardhat typechain hardhat-gas-reporter solidity-coverage solidity-docgen ts-node
+npm i -D hardhat@^3.18.1 @nomicfoundation/hardhat-toolbox-mocha-ethers@^4.0.0 \
+  @nomicfoundation/hardhat-ethers@^4.2.0 @nomicfoundation/hardhat-ethers-chai-matchers@^3.0.11 \
+  @nomicfoundation/hardhat-network-helpers@^3.0.11 @nomicfoundation/hardhat-verify@^3.1.2 \
+  @nomicfoundation/hardhat-ignition@^3.1.8 @nomicfoundation/hardhat-ignition-ethers@^3.1.6 @nomicfoundation/ignition-core@^3.1.10 \
+  @nomicfoundation/hardhat-keystore@^3.1.1 @nomicfoundation/hardhat-typechain@^3.1.1 @nomicfoundation/hardhat-mocha@^4.0.0 \
+  @openzeppelin/hardhat-upgrades@^4.1.0 mocha@^12.0.3 chai@^6.3.0 @types/chai@^5.2.3 @types/mocha@^10.0.10 \
+  @types/node@^24 typescript@^7.0.2 dotenv@^18.0.5 ethers@^6.17.0
+npm ls hardhat @nomicfoundation/hardhat-toolbox @nomicfoundation/hardhat-chai-matchers 2&gt;&amp;1 | head
+</code></pre>
+<p>Expected: <code>hardhat@3.18.x</code> appears, and neither <code>hardhat-toolbox</code> nor <code>hardhat-chai-matchers</code> (the placeholder packages) appears. npm 11 may warn that esbuild/keccak/secp256k1 install scripts aren&#39;t in <code>allowScripts</code>; the spike worked with them skipped.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 2: <code>package.json</code> → ESM and new scripts</strong></li>
+</ul>
+<pre><code class="language-bash">npm pkg set type=module
+npm pkg set scripts.clean=&quot;hardhat clean &amp;&amp; shx rm -rf ./types ./coverage ./coverage.json&quot;
+npm pkg set scripts.coverage=&quot;hardhat test --coverage&quot;
+npm pkg delete scripts.typechain
+</code></pre>
+<p><code>compile</code>, <code>test</code> and <code>typecheck</code> keep working unchanged. Hardhat 3 still has the <code>compile</code> alias, and TypeChain runs as part of compile.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 3: Write <code>hardhat.config.ts</code></strong></li>
+</ul>
+<pre><code class="language-ts">import { resolve } from &quot;node:path&quot;
+
+import hardhatToolboxMochaEthers from &quot;@nomicfoundation/hardhat-toolbox-mocha-ethers&quot;
+import hardhatUpgrades from &quot;@openzeppelin/hardhat-upgrades&quot;
+import { config as dotenvConfig } from &quot;dotenv&quot;
+import { configVariable, defineConfig } from &quot;hardhat/config&quot;
+
+import { tasks } from &quot;./tasks/index.js&quot;
+
+dotenvConfig({ path: resolve(import.meta.dirname, process.env.DOTENV_CONFIG_PATH || &quot;.env&quot;), quiet: true })
+
+export default defineConfig({
+	plugins: [hardhatToolboxMochaEthers, hardhatUpgrades],
+	tasks,
+	solidity: {
+		version: &quot;0.8.25&quot;,
+		settings: {
+			evmVersion: &quot;cancun&quot;,
+			metadata: {
+				// Not including the metadata hash
+				// https://github.com/paulrberg/hardhat-template/issues/31
+				bytecodeHash: &quot;none&quot;,
+			},
+			optimizer: {
+				enabled: true,
+				runs: 200,
+			},
+			viaIR: true,
+		},
+	},
+	networks: {
+		// The in-process chain. Hardhat 3 names it &quot;default&quot;; there is no defaultNetwork key.
+		default: {
+			type: &quot;edr-simulated&quot;,
+			chainType: &quot;l1&quot;,
+			allowUnlimitedContractSize: false,
+		},
+		polygon: {
+			type: &quot;http&quot;,
+			chainType: &quot;generic&quot;,
+			url: &quot;https://polygon-rpc.com&quot;,
+			accounts: [configVariable(&quot;PRIVATE_KEY&quot;)],
+		},
+		base: {
+			type: &quot;http&quot;,
+			chainType: &quot;op&quot;,
+			url: &quot;https://mainnet.base.org&quot;,
+			accounts: [configVariable(&quot;PRIVATE_KEY&quot;)],
+		},
+	},
+	verify: {
+		etherscan: {
+			apiKey: configVariable(&quot;ETHERSCAN_API_KEY&quot;),
+		},
+	},
+	paths: {
+		tests: {
+			mocha: &quot;tests&quot;,
+		},
+	},
+	test: {
+		mocha: {
+			timeout: 100000000,
+		},
+	},
+	typechain: {
+		outDir: &quot;types&quot;,
+	},
+})
+</code></pre>
+<p><code>configVariable</code> resolves lazily, so runs on <code>default</code> never need <code>PRIVATE_KEY</code>. The old hardcoded dummy key is gone. A run with <code>--network base</code> now reads <code>PRIVATE_KEY</code> from <code>.env</code>/symsec or prompts via the keystore. Etherscan&#39;s v2 API takes one key for every chain, so <code>BASE_API_KEY</code> becomes <code>ETHERSCAN_API_KEY</code>. Add <code>ETHERSCAN_API_KEY=</code> under <code>PRIVATE_KEY=</code> in <code>.env.example</code>.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 4: Write <code>tsconfig.json</code></strong></li>
+</ul>
+<pre><code class="language-json">{
+	&quot;compilerOptions&quot;: {
+		&quot;lib&quot;: [&quot;es2023&quot;],
+		&quot;module&quot;: &quot;nodenext&quot;,
+		&quot;moduleResolution&quot;: &quot;nodenext&quot;,
+		&quot;target&quot;: &quot;es2022&quot;,
+		&quot;esModuleInterop&quot;: true,
+		&quot;forceConsistentCasingInFileNames&quot;: true,
+		&quot;strict&quot;: true,
+		&quot;skipLibCheck&quot;: true,
+		&quot;resolveJsonModule&quot;: true,
+		&quot;noEmit&quot;: true,
+		&quot;types&quot;: [&quot;node&quot;, &quot;mocha&quot;]
+	}
+}
+</code></pre>
+<p>TypeScript 7 no longer adds <code>@types/*</code> automatically, so <code>types</code> must list <code>node</code> and <code>mocha</code>.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 5: <code>tasks/utils/args.ts</code> and the task definitions</strong></li>
+</ul>
+<p><code>tasks/utils/args.ts</code>:</p>
+<pre><code class="language-ts">// Hardhat 3 options always have a default. &quot;&quot; stands for &quot;not given&quot; on options that used to be required.
+export function requireArg(value: string, name: string): string {
+	if (value === &quot;&quot;) throw new Error(`Missing required option --${name}`)
+	return value
+}
+</code></pre>
+<p><code>tasks/index.ts</code> holds every definition. Each action lives in the task&#39;s existing file as a default export, loaded lazily (this is the spike-verified form):</p>
+<pre><code class="language-ts">import { task } from &quot;hardhat/config&quot;
+import { ArgumentType } from &quot;hardhat/types/arguments&quot;
+
+function option(name: string, description: string, defaultValue = &quot;&quot;) {
+	return { name, description, type: ArgumentType.STRING, defaultValue }
+}
+
+export const tasks = [
+	task(&quot;deploy:diamond&quot;, &quot;Deploys the Diamond contract&quot;)
+		.addFlag({ name: &quot;skipLog&quot;, description: &quot;Do not write the deployed addresses to tasks/data/deployed.json&quot; })
+		.setAction(() =&gt; import(&quot;./deployment/diamond-deploy.task.js&quot;))
+		.build(),
+	task(&quot;deploy:mocks&quot;, &quot;Deploys the Mock contract&quot;).setAction(() =&gt; import(&quot;./deployment/deploy-lib-mocks.task.js&quot;)).build(),
+	task(&quot;deploy:SignatureVerifier&quot;, &quot;Deploys the SignatureVerifier contract&quot;)
+		.setAction(() =&gt; import(&quot;./deployment/deploy-signature-verifier.task.js&quot;))
+		.build(),
+	task(&quot;deploy:oracle&quot;, &quot;Deploys the FakeOracle&quot;).setAction(() =&gt; import(&quot;./deployment/oracle.task.js&quot;)).build(),
+	task(&quot;deploy:hookHandler&quot;, &quot;Deploys the Hook Handler&quot;).setAction(() =&gt; import(&quot;./deployment/hook-handler.task.js&quot;)).build(),
+	task(&quot;deploy:stablecoin&quot;, &quot;Deploys the FakeStablecoin&quot;)
+		.addOption(option(&quot;name&quot;, &quot;The token&#39;s name&quot;))
+		.addOption(option(&quot;symbol&quot;, &quot;The token&#39;s symbol&quot;))
+		.setAction(() =&gt; import(&quot;./deployment/stable-coin.task.js&quot;))
+		.build(),
+	task(&quot;deploy:InstantLayer&quot;, &quot;Deploys the InstantLayer contract&quot;)
+		.addOption(option(&quot;symmioaddress&quot;, &quot;The address of the Symmio contract&quot;))
+		.addOption(option(&quot;admin&quot;, &quot;The admin address&quot;))
+		.setAction(() =&gt; import(&quot;./deployment/instantLayer.js&quot;))
+		.build(),
+	task(&quot;deploy:multiAccount&quot;, &quot;Deploys the MultiAccount&quot;)
+		.addOption(option(&quot;symmioaddress&quot;, &quot;The address of the Symmio contract&quot;))
+		.addOption(option(&quot;admin&quot;, &quot;The admin address&quot;))
+		.addOption(option(&quot;tradenftaddress&quot;, &quot;The trade NFT address&quot;))
+		.setAction(() =&gt; import(&quot;./deployment/multiAccount.js&quot;))
+		.build(),
+	task(&quot;deploy:symmioPartyB&quot;, &quot;Deploys the SymmioPartyB&quot;)
+		.addOption(option(&quot;symmioaddress&quot;, &quot;The address of the Symmio contract&quot;))
+		.addOption(option(&quot;admin&quot;, &quot;The admin address&quot;))
+		.setAction(() =&gt; import(&quot;./deployment/partyB.js&quot;))
+		.build(),
+	task(&quot;deploy:deploy&quot;, &quot;Deploy and verify the diamond and its facets&quot;).setAction(() =&gt; import(&quot;./deployment/deploy.task.js&quot;)).build(),
+	task(&quot;verify:deployment&quot;, &quot;Verifies the deployed contracts&quot;).setAction(() =&gt; import(&quot;./verify/verify.js&quot;)).build(),
+	task(&quot;send-open-intent&quot;, &quot;Calls sendOpenIntent on the contract&quot;)
+		.addOption(option(&quot;symbolid&quot;, &quot;ID of the symbol&quot;))
+		.addOption(option(&quot;price&quot;, &quot;Price of the trade&quot;))
+		.addOption(option(&quot;quantity&quot;, &quot;Quantity of the trade&quot;))
+		.addOption(option(&quot;strikeprice&quot;, &quot;Strike price&quot;))
+		.addOption(option(&quot;expiration&quot;, &quot;Expiration timestamp&quot;))
+		.addOption(option(&quot;mm&quot;, &quot;Minimum margin&quot;))
+		.addOption(option(&quot;tradeside&quot;, &quot;Trade side (0=Buy, 1=Sell)&quot;))
+		.addOption(option(&quot;margintype&quot;, &quot;Margin type (0=Isolated, 1=Cross)&quot;))
+		.addOption(option(&quot;exercisefeerate&quot;, &quot;Basis points of exercise fee (e.g. 500 = 5%)&quot;))
+		.addOption(option(&quot;exercisefeecap&quot;, &quot;Cap of exercise fee&quot;))
+		.addOption(option(&quot;solverfeeopen&quot;, &quot;Solver open fee&quot;, &quot;0&quot;))
+		.addOption(option(&quot;solverfeeclose&quot;, &quot;Solver close fee&quot;, &quot;0&quot;))
+		.addOption(option(&quot;deadline&quot;, &quot;Deadline timestamp&quot;))
+		.addOption(option(&quot;feetoken&quot;, &quot;Address of the token used to pay fees&quot;))
+		.addOption(option(&quot;affiliate&quot;, &quot;Address of the affiliate&quot;))
+		.addOption(option(&quot;userdata&quot;, &quot;User-specific data in hex&quot;))
+		.addOption(option(&quot;whitelist&quot;, &quot;Comma-separated partyB addresses&quot;))
+		.setAction(() =&gt; import(&quot;./helper/send_open_intent.js&quot;))
+		.build(),
+	task(&quot;lock-open-intent&quot;, &quot;Calls lockOpenIntent on the contract&quot;)
+		.addOption(option(&quot;intentid&quot;, &quot;ID of the intent&quot;))
+		.setAction(() =&gt; import(&quot;./helper/lock_open_intent.js&quot;))
+		.build(),
+	task(&quot;fill-open-intent&quot;, &quot;Calls fillOpenIntent on the contract&quot;)
+		.addOption(option(&quot;intentid&quot;, &quot;ID of the intent&quot;))
+		.addOption(option(&quot;quantity&quot;, &quot;Quantity to fill&quot;))
+		.addOption(option(&quot;price&quot;, &quot;Fill price&quot;))
+		.setAction(() =&gt; import(&quot;./helper/fill_open_intent.js&quot;))
+		.build(),
+	task(&quot;send-close-intent&quot;, &quot;Calls sendCloseIntent on the contract&quot;)
+		.addOption(option(&quot;tradeid&quot;, &quot;ID of the trade&quot;))
+		.addOption(option(&quot;quantity&quot;, &quot;Quantity to close&quot;))
+		.addOption(option(&quot;price&quot;, &quot;Close price&quot;))
+		.addOption(option(&quot;deadline&quot;, &quot;Deadline timestamp&quot;))
+		.setAction(() =&gt; import(&quot;./helper/send_close_intent.js&quot;))
+		.build(),
+	task(&quot;fill-close-intent&quot;, &quot;Calls fillCloseIntent on the contract&quot;)
+		.addOption(option(&quot;intentid&quot;, &quot;ID of the close intent&quot;))
+		.addOption(option(&quot;quantity&quot;, &quot;Quantity to fill&quot;))
+		.addOption(option(&quot;price&quot;, &quot;Fill price&quot;))
+		.setAction(() =&gt; import(&quot;./helper/fill_close_intent.js&quot;))
+		.build(),
+]
+</code></pre>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 6: Rewrite the action files</strong></li>
+</ul>
+<p><code>deploy-lib.ts</code>: replace only its header (the imports and the two type aliases). The rest of the file is unchanged:</p>
+<pre><code class="language-ts">import type { HardhatEthers } from &quot;@nomicfoundation/hardhat-ethers/types&quot;
+import type { HardhatUpgrades } from &quot;@openzeppelin/hardhat-upgrades&quot;
+
+import { DEPLOYMENT_LOG_FILE, FacetNames } from &quot;../../common/constants.js&quot;
+import type {
+	Diamond,
+	FakeOracle,
+	FakeStablecoin,
+	InstantLayer,
+	MockHookHandler,
+	MultiAccount,
+	SignatureVerifier,
+	SymmioPartyB,
+} from &quot;../../types/index.js&quot;
+import { FacetCutAction, getSelectors } from &quot;../utils/diamond-cut.js&quot;
+import { writeData } from &quot;../utils/fs.js&quot;
+
+export type Ethers = HardhatEthers
+export type Upgrades = HardhatUpgrades
+</code></pre>
+<p>Then replace each file&#39;s whole contents:</p>
+<p><code>tasks/deployment/diamond-deploy.task.ts</code></p>
+<pre><code class="language-ts">import type { HardhatRuntimeEnvironment } from &quot;hardhat/types/hre&quot;
+import { deployDiamond } from &quot;./deploy-lib.js&quot;
+
+export default async function ({ skipLog }: { skipLog: boolean }, hre: HardhatRuntimeEnvironment) {
+	const { ethers } = await hre.network.getOrCreate()
+	return deployDiamond(ethers, !skipLog)
+}
+</code></pre>
+<p><code>tasks/deployment/deploy-lib-mocks.task.ts</code></p>
+<pre><code class="language-ts">import type { HardhatRuntimeEnvironment } from &quot;hardhat/types/hre&quot;
+import { deployLibMocks } from &quot;./deploy-lib.js&quot;
+
+export default async function (_: Record&lt;string, never&gt;, hre: HardhatRuntimeEnvironment) {
+	const { ethers } = await hre.network.getOrCreate()
+	return deployLibMocks(ethers)
+}
+</code></pre>
+<p><code>tasks/deployment/deploy-signature-verifier.task.ts</code></p>
+<pre><code class="language-ts">import type { HardhatRuntimeEnvironment } from &quot;hardhat/types/hre&quot;
+import { deploySignatureVerifier } from &quot;./deploy-lib.js&quot;
+
+export default async function (_: Record&lt;string, never&gt;, hre: HardhatRuntimeEnvironment) {
+	const { ethers } = await hre.network.getOrCreate()
+	return deploySignatureVerifier(ethers)
+}
+</code></pre>
+<p><code>tasks/deployment/oracle.task.ts</code></p>
+<pre><code class="language-ts">import type { HardhatRuntimeEnvironment } from &quot;hardhat/types/hre&quot;
+import { deployFakeOracle } from &quot;./deploy-lib.js&quot;
+
+export default async function (_: Record&lt;string, never&gt;, hre: HardhatRuntimeEnvironment) {
+	const { ethers } = await hre.network.getOrCreate()
+	return deployFakeOracle(ethers)
+}
+</code></pre>
+<p><code>tasks/deployment/hook-handler.task.ts</code></p>
+<pre><code class="language-ts">import type { HardhatRuntimeEnvironment } from &quot;hardhat/types/hre&quot;
+import { deployHookHandler } from &quot;./deploy-lib.js&quot;
+
+export default async function (_: Record&lt;string, never&gt;, hre: HardhatRuntimeEnvironment) {
+	const { ethers } = await hre.network.getOrCreate()
+	return deployHookHandler(ethers)
+}
+</code></pre>
+<p><code>tasks/deployment/stable-coin.task.ts</code></p>
+<pre><code class="language-ts">import type { HardhatRuntimeEnvironment } from &quot;hardhat/types/hre&quot;
+import { requireArg } from &quot;../utils/args.js&quot;
+import { deployStablecoin } from &quot;./deploy-lib.js&quot;
+
+export default async function ({ name, symbol }: { name: string; symbol: string }, hre: HardhatRuntimeEnvironment) {
+	const { ethers } = await hre.network.getOrCreate()
+	return deployStablecoin(ethers, requireArg(name, &quot;name&quot;), requireArg(symbol, &quot;symbol&quot;))
+}
+</code></pre>
+<p><code>tasks/deployment/instantLayer.ts</code></p>
+<pre><code class="language-ts">import type { HardhatRuntimeEnvironment } from &quot;hardhat/types/hre&quot;
+import { requireArg } from &quot;../utils/args.js&quot;
+import { deployInstantLayer } from &quot;./deploy-lib.js&quot;
+
+export default async function ({ symmioaddress, admin }: { symmioaddress: string; admin: string }, hre: HardhatRuntimeEnvironment) {
+	const { ethers } = await hre.network.getOrCreate()
+	return deployInstantLayer(ethers, requireArg(symmioaddress, &quot;symmioaddress&quot;), requireArg(admin, &quot;admin&quot;))
+}
+</code></pre>
+<p><code>tasks/deployment/multiAccount.ts</code></p>
+<pre><code class="language-ts">import { upgrades } from &quot;@openzeppelin/hardhat-upgrades&quot;
+import type { HardhatRuntimeEnvironment } from &quot;hardhat/types/hre&quot;
+import { requireArg } from &quot;../utils/args.js&quot;
+import { deployMultiAccount } from &quot;./deploy-lib.js&quot;
+
+export default async function (
+	{ symmioaddress, admin, tradenftaddress }: { symmioaddress: string; admin: string; tradenftaddress: string },
+	hre: HardhatRuntimeEnvironment,
+) {
+	const connection = await hre.network.getOrCreate()
+	return deployMultiAccount(
+		connection.ethers,
+		await upgrades(hre, connection),
+		requireArg(symmioaddress, &quot;symmioaddress&quot;),
+		requireArg(admin, &quot;admin&quot;),
+		requireArg(tradenftaddress, &quot;tradenftaddress&quot;),
+	)
+}
+</code></pre>
+<p><code>tasks/deployment/partyB.ts</code></p>
+<pre><code class="language-ts">import { upgrades } from &quot;@openzeppelin/hardhat-upgrades&quot;
+import type { HardhatRuntimeEnvironment } from &quot;hardhat/types/hre&quot;
+import { requireArg } from &quot;../utils/args.js&quot;
+import { deploySymmioPartyB } from &quot;./deploy-lib.js&quot;
+
+export default async function ({ symmioaddress, admin }: { symmioaddress: string; admin: string }, hre: HardhatRuntimeEnvironment) {
+	const connection = await hre.network.getOrCreate()
+	return deploySymmioPartyB(connection.ethers, await upgrades(hre, connection), requireArg(symmioaddress, &quot;symmioaddress&quot;), requireArg(admin, &quot;admin&quot;))
+}
+</code></pre>
+<p><code>tasks/deployment/deploy.task.ts</code></p>
+<pre><code class="language-ts">import type { HardhatRuntimeEnvironment } from &quot;hardhat/types/hre&quot;
+
+export default async function (_: Record&lt;string, never&gt;, hre: HardhatRuntimeEnvironment) {
+	await hre.tasks.getTask(&quot;deploy:diamond&quot;).run({})
+	await hre.tasks.getTask(&quot;verify:deployment&quot;).run({})
+}
+</code></pre>
+<p><code>tasks/verify/verify.ts</code></p>
+<pre><code class="language-ts">import { verifyContract } from &quot;@nomicfoundation/hardhat-verify/verify&quot;
+import type { HardhatRuntimeEnvironment } from &quot;hardhat/types/hre&quot;
+import { DEPLOYMENT_LOG_FILE } from &quot;../../common/constants.js&quot;
+import { readData } from &quot;../utils/fs.js&quot;
+
+export default async function (_: Record&lt;string, never&gt;, hre: HardhatRuntimeEnvironment) {
+	const deployedAddresses = readData(DEPLOYMENT_LOG_FILE) as {
+		name: string
+		address: string
+		constructorArguments: unknown[]
+	}[]
+	for (const { name, address, constructorArguments } of deployedAddresses) {
+		try {
+			console.info(`Verifying ${name} :: ${address}`)
+			await verifyContract({ address, constructorArgs: constructorArguments }, hre)
+		} catch (err) {
+			console.error(err)
+		}
+	}
+}
+</code></pre>
+<p><code>tasks/helper/send_open_intent.ts</code></p>
+<pre><code class="language-ts">import type { HardhatRuntimeEnvironment } from &quot;hardhat/types/hre&quot;
+import { loadAddresses } from &quot;../../scripts/utils/file.js&quot;
+
+interface SendOpenIntentArgs {
+	symbolid: string
+	price: string
+	quantity: string
+	strikeprice: string
+	expiration: string
+	mm: string
+	tradeside: string
+	margintype: string
+	exercisefeerate: string
+	exercisefeecap: string
+	solverfeeopen: string
+	solverfeeclose: string
+	deadline: string
+	feetoken: string
+	affiliate: string
+	userdata: string
+	whitelist: string
+}
+
+export default async function (args: SendOpenIntentArgs, hre: HardhatRuntimeEnvironment) {
+	const { ethers } = await hre.network.getOrCreate()
+	const [admin] = await ethers.getSigners()
+	const partyAOpenFacet = (await ethers.getContractAt(&quot;PartyAOpenFacet&quot;, String(loadAddresses().symmioAddress))).connect(admin)
+
+	const partyBsWhiteList = args.whitelist ? args.whitelist.split(&quot;,&quot;).map(addr =&gt; addr.trim()) : []
+	const tx = await partyAOpenFacet.sendOpenIntent(
+		partyBsWhiteList,
+		BigInt(args.symbolid),
+		BigInt(args.price),
+		BigInt(args.quantity),
+		BigInt(args.strikeprice),
+		BigInt(args.expiration),
+		BigInt(args.mm),
+		Number(args.tradeside),
+		Number(args.margintype),
+		{ rate: BigInt(args.exercisefeerate), cap: BigInt(args.exercisefeecap) },
+		{ openFee: BigInt(args.solverfeeopen), closeFee: BigInt(args.solverfeeclose) },
+		BigInt(args.deadline),
+		args.feetoken,
+		args.affiliate,
+		args.userdata,
+	)
+	console.log(&quot;Transaction sent:&quot;, tx.hash)
+	await tx.wait()
+	console.log(&quot;Transaction confirmed.&quot;)
+}
+</code></pre>
+<p><code>tasks/helper/lock_open_intent.ts</code></p>
+<pre><code class="language-ts">import type { HardhatRuntimeEnvironment } from &quot;hardhat/types/hre&quot;
+import { loadAddresses } from &quot;../../scripts/utils/file.js&quot;
+
+export default async function ({ intentid }: { intentid: string }, hre: HardhatRuntimeEnvironment) {
+	const { ethers } = await hre.network.getOrCreate()
+	const [admin] = await ethers.getSigners()
+	const partyBOpenFacet = (await ethers.getContractAt(&quot;PartyBOpenFacet&quot;, String(loadAddresses().symmioAddress))).connect(admin)
+	const tx = await partyBOpenFacet.lockOpenIntent(BigInt(intentid))
+	console.log(&quot;Transaction sent:&quot;, tx.hash)
+	await tx.wait()
+	console.log(&quot;Transaction confirmed.&quot;)
+}
+</code></pre>
+<p><code>tasks/helper/fill_open_intent.ts</code></p>
+<pre><code class="language-ts">import type { HardhatRuntimeEnvironment } from &quot;hardhat/types/hre&quot;
+import { loadAddresses } from &quot;../../scripts/utils/file.js&quot;
+
+export default async function (
+	{ intentid, quantity, price }: { intentid: string; quantity: string; price: string },
+	hre: HardhatRuntimeEnvironment,
+) {
+	const { ethers } = await hre.network.getOrCreate()
+	const [admin] = await ethers.getSigners()
+	const partyBOpenFacet = (await ethers.getContractAt(&quot;PartyBOpenFacet&quot;, String(loadAddresses().symmioAddress))).connect(admin)
+	const tx = await partyBOpenFacet.fillOpenIntent(BigInt(intentid), BigInt(quantity), BigInt(price))
+	console.log(&quot;Transaction sent:&quot;, tx.hash)
+	await tx.wait()
+	console.log(&quot;Transaction confirmed.&quot;)
+}
+</code></pre>
+<p><code>tasks/helper/send_close_intent.ts</code></p>
+<pre><code class="language-ts">import type { HardhatRuntimeEnvironment } from &quot;hardhat/types/hre&quot;
+import { loadAddresses } from &quot;../../scripts/utils/file.js&quot;
+
+export default async function (
+	{ tradeid, quantity, price, deadline }: { tradeid: string; quantity: string; price: string; deadline: string },
+	hre: HardhatRuntimeEnvironment,
+) {
+	const { ethers } = await hre.network.getOrCreate()
+	const [admin] = await ethers.getSigners()
+	const partyACloseFacet = (await ethers.getContractAt(&quot;PartyACloseFacet&quot;, String(loadAddresses().symmioAddress))).connect(admin)
+	const tx = await partyACloseFacet.sendCloseIntent(BigInt(tradeid), BigInt(quantity), BigInt(price), BigInt(deadline))
+	console.log(&quot;Transaction sent:&quot;, tx.hash)
+	await tx.wait()
+	console.log(&quot;Transaction confirmed.&quot;)
+}
+</code></pre>
+<p><code>tasks/helper/fill_close_intent.ts</code></p>
+<pre><code class="language-ts">import type { HardhatRuntimeEnvironment } from &quot;hardhat/types/hre&quot;
+import { loadAddresses } from &quot;../../scripts/utils/file.js&quot;
+
+export default async function (
+	{ intentid, quantity, price }: { intentid: string; quantity: string; price: string },
+	hre: HardhatRuntimeEnvironment,
+) {
+	const { ethers } = await hre.network.getOrCreate()
+	const [admin] = await ethers.getSigners()
+	const partyBCloseFacet = (await ethers.getContractAt(&quot;PartyBCloseFacet&quot;, String(loadAddresses().symmioAddress))).connect(admin)
+	const tx = await partyBCloseFacet.fillCloseIntent(BigInt(intentid), BigInt(quantity), BigInt(price))
+	console.log(&quot;Transaction sent:&quot;, tx.hash)
+	await tx.wait()
+	console.log(&quot;Transaction confirmed.&quot;)
+}
+</code></pre>
+<p>Before replacing the four helpers, check their current bodies for anything beyond what&#39;s shown (the inventory found only the calls above). If there is more, carry it over.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 7: Convert the scripts</strong></li>
+</ul>
+<p><code>scripts/callAMethod.ts</code>, <code>scripts/diamondUpgrade.ts</code>, <code>scripts/updateFacet.ts</code>, <code>scripts/symmSetup.ts</code>: replace line 1 <code>import { ethers } from &quot;hardhat&quot;</code> with <code>import { network } from &quot;hardhat&quot;</code>, and add this as the first line after the last <code>import</code>:</p>
+<pre><code class="language-ts">const { ethers } = await network.getOrCreate()
+</code></pre>
+<p><code>scripts/deploy.ts</code>:</p>
+<pre><code class="language-ts">import { verifyContract } from &quot;@nomicfoundation/hardhat-verify/verify&quot;
+import hre, { network } from &quot;hardhat&quot;
+
+const { ethers } = await network.getOrCreate()
+
+async function main() {
+	const facetName = &quot;PartyBOpenFacet&quot;
+	const facet = await (await ethers.getContractFactory(facetName)).deploy()
+	await facet.waitForDeployment()
+	console.log(`${facetName} deployed: ${await facet.getAddress()}`)
+	await verifyContract({ address: await facet.getAddress(), constructorArgs: [] }, hre)
+}
+
+main().catch(error =&gt; {
+	console.error(error)
+	process.exitCode = 1
+})
+</code></pre>
+<p><code>scripts/verify-all.ts</code>: replace <code>import { run } from &quot;hardhat&quot;</code> with</p>
+<pre><code class="language-ts">import { verifyContract } from &quot;@nomicfoundation/hardhat-verify/verify&quot;
+import hre from &quot;hardhat&quot;
+</code></pre>
+<p>and the <code>run(&quot;verify:verify&quot;, { address: facetAddr, constructorArguments: [] })</code> call with <code>verifyContract({ address: facetAddr, constructorArgs: [] }, hre)</code>.</p>
+<p><code>scripts/helper/*.ts</code>:</p>
+<pre><code class="language-bash">sed -i &#39;&#39; &#39;s/^import { run } from &quot;hardhat&quot;$/import hre from &quot;hardhat&quot;/; s/await run(&quot;\([a-z-]*\)&quot;, {/await hre.tasks.getTask(&quot;\1&quot;).run({/&#39; scripts/helper/*.ts
+grep -n &#39;run(&#39; scripts/helper/*.ts
+</code></pre>
+<p>Expected: each file shows <code>hre.tasks.getTask(&quot;&lt;id&gt;&quot;).run({</code>.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 8: Write the codemod (used here for extensions, and in Task 7 for tests)</strong></li>
+</ul>
+<p><code>tools/hh3-codemod.mjs</code>:</p>
+<pre><code class="language-js">// One-off Hardhat 2 → 3 rewrite. Deleted at the end of Task 7.
+// Usage: node tools/hh3-codemod.mjs [--extensions-only] &lt;dir-or-file&gt;...
+// Requires `npx hardhat compile` first: it resolves imports against the generated types/ and artifacts/.
+import fs from &quot;node:fs&quot;
+import path from &quot;node:path&quot;
+
+const argv = process.argv.slice(2)
+const extensionsOnly = argv.includes(&quot;--extensions-only&quot;)
+const targets = argv.filter(a =&gt; !a.startsWith(&quot;--&quot;))
+const ROOT = process.cwd()
+const CONNECTION = path.join(ROOT, &quot;tests&quot;, &quot;connection.ts&quot;)
+const flags = []
+const changed = []
+
+function walk(p) {
+	if (fs.statSync(p).isFile()) return p.endsWith(&quot;.ts&quot;) ? [p] : []
+	return fs.readdirSync(p).flatMap(name =&gt; walk(path.join(p, name)))
+}
+
+function relativeTo(fromFile, toTsFile) {
+	const r = path.relative(path.dirname(fromFile), toTsFile).split(path.sep).join(&quot;/&quot;).replace(/\.ts$/, &quot;.js&quot;)
+	return r.startsWith(&quot;.&quot;) ? r : &quot;./&quot; + r
+}
+
+// Relative specifiers get an explicit .js; TypeChain&#39;s types/contracts/&lt;x&gt; flattens to types/&lt;x&gt;.
+function fixSpecifier(file, rel, spec) {
+	if (!spec.startsWith(&quot;.&quot;)) return spec
+	const abs = path.resolve(path.dirname(file), spec)
+	if (spec.endsWith(&quot;.json&quot;)) {
+		if (!fs.existsSync(abs)) flags.push(`${rel}: JSON import &quot;${spec}&quot; does not exist`)
+		return spec
+	}
+	if (spec.endsWith(&quot;.js&quot;)) return spec
+	const flat = spec.replace(/\/types\/contracts\//, &quot;/types/&quot;)
+	const flatAbs = path.resolve(path.dirname(file), flat)
+	if (fs.existsSync(flatAbs + &quot;.ts&quot;)) return flat + &quot;.js&quot;
+	if (fs.existsSync(path.join(flatAbs, &quot;index.ts&quot;))) return flat + &quot;/index.js&quot;
+	flags.push(`${rel}: cannot resolve &quot;${spec}&quot;`)
+	return spec
+}
+
+function rewriteSpecifiers(file, rel, src) {
+	return src.replace(/(\bfrom\s+|^import\s+)&quot;(\.[^&quot;]*)&quot;/gm, (_, kw, spec) =&gt; `${kw}&quot;${fixSpecifier(file, rel, spec)}&quot;`)
+}
+
+function rewriteTest(rel, src) {
+	const need = new Set()
+
+	const hh = src.match(/^import \{([^}]*)\} from &quot;hardhat&quot;[ \t]*\n/m)
+	if (hh) {
+		for (const name of hh[1].split(&quot;,&quot;).map(s =&gt; s.trim()).filter(Boolean)) {
+			if (name === &quot;ethers&quot;) need.add(&quot;ethers&quot;)
+			else if (name === &quot;upgrades&quot;) need.add(&quot;upgradesApi as upgrades&quot;)
+			else flags.push(`${rel}: unsupported import &quot;${name}&quot; from &quot;hardhat&quot;`)
+		}
+		src = src.replace(hh[0], &quot;&quot;)
+	}
+	if (/from &quot;hardhat&quot;/.test(src)) flags.push(`${rel}: another import from &quot;hardhat&quot; remains`)
+
+	const nh = src.match(/^import \{([^}]*)\} from &quot;@nomicfoundation\/hardhat-network-helpers&quot;[ \t]*\n/m)
+	if (nh) {
+		const names = nh[1].split(&quot;,&quot;).map(s =&gt; s.trim()).filter(Boolean)
+		src = src.replace(nh[0], &quot;&quot;)
+		for (const name of names) {
+			if (name === &quot;loadFixture&quot;) src = src.replace(/(?&lt;![.\w])loadFixture\(/g, &quot;networkHelpers.loadFixture(&quot;)
+			else if (name === &quot;time&quot;) src = src.replace(/(?&lt;![.\w])time\./g, &quot;networkHelpers.time.&quot;)
+			else if (name === &quot;setBalance&quot;) src = src.replace(/(?&lt;![.\w])setBalance\(/g, &quot;networkHelpers.setBalance(&quot;)
+			else flags.push(`${rel}: unsupported network-helpers import &quot;${name}&quot;`)
+		}
+		if (src.includes(&quot;networkHelpers.&quot;)) need.add(&quot;networkHelpers&quot;)
+	}
+
+	// Property-style revert assertions become .revert(ethers). (?![A-Za-z]) keeps revertedWith* untouched.
+	const before = (src.match(/\.reverted(?![A-Za-z])/g) || []).length
+	src = src
+		.replace(/\.not\.to\.be\.reverted(?![A-Za-z])/g, &quot;.not.to.revert(ethers)&quot;)
+		.replace(/\.to\.not\.be\.reverted(?![A-Za-z])/g, &quot;.to.not.revert(ethers)&quot;)
+		.replace(/\.to\.be\.reverted(?![A-Za-z])/g, &quot;.to.revert(ethers)&quot;)
+		.replace(/\.not\.reverted(?![A-Za-z])/g, &quot;.not.to.revert(ethers)&quot;)
+	const left = (src.match(/\.reverted(?![A-Za-z])/g) || []).length
+	if (left) flags.push(`${rel}: ${left} &quot;.reverted&quot; left unconverted`)
+	if (before &gt; left) need.add(&quot;ethers&quot;)
+
+	src = src.replace(
+		/^import \{ SignerWithAddress \} from &quot;@nomicfoundation\/hardhat-ethers\/signers&quot;$/m,
+		&#39;import type { HardhatEthersSigner as SignerWithAddress } from &quot;@nomicfoundation/hardhat-ethers/types&quot;&#39;,
+	)
+	if (src.includes(&quot;hardhat-ethers/signers&quot;)) flags.push(`${rel}: other hardhat-ethers/signers import`)
+	src = src.replace(/^import &quot;@nomicfoundation\/hardhat-ethers&quot;[ \t]*\n/m, &quot;&quot;)
+
+	src = src.replace(/^import \* as (\w+) from &quot;([^&quot;]+\.json)&quot;$/gm, &#39;import $1 from &quot;$2&quot; with { type: &quot;json&quot; }&#39;)
+	if (/^import \{[^}]*\} from &quot;[^&quot;]+\.json&quot;/m.test(src)) flags.push(`${rel}: named JSON import needs a manual rewrite`)
+
+	return { src, need }
+}
+
+for (const file of targets.flatMap(t =&gt; walk(path.resolve(t)))) {
+	if (file === CONNECTION) continue
+	const rel = path.relative(ROOT, file)
+	const original = fs.readFileSync(file, &quot;utf8&quot;)
+	let src = original
+	if (!extensionsOnly) {
+		const result = rewriteTest(rel, src)
+		src = result.src
+		if (result.need.size) {
+			if (/from &quot;[^&quot;]*connection\.js&quot;/.test(src)) flags.push(`${rel}: already imports connection.js; merge by hand`)
+			else src = `import { ${[...result.need].sort().join(&quot;, &quot;)} } from &quot;${relativeTo(file, CONNECTION)}&quot;\n` + src
+		}
+	}
+	src = rewriteSpecifiers(file, rel, src)
+	if (src !== original) {
+		fs.writeFileSync(file, src)
+		changed.push(rel)
+	}
+}
+
+console.log(`changed ${changed.length} file(s)`)
+for (const f of changed) console.log(`  ${f}`)
+if (flags.length) {
+	console.log(`\n${flags.length} item(s) need manual attention:`)
+	for (const f of flags) console.log(`  ${f}`)
+	process.exitCode = 1
+}
+</code></pre>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 9: Compile, then fix relative imports outside <code>tests/</code></strong></li>
+</ul>
+<pre><code class="language-bash">npx hardhat compile 2&gt;&amp;1 | tail -5
+node tools/hh3-codemod.mjs --extensions-only tasks scripts common utils
+</code></pre>
+<p>Expected: compile succeeds and writes <code>types/</code> (flat, without the <code>contracts/</code> prefix). The codemod lists the files it changed with no manual-attention items. <code>tasks/index.ts</code> and the action files written above already use <code>.js</code> and come out unchanged.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 10: Typecheck everything except <code>tests/</code></strong></li>
+</ul>
+<pre><code class="language-bash">npx tsc --noEmit -p . 2&gt;&amp;1 | grep &#39;error TS&#39; | grep -v &#39;^tests/&#39;
+</code></pre>
+<p>Expected: no output. Fix any hit in <code>tasks/</code>, <code>scripts/</code>, <code>common/</code>, <code>utils/</code> or <code>hardhat.config.ts</code>. The errors under <code>tests/</code> are Task 7&#39;s.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 11: Smoke-test the tasks and a script on the in-process network</strong></li>
+</ul>
+<pre><code class="language-bash">npx hardhat --help | grep -E &#39;deploy:|verify:deployment|send-open-intent&#39;
+npx hardhat deploy:diamond --skip-log 2&gt;&amp;1 | tail -3
+npx hardhat deploy:stablecoin --name Probe --symbol PRB 2&gt;&amp;1 | tail -1
+npx hardhat deploy:symmioPartyB --symmioaddress 0x0000000000000000000000000000000000000001 --admin 0x0000000000000000000000000000000000000002 2&gt;&amp;1 | tail -5
+npx hardhat deploy:multiAccount --symmioaddress 0x0000000000000000000000000000000000000001 --admin 0x0000000000000000000000000000000000000002 --tradenftaddress 0x0000000000000000000000000000000000000000 2&gt;&amp;1 | tail -5
+npx hardhat deploy:InstantLayer --symmioaddress 0x0000000000000000000000000000000000000001 2&gt;&amp;1 | tail -2
+npx hardhat run scripts/diamondUpgrade.ts 2&gt;&amp;1 | tail -2
+</code></pre>
+<p>Expected:</p>
+<ul>
+<li>All 16 tasks appear in <code>--help</code>.</li>
+<li><code>deploy:diamond</code> ends with &quot;Completed Diamond Cut&quot;.</li>
+<li><code>deploy:stablecoin</code> prints a FakeStablecoin address.</li>
+<li>Both proxy tasks print proxy/admin/implementation objects.</li>
+<li><code>deploy:InstantLayer</code> without <code>--admin</code> fails with &quot;Missing required option --admin&quot;.</li>
+<li>The script prints <code>diamondCut</code> calldata (<code>0x1f931c1c…</code>).</li>
+</ul>
+<p>None of these may prompt for a password.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 12: Commit</strong></li>
+</ul>
+<pre><code class="language-bash">git add -A package.json package-lock.json hardhat.config.ts tsconfig.json tasks scripts common utils tools .env.example .solcover.js
+git commit -m &quot;Switch to Hardhat 3, ESM and TypeScript 7 (tasks, scripts, config)
+
+The test suite does not run until the next commit converts tests/.&quot;
+</code></pre>
+<hr>
+<h3 id="task-7-convert-the-test-suite-to-hardhat-3">Task 7: Convert the test suite to Hardhat 3</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>tests/connection.ts</code>, <code>tests/helpers/connection.behavior.ts</code></li>
+<li>Modify: <code>tests/main.ts</code>, every <code>tests/**/*.ts</code> (via the codemod)</li>
+<li>Delete: <code>tools/hh3-codemod.mjs</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li><p>Consumes: <code>tools/hh3-codemod.mjs</code> and the <code>deploy:stablecoin</code> task (Task 6); <code>deploy-lib.ts</code> names (Task 5).</p>
+</li>
+<li><p>Produces: <code>tests/connection.ts</code> exports <code>connection</code>, <code>ethers</code>, <code>networkHelpers</code> and <code>upgradesApi</code>. All test code gets chain access through this module only.</p>
+</li>
+<li><p><input disabled="" type="checkbox">
+<strong>Step 1: Record the matcher count to preserve</strong></p>
+</li>
+</ul>
+<pre><code class="language-bash">grep -rEo &#39;\.(not\.)?(to\.)?(not\.)?(be\.)?reverted([^A-Za-z]|$)&#39; tests | wc -l
+</code></pre>
+<p>Write the number down as <strong>R</strong> (expected around 284).</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 2: Write <code>tests/connection.ts</code></strong></li>
+</ul>
+<pre><code class="language-ts">import { upgrades } from &quot;@openzeppelin/hardhat-upgrades&quot;
+import hre, { network } from &quot;hardhat&quot;
+
+// The one connection every test file, fixture and helper shares. getOrCreate() (not create()) is what lets
+// tasks invoked from tests via hre.tasks.getTask(...).run() land on this same chain.
+export const connection = await network.getOrCreate()
+export const { ethers, networkHelpers } = connection
+export const upgradesApi = await upgrades(hre, connection)
+</code></pre>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 3: Rewrite the <code>package.json</code> import in <code>tests/main.ts</code> by hand</strong></li>
+</ul>
+<p>Node ESM requires the <code>with { type: &quot;json&quot; }</code> attribute, and named imports from JSON aren&#39;t allowed:</p>
+<pre><code class="language-ts">import pkg from &quot;../package.json&quot; with { type: &quot;json&quot; }
+</code></pre>
+<p>and right after the imports:</p>
+<pre><code class="language-ts">const { name, version } = pkg
+</code></pre>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 4: Run the codemod over <code>tests/</code></strong></li>
+</ul>
+<pre><code class="language-bash">node tools/hh3-codemod.mjs tests
+</code></pre>
+<p>Expected: about 30 changed files and <strong>no</strong> manual-attention items. If items are listed, fix each by hand:</p>
+<ul>
+<li>an unresolved typechain path: find the real file under <code>types/</code>;</li>
+<li>a leftover <code>.reverted</code>: convert it with the same four rules.</li>
+</ul>
+<p>Then re-run <code>node tools/hh3-codemod.mjs --extensions-only tests</code> to confirm it changes nothing further.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 5: Check the matcher rewrite</strong></li>
+</ul>
+<pre><code class="language-bash">grep -rEn &#39;\.reverted([^A-Za-z]|$)&#39; tests
+grep -ro &#39;revert(ethers)&#39; tests | wc -l
+</code></pre>
+<p>Expected: the first prints nothing; the second prints exactly <strong>R</strong> from Step 1.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 6: Add the same-chain test (Review Focus #2)</strong></li>
+</ul>
+<p><code>tests/helpers/connection.behavior.ts</code>:</p>
+<pre><code class="language-ts">import { expect } from &quot;chai&quot;
+import hre from &quot;hardhat&quot;
+import { ethers } from &quot;../connection.js&quot;
+
+export function shouldShareOneChainWithTasks(): void {
+	it(&quot;runs Hardhat tasks on the same chain as the tests&quot;, async function () {
+		// Reading name() catches the deterministic-address trap: on a different chain, this address is
+		// empty or holds some other contract, so the call either fails or returns another name.
+		const token = (await hre.tasks.getTask(&quot;deploy:stablecoin&quot;).run({ name: &quot;ChainProbe&quot;, symbol: &quot;PRB&quot; })) as {
+			getAddress(): Promise&lt;string&gt;
+		}
+		const probe = await ethers.getContractAt(&quot;FakeStablecoin&quot;, await token.getAddress())
+		expect(await probe.name()).to.equal(&quot;ChainProbe&quot;)
+	})
+}
+</code></pre>
+<p>Wire it into <code>tests/main.ts</code>. The import goes with the others:</p>
+<pre><code class="language-ts">import { shouldShareOneChainWithTasks } from &quot;./helpers/connection.behavior.js&quot;
+</code></pre>
+<p>The block goes first inside the <code>if</code>:</p>
+<pre><code class="language-ts">		describe(&quot;Hardhat connection&quot;, async function () {
+			shouldShareOneChainWithTasks()
+		})
+</code></pre>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 7: Typecheck and fix leftovers</strong></li>
+</ul>
+<pre><code class="language-bash">npx hardhat compile &amp;&amp; npm run typecheck 2&gt;&amp;1 | head -40
+</code></pre>
+<p>Expected after fixes: no output. Fix only imports and types here: wrong paths, <code>SignerWithAddress</code> alias mismatches, and TypeChain types that moved. If making <code>tsc</code> pass would mean changing what an assertion checks, stop and report.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 8: Run the full suite and check the count (Review Focus #1)</strong></li>
+</ul>
+<pre><code class="language-bash">TEST_MODE=UNIT_TEST npx hardhat test 2&gt;&amp;1 | tail -8
+</code></pre>
+<p>Expected: <code>538 passing</code>, <code>0 failing</code> (537 + the connection test). A lower number means files or suites silently stopped loading. Find the missing <code>describe</code> blocks by diffing this run&#39;s output against a run of the Task 5 commit (<code>git worktree add /tmp/hh2-ref &lt;task-5-sha&gt;</code>, then <code>npm ci</code> and the Hardhat 2 test command there) before going on. A &quot;Running Solidity tests&quot; phase with nothing to run is expected.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 9: Coverage and gas stats still work</strong></li>
+</ul>
+<pre><code class="language-bash">TEST_MODE=UNIT_TEST npx hardhat test --coverage 2&gt;&amp;1 | tail -15
+TEST_MODE=UNIT_TEST npx hardhat test --gas-stats 2&gt;&amp;1 | tail -15
+</code></pre>
+<p>Expected: the coverage table plus <code>coverage/lcov.info</code> and <code>coverage/html</code>; a gas table, in which proxied calls show as <code>(via &lt;UnrecognizedContract&gt;)</code> (this is expected). Mocks now appear in coverage; <code>.solcover.js</code>&#39;s <code>skipFiles</code> is gone with solidity-coverage.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 10: Delete the codemod and commit</strong></li>
+</ul>
+<pre><code class="language-bash">git rm tools/hh3-codemod.mjs
+git add -A tests
+git commit -m &quot;Convert the test suite to Hardhat 3 (shared connection, chai matchers 3)&quot;
+</code></pre>
+<hr>
+<h3 id="task-8-remaining-majors-unused-packages-ci-docs-formatting">Task 8: Remaining majors, unused packages, CI, docs, formatting</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>package.json</code>, <code>package-lock.json</code>, <code>.gitlab-ci.yml</code>, <code>README.html</code>, <code>docs/pages/testing.html</code>, <code>docs/pages/deployment-and-operations.html</code></li>
+<li>Format: whole repo (separate commit)</li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li><p>Consumes: the scripts from Tasks 1 and 6.</p>
+</li>
+<li><p>Produces: <code>npm outdated</code> is empty; CI runs on Node 24 with <code>npm ci</code>.</p>
+</li>
+<li><p><input disabled="" type="checkbox">
+<strong>Step 1: Remove packages nothing imports</strong></p>
+</li>
+</ul>
+<p>Import counts across <code>tests utils common tasks scripts hardhat.config.ts</code> were 0 for each. winston&#39;s only imports were the dead ones Task 1 deleted.</p>
+<pre><code class="language-bash">npm rm bignumber.js js-sha3 cross-env fs-extra @types/fs-extra rxjs random-ext typescript-json-serializer winston
+</code></pre>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 2: Move tooling out of <code>dependencies</code> and take the remaining majors</strong></li>
+</ul>
+<pre><code class="language-bash">npm rm solhint @secretlint/secretlint-rule-no-dotenv @secretlint/secretlint-rule-preset-recommend @secretlint/secretlint-rule-privatekey @secretlint/secretlint-rule-secp256k1-privatekey
+npm i -D solhint@^6.2.4 secretlint@^13.0.7 @secretlint/secretlint-rule-no-dotenv@^13.0.7 @secretlint/secretlint-rule-preset-recommend@^13.0.7 \
+  @secretlint/secretlint-rule-privatekey@^13.0.7 @secretlint/secretlint-rule-secp256k1-privatekey@^13.0.7 lint-staged@^17.6.0 shx@^0.4.0
+npm pkg delete dependencies packageManager
+npm outdated
+</code></pre>
+<p>Expected: <code>npm outdated</code> prints nothing. If something remains, it was released after 2026-10-03. Stop and report it rather than upgrading blind.</p>
+<p><code>packageManager: yarn@1.22.22</code> goes because the lockfile is <code>package-lock.json</code> and there is no <code>yarn.lock</code>. Today&#39;s CI <code>yarn install --frozen-lockfile</code> can&#39;t work.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 3: Scripts that called yarn</strong></li>
+</ul>
+<pre><code class="language-bash">npm pkg set scripts.lint=&quot;npm run lint:sol &amp;&amp; npm run typecheck&quot;
+npm pkg set scripts.precommit=&quot;symsec --project options-core run npm run format &amp;&amp; symsec --project options-core run npm run compile &amp;&amp; symsec --project options-core run npm test&quot;
+grep -n yarn package.json
+</code></pre>
+<p>Expected: no output. (<code>lint</code> used to call a <code>lint:ts</code> script that never existed.)</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 4: Check the linters</strong></li>
+</ul>
+<pre><code class="language-bash">npm run lint:sol 2&gt;&amp;1 | tail -5
+npx secretlint &quot;package.json&quot; &quot;hardhat.config.ts&quot; &quot;tasks/**/*&quot; &amp;&amp; echo secretlint-ok
+</code></pre>
+<p>Expected: <code>lint:sol</code> passes, because <code>.solhint.json</code> sets no rules and doesn&#39;t extend the recommended set, so solhint 6&#39;s new recommended rules don&#39;t apply. Then <code>secretlint-ok</code>. secretlint 13 respects <code>.gitignore</code> by default, so <code>.env</code> is skipped.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 5: Run with no secrets, CI flag set and stdin closed (Review Focus #5)</strong></li>
+</ul>
+<pre><code class="language-bash">DOTENV_CONFIG_PATH=/dev/null CI=true TEST_MODE=UNIT_TEST env -u PRIVATE_KEY -u ETHERSCAN_API_KEY npx hardhat test &lt; /dev/null 2&gt;&amp;1 | tail -5
+</code></pre>
+<p>Expected: <code>538 passing</code>, <code>0 failing</code>, no &quot;[hardhat-keystore] Enter the password&quot; and no &quot;unsettled top-level await&quot;. mocha 12 turns on <code>--forbid-only</code> when <code>CI</code> is set, so this also proves no <code>.only</code> is left.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 6: Rewrite <code>.gitlab-ci.yml</code></strong></li>
+</ul>
+<pre><code class="language-yaml">stages:
+    - compile
+    - secret_detection
+    - test
+
+include:
+    - template: Security/Secret-Detection.gitlab-ci.yml
+
+.build-server: &amp;build-server
+    tags:
+        - build-server
+
+variables:
+    TEST_MODE: UNIT_TEST
+    PRIVATE_KEY: $PRIVATE_KEY
+
+cache:
+    key:
+        files:
+            - package-lock.json
+    paths:
+        - node_modules/
+
+# TODO ::: Linter
+
+compile:
+    stage: compile
+    image: node:24
+    extends:
+        - .build-server
+    before_script:
+        - npm ci
+    script:
+        - npm run clean
+        - npm run format:check # prettier
+        - npm run compile
+        - npm run typecheck
+
+secret_detection:
+    stage: secret_detection
+    image: registry.gitlab.com/security-products/secrets:6
+    extends:
+        - .build-server
+
+test:
+    stage: test
+    image: node:24
+    before_script:
+        - npm ci
+    extends:
+        - .build-server
+    script:
+        - npm test
+</code></pre>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 7: Update the docs</strong></li>
+</ul>
+<p>Apply these to <code>README.html</code>, <code>docs/pages/deployment-and-operations.html</code> and <code>docs/pages/testing.html</code>. Find the lines with <code>grep -n 'hardhat\|yarn\|0\.8\.19\|BASE_API_KEY\|coverage\|network-helpers\|chai-matchers' README.html docs/pages/testing.html docs/pages/deployment-and-operations.html</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Old</th>
+<th>New</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>npx hardhat deploy:diamond --network hardhat --log-data true</code></td>
+<td><code>npx hardhat deploy:diamond</code> (writes <code>tasks/data/deployed.json</code> by default; <code>--skip-log</code> to skip)</td>
+</tr>
+<tr>
+<td><code>--network hardhat</code> on any command</td>
+<td>drop it (the in-process network is called <code>default</code> and is used when <code>--network</code> is omitted)</td>
+</tr>
+<tr>
+<td><code>npx hardhat coverage</code>, <code>yarn coverage</code>, &quot;via <code>solidity-coverage</code>&quot;, <code>coverage.json</code></td>
+<td><code>npx hardhat test --coverage</code> / <code>npm run coverage</code>; output <code>coverage/lcov.info</code> and <code>coverage/html</code></td>
+</tr>
+<tr>
+<td><code>yarn compile</code> / <code>yarn test</code> / <code>yarn typechain</code></td>
+<td><code>npm run compile</code> / <code>npm test</code>; TypeChain now runs on compile (no separate script)</td>
+</tr>
+<tr>
+<td>Solidity <code>0.8.19</code></td>
+<td>Solidity <code>0.8.25</code> (<code>evmVersion: cancun</code>), OpenZeppelin 5.6.1, Hardhat 3, Node 24</td>
+</tr>
+<tr>
+<td>&quot;fallback key in <code>hardhat.config.ts</code> is a dummy development key. Base verification uses <code>BASE_API_KEY</code>&quot;</td>
+<td>&quot;<code>PRIVATE_KEY</code> and <code>ETHERSCAN_API_KEY</code> are Hardhat config variables, read only when a network or verify command needs them; set them in <code>.env</code>/symsec or with <code>npx hardhat keystore set</code>&quot;</td>
+</tr>
+<tr>
+<td><code>hardhat</code> listed as the default local network</td>
+<td><code>default</code> (in-process, <code>edr-simulated</code>)</td>
+</tr>
+<tr>
+<td><code>@nomicfoundation/hardhat-network-helpers</code>&#39;s <code>loadFixture</code></td>
+<td><code>networkHelpers.loadFixture</code> from <code>tests/connection.ts</code> (one shared connection via <code>network.getOrCreate()</code>)</td>
+</tr>
+<tr>
+<td>&quot;chai-matchers <code>.to.emit(...)</code>&quot;</td>
+<td>unchanged wording; add a note that <code>.to.be.reverted</code> is now <code>.to.revert(ethers)</code></td>
+</tr>
+<tr>
+<td><code>hardhat.config.ts:NN</code> line references in <code>docs/pages/testing.html</code></td>
+<td>remove the line numbers (the file was rewritten)</td>
+</tr>
+<tr>
+<td><code>yarn format &amp;&amp; yarn compile &amp;&amp; yarn test</code> (pre-commit description)</td>
+<td><code>npm run format &amp;&amp; npm run compile &amp;&amp; npm test</code></td>
+</tr>
+</tbody></table>
+<p>Also add a sentence to <code>docs/pages/deployment-and-operations.html</code> saying the Base proxies recorded under <code>.openzeppelin/legacy-oz4/</code> are abandoned, and that the next MultiAccount and SymmioPartyB deployment is a fresh OpenZeppelin 5 deployment.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 8: Verify and commit (before formatting)</strong></li>
+</ul>
+<pre><code class="language-bash">npm run clean &amp;&amp; npm run compile &amp;&amp; npm run typecheck &amp;&amp; TEST_MODE=UNIT_TEST npx hardhat test 2&gt;&amp;1 | tail -4
+git add package.json package-lock.json .gitlab-ci.yml README.html docs/pages/testing.html docs/pages/deployment-and-operations.html
+git commit -m &quot;Finish dependency majors, drop unused packages, move CI to Node 24 and npm&quot;
+</code></pre>
+<p>Expected: <code>538 passing</code>, <code>0 failing</code>. <code>npm run compile</code> goes through <code>symsec</code>. If symsec isn&#39;t installed locally, use <code>npx hardhat compile</code> and note it.</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Step 9: One repo-wide formatting commit</strong></li>
+</ul>
+<pre><code class="language-bash">npx prettier --write .
+npm run format:check
+npx hardhat compile &amp;&amp; TEST_MODE=UNIT_TEST npx hardhat test 2&gt;&amp;1 | tail -4
+git add -A
+git status --short | grep -v &#39;^M &#39; ; git commit -m &quot;Apply Prettier 3.9 formatting&quot;
+</code></pre>
+<p>Expected: <code>format:check</code> passes, the tests still show <code>538 passing</code>, and the <code>git status</code> filter prints nothing, meaning only modifications (no new or deleted files) went into the formatting commit. prettier-plugin-solidity 2 rewrites <code>import { X }</code> to <code>import {X}</code> in <code>.sol</code> files; that is expected.</p>
+<hr>
+<h2 id="after-the-plan">After the plan</h2>
+<ul>
+<li>The branch is local; the remote fails TLS today. Once it&#39;s fixed: <code>git push -u origin chore/hh3-oz5-migration</code>, then merge into <code>develop</code>.</li>
+<li>First real deployment after this: deploy MultiAccount and SymmioPartyB fresh to Base with <code>deploy:multiAccount</code> / <code>deploy:symmioPartyB --network base</code>. Point Symmio/InstantLayer registrations at the new proxy addresses.</li>
+</ul>
+</article></main></div><footer class="site-footer"><span>Options Core documentation.</span></footer></body></html>

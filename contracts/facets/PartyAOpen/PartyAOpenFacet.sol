@@ -61,10 +61,80 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 		address feeToken,
 		address affiliate,
 		bytes calldata userData
-	) external whenPartyNotPaused(msg.sender) whenInstantModeIsNotActive(msg.sender) returns (uint256 intentId) {
+	) external whenPartyNotPaused(msg.sender) returns (uint256 intentId) {
 		intentId = LibPartyAOpen.sendOpenIntent(
 			msg.sender,
+			0,
 			partyBsWhiteList,
+			0,
+			false,
+			TradeAgreements({
+				symbolId: symbolId,
+				quantity: quantity,
+				strikePrice: strikePrice,
+				expirationTimestamp: expirationTimestamp,
+				mm: mm,
+				tradeSide: tradeSide,
+				marginType: marginType,
+				exerciseFee: exerciseFee
+			}),
+			price,
+			deadline,
+			solverFee,
+			feeToken,
+			affiliate,
+			userData
+		);
+		emit SendOpenIntent(
+			msg.sender,
+			intentId,
+			partyBsWhiteList,
+			abi.encodePacked(
+				symbolId,
+				price,
+				quantity,
+				strikePrice,
+				expirationTimestamp,
+				mm,
+				tradeSide,
+				marginType,
+				exerciseFee.rate,
+				exerciseFee.cap,
+				solverFee.openFee,
+				solverFee.closeFee,
+				deadline
+			)
+		);
+	}
+
+	/// @notice Opens an intent against an explicit wallet and bucket pair.
+	function sendOpenIntent(
+		uint256 partyABucketId,
+		address partyB,
+		uint256 partyBBucketId,
+		uint256 symbolId,
+		uint256 price,
+		uint256 quantity,
+		uint256 strikePrice,
+		uint256 expirationTimestamp,
+		uint256 mm,
+		TradeSide tradeSide,
+		MarginType marginType,
+		ExerciseFee calldata exerciseFee,
+		Fee calldata solverFee,
+		uint256 deadline,
+		address feeToken,
+		address affiliate,
+		bytes calldata userData
+	) external whenPartyNotPaused(msg.sender) returns (uint256 intentId) {
+		address[] memory partyBsWhiteList = new address[](1);
+		partyBsWhiteList[0] = partyB;
+		intentId = LibPartyAOpen.sendOpenIntent(
+			msg.sender,
+			partyABucketId,
+			partyBsWhiteList,
+			partyBBucketId,
+			true,
 			TradeAgreements({
 				symbolId: symbolId,
 				quantity: quantity,
@@ -126,7 +196,7 @@ contract PartyAOpenFacet is Accessibility, Pausable, IPartyAOpenFacet {
 	 *      - For opened positions: Cancellation not possible
 	 * @param intentIds Array of intent IDs to be canceled
 	 */
-	function cancelOpenIntent(uint256[] calldata intentIds) external whenPartyNotPaused(msg.sender) whenInstantModeIsNotActive(msg.sender) {
+	function cancelOpenIntent(uint256[] calldata intentIds) external whenPartyNotPaused(msg.sender) {
 		for (uint256 i; i < intentIds.length; i++) {
 			OpenIntentStatus result = LibPartyAOpen.cancelOpenIntent(msg.sender, intentIds[i]);
 

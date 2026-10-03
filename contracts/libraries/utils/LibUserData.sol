@@ -17,7 +17,7 @@ library LibUserData {
 		if (dataWithCounter.length < 32) revert ValidationErrors.InsufficientBytes(dataWithCounter.length, 32);
 
 		bytes32 counterBytes;
-		assembly {
+		assembly ("memory-safe") {
 			counterBytes := mload(add(dataWithCounter, sub(mload(dataWithCounter), 32)))
 		}
 		return uint256(counterBytes);

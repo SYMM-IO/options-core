@@ -49,6 +49,6 @@ if grep -q '\.sol$' "$STAGED_LIST"; then
     npm run compile || exit 1
 fi
 
-if grep -q '^docs/\|^scripts/build-docs.mjs$' "$STAGED_LIST"; then
+if grep -q '^docs/\|^scripts/build-docs.mjs$\|^README.html$\|^implementation_proposal.html$\|^impl_proposal_add.html$' "$STAGED_LIST"; then
     npm run docs:check || exit 1
 fi

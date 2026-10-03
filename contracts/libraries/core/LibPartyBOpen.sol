@@ -4,6 +4,9 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
+import { LibBucket } from "./LibBucket.sol";
+import { LibOpenIntentFunding } from "./LibOpenIntentFunding.sol";
+
 import { LibParty } from "../models/LibParty.sol";
 import { LibTradeOps } from "../models/LibTrade.sol";
 import { LibUserData } from "../utils/LibUserData.sol";
@@ -12,15 +15,13 @@ import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance
 
 import { AppStorage } from "../../storages/AppStorage.sol";
 import { TradeStorage } from "../../storages/TradeStorage.sol";
-import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { Symbol, SymbolStorage } from "../../storages/SymbolStorage.sol";
 import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
 import { StateControlStorage } from "../../storages/StateControlStorage.sol";
-import { FeeManagementStorage } from "../../storages/FeeManagementStorage.sol";
 
 import { Trade, TradeStatus } from "../../types/TradeTypes.sol";
 import { OpenIntent, OpenIntentStatus } from "../../types/IntentTypes.sol";
-import { TradeAgreements, TradeSide, MarginType } from "../../types/BaseTypes.sol";
+import { TradeSide, MarginType } from "../../types/BaseTypes.sol";
 import { ScheduledReleaseBalance, IncreaseBalanceReason, DecreaseBalanceReason } from "../../types/BalanceTypes.sol";
 
 import { ValidationErrors } from "../../errors/ValidationErrors.sol";
@@ -43,12 +44,14 @@ library LibPartyBOpen {
 
 		/* ---------------------------------------- CHECKS ---------------------------------------- */
 
+		LibBucket.validateIntentRelationship(intentId, intent.partyA, intent.partyABucketId, sender, intent.partyBBucketId);
+
 		// Check if either party is suspended
-		if (stateControlLayout.suspendedAddresses[intent.partyA]) revert SystemErrors.UserSuspended(intent.partyA);
-		if (stateControlLayout.suspendedAddresses[sender]) revert SystemErrors.UserSuspended(sender);
+		LibBucket.requireNotSuspended(intent.partyA, intent.partyABucketId);
+		LibBucket.requireNotSuspended(sender, intent.partyBBucketId);
 
 		// Check Party B emergency modes
-		if (stateControlLayout.partyBEmergencyMode[sender]) revert SystemErrors.PartyBInEmergencyMode(sender);
+		LibBucket.requirePartyBNotEmergency(sender, intent.partyBBucketId);
 		if (stateControlLayout.partyBsEmergencyMode) revert SystemErrors.PartyBsInEmergencyMode();
 
 		// Validate intent exists
@@ -97,7 +100,16 @@ library LibPartyBOpen {
 		}
 
 		// Verify Party B is not in liquidation process
-		sender.requireSolvent(intent.partyA, symbol.collateral, intent.tradeAgreements.marginType);
+		sender.requireSolvent(intent.partyBBucketId, intent.partyA, intent.partyABucketId, symbol.collateral, intent.tradeAgreements.marginType);
+		LibBucket.requireNativeBacking(
+			intentId,
+			intent.partyA,
+			intent.partyABucketId,
+			sender,
+			intent.partyBBucketId,
+			symbol.collateral,
+			intent.feeStructure.feeToken
+		);
 
 		/* ---------------------------------------- UPDATE ---------------------------------------- */
 
@@ -121,7 +133,13 @@ library LibPartyBOpen {
 		ValidationErrors.requireStatus("OpenIntentStatus", uint8(intent.status), uint8(OpenIntentStatus.LOCKED));
 
 		// Verify Party B is not in liquidation process
-		sender.requireSolvent(intent.partyA, SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId].collateral, MarginType.ISOLATED);
+		sender.requireSolvent(
+			intent.partyBBucketId,
+			intent.partyA,
+			intent.partyABucketId,
+			SymbolStorage.layout().symbols[intent.tradeAgreements.symbolId].collateral,
+			intent.relationshipId != 0 ? MarginType.CROSS : MarginType.ISOLATED
+		);
 
 		/* ---------------------------------------- UPDATE ---------------------------------------- */
 
@@ -167,8 +185,6 @@ library LibPartyBOpen {
 		uint256 quantity,
 		uint256 price
 	) internal returns (uint256 tradeId, uint256 newIntentId) {
-		FeeManagementStorage.Layout storage feeLayout = FeeManagementStorage.layout();
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		OpenIntentStorage.Layout storage intentLayout = OpenIntentStorage.layout();
 		StateControlStorage.Layout storage stateControlLayout = StateControlStorage.layout();
 
@@ -181,10 +197,12 @@ library LibPartyBOpen {
 		// Verify Party B is the one filling the intent
 		if (sender != intent.partyB) revert ValidationErrors.UnauthorizedSender(sender, intent.partyB);
 
+		LibBucket.validateIntentRelationship(intentId, intent.partyA, intent.partyABucketId, sender, intent.partyBBucketId);
+
 		// System state checks
-		if (stateControlLayout.suspendedAddresses[intent.partyA]) revert SystemErrors.UserSuspended(intent.partyA);
-		if (stateControlLayout.suspendedAddresses[intent.partyB]) revert SystemErrors.UserSuspended(intent.partyB);
-		if (stateControlLayout.partyBEmergencyMode[intent.partyB]) revert SystemErrors.PartyBInEmergencyMode(intent.partyB);
+		LibBucket.requireNotSuspended(intent.partyA, intent.partyABucketId);
+		LibBucket.requireNotSuspended(intent.partyB, intent.partyBBucketId);
+		LibBucket.requirePartyBNotEmergency(intent.partyB, intent.partyBBucketId);
 		if (stateControlLayout.partyBsEmergencyMode) revert SystemErrors.PartyBsInEmergencyMode();
 
 		// Symbol validation
@@ -200,8 +218,20 @@ library LibPartyBOpen {
 
 		// Verify that both parties are not in liquidation process
 		if (intent.tradeAgreements.marginType == MarginType.CROSS)
-			intent.partyA.requireSolvent(intent.partyB, symbol.collateral, intent.tradeAgreements.marginType);
-		intent.partyB.requireSolvent(intent.partyA, symbol.collateral, intent.tradeAgreements.marginType);
+			intent.partyA.requireSolvent(
+				intent.partyABucketId,
+				intent.partyB,
+				intent.partyBBucketId,
+				symbol.collateral,
+				intent.tradeAgreements.marginType
+			);
+		intent.partyB.requireSolvent(
+			intent.partyBBucketId,
+			intent.partyA,
+			intent.partyABucketId,
+			symbol.collateral,
+			intent.tradeAgreements.marginType
+		);
 
 		// Time validations
 		if (block.timestamp >= intent.tradeAgreements.expirationTimestamp)
@@ -223,33 +253,24 @@ library LibPartyBOpen {
 		/* ---------------------------------------- UPDATE ---------------------------------------- */
 
 		tradeId = ++TradeStorage.layout().lastTradeId;
-		Trade memory trade = Trade({
-			id: tradeId,
-			openIntentId: intentId,
-			tradeAgreements: TradeAgreements({
-				symbolId: intent.tradeAgreements.symbolId,
-				quantity: quantity,
-				strikePrice: intent.tradeAgreements.strikePrice,
-				expirationTimestamp: intent.tradeAgreements.expirationTimestamp,
-				mm: (intent.tradeAgreements.mm * quantity) / intent.tradeAgreements.quantity, // Proportional maintenance margin
-				tradeSide: intent.tradeAgreements.tradeSide,
-				marginType: intent.tradeAgreements.marginType,
-				exerciseFee: intent.tradeAgreements.exerciseFee
-			}),
-			partyA: intent.partyA,
-			partyB: intent.partyB,
-			activeCloseIntentIds: new uint256[](0),
-			settledPrice: 0,
-			openedPrice: price,
-			closedAmountBeforeExpiration: 0,
-			closePendingAmount: 0,
-			avgClosedPriceBeforeExpiration: 0,
-			status: TradeStatus.OPENED,
-			createTimestamp: block.timestamp,
-			statusModifyTimestamp: block.timestamp,
-			feeStructure: intent.feeStructure,
-			affiliate: intent.affiliate
-		});
+		Trade memory trade;
+		trade.id = tradeId;
+		trade.openIntentId = intentId;
+		trade.tradeAgreements = intent.tradeAgreements;
+		trade.tradeAgreements.quantity = quantity;
+		trade.tradeAgreements.mm = (intent.tradeAgreements.mm * quantity) / intent.tradeAgreements.quantity;
+		trade.partyA = intent.partyA;
+		trade.partyB = intent.partyB;
+		trade.partyABucketId = intent.partyABucketId;
+		trade.partyBBucketId = intent.partyBBucketId;
+		trade.relationshipId = LibBucket.bindTradeRelationship(tradeId, intentId);
+		trade.activeCloseIntentIds = new uint256[](0);
+		trade.openedPrice = price;
+		trade.status = TradeStatus.OPENED;
+		trade.createTimestamp = block.timestamp;
+		trade.statusModifyTimestamp = block.timestamp;
+		trade.feeStructure = intent.feeStructure;
+		trade.affiliate = intent.affiliate;
 
 		if (deferredSell) {
 			intent.consumeDeferredSellEscrow(tradeId, intent.partyB, trade.tradeAgreements.mm, quantity, price);
@@ -262,94 +283,11 @@ library LibPartyBOpen {
 		/* ---------------------------------------- PARTIAL FILL ---------------------------------------- */
 
 		// If this is a partial fill, create a new intent for the remaining quantity
-		if (intent.tradeAgreements.quantity > quantity) {
-			newIntentId = ++intentLayout.lastOpenIntentId;
-			OpenIntentStatus newStatus;
-
-			// Determine new intent status based on current intent status
-			if (intent.status == OpenIntentStatus.CANCEL_PENDING) {
-				newStatus = OpenIntentStatus.CANCELED;
-			} else {
-				newStatus = OpenIntentStatus.PENDING;
-			}
-
-			// Create new intent for remaining quantity
-			OpenIntent memory newIntent = OpenIntent({
-				id: newIntentId,
-				tradeId: 0,
-				tradeAgreements: TradeAgreements({
-					symbolId: intent.tradeAgreements.symbolId,
-					quantity: intent.tradeAgreements.quantity - quantity, // Remaining quantity
-					strikePrice: intent.tradeAgreements.strikePrice,
-					expirationTimestamp: intent.tradeAgreements.expirationTimestamp,
-					mm: intent.tradeAgreements.mm - trade.tradeAgreements.mm, // Remaining maintenance margin
-					tradeSide: intent.tradeAgreements.tradeSide,
-					marginType: intent.tradeAgreements.marginType,
-					exerciseFee: intent.tradeAgreements.exerciseFee
-				}),
-				price: intent.price,
-				partyA: intent.partyA,
-				partyB: address(0), // Reset Party B for new intent
-				partyBsWhiteList: intent.partyBsWhiteList,
-				status: newStatus,
-				parentId: intent.id,
-				createTimestamp: block.timestamp,
-				statusModifyTimestamp: block.timestamp,
-				deadline: intent.deadline,
-				feeStructure: intent.feeStructure,
-				affiliate: intent.affiliate,
-				userData: LibUserData.incrementCounter(intent.userData)
-			});
-
-			newIntent.register();
-			if (deferredSell) {
-				if (newStatus == OpenIntentStatus.CANCELED) {
-					LibOpenIntentOps.releaseDeferredSellEscrow(intent.id);
-				} else {
-					LibOpenIntentOps.moveDeferredSellEscrow(intent.id, newIntent);
-				}
-			} else {
-				newIntent.lockFees();
-				newIntent.lockPremiumIfBuy();
-				newIntent.lockMMIfSell();
-			}
-
-			// Update original intent quantity to filled amount
-			intent.tradeAgreements.quantity = quantity;
-		}
+		if (intent.tradeAgreements.quantity > quantity) newIntentId = _createResidual(intent, quantity, trade.tradeAgreements.mm, deferredSell);
 
 		/* ---------------------------------------- BALANCES ---------------------------------------- */
 
-		uint256[3] memory fees = intent.getFeesFromUser(price);
-
-		{
-			address feeToken = intent.feeStructure.feeToken;
-
-			// Determine affiliate fee collector (use default if none specified)
-			address affiliateFeeCollector =
-				feeLayout.affiliateFeeCollector[intent.affiliate] == address(0)
-					? feeLayout.defaultFeeCollector
-					: feeLayout.affiliateFeeCollector[intent.affiliate];
-
-			// Pay platform fees
-			ScheduledReleaseBalance storage defaultFeeCollectorBalance = feeLayout.defaultFeeCollector.balanceOf(feeToken);
-			defaultFeeCollectorBalance.setup(feeLayout.defaultFeeCollector, feeToken);
-			defaultFeeCollectorBalance.instantIsolatedAdd(fees[0], IncreaseBalanceReason.PLATFORM_FEE);
-
-			// Pay affiliate fees
-			ScheduledReleaseBalance storage affiliateFeeCollectorBalance = affiliateFeeCollector.balanceOf(feeToken);
-			affiliateFeeCollectorBalance.setup(affiliateFeeCollector, feeToken);
-			affiliateFeeCollectorBalance.instantIsolatedAdd(fees[1], IncreaseBalanceReason.AFFILIATE_FEE);
-
-			// Pay solver fees
-			ScheduledReleaseBalance storage solverFeeCollectorBalance = intent.partyB.balanceOf(feeToken);
-			solverFeeCollectorBalance.setup(intent.partyB, feeToken);
-			if (intent.tradeAgreements.marginType == MarginType.ISOLATED) {
-				solverFeeCollectorBalance.instantIsolatedAdd(fees[2], IncreaseBalanceReason.SOLVER_FEE);
-			} else {
-				solverFeeCollectorBalance.scheduledAdd(intent.partyA, fees[2], MarginType.CROSS, IncreaseBalanceReason.SOLVER_FEE);
-			}
-		}
+		LibOpenIntentFunding.collectFees(intentId, price);
 
 		// Update intent status to filled
 		intent.tradeId = tradeId;
@@ -361,27 +299,87 @@ library LibPartyBOpen {
 		trade.register();
 
 		// Get balance references for both parties
-		ScheduledReleaseBalance storage partyABalance = trade.partyA.balanceOf(symbol.collateral);
-		ScheduledReleaseBalance storage partyBBalance = trade.partyB.balanceOf(symbol.collateral);
+		ScheduledReleaseBalance storage partyABalance = trade.partyA.balanceOf(trade.partyABucketId, symbol.collateral);
+		ScheduledReleaseBalance storage partyBBalance = trade.partyB.balanceOf(trade.partyBBucketId, symbol.collateral);
 
-		partyBBalance.setup(trade.partyB, symbol.collateral);
+		partyBBalance.setup(trade.partyB, trade.partyBBucketId, symbol.collateral);
 
 		// Handle premium and maintenance margin based on trade side
 		if (intent.tradeAgreements.tradeSide == TradeSide.BUY) {
 			// Party A is buying: Party A pays premium to Party B
-			partyABalance.subForCounterParty(trade.partyB, trade.calculatePremium(), marginType, DecreaseBalanceReason.PREMIUM);
+			partyABalance.subForCounterParty(trade.partyB, trade.partyBBucketId, trade.calculatePremium(), marginType, DecreaseBalanceReason.PREMIUM);
 		} else {
 			// Party A is selling: Party B pays premium to Party A, Party A should have maintenance margin
-			partyABalance.increaseMM(trade.partyB, trade.tradeAgreements.mm);
-			partyBBalance.subForCounterParty(trade.partyA, trade.calculatePremium(), marginType, DecreaseBalanceReason.PREMIUM);
-			partyABalance.scheduledAdd(trade.partyB, trade.calculatePremium(), marginType, IncreaseBalanceReason.PREMIUM);
+			partyABalance.increaseMM(trade.partyB, trade.partyBBucketId, trade.tradeAgreements.mm);
+			partyBBalance.subForCounterParty(trade.partyA, trade.partyABucketId, trade.calculatePremium(), marginType, DecreaseBalanceReason.PREMIUM);
+			partyABalance.scheduledAdd(trade.partyB, trade.partyBBucketId, trade.calculatePremium(), marginType, IncreaseBalanceReason.PREMIUM);
 		}
+		LibBucket.requireNativeBacking(
+			intentId,
+			trade.partyA,
+			trade.partyABucketId,
+			trade.partyB,
+			trade.partyBBucketId,
+			symbol.collateral,
+			trade.feeStructure.feeToken
+		);
+		LibBucket.requireNativeBacking(
+			intentId,
+			trade.partyB,
+			trade.partyBBucketId,
+			trade.partyA,
+			trade.partyABucketId,
+			symbol.collateral,
+			trade.feeStructure.feeToken
+		);
 
 		/* ---------------------------------------- NONCE ---------------------------------------- */
 
 		if (marginType == MarginType.CROSS) {
-			accountLayout.nonces[trade.partyA][trade.partyB] += 1;
-			accountLayout.nonces[trade.partyB][trade.partyA] += 1;
+			LibBucket.incrementNonce(trade.partyA, trade.partyABucketId, trade.partyB, trade.partyBBucketId);
+			LibBucket.incrementNonce(trade.partyB, trade.partyBBucketId, trade.partyA, trade.partyABucketId);
 		}
+	}
+
+	function _createResidual(OpenIntent storage intent, uint256 quantity, uint256 filledMM, bool deferredSell) private returns (uint256 newIntentId) {
+		newIntentId = ++OpenIntentStorage.layout().lastOpenIntentId;
+		OpenIntentStatus newStatus;
+
+		// Determine new intent status based on current intent status
+		if (intent.status == OpenIntentStatus.CANCEL_PENDING) {
+			newStatus = OpenIntentStatus.CANCELED;
+		} else {
+			newStatus = OpenIntentStatus.PENDING;
+		}
+
+		// Create new intent for remaining quantity
+		OpenIntent memory newIntent = intent;
+		newIntent.id = newIntentId;
+		newIntent.tradeId = 0;
+		newIntent.tradeAgreements.quantity = intent.tradeAgreements.quantity - quantity;
+		newIntent.tradeAgreements.mm = intent.tradeAgreements.mm - filledMM;
+		newIntent.relationshipId = LibBucket.inheritIntentRelationship(intent.id, newIntentId);
+		newIntent.partyB = address(0);
+		newIntent.status = newStatus;
+		newIntent.parentId = intent.id;
+		newIntent.createTimestamp = block.timestamp;
+		newIntent.statusModifyTimestamp = block.timestamp;
+		newIntent.userData = LibUserData.incrementCounter(intent.userData);
+
+		newIntent.register();
+		if (deferredSell) {
+			if (newStatus == OpenIntentStatus.CANCELED) {
+				LibOpenIntentOps.releaseDeferredSellEscrow(intent.id);
+			} else {
+				LibOpenIntentOps.moveDeferredSellEscrow(intent.id, newIntent);
+			}
+		} else if (newStatus != OpenIntentStatus.CANCELED || !LibBucket.isNativeIntent(newIntentId)) {
+			newIntent.lockFees();
+			newIntent.lockPremiumIfBuy();
+			newIntent.lockMMIfSell();
+		}
+
+		// Update original intent quantity to filled amount
+		intent.tradeAgreements.quantity = quantity;
 	}
 }

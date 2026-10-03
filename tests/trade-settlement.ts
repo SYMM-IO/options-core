@@ -265,7 +265,10 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			await partyB2.lockOpenIntent(openIntentId)
 			const intentPremium = await context.viewFacet.getOpenIntentPremium(openIntentId)
-			const partyBBalanceBeforeSettlementInit = await context.viewFacet.getIsolatedBalance(partyB2.address, await context.collateral.getAddress())
+			const partyBBalanceBeforeSettlementInit = await context.viewFacet["getIsolatedBalance(address,address)"](
+				partyB2.address,
+				await context.collateral.getAddress(),
+			)
 			await partyB2.fillOpenIntent(openIntentId, e(100), e(10))
 
 			const closePrice = e(10)
@@ -276,7 +279,10 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			const closeIntentId = await context.viewFacet.getLastCloseIntentId()
 			const closeIntent = await context.viewFacet.getCloseIntent(closeIntentId)
 
-			const partyAFeeBalanceBeforeSettlement = await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateralNL.getAddress())
+			const partyAFeeBalanceBeforeSettlement = await context.viewFacet["getIsolatedBalance(address,address)"](
+				partyA2.address,
+				await context.collateralNL.getAddress(),
+			)
 
 			await partyB2.fillCloseIntent(closeIntentId, closeIntent.quantity, closeIntent.price)
 			const closePNL = (BigInt(closeIntent.price) * BigInt(closeIntent.quantity)) / BigInt(1e18)
@@ -321,35 +327,48 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			const allClosedFees = platformClosedFee + affiliateClosedFee + solverClosedFee
 
 			const optionSymbol = await context.viewFacet.getSymbol(trade.tradeAgreements.symbolId)
-			const partyABalanceBeforeSettlement = await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress())
-			const partyABalanceBeforeSettlementLocked = await context.viewFacet.getIsolatedLockedBalance(
+			const partyABalanceBeforeSettlement = await context.viewFacet["getIsolatedBalance(address,address)"](
 				partyA2.address,
 				await context.collateral.getAddress(),
 			)
-			const partyBBalanceBeforeSettlement = await context.viewFacet.getIsolatedBalance(partyB2.address, await context.collateral.getAddress())
-			const partyBBalanceBeforeSettlementLocked = await context.viewFacet.getIsolatedLockedBalance(
+			const partyABalanceBeforeSettlementLocked = await context.viewFacet["getIsolatedLockedBalance(address,address)"](
+				partyA2.address,
+				await context.collateral.getAddress(),
+			)
+			const partyBBalanceBeforeSettlement = await context.viewFacet["getIsolatedBalance(address,address)"](
+				partyB2.address,
+				await context.collateral.getAddress(),
+			)
+			const partyBBalanceBeforeSettlementLocked = await context.viewFacet["getIsolatedLockedBalance(address,address)"](
 				partyB2.address,
 				await context.collateral.getAddress(),
 			)
 
 			//Scheduling info
 			const releaseInterval = await context.viewFacet.getReleaseInterval(partyA2.address)
-			let scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA2.address, optionSymbol.collateral, partyB2.address)
+			let scheduleEntry = await context.viewFacet["getScheduledReleaseEntry(address,address,address)"](
+				partyA2.address,
+				optionSymbol.collateral,
+				partyB2.address,
+			)
 
 			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).not.to.revert(ethers)
 
 			// instant premium add to partyB balance
-			const partyBBalanceAfterSettlement = await context.viewFacet.getIsolatedBalance(partyB2.address, context.collateral)
-			console.log("Party A Balance 7", await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()))
+			const partyBBalanceAfterSettlement = await context.viewFacet["getIsolatedBalance(address,address)"](partyB2.address, context.collateral)
+			console.log(
+				"Party A Balance 7",
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, await context.collateral.getAddress()),
+			)
 
 			newBlock = (await getLatestBlockTime()) + Number(releaseInterval) * 2
 			await ethers.provider.send("evm_setNextBlockTimestamp", [newBlock])
 			await ethers.provider.send("evm_mine")
 
-			await context.accountFacet.syncBalances(context.collateral, partyA2.address, [partyB2.address])
+			await context.accountFacet["syncBalances(address,address,address[])"](context.collateral, partyA2.address, [partyB2.address])
 
-			const partyABalanceAfterSettlementSchedule = await context.viewFacet.getIsolatedBalance(partyA2.address, context.collateral)
-			const partyAFeeBalanceAfterSettlement = await context.viewFacet.getIsolatedBalance(partyA2.address, context.collateralNL)
+			const partyABalanceAfterSettlementSchedule = await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, context.collateral)
+			const partyAFeeBalanceAfterSettlement = await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, context.collateralNL)
 
 			console.log("Fee Balance Before Settlement:", partyAFeeBalanceBeforeSettlement)
 			console.log("Fee Balance After Settlement:", partyAFeeBalanceAfterSettlement)
@@ -444,12 +463,15 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			console.log("Platform Fee:\n", platformSettledFee)
 			console.log("Affiliate Fee:\n", affiliateSettledFee)
 
-			const partyAFeeBalanceBeforeSettlement = await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateralNL.getAddress())
+			const partyAFeeBalanceBeforeSettlement = await context.viewFacet["getIsolatedBalance(address,address)"](
+				partyA2.address,
+				await context.collateralNL.getAddress(),
+			)
 
 			await moveTime(180)
 			await expect(context.tradeFacet.executeTrades([tradeID], priceSig)).not.to.revert(ethers)
 
-			const partyAFeeBalanceAfterSettlement = await context.viewFacet.getIsolatedBalance(partyA2.address, context.collateralNL)
+			const partyAFeeBalanceAfterSettlement = await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, context.collateralNL)
 
 			console.log("Fee Balance Before Settlement:", partyAFeeBalanceBeforeSettlement)
 			console.log("Fee Balance After Settlement:", partyAFeeBalanceAfterSettlement)
@@ -475,7 +497,10 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: e(0.1), closeFee: e(0.2) }])
 			await partyA2.setBalances(context.collateralNL, e(1000), e(500))
 
-			console.log("Party A Initial Balance:\n", await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()))
+			console.log(
+				"Party A Initial Balance:\n",
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, await context.collateral.getAddress()),
+			)
 
 			await partyA2.sendOpenIntent(request)
 			const openIntentId = await context.viewFacet.getLastOpenIntentId()
@@ -483,7 +508,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			console.log(
 				"Party A Balance Before Fill: \n",
-				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, await context.collateral.getAddress()),
 			)
 
 			//Fill Open
@@ -492,7 +517,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			console.log(
 				"Party A Balance After Fill Open: \n",
-				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, await context.collateral.getAddress()),
 			)
 
 			const timestamp = await getLatestBlockTime()
@@ -515,7 +540,11 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			const tradePremium = await context.viewFacet.getTradePremium(tradeID)
 			let trade: TradeStruct = await context.viewFacet.getTrade(tradeID)
 			const symbol = await context.viewFacet.getSymbol(trade.tradeAgreements.symbolId)
-			let scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA2.address, symbol.collateral, partyB2.address)
+			let scheduleEntry = await context.viewFacet["getScheduledReleaseEntry(address,address,address)"](
+				partyA2.address,
+				symbol.collateral,
+				partyB2.address,
+			)
 
 			const tradePremiumSettled = (tradePremium * openAmount) / BigInt(trade.tradeAgreements.quantity)
 			const pnl = await context.viewFacet.getTradePnl(tradeID, priceSig.settlementPrice, openAmount)
@@ -542,7 +571,10 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			console.log("Schedule Release Balance Positions, Scheduled:", scheduleEntry.scheduled)
 			console.log("Schedule Release Balance Positions, Interval:", scheduleEntry.releaseInterval)
 
-			const partyABalanceBeforeSettlement = await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress())
+			const partyABalanceBeforeSettlement = await context.viewFacet["getIsolatedBalance(address,address)"](
+				partyA2.address,
+				await context.collateral.getAddress(),
+			)
 
 			//Execute Trade
 			await moveTime(timeAfterExpire)
@@ -552,10 +584,14 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			console.log("Trade Status:", trade.status == TradeStatus.EXERCISED ? "EXERCISED" : trade.status)
 			console.log(
 				"Party A Balance After Settlement Before Sync:\n",
-				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, await context.collateral.getAddress()),
 			)
 
-			scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA2.address, symbol.collateral, partyB2.address)
+			scheduleEntry = await context.viewFacet["getScheduledReleaseEntry(address,address,address)"](
+				partyA2.address,
+				symbol.collateral,
+				partyB2.address,
+			)
 			console.log("After Settlement")
 			console.log("Schedule Release Balance Positions, Transitioning:", scheduleEntry.transitioning)
 			console.log("Schedule Release Balance Positions, Scheduled:", scheduleEntry.scheduled)
@@ -563,14 +599,14 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			const releaseInterval = await context.viewFacet.getReleaseInterval(partyA2.address)
 			await moveTime(Number(releaseInterval) * 2)
-			await context.accountFacet.syncBalances(context.collateral, partyA2.address, [partyB2.address])
+			await context.accountFacet["syncBalances(address,address,address[])"](context.collateral, partyA2.address, [partyB2.address])
 			console.log(
 				"Party A Balance After Settlement after Sync:\n",
-				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, await context.collateral.getAddress()),
 			)
 
 			expect(trade.status).to.be.equal(TradeStatus.EXERCISED)
-			const partyABalanceAfterSettlementSchedule = await context.viewFacet.getIsolatedBalance(partyA2.address, context.collateral)
+			const partyABalanceAfterSettlementSchedule = await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, context.collateral)
 			expect(partyABalanceAfterSettlementSchedule - partyABalanceBeforeSettlement).to.be.equal(pnl - exerciseFee)
 		})
 
@@ -592,7 +628,10 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: e(0.1), closeFee: e(0.2) }])
 			await partyA2.setBalances(context.collateralNL, e(1000), e(500))
 
-			console.log("Party A Initial Balance:\n", await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()))
+			console.log(
+				"Party A Initial Balance:\n",
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, await context.collateral.getAddress()),
+			)
 
 			await partyA2.sendOpenIntent(request)
 			const openIntentId = await context.viewFacet.getLastOpenIntentId()
@@ -600,7 +639,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			console.log(
 				"Party A Balance Before Fill: \n",
-				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, await context.collateral.getAddress()),
 			)
 
 			//Fill Open
@@ -609,7 +648,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			console.log(
 				"Party A Balance After Fill Open: \n",
-				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, await context.collateral.getAddress()),
 			)
 
 			const timestamp = await getLatestBlockTime()
@@ -652,7 +691,10 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			console.log("PNL - CAP:\n", pnl - capFee)
 			console.log("PNL - RATE:\n", pnl - rateFee)
 
-			const partyABalanceBeforeSettlement = await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress())
+			const partyABalanceBeforeSettlement = await context.viewFacet["getIsolatedBalance(address,address)"](
+				partyA2.address,
+				await context.collateral.getAddress(),
+			)
 
 			//Execute Trade
 			await moveTime(timeAfterExpire)
@@ -662,19 +704,19 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			console.log("Trade Status:", trade.status == TradeStatus.EXPIRED ? "Expired" : trade.status)
 			console.log(
 				"Party A Balance After Settlement Before Sync:\n",
-				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, await context.collateral.getAddress()),
 			)
 
 			const releaseInterval = await context.viewFacet.getReleaseInterval(partyA2.address)
 			await moveTime(Number(releaseInterval) * 2)
-			await context.accountFacet.syncBalances(context.collateral, partyA2.address, [partyB2.address])
+			await context.accountFacet["syncBalances(address,address,address[])"](context.collateral, partyA2.address, [partyB2.address])
 			console.log(
 				"Party A Balance After Settlement after Sync:\n",
-				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, await context.collateral.getAddress()),
 			)
 
 			expect(trade.status).to.be.equal(TradeStatus.EXPIRED)
-			const partyABalanceAfterSettlementSchedule = await context.viewFacet.getIsolatedBalance(partyA2.address, context.collateral)
+			const partyABalanceAfterSettlementSchedule = await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, context.collateral)
 			expect(partyABalanceAfterSettlementSchedule - partyABalanceBeforeSettlement).to.be.equal(0)
 		})
 
@@ -695,10 +737,13 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: e(0.1), closeFee: e(0.2) }])
 			await partyA2.setBalances(context.collateralNL, e(1000), e(500))
 
-			console.log("Party A Initial Balance:\n", await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()))
+			console.log(
+				"Party A Initial Balance:\n",
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, await context.collateral.getAddress()),
+			)
 			console.log(
 				"Party A Initial Fee Balance:\n",
-				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateralNL.getAddress()),
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, await context.collateralNL.getAddress()),
 			)
 
 			await partyA2.sendOpenIntent(request)
@@ -707,11 +752,11 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			console.log(
 				"Party A Balance Before Fill: \n",
-				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, await context.collateral.getAddress()),
 			)
 			console.log(
 				"Party A Fee Balance Before Fill: \n",
-				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateralNL.getAddress()),
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, await context.collateralNL.getAddress()),
 			)
 			//Fill Open
 			await partyB2.fillOpenIntent(openIntentId, e(100), e(10))
@@ -719,11 +764,11 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			console.log(
 				"Party A Balance After Fill Open: \n",
-				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, await context.collateral.getAddress()),
 			)
 			console.log(
 				"Party A Fee Balance After Fill Open: \n",
-				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateralNL.getAddress()),
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, await context.collateralNL.getAddress()),
 			)
 
 			//Send Close
@@ -737,11 +782,11 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			console.log(
 				"Party A Balance After Fill Close: \n",
-				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, await context.collateral.getAddress()),
 			)
 			console.log(
 				"Party A Fee Balance After Fill Close: \n",
-				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateralNL.getAddress()),
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, await context.collateralNL.getAddress()),
 			)
 
 			const closePNL = (BigInt(closeIntent.price) * BigInt(closeIntent.quantity)) / BigInt(1e18)
@@ -792,9 +837,12 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			const releaseInterval = await context.viewFacet.getReleaseInterval(partyA2.address)
 			await moveTime(Number(releaseInterval) * 2)
-			await context.accountFacet.syncBalances(context.collateral, partyA2.address, [partyB2.address])
+			await context.accountFacet["syncBalances(address,address,address[])"](context.collateral, partyA2.address, [partyB2.address])
 
-			const partyABalanceBeforeSettlement = await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress())
+			const partyABalanceBeforeSettlement = await context.viewFacet["getIsolatedBalance(address,address)"](
+				partyA2.address,
+				await context.collateral.getAddress(),
+			)
 
 			//Execute Trade
 			await moveTime(Number(timeAfterExpire) + 12)
@@ -802,17 +850,17 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			console.log(
 				"Party A Balance After Settlement Before Sync:\n",
-				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, await context.collateral.getAddress()),
 			)
 
 			await moveTime(Number(releaseInterval) * 3)
-			await context.accountFacet.syncBalances(context.collateral, partyA2.address, [partyB2.address])
+			await context.accountFacet["syncBalances(address,address,address[])"](context.collateral, partyA2.address, [partyB2.address])
 			console.log(
 				"Party A Balance After Settlement after Sync:\n",
-				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, await context.collateral.getAddress()),
 			)
 
-			const partyABalanceAfterSettlementSchedule = await context.viewFacet.getIsolatedBalance(partyA2.address, context.collateral)
+			const partyABalanceAfterSettlementSchedule = await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, context.collateral)
 			expect(partyABalanceAfterSettlementSchedule - partyABalanceBeforeSettlement).to.be.equal(pnl - exerciseFee)
 		})
 
@@ -837,7 +885,10 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			const openIntentId = await context.viewFacet.getLastOpenIntentId()
 			await partyB2.lockOpenIntent(openIntentId)
 			const intentPremium = await context.viewFacet.getOpenIntentPremium(openIntentId)
-			const partyBBalanceBeforeSettlementInit = await context.viewFacet.getIsolatedBalance(partyB2.address, await context.collateral.getAddress())
+			const partyBBalanceBeforeSettlementInit = await context.viewFacet["getIsolatedBalance(address,address)"](
+				partyB2.address,
+				await context.collateral.getAddress(),
+			)
 
 			//Fill Open
 			await partyB2.fillOpenIntent(openIntentId, e(100), e(10))
@@ -898,7 +949,10 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			console.log("openSolverFee:\n", openSolverFee)
 			console.log("closedSolverFee:\n", closedSolverFee)
 
-			const partyBBalanceBeforeSettlement = await context.viewFacet.getIsolatedBalance(partyB2.address, await context.collateral.getAddress())
+			const partyBBalanceBeforeSettlement = await context.viewFacet["getIsolatedBalance(address,address)"](
+				partyB2.address,
+				await context.collateral.getAddress(),
+			)
 
 			//Execute Trade
 			await moveTime(Number(timeAfterExpire) + 12)
@@ -906,10 +960,10 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			console.log(
 				"Party B Balance After Settlement:\n",
-				await context.viewFacet.getIsolatedBalance(partyB2.address, await context.collateral.getAddress()),
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyB2.address, await context.collateral.getAddress()),
 			)
 
-			const partyBBalanceAfterSettlement = await context.viewFacet.getIsolatedBalance(partyB2.address, context.collateral)
+			const partyBBalanceAfterSettlement = await context.viewFacet["getIsolatedBalance(address,address)"](partyB2.address, context.collateral)
 			expect(partyBBalanceAfterSettlement - partyBBalanceBeforeSettlement).to.be.equal(tradePremiumSettled + exerciseFee - pnl)
 		})
 
@@ -934,7 +988,10 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			const openIntentId = await context.viewFacet.getLastOpenIntentId()
 			await partyB2.lockOpenIntent(openIntentId)
 			const intentPremium = await context.viewFacet.getOpenIntentPremium(openIntentId)
-			const partyBBalanceBeforeSettlementInit = await context.viewFacet.getIsolatedBalance(partyB2.address, await context.collateral.getAddress())
+			const partyBBalanceBeforeSettlementInit = await context.viewFacet["getIsolatedBalance(address,address)"](
+				partyB2.address,
+				await context.collateral.getAddress(),
+			)
 
 			//Fill Open
 			await partyB2.fillOpenIntent(openIntentId, e(100), e(10))
@@ -995,7 +1052,10 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			console.log("openSolverFee:\n", openSolverFee)
 			console.log("closedSolverFee:\n", closedSolverFee)
 
-			const partyBBalanceBeforeSettlement = await context.viewFacet.getIsolatedBalance(partyB2.address, await context.collateral.getAddress())
+			const partyBBalanceBeforeSettlement = await context.viewFacet["getIsolatedBalance(address,address)"](
+				partyB2.address,
+				await context.collateral.getAddress(),
+			)
 
 			//Execute Trade
 			await moveTime(Number(timeAfterExpire) + 12)
@@ -1003,10 +1063,10 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			console.log(
 				"Party B Balance After Settlement:\n",
-				await context.viewFacet.getIsolatedBalance(partyB2.address, await context.collateral.getAddress()),
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyB2.address, await context.collateral.getAddress()),
 			)
 
-			const partyBBalanceAfterSettlement = await context.viewFacet.getIsolatedBalance(partyB2.address, context.collateral)
+			const partyBBalanceAfterSettlement = await context.viewFacet["getIsolatedBalance(address,address)"](partyB2.address, context.collateral)
 			expect(partyBBalanceAfterSettlement - partyBBalanceBeforeSettlement).to.be.equal(tradePremiumSettled)
 		})
 
@@ -1028,7 +1088,10 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			await context.controlFacet.setAffiliateFees(context.signers.affiliate1, [1], [{ openFee: e(0.1), closeFee: e(0.2) }])
 			await partyA2.setBalances(context.collateralNL, e(1000), e(500))
 
-			console.log("Party A Initial Balance:\n", await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()))
+			console.log(
+				"Party A Initial Balance:\n",
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, await context.collateral.getAddress()),
+			)
 
 			await partyA2.sendOpenIntent(request)
 			const openIntentId = await context.viewFacet.getLastOpenIntentId()
@@ -1036,7 +1099,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			console.log(
 				"Party A Balance Before Fill: \n",
-				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, await context.collateral.getAddress()),
 			)
 
 			//Fill Open
@@ -1045,7 +1108,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			console.log(
 				"Party A Balance After Fill Open: \n",
-				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, await context.collateral.getAddress()),
 			)
 
 			const timestamp = await getLatestBlockTime()
@@ -1088,7 +1151,10 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			console.log("PNL - CAP:\n", pnl - capFee)
 			console.log("PNL - RATE:\n", pnl - rateFee)
 
-			const partyABalanceBeforeSettlement = await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress())
+			const partyABalanceBeforeSettlement = await context.viewFacet["getIsolatedBalance(address,address)"](
+				partyA2.address,
+				await context.collateral.getAddress(),
+			)
 
 			//Execute Trade
 			await moveTime(timeAfterExpire)
@@ -1098,19 +1164,19 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			console.log("Trade Status:", trade.status == TradeStatus.EXPIRED ? "Expired" : trade.status)
 			console.log(
 				"Party A Balance After Settlement Before Sync:\n",
-				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, await context.collateral.getAddress()),
 			)
 
 			const releaseInterval = await context.viewFacet.getReleaseInterval(partyA2.address)
 			await moveTime(Number(releaseInterval) * 2)
-			await context.accountFacet.syncBalances(context.collateral, partyA2.address, [partyB2.address])
+			await context.accountFacet["syncBalances(address,address,address[])"](context.collateral, partyA2.address, [partyB2.address])
 			console.log(
 				"Party A Balance After Settlement after Sync:\n",
-				await context.viewFacet.getIsolatedBalance(partyA2.address, await context.collateral.getAddress()),
+				await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, await context.collateral.getAddress()),
 			)
 
 			expect(trade.status).to.be.equal(TradeStatus.EXPIRED)
-			const partyABalanceAfterSettlementSchedule = await context.viewFacet.getIsolatedBalance(partyA2.address, context.collateral)
+			const partyABalanceAfterSettlementSchedule = await context.viewFacet["getIsolatedBalance(address,address)"](partyA2.address, context.collateral)
 			expect(partyABalanceAfterSettlementSchedule - partyABalanceBeforeSettlement).to.be.equal(0)
 		})
 
@@ -1136,7 +1202,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			console.log(
 				"Party A Initial Balance:\n",
-				await context.viewFacet.getCrossBalance(partyA2.address, await context.collateral.getAddress(), partyB2.address),
+				await context.viewFacet["getCrossBalance(address,address,address)"](partyA2.address, await context.collateral.getAddress(), partyB2.address),
 			)
 
 			await partyA2.sendOpenIntent(request)
@@ -1145,7 +1211,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			console.log(
 				"Party A Balance Before Fill: \n",
-				await context.viewFacet.getCrossBalance(partyA2.address, await context.collateral.getAddress(), partyB2.address),
+				await context.viewFacet["getCrossBalance(address,address,address)"](partyA2.address, await context.collateral.getAddress(), partyB2.address),
 			)
 
 			//Fill Open
@@ -1154,7 +1220,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			console.log(
 				"Party A Balance After Fill Open: \n",
-				await context.viewFacet.getCrossBalance(partyA2.address, await context.collateral.getAddress(), partyB2.address),
+				await context.viewFacet["getCrossBalance(address,address,address)"](partyA2.address, await context.collateral.getAddress(), partyB2.address),
 			)
 
 			const timestamp = await getLatestBlockTime()
@@ -1177,7 +1243,11 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			const tradePremium = await context.viewFacet.getTradePremium(tradeID)
 			let trade: TradeStruct = await context.viewFacet.getTrade(tradeID)
 			const symbol = await context.viewFacet.getSymbol(trade.tradeAgreements.symbolId)
-			let scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA2.address, symbol.collateral, partyB2.address)
+			let scheduleEntry = await context.viewFacet["getScheduledReleaseEntry(address,address,address)"](
+				partyA2.address,
+				symbol.collateral,
+				partyB2.address,
+			)
 
 			const tradePremiumSettled = (tradePremium * openAmount) / BigInt(trade.tradeAgreements.quantity)
 			const pnl = await context.viewFacet.getTradePnl(tradeID, priceSig.settlementPrice, openAmount)
@@ -1204,7 +1274,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			console.log("Schedule Release Balance Positions, Scheduled:", scheduleEntry.scheduled)
 			console.log("Schedule Release Balance Positions, Interval:", scheduleEntry.releaseInterval)
 
-			const partyABalanceBeforeSettlement = await context.viewFacet.getCrossBalance(
+			const partyABalanceBeforeSettlement = await context.viewFacet["getCrossBalance(address,address,address)"](
 				partyA2.address,
 				await context.collateral.getAddress(),
 				partyB2.address,
@@ -1218,10 +1288,14 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			console.log("Trade Status:", trade.status == TradeStatus.EXERCISED ? "EXERCISED" : trade.status)
 			console.log(
 				"Party A Balance After Settlement Before Sync:\n",
-				await context.viewFacet.getCrossBalance(partyA2.address, await context.collateral.getAddress(), partyB2.address),
+				await context.viewFacet["getCrossBalance(address,address,address)"](partyA2.address, await context.collateral.getAddress(), partyB2.address),
 			)
 
-			scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA2.address, symbol.collateral, partyB2.address)
+			scheduleEntry = await context.viewFacet["getScheduledReleaseEntry(address,address,address)"](
+				partyA2.address,
+				symbol.collateral,
+				partyB2.address,
+			)
 			console.log("After Settlement")
 			console.log("Schedule Release Balance Positions, Transitioning:", scheduleEntry.transitioning)
 			console.log("Schedule Release Balance Positions, Scheduled:", scheduleEntry.scheduled)
@@ -1229,14 +1303,18 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			const releaseInterval = await context.viewFacet.getReleaseInterval(partyA2.address)
 			await moveTime(Number(releaseInterval) * 2)
-			await context.accountFacet.syncBalances(context.collateral, partyA2.address, [partyB2.address])
+			await context.accountFacet["syncBalances(address,address,address[])"](context.collateral, partyA2.address, [partyB2.address])
 			console.log(
 				"Party A Balance After Settlement after Sync:\n",
-				await context.viewFacet.getCrossBalance(partyA2.address, await context.collateral.getAddress(), partyB2.address),
+				await context.viewFacet["getCrossBalance(address,address,address)"](partyA2.address, await context.collateral.getAddress(), partyB2.address),
 			)
 
 			expect(trade.status).to.be.equal(TradeStatus.EXERCISED)
-			const partyABalanceAfterSettlementSchedule = await context.viewFacet.getCrossBalance(partyA2.address, context.collateral, partyB2.address)
+			const partyABalanceAfterSettlementSchedule = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyA2.address,
+				context.collateral,
+				partyB2.address,
+			)
 			expect(partyABalanceAfterSettlementSchedule.balance - partyABalanceBeforeSettlement.balance).to.be.equal(pnl - exerciseFee)
 		})
 
@@ -1288,7 +1366,11 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			const tradePremium = await context.viewFacet.getTradePremium(tradeID)
 			let trade: TradeStruct = await context.viewFacet.getTrade(tradeID)
 			const symbol = await context.viewFacet.getSymbol(trade.tradeAgreements.symbolId)
-			let scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA2.address, symbol.collateral, partyB2.address)
+			let scheduleEntry = await context.viewFacet["getScheduledReleaseEntry(address,address,address)"](
+				partyA2.address,
+				symbol.collateral,
+				partyB2.address,
+			)
 
 			const tradePremiumSettled = (tradePremium * openAmount) / BigInt(trade.tradeAgreements.quantity)
 			const pnl = await context.viewFacet.getTradePnl(tradeID, priceSig.settlementPrice, openAmount)
@@ -1305,7 +1387,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			console.log("pnl:\n", pnl)
 			console.log("exerciseFee:\n", exerciseFee)
 
-			const partyBBalanceBeforeSettlement = await context.viewFacet.getCrossBalance(
+			const partyBBalanceBeforeSettlement = await context.viewFacet["getCrossBalance(address,address,address)"](
 				partyB2.address,
 				await context.collateral.getAddress(),
 				partyA2.address,
@@ -1318,7 +1400,11 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			trade = await context.viewFacet.getTrade(tradeID)
 			expect(trade.status).to.be.equal(TradeStatus.EXERCISED)
 
-			const partyBBalanceAfterSettlementSchedule = await context.viewFacet.getCrossBalance(partyB2.address, context.collateral, partyA2.address)
+			const partyBBalanceAfterSettlementSchedule = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyB2.address,
+				context.collateral,
+				partyA2.address,
+			)
 			const balanceDiff = partyBBalanceAfterSettlementSchedule.balance - partyBBalanceBeforeSettlement.balance
 			console.log("Balance Diff when PNL in Positive:", balanceDiff)
 
@@ -1347,7 +1433,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			console.log(
 				"Party A Initial Balance:\n",
-				await context.viewFacet.getCrossBalance(partyA2.address, await context.collateral.getAddress(), partyB2.address),
+				await context.viewFacet["getCrossBalance(address,address,address)"](partyA2.address, await context.collateral.getAddress(), partyB2.address),
 			)
 
 			await partyA2.sendOpenIntent(request)
@@ -1356,7 +1442,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			console.log(
 				"Party A Balance Before Fill: \n",
-				await context.viewFacet.getCrossBalance(partyA2.address, await context.collateral.getAddress(), partyB2.address),
+				await context.viewFacet["getCrossBalance(address,address,address)"](partyA2.address, await context.collateral.getAddress(), partyB2.address),
 			)
 
 			//Fill Open
@@ -1365,7 +1451,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			console.log(
 				"Party A Balance After Fill Open: \n",
-				await context.viewFacet.getCrossBalance(partyA2.address, await context.collateral.getAddress(), partyB2.address),
+				await context.viewFacet["getCrossBalance(address,address,address)"](partyA2.address, await context.collateral.getAddress(), partyB2.address),
 			)
 
 			const timestamp = await getLatestBlockTime()
@@ -1388,7 +1474,11 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			const tradePremium = await context.viewFacet.getTradePremium(tradeID)
 			let trade: TradeStruct = await context.viewFacet.getTrade(tradeID)
 			const symbol = await context.viewFacet.getSymbol(trade.tradeAgreements.symbolId)
-			let scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA2.address, symbol.collateral, partyB2.address)
+			let scheduleEntry = await context.viewFacet["getScheduledReleaseEntry(address,address,address)"](
+				partyA2.address,
+				symbol.collateral,
+				partyB2.address,
+			)
 
 			const tradePremiumSettled = (tradePremium * openAmount) / BigInt(trade.tradeAgreements.quantity)
 			const pnl = await context.viewFacet.getTradePnl(tradeID, priceSig.settlementPrice, openAmount)
@@ -1415,7 +1505,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			console.log("Schedule Release Balance Positions, Scheduled:", scheduleEntry.scheduled)
 			console.log("Schedule Release Balance Positions, Interval:", scheduleEntry.releaseInterval)
 
-			const partyABalanceBeforeSettlement = await context.viewFacet.getCrossBalance(
+			const partyABalanceBeforeSettlement = await context.viewFacet["getCrossBalance(address,address,address)"](
 				partyA2.address,
 				await context.collateral.getAddress(),
 				partyB2.address,
@@ -1429,10 +1519,14 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			console.log("Trade Status:", trade.status == TradeStatus.EXERCISED ? "EXERCISED" : trade.status)
 			console.log(
 				"Party A Balance After Settlement Before Sync:\n",
-				await context.viewFacet.getCrossBalance(partyA2.address, await context.collateral.getAddress(), partyB2.address),
+				await context.viewFacet["getCrossBalance(address,address,address)"](partyA2.address, await context.collateral.getAddress(), partyB2.address),
 			)
 
-			scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA2.address, symbol.collateral, partyB2.address)
+			scheduleEntry = await context.viewFacet["getScheduledReleaseEntry(address,address,address)"](
+				partyA2.address,
+				symbol.collateral,
+				partyB2.address,
+			)
 			console.log("After Settlement")
 			console.log("Schedule Release Balance Positions, Transitioning:", scheduleEntry.transitioning)
 			console.log("Schedule Release Balance Positions, Scheduled:", scheduleEntry.scheduled)
@@ -1440,15 +1534,19 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			const releaseInterval = await context.viewFacet.getReleaseInterval(partyA2.address)
 			await moveTime(Number(releaseInterval) * 2)
-			await context.accountFacet.syncBalances(context.collateral, partyA2.address, [partyB2.address])
+			await context.accountFacet["syncBalances(address,address,address[])"](context.collateral, partyA2.address, [partyB2.address])
 			console.log(
 				"Party A Balance After Settlement after Sync:\n",
-				await context.viewFacet.getCrossBalance(partyA2.address, await context.collateral.getAddress(), partyB2.address),
+				await context.viewFacet["getCrossBalance(address,address,address)"](partyA2.address, await context.collateral.getAddress(), partyB2.address),
 			)
 
 			expect(trade.status).to.be.equal(TradeStatus.EXERCISED)
 
-			const partyABalanceAfterSettlementSchedule = await context.viewFacet.getCrossBalance(partyA2.address, context.collateral, partyB2.address)
+			const partyABalanceAfterSettlementSchedule = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyA2.address,
+				context.collateral,
+				partyB2.address,
+			)
 			const balanceDiff = partyABalanceAfterSettlementSchedule.balance - partyABalanceBeforeSettlement.balance
 
 			console.log("Balance Party A in Sell Before Settlement:", partyABalanceBeforeSettlement)
@@ -1480,7 +1578,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			console.log(
 				"Party A Initial Balance:\n",
-				await context.viewFacet.getCrossBalance(partyA2.address, await context.collateral.getAddress(), partyB2.address),
+				await context.viewFacet["getCrossBalance(address,address,address)"](partyA2.address, await context.collateral.getAddress(), partyB2.address),
 			)
 
 			await partyA2.sendOpenIntent(request)
@@ -1489,7 +1587,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			console.log(
 				"Party A Balance Before Fill: \n",
-				await context.viewFacet.getCrossBalance(partyA2.address, await context.collateral.getAddress(), partyB2.address),
+				await context.viewFacet["getCrossBalance(address,address,address)"](partyA2.address, await context.collateral.getAddress(), partyB2.address),
 			)
 
 			//Fill Open
@@ -1498,7 +1596,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			console.log(
 				"Party A Balance After Fill Open: \n",
-				await context.viewFacet.getCrossBalance(partyA2.address, await context.collateral.getAddress(), partyB2.address),
+				await context.viewFacet["getCrossBalance(address,address,address)"](partyA2.address, await context.collateral.getAddress(), partyB2.address),
 			)
 
 			const timestamp = await getLatestBlockTime()
@@ -1521,7 +1619,11 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			const tradePremium = await context.viewFacet.getTradePremium(tradeID)
 			let trade: TradeStruct = await context.viewFacet.getTrade(tradeID)
 			const symbol = await context.viewFacet.getSymbol(trade.tradeAgreements.symbolId)
-			let scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA2.address, symbol.collateral, partyB2.address)
+			let scheduleEntry = await context.viewFacet["getScheduledReleaseEntry(address,address,address)"](
+				partyA2.address,
+				symbol.collateral,
+				partyB2.address,
+			)
 
 			const tradePremiumSettled = (tradePremium * openAmount) / BigInt(trade.tradeAgreements.quantity)
 			const totalMM = (openAmount * BigInt(trade.tradeAgreements.mm)) / BigInt(trade.tradeAgreements.quantity)
@@ -1550,7 +1652,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			console.log("Schedule Release Balance Positions, Scheduled:", scheduleEntry.scheduled)
 			console.log("Schedule Release Balance Positions, Interval:", scheduleEntry.releaseInterval)
 
-			const partyABalanceBeforeSettlement = await context.viewFacet.getCrossBalance(
+			const partyABalanceBeforeSettlement = await context.viewFacet["getCrossBalance(address,address,address)"](
 				partyA2.address,
 				await context.collateral.getAddress(),
 				partyB2.address,
@@ -1564,10 +1666,14 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			console.log("Trade Status:", trade.status == TradeStatus.EXERCISED ? "EXERCISED" : trade.status)
 			console.log(
 				"Party A Balance After Settlement Before Sync:\n",
-				await context.viewFacet.getCrossBalance(partyA2.address, await context.collateral.getAddress(), partyB2.address),
+				await context.viewFacet["getCrossBalance(address,address,address)"](partyA2.address, await context.collateral.getAddress(), partyB2.address),
 			)
 
-			scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA2.address, symbol.collateral, partyB2.address)
+			scheduleEntry = await context.viewFacet["getScheduledReleaseEntry(address,address,address)"](
+				partyA2.address,
+				symbol.collateral,
+				partyB2.address,
+			)
 			console.log("After Settlement")
 			console.log("Schedule Release Balance Positions, Transitioning:", scheduleEntry.transitioning)
 			console.log("Schedule Release Balance Positions, Scheduled:", scheduleEntry.scheduled)
@@ -1575,15 +1681,19 @@ export function shouldBehaveLikeSettlementFacet(): void {
 
 			const releaseInterval = await context.viewFacet.getReleaseInterval(partyA2.address)
 			await moveTime(Number(releaseInterval) * 2)
-			await context.accountFacet.syncBalances(context.collateral, partyA2.address, [partyB2.address])
+			await context.accountFacet["syncBalances(address,address,address[])"](context.collateral, partyA2.address, [partyB2.address])
 			console.log(
 				"Party A Balance After Settlement after Sync:\n",
-				await context.viewFacet.getCrossBalance(partyA2.address, await context.collateral.getAddress(), partyB2.address),
+				await context.viewFacet["getCrossBalance(address,address,address)"](partyA2.address, await context.collateral.getAddress(), partyB2.address),
 			)
 
 			expect(trade.status).to.be.equal(TradeStatus.EXERCISED)
 
-			const partyABalanceAfterSettlementSchedule = await context.viewFacet.getCrossBalance(partyA2.address, context.collateral, partyB2.address)
+			const partyABalanceAfterSettlementSchedule = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyA2.address,
+				context.collateral,
+				partyB2.address,
+			)
 			const balanceDiff = partyABalanceAfterSettlementSchedule.totalMM - partyABalanceBeforeSettlement.totalMM
 
 			console.log("Balance Party A in Sell Before Settlement:", partyABalanceBeforeSettlement)
@@ -1641,7 +1751,11 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			const tradePremium = await context.viewFacet.getTradePremium(tradeID)
 			let trade: TradeStruct = await context.viewFacet.getTrade(tradeID)
 			const symbol = await context.viewFacet.getSymbol(trade.tradeAgreements.symbolId)
-			let scheduleEntry = await context.viewFacet.getScheduledReleaseEntry(partyA2.address, symbol.collateral, partyB2.address)
+			let scheduleEntry = await context.viewFacet["getScheduledReleaseEntry(address,address,address)"](
+				partyA2.address,
+				symbol.collateral,
+				partyB2.address,
+			)
 
 			const tradePremiumSettled = (tradePremium * openAmount) / BigInt(trade.tradeAgreements.quantity)
 			const pnl = await context.viewFacet.getTradePnl(tradeID, priceSig.settlementPrice, openAmount)
@@ -1658,7 +1772,7 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			console.log("pnl:\n", pnl)
 			console.log("exerciseFee:\n", exerciseFee)
 
-			const partyBBalanceBeforeSettlement = await context.viewFacet.getCrossBalance(
+			const partyBBalanceBeforeSettlement = await context.viewFacet["getCrossBalance(address,address,address)"](
 				partyB2.address,
 				await context.collateral.getAddress(),
 				partyA2.address,
@@ -1672,7 +1786,11 @@ export function shouldBehaveLikeSettlementFacet(): void {
 			trade = await context.viewFacet.getTrade(tradeID)
 			expect(trade.status).to.be.equal(TradeStatus.EXERCISED)
 
-			const partyBBalanceAfterSettlementSchedule = await context.viewFacet.getCrossBalance(partyB2.address, context.collateral, partyA2.address)
+			const partyBBalanceAfterSettlementSchedule = await context.viewFacet["getCrossBalance(address,address,address)"](
+				partyB2.address,
+				context.collateral,
+				partyA2.address,
+			)
 			const balanceDiff = partyBBalanceAfterSettlementSchedule.balance - partyBBalanceBeforeSettlement.balance
 			console.log("Party B Balance After Settlement:\n", partyBBalanceAfterSettlementSchedule)
 			console.log("Balance Diff when PNL in Positive:", balanceDiff)

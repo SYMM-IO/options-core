@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Bilateral settlement proposal | Options Core</title>
+<link rel="icon" type="image/svg+xml" href="../assets/symmio-mark.svg"><link rel="stylesheet" href="../assets/reader.css"><link rel="stylesheet" href="../assets/docs-portal.css">
+<script>try { if (localStorage.getItem("options-docs-theme") === "light") document.documentElement.dataset.theme = "light"; } catch (_) {}</script>
+<script src="../assets/chapters.js" defer></script><script src="../assets/reader.js" defer></script><script src="../assets/docs-portal.js" defer></script></head>
+<body class="doc-page" data-version="current"><a class="skip-link" href="#full-document">Skip to document</a><header class="docs-header"><div class="doc-topbar"><nav class="docs-trail" aria-label="Breadcrumb"><a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Options Core</span></a><span class="trail-sep" aria-hidden="true">/</span><a class="trail-release" href="../index.html">Documentation</a></nav><nav class="top-actions" aria-label="Page actions"><button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button></nav></div></header>
+<div class="reader-shell"><div data-rail-sections hidden><a class="toc-link level-2" href="#what-the-existing-repositories-tell-us">What the existing repositories tell us</a>
+<a class="toc-link level-2" href="#separate-the-things-being-agreed">Separate the things being agreed</a>
+<a class="toc-link level-2" href="#the-proposed-modules">The proposed modules</a>
+<a class="toc-link level-2" href="#funding-once-trading-many-times">Funding once, trading many times</a>
+<a class="toc-link level-2" href="#what-signatures-and-hashes-establish">What signatures and hashes establish</a>
+<a class="toc-link level-2" href="#checkpoints-are-not-final-withdrawals">Checkpoints are not final withdrawals</a>
+<a class="toc-link level-2" href="#leaving-when-a-counterparty-disappears">Leaving when a counterparty disappears</a>
+<a class="toc-link level-2" href="#reusing-ivys-extensibility">Reusing Ivy&#39;s extensibility</a>
+<a class="toc-link level-2" href="#the-first-implementation-worth-proving">The first implementation worth proving</a></div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1 id="bilateral-settlement-proposal">Bilateral settlement proposal</h1></div></div></header><article class="doc-article" id="full-document"><noscript><nav aria-label="On this page"><a class="toc-link level-2" href="#what-the-existing-repositories-tell-us">What the existing repositories tell us</a>
+<a class="toc-link level-2" href="#separate-the-things-being-agreed">Separate the things being agreed</a>
+<a class="toc-link level-2" href="#the-proposed-modules">The proposed modules</a>
+<a class="toc-link level-2" href="#funding-once-trading-many-times">Funding once, trading many times</a>
+<a class="toc-link level-2" href="#what-signatures-and-hashes-establish">What signatures and hashes establish</a>
+<a class="toc-link level-2" href="#checkpoints-are-not-final-withdrawals">Checkpoints are not final withdrawals</a>
+<a class="toc-link level-2" href="#leaving-when-a-counterparty-disappears">Leaving when a counterparty disappears</a>
+<a class="toc-link level-2" href="#reusing-ivys-extensibility">Reusing Ivy&#39;s extensibility</a>
+<a class="toc-link level-2" href="#the-first-implementation-worth-proving">The first implementation worth proving</a></nav></noscript><p>Research date: 2026-10-02. Status: architecture proposal, not an implementation or a verified protocol specification.</p>
+<p>The user confirmed that the first version may reserve collateral separately for each user-solver relationship. This proposal uses that decision. Contract code is unchanged.</p>
+<p>I recommend a generic custody and accounting module, funded bilateral channels, and product-specific agreement resolvers. Parties trade by exchanging signed states against collateral already committed on-chain. They can publish checkpoints periodically, and either party can invoke on-chain adjudication when cooperation stops. Options become one implementation of the agreement interface. Perpetuals can become another, with different risk and termination requirements.</p>
+<p>The closest established architectural references are <a href="https://docs.statechannels.org/protocol-tutorial/0020-execution-rules/">Nitro state channels</a> and <a href="https://celer.network/celercore/channel/app">Celer&#39;s separation of conditional payments from application state</a>. See <a href="offchain-settlement-references.html">the research references</a> for comparisons, primary sources, and limitations. The design below is our proposed synthesis.</p>
+<h2 id="what-the-existing-repositories-tell-us">What the existing repositories tell us</h2>
+<p>These observations describe the source inspected during this discussion. They are not a security audit.</p>
+<table>
+<thead>
+<tr>
+<th>Repository and inspected HEAD</th>
+<th>Relevant evidence</th>
+<th>Implication</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Options Core, <code>3be409edfdc6cc5e232d3603cc5cf2942a967497</code></td>
+<td><code>contracts/types/IntentTypes.sol:26</code>, <code>contracts/types/TradeTypes.sol:19</code>, <code>contracts/types/BaseTypes.sol:42</code></td>
+<td>Intents and trades are distinct, but both carry options-specific agreements.</td>
+</tr>
+<tr>
+<td>Options Core</td>
+<td><code>contracts/types/BalanceTypes.sol:31</code>, <code>contracts/libraries/core/LibPartyBOpen.sol:164</code></td>
+<td>Balances still encode margin and release policy; filling an intent performs product-specific accounting.</td>
+</tr>
+<tr>
+<td>Options Core</td>
+<td><code>contracts/helpers/InstantLayer.sol:354</code>, <code>contracts/utils/Accessibility.sol:71</code>, <code>contracts/libraries/core/LibCounterPartyRelations.sol:17</code></td>
+<td>InstantLayer executes signed calldata against current on-chain state. Binding and instant-mode restrictions already reduce some races; they do not provide a general channel adjudication protocol.</td>
+</tr>
+<tr>
+<td>Perps Core, <code>bf0dd4b4959f665f2a7637dd401da4879660a2bf</code></td>
+<td><code>../perps-core/contracts/core/storages/QuoteStorage.sol:20</code>, <code>../perps-core/contracts/core/facets/PartyBPositionActions/PartyBPositionActionsFacetImpl.sol:26</code></td>
+<td>The quote progresses into the position. Opening still has live state and solvency checks, with explicit exceptions for binding.</td>
+</tr>
+<tr>
+<td>Perps Core</td>
+<td><code>../perps-core/contracts/core/facets/Account/AccountFacetImpl.sol:119</code></td>
+<td><code>safeDeallocate</code> already considers an oracle-attested pending balance. The redesign should recognize this protection rather than assume current withdrawals ignore all off-chain activity.</td>
+</tr>
+<tr>
+<td>Ivy Vaults, <code>4edf8d5c956408d082bb73c9c3e341f8f22cb977</code></td>
+<td><code>/Users/naveed/Codes/blockchain/ivy/vaults/contracts/types/IvyTypes.sol:81</code>, <code>contracts/interfaces/IIvyBidValidator.sol:6</code>, <code>contracts/libraries/IvyVaultRules.sol:90</code></td>
+<td>Rules use <code>validator</code>, <code>kind</code>, and opaque <code>data</code>. The Hub calls read-only validators after mandatory checks and commits the stored rule configuration into <code>termsHash</code>.</td>
+</tr>
+</tbody></table>
+<h2 id="separate-the-things-being-agreed">Separate the things being agreed</h2>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Meaning in the proposed system</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Account</td>
+<td>Ownership and authorization identity, potentially controlled by a smart account or delegated signing key.</td>
+</tr>
+<tr>
+<td>Pool</td>
+<td>A named subdivision of an account&#39;s funds.</td>
+</tr>
+<tr>
+<td>Relationship</td>
+<td>The two participating pools, their escrow, and the agreed adjudication policy.</td>
+</tr>
+<tr>
+<td>Intent</td>
+<td>An offer or instruction with conditions for acceptance. It is not by itself a funded obligation.</td>
+</tr>
+<tr>
+<td>Agreement</td>
+<td>An accepted, enforceable obligation between those pools, with committed terms and a defined fallback.</td>
+</tr>
+<tr>
+<td>Position</td>
+<td>The options or perpetuals module&#39;s interpretation of one or more agreements.</td>
+</tr>
+<tr>
+<td>Checkpoint</td>
+<td>An authenticated cumulative channel state recorded on-chain. Recording it does not necessarily make its balances withdrawable.</td>
+</tr>
+<tr>
+<td>Final outcome</td>
+<td>An allocation that has satisfied the channel&#39;s finalization rules and may be applied to spendable balances.</td>
+</tr>
+</tbody></table>
+<p>An intent can expire without creating an agreement. Once an agreement exists, cancelling the original intent cannot erase it. A settlement root must also retain open obligations. A list of current cash balances alone cannot represent an option that pays later.</p>
+<h2 id="the-proposed-modules">The proposed modules</h2>
+<pre><code class="language-mermaid">flowchart TD
+    App[Off-chain applications and solver systems]
+    Product[Product modules: offers, agreements, risk, payoff]
+    Channel[Bilateral channel: signatures, state ordering, disputes]
+    Ledger[Custody and accounting: pools and exclusive escrow]
+    App --&gt; Product
+    Product --&gt; Channel
+    Channel --&gt; Ledger
+    Channel --&gt;|Resolve disputed obligations| Product
+</code></pre>
+<p>The <strong>custody and accounting module</strong> holds tokens and tracks free balances, relationship escrow, and finalized withdrawal claims. A pool can reserve funds for several relationships, but a particular unit of collateral belongs to only one reservation at a time. Both counterparties need backing for the obligations they can incur.</p>
+<p>It enforces authorization, conservation per token, escrow limits, allowed recipients, and one-time application of outcomes. It does not understand strikes, funding rates, or implied volatility. A product module cannot receive unrestricted permission to debit every account. Its authority is limited to the specific escrow and policy accepted by its owners. Avoid delegated calls from arbitrary plugins into custody storage.</p>
+<p>Use token units or an explicitly defined share unit. Do not add USDC and ETH together in a generic balance. Valuation and collateral haircuts belong to a risk implementation. Start with one conventional settlement token per relationship; multi-asset accounting can follow without pretending that unlike assets are interchangeable.</p>
+<p>The <strong>channel module</strong> handles signed state commitments, epochs, sequence numbers, publication, disputes, and finalization. Its interface hides message ordering and stale-state defense from product callers. It must distinguish an ordinary live checkpoint from an irrevocable closing agreement.</p>
+<p>The <strong>agreement module</strong> defines which obligations can be created and how they progress or terminate. A fully collateralized option, a capped price contract, and a perpetual can implement this interface differently. They must each supply an enforceable fallback. A plugin that accepts trades but cannot resolve them when a signer disappears is incomplete.</p>
+<p>The <strong>off-chain application</strong> negotiates intents, checks risk, gathers signatures, stores evidence, manages hedges, and submits transactions. A queue such as Kafka can support delivery and retries. Contract identifiers and consumed outcomes make duplicate delivery harmless. No queue acknowledgement substitutes for enforceable agreement evidence.</p>
+<h2 id="funding-once-trading-many-times">Funding once, trading many times</h2>
+<p>Suppose Alice deposits 10,000 USDC and reserves 3,000 for solver B, 2,000 for solver C, and leaves 5,000 free. B separately reserves 7,000 USDC for the Alice-B relationship. That relationship has 10,000 USDC of exclusive backing.</p>
+<p>After the funding transaction reaches the chosen finality threshold, Alice and B may exchange many signed updates without a transaction per trade. They cannot withdraw that reserved collateral through an unrelated account operation, and C cannot consume it.</p>
+<p>The normal flow is:</p>
+<ol>
+<li>Establish the relationship, its funded escrow, signing policy, product resolver, and dispute rules on-chain.</li>
+<li>Exchange and validate a complete proposed agreement and resulting channel state off-chain.</li>
+<li>Obtain and retain the required signatures and all evidence needed to enforce that state. A solver hedges only after it holds an enforceable acceptance within the funded capacity.</li>
+<li>Continue trading within that capacity. Each participant retains the latest supported state and the data behind its obligations.</li>
+<li>Publish a cumulative checkpoint when useful, for example every five minutes. Every intermediate offer and fill need not become contract storage.</li>
+<li>Finalize agreed releases or invoke the dispute path when either party wants to leave.</li>
+</ol>
+<p>If completed obligations net 200 USDC to Alice and there are no remaining obligations, the final allocation can be 3,200 to Alice and 6,800 to B. If options remain live, the necessary collateral stays reserved. The accounting module cannot treat their present unrealized value as cash available for unrestricted withdrawal.</p>
+<p>This changes the solver&#39;s hedge risk in one specific way: a valid accepted agreement cannot fail merely because the user spent its reserved collateral elsewhere. It does not make a Binance hedge atomic with the agreement, guarantee a hedge price, or remove venue failure risk. A private venue action needs a separate attestation or other evidence if the contractual payout actually depends on that action.</p>
+<h2 id="what-signatures-and-hashes-establish">What signatures and hashes establish</h2>
+<p>A hash commits to particular data. It does not prove that data is economically valid or that funds exist. A signature proves authorization under a signing policy, not the truth of an arbitrary price or hedge claim.</p>
+<p>An illustrative signed channel state needs to bind at least:</p>
+<pre><code class="language-text">chain and verifying contract
+relationship ID and funding epoch
+participant identities and signing-policy version
+sequence number and state type
+balance allocation and collateral still reserved
+open-obligations commitment
+product, oracle, risk and rule configuration commitments
+any irrevocable release commitments
+</code></pre>
+<p>This is a field checklist, not a Solidity ABI. Exact encodings and transition rules still require a specification. A changed funding epoch must reconcile previous claims before accepting new authority. Revoking a session key must stop new permissions without retroactively erasing valid obligations. <a href="https://eips.ethereum.org/EIPS/eip-1271">ERC-1271</a> allows contract-wallet signature validation to depend on time or state, so the signing policy needs explicit enforceability semantics.</p>
+<p>For a cooperative final settlement, signatures from every affected collateral owner can authorize the outcome without making the kernel interpret each trade. For unilateral settlement, the claimant must use an agreed resolver with evidence. Other possible resolver implementations could accept a validity proof or a specified oracle quorum. Those choices have different trust assumptions.</p>
+<p>An opaque claim such as &quot;this hash means Bob owes me 200&quot; is insufficient without one of those authorization paths. If all product validators are absent, a bilateral transfer or irrevocable cooperative close can still work. Arbitrary contingent obligations cannot retain automatic enforcement without a way to determine their outcome.</p>
+<p>The data behind commitments must remain available to the participants or their agents. A root alone is not a backup. Store full signed states, terms, required oracle observations, and any membership or transition witnesses. A portfolio resolver must establish completeness; a claimant cannot disclose only winning positions while omitting liabilities.</p>
+<p>Keeping trade details off-chain provides limited disclosure. On-chain balances, transfers, and disputes can still reveal information. This proposal does not claim zero-knowledge privacy.</p>
+<h2 id="checkpoints-are-not-final-withdrawals">Checkpoints are not final withdrawals</h2>
+<p>Consider a jointly signed state 10 that gives Alice 3,500 and B 6,500. They later sign state 11 that gives Alice 3,200 and B 6,800. The contract has only seen state 9.</p>
+<p>Alice submits state 10. Both signatures are valid, and 10 is greater than the on-chain sequence. Releasing 3,500 immediately would make state 11 impossible to honor. Requiring a monotonically increasing nonce does not solve this example.</p>
+<p><a href="https://docs.statechannels.org/protocol-tutorial/0070-finalizing-a-channel/">Nitro&#39;s finalization protocol</a> distinguishes unanimous final states from challenge-based finalization and permits newer supported states to defeat stale challenges. That is the relevant model to study.</p>
+<p>For this proposal:</p>
+<ul>
+<li>Live checkpoints can advance the recorded state without releasing its backing.</li>
+<li>A cooperative closing certificate terminates that epoch irrevocably. Clients must not continue signing live obligations in an epoch after signing its terminal close.</li>
+<li>A unilateral exit requires a response period for newer evidence and resolution of pending obligations.</li>
+<li>A later design may support partial cooperative withdrawals, but every subsequent state must account for the irrevocable release. An ordinary balance snapshot is not such a certificate.</li>
+</ul>
+<p>Separate the routine publication target from the challenge duration. A five-minute batching target does not imply a five-minute safe dispute window. Neither signing party nor an authorized watcher should need to trust the other party&#39;s batcher to submit evidence.</p>
+<h2 id="leaving-when-a-counterparty-disappears">Leaving when a counterparty disappears</h2>
+<p>Either party must be able to begin exit using evidence it already holds. An authorized agent can relay that evidence. The protocol then freezes new exposure, accepts valid newer state evidence under bounded dispute rules, resolves or preserves remaining obligations, and releases the resulting unencumbered allocation.</p>
+<p>The precise freeze, challenge-response deadlines, and maximum resolution work are design obligations. Do not promise a fixed wall-clock exit until those rules are specified and checked against repeated challenges, withheld signatures, gas limits, and chain inclusion assumptions. Limit the number or computational cost of open obligations so that an escape path remains executable.</p>
+<p>There are two materially different ways to handle a live option:</p>
+<table>
+<thead>
+<tr>
+<th>Exit treatment</th>
+<th>Consequence</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Materialize the existing agreement and its reserved collateral on-chain, preserving its exercise and expiry terms</td>
+<td>Trading can stop and free cash can leave. Collateral for the live option remains committed until the contractual release condition.</td>
+</tr>
+<tr>
+<td>Use a pre-agreed early termination mechanism</td>
+<td>All exposure can end earlier, but the parties must accept its pricing, oracle, liquidity and outage rules when entering the agreement.</td>
+</tr>
+</tbody></table>
+<p>For the first option implementation, preserving obligations is the cleaner default. An early mark based only on spot intrinsic value discards the time value of an option. A fair early close needs an agreed valuation or executable close mechanism, not just the ordinary expiry payoff function.</p>
+<p>Thus &quot;I can recover finalized money without my solver&quot; is a reasonable target. &quot;I can withdraw every deposit within one day despite outstanding obligations&quot; needs additional product terms and collateral constraints. Exit enforces existing promises. It cannot force a counterparty to offer a new trade, quote, or external hedge that it never agreed to provide.</p>
+<p>Operators cannot promise unconditional timing through a halted chain. Oracle-dependent outcomes also need a specified outage fallback. Watches, backups, and accessible escape transactions are part of the channel protocol, not optional application polish. Governance and pause powers must not silently defeat the advertised exit path.</p>
+<h2 id="reusing-ivys-extensibility">Reusing Ivy&#39;s extensibility</h2>
+<p>Keep Ivy&#39;s separation between fixed enforcement checks and extensible acceptance conditions. A rule can still contain <code>validator</code>, <code>kind</code>, and <code>data</code>. Bind its configuration to the agreement, call it through a narrow read-only interface, and define how failures are handled.</p>
+<p>Separate acceptance rules from transition validation, risk calculation, and outcome resolution. Passing a premium-floor rule is not authority to debit an account.</p>
+<p>Changes to rules can govern new offers. Existing agreements retain the resolver and rules they accepted unless every affected party consents to a safe migration. An address or code hash alone does not freeze behavior if a proxy or mutable dependency can change it.</p>
+<p>Time-dependent rules need particular care. Ivy&#39;s current validators evaluate such things as tenor and price freshness at activation. Replaying those checks ten minutes later against the then-current <code>block.timestamp</code> could change the answer. Off-chain acceptance needs committed observations and a defined time basis. Merely adding a signer-supplied <code>executedAt</code> field does not prove when acceptance happened.</p>
+<h2 id="the-first-implementation-worth-proving">The first implementation worth proving</h2>
+<p>Build a small vertical slice before replacing the existing options lifecycle:</p>
+<ul>
+<li>One settlement token per relationship and exclusive collateral on both sides.</li>
+<li>A fixed bilateral signing policy and canonical cumulative state.</li>
+<li>Explicit on-chain execution and off-chain execution using the same agreement semantics.</li>
+<li>Checkpoint, cooperative terminal close, unilateral dispute, and permissionless finalization after valid resolution.</li>
+<li>One fully funded, bounded-payoff product with a defined oracle fallback.</li>
+<li>A second simple agreement implementation to demonstrate that accounting does not depend on options fields.</li>
+</ul>
+<p>Fully funding a bounded claim supports a strong payout guarantee within its defined token amount. Leveraged perpetuals or unbounded cash-settled option liabilities cannot gain an unlimited payment guarantee from finite escrow. They require a separate margin, liquidation and loss-allocation design; insurance also has finite capacity. A covered call&#39;s backing depends on its settlement asset and delivery terms.</p>
+<p>Before production implementation, model at least these adversarial sequences:</p>
+<table>
+<thead>
+<tr>
+<th>Sequence</th>
+<th>Required property</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>User signs with B and spends free funds through C</td>
+<td>B&#39;s escrow is unaffected.</td>
+</tr>
+<tr>
+<td>Either party submits an older jointly signed state</td>
+<td>A responsive honest party can enforce the newer supported entitlement before funds leave.</td>
+</tr>
+<tr>
+<td>Solver stops publishing</td>
+<td>User-held evidence and the exit path suffice; the solver&#39;s queue is unnecessary.</td>
+</tr>
+<tr>
+<td>User stops signing after accepting an option</td>
+<td>Existing obligations remain enforceable under the agreed resolver.</td>
+</tr>
+<tr>
+<td>A live option survives exit</td>
+<td>Its backing is retained or a valid agreed early termination is applied.</td>
+</tr>
+<tr>
+<td>A batch or settlement message is delivered twice</td>
+<td>Claims are applied once.</td>
+</tr>
+<tr>
+<td>A plugin, key, oracle or governance setting changes</td>
+<td>The change cannot silently rewrite previously accepted obligations.</td>
+</tr>
+<tr>
+<td>A party withholds data or submits only profitable positions</td>
+<td>Incomplete claims cannot release collateral belonging to unresolved liabilities.</td>
+</tr>
+</tbody></table>
+<p>These are proposed validation targets. No channel implementation, proof, gas benchmark, or adversarial test suite was produced in this research pass. The next design decisions are the first product&#39;s payoff and settlement asset, treatment of live agreements during exit, and the exact supported-state and dispute protocol.</p>
+</article></main></div><footer class="site-footer"><span>Options Core documentation.</span></footer></body></html>

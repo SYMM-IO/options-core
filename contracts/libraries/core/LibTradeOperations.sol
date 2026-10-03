@@ -4,6 +4,8 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
+import { LibBucket } from "./LibBucket.sol";
+
 import { LibMuon } from "../services/LibMuon.sol";
 import { LibParty } from "../models/LibParty.sol";
 import { LibTradeOps } from "../models/LibTrade.sol";
@@ -12,7 +14,6 @@ import { ScheduledReleaseBalanceOps } from "../models/LibScheduledReleaseBalance
 import { AppStorage } from "../../storages/AppStorage.sol";
 import { TradeStorage } from "../../storages/TradeStorage.sol";
 import { SymbolStorage } from "../../storages/SymbolStorage.sol";
-import { AccountStorage } from "../../storages/AccountStorage.sol";
 import { FeeManagementStorage } from "../../storages/FeeManagementStorage.sol";
 
 import { CloseIntentStatus } from "../../types/IntentTypes.sol";
@@ -35,6 +36,7 @@ library LibTradeOperations {
 	 * @dev Shared logic for both diamond-initiated and NFT-initiated trade transfers.
 	 */
 	function validateAndTransferTrade(address sender, address receiver, uint256 tradeId) internal {
+		LibBucket.validateNativeTradeTransfer(tradeId);
 		Trade storage trade = TradeStorage.layout().trades[tradeId];
 		Symbol memory symbol = SymbolStorage.layout().symbols[trade.tradeAgreements.symbolId];
 
@@ -56,7 +58,7 @@ library LibTradeOperations {
 		if (trade.tradeAgreements.marginType == MarginType.CROSS) revert TradeErrors.CrossTradeTransferNotAllowed(tradeId);
 
 		// Party B must be solvent
-		trade.partyB.requireSolvent(address(0), symbol.collateral, MarginType.ISOLATED);
+		trade.partyB.requireSolvent(trade.partyBBucketId, address(0), 0, symbol.collateral, MarginType.ISOLATED);
 
 		/* ---------------------------------------- UPDATE ---------------------------------------- */
 
@@ -81,7 +83,6 @@ library LibTradeOperations {
 		uint256[] calldata tradeIds,
 		SettlementPriceSig calldata sig
 	) internal returns (bool[] memory exercised, bool[] memory expired) {
-		AccountStorage.Layout storage accountLayout = AccountStorage.layout();
 		AppStorage.Layout storage appLayout = AppStorage.layout();
 
 		LibMuon.verifySettlementPriceSig(sig);
@@ -102,10 +103,22 @@ library LibTradeOperations {
 			}
 
 			if (trade.tradeAgreements.marginType == MarginType.CROSS) {
-				trade.partyA.requireSolvent(trade.partyB, symbol.collateral, trade.tradeAgreements.marginType);
-				trade.partyB.requireSolvent(trade.partyA, symbol.collateral, trade.tradeAgreements.marginType);
+				trade.partyA.requireSolvent(
+					trade.partyABucketId,
+					trade.partyB,
+					trade.partyBBucketId,
+					symbol.collateral,
+					trade.tradeAgreements.marginType
+				);
+				trade.partyB.requireSolvent(
+					trade.partyBBucketId,
+					trade.partyA,
+					trade.partyABucketId,
+					symbol.collateral,
+					trade.tradeAgreements.marginType
+				);
 			} else {
-				trade.partyB.requireSolvent(address(0), symbol.collateral, trade.tradeAgreements.marginType);
+				trade.partyB.requireSolvent(trade.partyBBucketId, address(0), 0, symbol.collateral, trade.tradeAgreements.marginType);
 			}
 
 			if (sig.symbolId != trade.tradeAgreements.symbolId) revert TradeErrors.MismatchedSymbolId(sig.symbolId, trade.tradeAgreements.symbolId);
@@ -135,8 +148,8 @@ library LibTradeOperations {
 
 			/* ---------------------------------------- BALANCES ---------------------------------------- */
 
-			ScheduledReleaseBalance storage partyABalance = trade.partyA.balanceOf(symbol.collateral);
-			ScheduledReleaseBalance storage partyBBalance = trade.partyB.balanceOf(symbol.collateral);
+			ScheduledReleaseBalance storage partyABalance = trade.partyA.balanceOf(trade.partyABucketId, symbol.collateral);
+			ScheduledReleaseBalance storage partyBBalance = trade.partyB.balanceOf(trade.partyBBucketId, symbol.collateral);
 
 			if (trade.tradeAgreements.tradeSide == TradeSide.BUY) {
 				if (trade.tradeAgreements.marginType == MarginType.ISOLATED) {
@@ -144,13 +157,14 @@ library LibTradeOperations {
 				} else {
 					partyBBalance.scheduledAdd(
 						trade.partyA,
+						trade.partyABucketId,
 						trade.calculateProportionalPremium(trade.getOpenAmount()),
 						trade.tradeAgreements.marginType,
 						IncreaseBalanceReason.PREMIUM
 					);
 				}
 			} else {
-				partyABalance.decreaseMM(trade.partyB, trade.calculateProportionalMM(trade.getOpenAmount()));
+				partyABalance.decreaseMM(trade.partyB, trade.partyBBucketId, trade.calculateProportionalMM(trade.getOpenAmount()));
 			}
 
 			if (exercised[i]) {
@@ -173,19 +187,33 @@ library LibTradeOperations {
 				if (trade.tradeAgreements.tradeSide == TradeSide.BUY) {
 					partyBBalance.subForCounterParty(
 						trade.partyA,
+						trade.partyABucketId,
 						amountToTransfer,
 						trade.tradeAgreements.marginType,
 						DecreaseBalanceReason.REALIZED_PNL
 					);
-					partyABalance.scheduledAdd(trade.partyB, amountToTransfer, trade.tradeAgreements.marginType, IncreaseBalanceReason.REALIZED_PNL);
+					partyABalance.scheduledAdd(
+						trade.partyB,
+						trade.partyBBucketId,
+						amountToTransfer,
+						trade.tradeAgreements.marginType,
+						IncreaseBalanceReason.REALIZED_PNL
+					);
 				} else {
 					partyABalance.subForCounterParty(
 						trade.partyB,
+						trade.partyBBucketId,
 						amountToTransfer,
 						trade.tradeAgreements.marginType,
 						DecreaseBalanceReason.REALIZED_PNL
 					);
-					partyBBalance.scheduledAdd(trade.partyA, amountToTransfer, trade.tradeAgreements.marginType, IncreaseBalanceReason.REALIZED_PNL);
+					partyBBalance.scheduledAdd(
+						trade.partyA,
+						trade.partyABucketId,
+						amountToTransfer,
+						trade.tradeAgreements.marginType,
+						IncreaseBalanceReason.REALIZED_PNL
+					);
 				}
 
 				{
@@ -193,7 +221,7 @@ library LibTradeOperations {
 					FeeStructure memory s = trade.feeStructure;
 
 					/* ---------------------------------------- GET FEES ---------------------------------------- */
-					ScheduledReleaseBalance storage partyAFeeBalance = trade.partyA.balanceOf(s.feeToken);
+					ScheduledReleaseBalance storage partyAFeeBalance = trade.partyA.balanceOf(trade.partyABucketId, s.feeToken);
 
 					uint256 pnlInCollateral = (pnl * 1e18) / sig.collateralPrice;
 					uint256[2] memory fees = [
@@ -204,7 +232,13 @@ library LibTradeOperations {
 					DecreaseBalanceReason[2] memory decReasons = [DecreaseBalanceReason.PLATFORM_FEE, DecreaseBalanceReason.AFFILIATE_FEE];
 
 					for (uint8 j; j < 2; ++j)
-						partyAFeeBalance.subForCounterParty(trade.partyB, fees[j], trade.tradeAgreements.marginType, decReasons[j]);
+						partyAFeeBalance.subForCounterParty(
+							trade.partyB,
+							trade.partyBBucketId,
+							fees[j],
+							trade.tradeAgreements.marginType,
+							decReasons[j]
+						);
 
 					/* ---------------------------------------- PAY FEES ---------------------------------------- */
 
@@ -231,13 +265,14 @@ library LibTradeOperations {
 			/* ---------------------------------------- NONCE ---------------------------------------- */
 
 			if (trade.tradeAgreements.marginType == MarginType.CROSS) {
-				accountLayout.nonces[trade.partyA][trade.partyB] += 1;
-				accountLayout.nonces[trade.partyB][trade.partyA] += 1;
+				LibBucket.incrementNonce(trade.partyA, trade.partyABucketId, trade.partyB, trade.partyBBucketId);
+				LibBucket.incrementNonce(trade.partyB, trade.partyBBucketId, trade.partyA, trade.partyABucketId);
 			}
 		}
 	}
 
 	function mintNFTForTrade(uint256 tradeId) internal {
+		LibBucket.validateNativeTradeTransfer(tradeId);
 		Trade storage trade = TradeStorage.layout().trades[tradeId];
 		if (trade.tradeAgreements.marginType == MarginType.CROSS) revert TradeErrors.NFTMintingNotAllowedForCrossMarginTrade(tradeId);
 		ITradeNFT(AppStorage.layout().tradeNftAddress).mintNFTForTrade(trade.partyA, tradeId);

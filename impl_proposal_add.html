@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Addendum: Mode Scope and PartyA Cancellation | Options Core</title>
+		<link rel="icon" type="image/svg+xml" href="docs/assets/symmio-mark.svg" />
+		<link rel="stylesheet" href="docs/assets/reader.css" />
+		<link rel="stylesheet" href="docs/assets/docs-portal.css" />
+		<script>
+			try {
+				if (localStorage.getItem("options-docs-theme") === "light") document.documentElement.dataset.theme = "light";
+			} catch (_) {}
+		</script>
+		<script src="docs/assets/chapters.js" defer></script>
+		<script src="docs/assets/reader.js" defer></script>
+		<script src="docs/assets/docs-portal.js" defer></script>
+	</head>
+	<body class="doc-page" data-version="current">
+		<a class="skip-link" href="#full-document">Skip to document</a>
+		<header class="docs-header">
+			<div class="doc-topbar">
+				<nav class="docs-trail" aria-label="Breadcrumb">
+					<a class="brand" href="docs/index.html"
+						><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Options Core</span></a
+					><span class="trail-sep" aria-hidden="true">/</span><a class="trail-release" href="docs/index.html">Documentation</a>
+				</nav>
+				<nav class="top-actions" aria-label="Page actions">
+					<button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button>
+				</nav>
+			</div>
+		</header>
+		<div class="reader-shell">
+			<div data-rail-sections hidden>
+				<a class="toc-link level-2" href="#recommendation">Recommendation</a>
+				<a class="toc-link level-2" href="#discussion-other-modes">Discussion: Other Modes</a>
+				<a class="toc-link level-3" href="#1-sell--isolated">1. <code>SELL + ISOLATED</code></a>
+				<a class="toc-link level-3" href="#2-buy--cross--empty-whitelist">2. <code>BUY + CROSS + empty whitelist</code></a>
+				<a class="toc-link level-3" href="#3-sell--cross--multiple-partybs">3. <code>SELL + CROSS + multiple PartyBs</code></a>
+				<a class="toc-link level-2" href="#suggested-mode-matrix">Suggested Mode Matrix</a>
+				<a class="toc-link level-2" href="#partya-cancellation">PartyA Cancellation</a>
+				<a class="toc-link level-2" href="#deferred-sell-cancellation-behavior">Deferred Sell Cancellation Behavior</a>
+				<a class="toc-link level-3" href="#pending-intent">Pending Intent</a>
+				<a class="toc-link level-3" href="#locked-intent">Locked Intent</a>
+				<a class="toc-link level-3" href="#partyb-accepts-cancel">PartyB Accepts Cancel</a>
+				<a class="toc-link level-3" href="#force-cancel">Force Cancel</a>
+				<a class="toc-link level-3" href="#expiry">Expiry</a>
+				<a class="toc-link level-2" href="#should-we-add-a-dedicated-cancel-function">Should We Add a Dedicated Cancel Function?</a>
+				<a class="toc-link level-2" href="#required-cancel-path-code-changes">Required Cancel-Path Code Changes</a>
+				<a class="toc-link level-2" href="#final-proposal">Final Proposal</a>
+			</div>
+			<main class="reader-main">
+				<header class="reader-hero">
+					<div class="reader-title-row">
+						<div><h1 id="addendum-mode-scope-and-partya-cancellation">Addendum: Mode Scope and PartyA Cancellation</h1></div>
+					</div>
+				</header>
+				<article class="doc-article" id="full-document">
+					<noscript
+						><nav aria-label="On this page">
+							<a class="toc-link level-2" href="#recommendation">Recommendation</a>
+							<a class="toc-link level-2" href="#discussion-other-modes">Discussion: Other Modes</a>
+							<a class="toc-link level-3" href="#1-sell--isolated">1. <code>SELL + ISOLATED</code></a>
+							<a class="toc-link level-3" href="#2-buy--cross--empty-whitelist">2. <code>BUY + CROSS + empty whitelist</code></a>
+							<a class="toc-link level-3" href="#3-sell--cross--multiple-partybs">3. <code>SELL + CROSS + multiple PartyBs</code></a>
+							<a class="toc-link level-2" href="#suggested-mode-matrix">Suggested Mode Matrix</a>
+							<a class="toc-link level-2" href="#partya-cancellation">PartyA Cancellation</a>
+							<a class="toc-link level-2" href="#deferred-sell-cancellation-behavior">Deferred Sell Cancellation Behavior</a>
+							<a class="toc-link level-3" href="#pending-intent">Pending Intent</a>
+							<a class="toc-link level-3" href="#locked-intent">Locked Intent</a>
+							<a class="toc-link level-3" href="#partyb-accepts-cancel">PartyB Accepts Cancel</a>
+							<a class="toc-link level-3" href="#force-cancel">Force Cancel</a>
+							<a class="toc-link level-3" href="#expiry">Expiry</a>
+							<a class="toc-link level-2" href="#should-we-add-a-dedicated-cancel-function"
+								>Should We Add a Dedicated Cancel Function?</a
+							>
+							<a class="toc-link level-2" href="#required-cancel-path-code-changes">Required Cancel-Path Code Changes</a>
+							<a class="toc-link level-2" href="#final-proposal">Final Proposal</a>
+						</nav></noscript
+					>
+					<p>This addendum expands the discussion comments in <code>implementation_proposal.html</code> around:</p>
+					<ol>
+						<li>Whether to support modes beyond <code>SELL + CROSS + empty whitelist</code>.</li>
+						<li>How PartyA cancels a deferred PartyB sell intent.</li>
+					</ol>
+					<h2 id="recommendation">Recommendation</h2>
+					<p>Keep v1 narrow:</p>
+					<ol>
+						<li>Support <code>SELL + CROSS + empty whitelist</code>.</li>
+						<li>Keep <code>SELL + ISOLATED</code> rejected.</li>
+						<li>Keep <code>BUY + CROSS + empty whitelist</code> rejected.</li>
+						<li>Keep <code>SELL + CROSS + multiple PartyBs</code> rejected.</li>
+						<li>Reuse the existing <code>cancelOpenIntent(uint256[] intentIds)</code> function for PartyA cancellation.</li>
+					</ol>
+					<p>
+						The main reason is accounting risk. The escrow feature changes the meaning of &quot;locked but not yet assigned to
+						PartyB&quot;. That should be proven in the smallest product-relevant case before expanding to other intent shapes.
+					</p>
+					<h2 id="discussion-other-modes">Discussion: Other Modes</h2>
+					<h3 id="1-sell--isolated">1. <code>SELL + ISOLATED</code></h3>
+					<p>Current behavior rejects isolated sell intents:</p>
+					<pre><code class="language-text">tradeSide == SELL
+marginType == ISOLATED
+</code></pre>
+					<p>Recommendation: keep rejected in v1.</p>
+					<p>Reasoning:</p>
+					<ol>
+						<li>
+							The product goal is PartyA discovering a PartyB and then becoming a normal cross-margin relationship with that selected
+							PartyB.
+						</li>
+						<li>
+							Isolated sell does not need the same PartyB discovery mechanism unless the protocol wants isolated seller positions
+							without pre-selecting a PartyB.
+						</li>
+						<li>
+							Supporting it would require reviewing whether seller MM should remain isolated for the lifetime of the trade or be
+							converted after fill.
+						</li>
+						<li>It increases surface area without solving the current first-sell cross discovery problem.</li>
+					</ol>
+					<p>Future option:</p>
+					<pre><code class="language-text">SELL + ISOLATED + empty whitelist
+</code></pre>
+					<p>
+						could be allowed later as &quot;broadcast isolated sell&quot;. That would probably be easier than cross because the escrow
+						could remain isolated, but it is a separate product mode and should not be bundled into the first escrow implementation.
+					</p>
+					<h3 id="2-buy--cross--empty-whitelist">2. <code>BUY + CROSS + empty whitelist</code></h3>
+					<p>
+						Current behavior rejects cross intents without exactly one PartyB. The proposal only carves out a narrow exception for
+						sell-side discovery.
+					</p>
+					<p>Recommendation: keep rejected in v1.</p>
+					<p>Reasoning:</p>
+					<ol>
+						<li>BUY intents lock premium, not seller MM.</li>
+						<li>
+							Cross BUY with unknown PartyB still has a counterparty-specific accounting problem for premium locks, fees, solvency, and
+							later premium transfer.
+						</li>
+						<li>
+							The product need described in the escrow idea is specifically &quot;PartyA wants to sell first and discover a market
+							maker&quot;.
+						</li>
+						<li>
+							Supporting broad BUY discovery may be useful later, but it needs its own design around premium escrow and selected-PartyB
+							accounting.
+						</li>
+					</ol>
+					<p>Future option:</p>
+					<pre><code class="language-text">BUY + CROSS + empty whitelist
+</code></pre>
+					<p>
+						could use intent-scoped premium escrow. On fill, the premium escrow would be assigned to the selected PartyB and then
+						processed like an ordinary cross BUY. That should be a second feature after sell escrow is proven.
+					</p>
+					<h3 id="3-sell--cross--multiple-partybs">3. <code>SELL + CROSS + multiple PartyBs</code></h3>
+					<p>Current behavior rejects multiple PartyBs for cross margin.</p>
+					<p>Recommendation: keep rejected in v1.</p>
+					<p>Reasoning:</p>
+					<ol>
+						<li>Empty whitelist already means &quot;any eligible PartyB can lock&quot;.</li>
+						<li>One PartyB whitelist already means &quot;specific bilateral cross intent&quot;.</li>
+						<li>Multiple PartyBs would introduce a third mode: &quot;broadcast to a selected set&quot;.</li>
+						<li>The locking and fill behavior would be similar to empty whitelist, but the validation and UX differ.</li>
+						<li>It is easy to add later once the escrow path works.</li>
+					</ol>
+					<p>Future option:</p>
+					<pre><code class="language-text">SELL + CROSS + N whitelisted PartyBs
+</code></pre>
+					<p>
+						could be supported as &quot;restricted broadcast sell&quot;. It would use the same escrow mechanics as empty whitelist, but
+						<code>lockOpenIntent</code> would require <code>sender</code> to be in the whitelist. This should be considered after v1, not
+						during v1.
+					</p>
+					<h2 id="suggested-mode-matrix">Suggested Mode Matrix</h2>
+					<p>For v1:</p>
+					<pre><code class="language-text">BUY  + ISOLATED + empty/multiple whitelist: existing behavior
+BUY  + CROSS    + one PartyB: existing behavior
+BUY  + CROSS    + empty whitelist: reject
+BUY  + CROSS    + multiple PartyBs: reject
+
+SELL + ISOLATED + any whitelist: reject
+SELL + CROSS    + one PartyB: existing behavior
+SELL + CROSS    + empty whitelist: new deferred PartyB sell escrow
+SELL + CROSS    + multiple PartyBs: reject
+</code></pre>
+					<p>For v2 candidates:</p>
+					<pre><code class="language-text">SELL + CROSS + multiple PartyBs
+BUY  + CROSS + empty whitelist
+SELL + ISOLATED + empty whitelist
+</code></pre>
+					<p>Recommended expansion order:</p>
+					<ol>
+						<li><code>SELL + CROSS + multiple PartyBs</code>, because it can reuse most deferred-sell escrow mechanics.</li>
+						<li><code>BUY + CROSS + empty whitelist</code>, because it needs premium escrow rather than MM escrow.</li>
+						<li><code>SELL + ISOLATED + empty whitelist</code>, only if the product wants isolated broadcast sells.</li>
+					</ol>
+					<h2 id="partya-cancellation">PartyA Cancellation</h2>
+					<p>No new external cancel function is required for v1.</p>
+					<p>The core already has:</p>
+					<pre><code class="language-solidity">function cancelOpenIntent(uint256[] calldata intentIds) external
+</code></pre>
+					<p>on <code>PartyAOpenFacet</code>, which calls:</p>
+					<pre><code class="language-solidity">LibPartyAOpen.cancelOpenIntent(msg.sender, intentIds[i])
+</code></pre>
+					<p>Current behavior:</p>
+					<ol>
+						<li>If the intent is <code>PENDING</code>, PartyA cancellation is immediate.</li>
+						<li>If the intent is <code>LOCKED</code>, PartyA cancellation moves it to <code>CANCEL_PENDING</code>.</li>
+						<li>If the intent has expired, cancellation routes through expiry.</li>
+						<li>If the intent is already filled/canceled/expired, cancellation reverts.</li>
+					</ol>
+					<p>
+						That lifecycle works for deferred PartyB sell intents too. The required change is not a new API. The required change is
+						replacing normal open-intent unlock calls with escrow release calls when the intent is deferred.
+					</p>
+					<h2 id="deferred-sell-cancellation-behavior">Deferred Sell Cancellation Behavior</h2>
+					<h3 id="pending-intent">Pending Intent</h3>
+					<p>State:</p>
+					<pre><code class="language-text">PENDING
+partyB == address(0)
+escrow exists
+</code></pre>
+					<p>PartyA calls:</p>
+					<pre><code class="language-solidity">cancelOpenIntent([intentId])
+</code></pre>
+					<p>Expected result:</p>
+					<pre><code class="language-text">status = CANCELED
+escrow released
+intent unregistered from PartyA active intents
+</code></pre>
+					<p>Implementation change:</p>
+					<pre><code class="language-solidity">if (intent.status == OpenIntentStatus.PENDING) {
+    intent.status = OpenIntentStatus.CANCELED;
+    intent.unlockForCancelOrExpire();
+    intent.unregister(false);
+}
+</code></pre>
+					<p>where:</p>
+					<pre><code class="language-solidity">function unlockForCancelOrExpire(OpenIntent storage intent) internal {
+	if (intent.isDeferredPartyBSellIntent()) {
+		releaseDeferredSellEscrow(intent.id);
+	} else {
+		intent.unlockFees();
+		intent.unlockPremiumIfBuy();
+		intent.unlockMMIfSell();
+	}
+}
+</code></pre>
+					<h3 id="locked-intent">Locked Intent</h3>
+					<p>State:</p>
+					<pre><code class="language-text">LOCKED
+partyB == selected PartyB
+escrow still exists
+</code></pre>
+					<p>PartyA calls:</p>
+					<pre><code class="language-solidity">cancelOpenIntent([intentId])
+</code></pre>
+					<p>Expected result:</p>
+					<pre><code class="language-text">status = CANCEL_PENDING
+escrow remains locked
+PartyB keeps right to fill or accept cancel according to existing lifecycle
+</code></pre>
+					<p>
+						Do not release escrow immediately while locked. Releasing at <code>CANCEL_PENDING</code> would let PartyA remove funding after
+						PartyB already reserved the intent.
+					</p>
+					<h3 id="partyb-accepts-cancel">PartyB Accepts Cancel</h3>
+					<p>PartyB calls existing:</p>
+					<pre><code class="language-solidity">acceptCancelOpenIntent(intentId)
+</code></pre>
+					<p>Expected result:</p>
+					<pre><code class="language-text">status = CANCELED
+escrow released
+intent unregistered
+</code></pre>
+					<p>Implementation change:</p>
+					<pre><code class="language-solidity">intent.unlockForCancelOrExpire();
+</code></pre>
+					<p>instead of directly calling:</p>
+					<pre><code class="language-solidity">intent.unlockFees();
+intent.unlockPremiumIfBuy();
+intent.unlockMMIfSell();
+</code></pre>
+					<h3 id="force-cancel">Force Cancel</h3>
+					<p>
+						If PartyA cancellation is stuck in <code>CANCEL_PENDING</code>, the existing force-cancel path should continue to apply after
+						the configured timeout:
+					</p>
+					<pre><code class="language-text">forceCancelOpenIntentTimeout
+</code></pre>
+					<p>Expected result:</p>
+					<pre><code class="language-text">status = CANCELED
+escrow released
+intent unregistered
+</code></pre>
+					<p>Again, no new API is needed. The force-cancel implementation should call the same deferred-aware unlock helper.</p>
+					<h3 id="expiry">Expiry</h3>
+					<p>
+						If the deferred sell intent expires while <code>PENDING</code>, <code>LOCKED</code>, or <code>CANCEL_PENDING</code>, expiry
+						should release escrow and unregister the intent.
+					</p>
+					<p>Expected result:</p>
+					<pre><code class="language-text">status = EXPIRED
+escrow released
+intent unregistered
+</code></pre>
+					<p>This means <code>LibOpenIntentOps.expire</code> must also use <code>unlockForCancelOrExpire()</code>.</p>
+					<h2 id="should-we-add-a-dedicated-cancel-function">Should We Add a Dedicated Cancel Function?</h2>
+					<p>Recommendation: no dedicated cancel function for v1.</p>
+					<p>Avoid:</p>
+					<pre><code class="language-solidity">cancelDeferredSellIntent(uint256 intentId)
+cancelBroadcastSellIntent(uint256 intentId)
+</code></pre>
+					<p>Reasons:</p>
+					<ol>
+						<li><code>cancelOpenIntent</code> already handles open-intent cancellation.</li>
+						<li>Adding another external cancel selector creates duplicate lifecycle paths.</li>
+						<li>Duplicate paths increase the chance that one path releases escrow and the other forgets.</li>
+						<li>Indexers and frontend code already understand the existing cancel event.</li>
+					</ol>
+					<p>Frontend or SDK can add a convenience wrapper:</p>
+					<pre><code class="language-ts">cancelBroadcastSellIntent(intentId) {
+  return partyAOpenFacet.cancelOpenIntent([intentId]);
+}
+</code></pre>
+					<p>but the core contract should keep one cancellation path.</p>
+					<h2 id="required-cancel-path-code-changes">Required Cancel-Path Code Changes</h2>
+					<p>Update these files to use the deferred-aware unlock helper:</p>
+					<ol>
+						<li>
+							<code>contracts/libraries/core/LibPartyAOpen.sol</code>
+							<ul>
+								<li><code>cancelOpenIntent</code></li>
+							</ul>
+						</li>
+						<li>
+							<code>contracts/libraries/models/LibOpenIntent.sol</code>
+							<ul>
+								<li><code>expire</code></li>
+							</ul>
+						</li>
+						<li>
+							<code>contracts/libraries/core/LibPartyBOpen.sol</code>
+							<ul>
+								<li><code>acceptCancelOpenIntent</code></li>
+							</ul>
+						</li>
+						<li>
+							<code>contracts/libraries/core/LibForceActions.sol</code>
+							<ul>
+								<li><code>forceCancelOpenIntent</code></li>
+							</ul>
+						</li>
+						<li>
+							<code>contracts/libraries/core/LibClearingHouse.sol</code>
+							<ul>
+								<li><code>cancelOpenIntents</code></li>
+							</ul>
+						</li>
+					</ol>
+					<p>The important invariant:</p>
+					<pre><code class="language-text">Every non-fill terminal path for a deferred sell intent releases escrow exactly once.
+</code></pre>
+					<h2 id="final-proposal">Final Proposal</h2>
+					<p>For the first implementation:</p>
+					<ol>
+						<li>
+							Do not expand into the rejected modes in the
+							<a href="implementation_proposal.html#summary">implementation proposal’s Summary</a>.
+						</li>
+						<li>Add notes that those modes are v2 candidates.</li>
+						<li>Reuse existing <code>cancelOpenIntent</code>.</li>
+						<li>Do not add a new external cancel function.</li>
+						<li>
+							Make cancellation, expiry, force-cancel, clearing-house cancel, and PartyB accept-cancel all call the same deferred-aware
+							escrow release helper.
+						</li>
+					</ol>
+				</article>
+			</main>
+		</div>
+		<footer class="site-footer"><span>Options Core documentation.</span></footer>
+	</body>
+</html>

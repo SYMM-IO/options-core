@@ -70,23 +70,26 @@ export function shouldBehaveLikeSymmioPartyB(): void {
 			.quantity(e(1))
 			.build()
 
-		openIntentCallData = partyAOpenFacet.interface.encodeFunctionData("sendOpenIntent", [
-			request.partyBsWhiteList,
-			request.symbolId,
-			request.price,
-			request.quantity,
-			request.strikePrice,
-			request.expirationTimestamp,
-			request.mm,
-			request.tradeSide,
-			request.marginType,
-			request.exerciseFee,
-			request.solverFee,
-			request.deadline,
-			request.feeToken,
-			request.affiliate,
-			request.userData,
-		])
+		openIntentCallData = partyAOpenFacet.interface.encodeFunctionData(
+			"sendOpenIntent(address[],uint256,uint256,uint256,uint256,uint256,uint256,uint8,uint8,(uint256,uint256),(uint256,uint256),uint256,address,address,bytes)",
+			[
+				request.partyBsWhiteList,
+				request.symbolId,
+				request.price,
+				request.quantity,
+				request.strikePrice,
+				request.expirationTimestamp,
+				request.mm,
+				request.tradeSide,
+				request.marginType,
+				request.exerciseFee,
+				request.solverFee,
+				request.deadline,
+				request.feeToken,
+				request.affiliate,
+				request.userData,
+			],
+		)
 		lockIntentCallData = partyBOpenFacet.interface.encodeFunctionData("lockOpenIntent", [1])
 		fillIntentCallData = partyBOpenFacet.interface.encodeFunctionData("fillOpenIntent", [1, e(100), 7])
 	})

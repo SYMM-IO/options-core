@@ -31,7 +31,7 @@
 <a class="toc-link level-2" href="#11-code-map">11. Code Map</a>
 </div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1>Scheduled Release</h1><p class="hero-copy">Delayed isolated releases, synchronization, and liquidation.</p></div></div></header>
 <article class="doc-article" id="full-document"><p>The scheduled release model is a per-counterparty delay applied to isolated balance credits that originate from a counterparty (premium, realized PnL, fees, liquidation distributions, reserve→cross promotions on the isolated path). Funds wait two <code>releaseInterval</code> boundaries before they are spendable. Cross-margin credits are exempt: they land instantly.</p>
-<p>This document covers the <strong>why</strong> and the <strong>edge cases</strong>. The end-to-end account flow is documented in <code>docs/flows/account-balances.md</code>; refer to that for storage shape, deposit/withdraw lifecycle, and event surface.</p>
+<p>This document covers the <strong>why</strong> and the <strong>edge cases</strong>. The end-to-end account flow is documented in <code>docs/pages/account-balances.html</code>; refer to that for storage shape, deposit/withdraw lifecycle, and event surface.</p>
 <h2 id="1-overview">1. Overview</h2>
 <p>Every isolated credit from a counterparty B to user A reflects a settlement event whose correctness depends on B&#39;s solvency at the moment of recording. If A could withdraw such a credit immediately, then a late-arriving correction (a contested oracle, a missed liquidation trigger, a malicious counterparty unwind) would have nothing to claw back from. The scheduled release model gives the protocol a bounded window in which:</p>
 <ul>
@@ -91,7 +91,7 @@
 <p>Worst-case wait for a brand-new credit is <code>~2 * releaseInterval</code>; best case is just over <code>releaseInterval</code> (credit lands one block before the boundary). Average is <code>~1.5 * releaseInterval</code>.</p>
 <p>The &quot;two-bus&quot; name in the source comments mirrors this geometry: the scheduled bucket is the &quot;next bus that has not yet arrived&quot;; the transitioning bucket is the &quot;current bus, doors open at the next boundary&quot;.</p>
 <h2 id="3-balance-fields-involved">3. Balance Fields Involved</h2>
-<p>Subset of <code>ScheduledReleaseBalance</code> (<code>contracts/types/BalanceTypes.sol:46</code>) relevant to the scheduled release model. See <code>docs/flows/account-balances.md</code> for the complete table.</p>
+<p>Subset of <code>ScheduledReleaseBalance</code> (<code>contracts/types/BalanceTypes.sol:46</code>) relevant to the scheduled release model. See <code>docs/pages/account-balances.html</code> for the complete table.</p>
 <table>
 <thead>
 <tr>
@@ -195,7 +195,7 @@
 </tr>
 </tbody></table>
 <p>The override takes precedence over the default. The interval read inside <code>scheduledAdd</code> and <code>_sync</code> is always the counterparty&#39;s interval (the user issuing the credit), not the recipient&#39;s. A Party A receiving a credit from Party B uses Party B&#39;s release interval.</p>
-<p>Both setters live on <code>ControlFacet</code> and are gated by roles documented in <code>docs/concepts/roles-and-pauses.md</code>. <code>manualSync[user]</code> is also configured there and is automatically set to <code>true</code> when a Party B is registered (<code>contracts/facets/Control/ControlFacet.sol:397</code>).</p>
+<p>Both setters live on <code>ControlFacet</code> and are gated by roles documented in <code>docs/pages/roles-and-pauses.html</code>. <code>manualSync[user]</code> is also configured there and is automatically set to <code>true</code> when a Party B is registered (<code>contracts/facets/Control/ControlFacet.sol:397</code>).</p>
 <p>A change in either storage affects only <strong>future</strong> sync operations for the affected counterparty. In-flight buckets are reconciled on the next <code>_sync</code> call via the reinitialization branch (<code>LibScheduledReleaseBalance.sol:314</code>).</p>
 <h2 id="7-manualsync-users">7. <code>manualSync</code> Users</h2>
 <p><code>accountLayout.manualSync[user]</code> (<code>contracts/storages/AccountStorage.sol:19</code>) is a per-user flag with two coupled behaviors:</p>

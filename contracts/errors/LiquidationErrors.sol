@@ -5,6 +5,7 @@
 pragma solidity >=0.8.19;
 
 library LiquidationErrors {
+	error LiquidationScopeMismatch(uint256 liquidationId);
 	error ZeroLossCoverage(address partyB);
 	error MismatchedArrayLengths(uint256 tradeIdsLength, uint256 pricesLength);
 	error PartyASolvent(address partyA, address partyB, address token);
