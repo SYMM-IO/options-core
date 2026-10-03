@@ -11,7 +11,7 @@ tags:
 
 # Architecture
 
-SYMM Options Core is an EIP-2535 Diamond options-trading protocol implemented in Solidity 0.8.19. State and behavior are split across a small set of facets sharing a single delegatecall context (`contracts/Diamond.sol`). All persistent state lives in domain-scoped diamond storage libraries; control flow is mediated by layered libraries (core, services, models, utils). This document is the entry point and orientation map for the codebase. Per-selector behavior, per-storage layout, role/pause matrices, event/error catalogs, and end-to-end flows live in the dedicated reference documents linked throughout.
+SYMM Options Core is an EIP-2535 Diamond options-trading protocol implemented in Solidity. The contracts compile with solc 0.8.25 (`evmVersion: cancun`, `viaIR`). State and behavior are split across a small set of facets sharing a single delegatecall context (`contracts/Diamond.sol`). All persistent state lives in domain-scoped diamond storage libraries; control flow is mediated by layered libraries (core, services, models, utils). This document is the entry point and orientation map for the codebase. Per-selector behavior, per-storage layout, role/pause matrices, event/error catalogs, and end-to-end flows live in the dedicated reference documents linked throughout.
 
 Companion documents:
 
@@ -425,7 +425,7 @@ Off-chain:
 
 ## 12. Compilation and Build Context
 
-- **Solidity**: `0.8.19`. The version pin appears at the top of every source file as `pragma solidity >=0.8.19;`. Built-in checked arithmetic is relied upon; no SafeMath wrappers are used inside the protocol.
+- **Solidity**: the contracts compile with solc `0.8.25` (`evmVersion: cancun`, `viaIR`), pinned in `hardhat.config.ts`. Source files declare a floor pragma (`pragma solidity >=0.8.19;`), and the pinned compiler is higher because the OpenZeppelin 5.6.1 imports need `>=0.8.24`. Built-in checked arithmetic is relied upon; no SafeMath wrappers are used inside the protocol.
 - **License headers**: Diamond-pattern files inherited from Nick Mudge are `GPL-3.0-or-later` or `MIT`; protocol-original files use `SYMM-Core-Business-Source-License-1.1`. New files must carry an SPDX header consistent with the directory's existing files.
 - **Compiler settings**: optimizer is enabled with `viaIR` for the Diamond build to fit the facet code below the contract size limit; check `hardhat.config.ts` (or `foundry.toml` if present) before changing settings, since cut-generation tooling depends on stable selector and bytecode output.
 - **Toolchain**: Hardhat-based, with TypeScript scripts under `scripts/` and `common/`; see [[deployment-and-operations]] for build/deploy commands and [[testing]] for running tests.

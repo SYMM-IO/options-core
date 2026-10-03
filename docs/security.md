@@ -189,7 +189,9 @@ For deeper recap see `docs/concepts/oracle-and-signatures.md` (planned). Three i
 
 - **Muon TSS** for `UpnlSig` and `SettlementPriceSig` (`contracts/libraries/services/LibMuon.sol`, verified through `MuonOracle.sol:38-43` which combines a Schnorr signature with a gateway ECDSA signature). Risks: TSS quorum compromise, gateway compromise (gateway alone cannot forge), expired signatures (`ExpiredSignature` at `LibMuon.sol:32,66`), and replay (settlement-side replay blocked by `isSigUsed`; uPnL replay blocked by bilateral nonce — `LibMuon.sol:85`).
 - **EIP-712 / EIP-1271** for `InstantLayer` signed operations (`contracts/helpers/InstantLayer.sol`). Risks: signer key compromise, deadline expiry (`DeadlineExpired` at `:387`), nonce/salt collisions (replay blocked at `:401-402`, ordering at `:410`).
-- **EOA / ERC-1271** general signatures via `SignatureVerifier` and `LibSignature`. Risks: a compromised contract signer (notably MultiAccount-owned SymmioPartyA, which delegates ERC-1271 back to MultiAccount); `SignatureVerifier` replacement by `SETTER_ROLE`.
+- **EOA / ERC-1271** general signatures via `SignatureVerifier` (backed by `LibSignatureChecker`) and `LibSignature`. Risks: a compromised contract signer (notably MultiAccount-owned SymmioPartyA, which delegates ERC-1271 back to MultiAccount); `SignatureVerifier` replacement by `SETTER_ROLE`.
+
+Signature checks deliberately keep OpenZeppelin 4 semantics through `contracts/libraries/utils/LibSignatureChecker.sol`: ECDSA `tryRecover` first, then ERC-1271. This lets an EIP-7702-delegated EOA, which has code, still sign with its own key. OpenZeppelin 5's stock `SignatureChecker` routes on `signer.code.length` and would reject those signatures, so `LibSignatureChecker` must not be replaced with it without an explicit decision.
 
 ## 11. Decimal Normalization
 

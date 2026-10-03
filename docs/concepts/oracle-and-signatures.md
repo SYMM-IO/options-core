@@ -18,12 +18,12 @@ SYMM Options Core relies on three distinct signing schemes, each with different 
 
 ## 1. Overview
 
-| Scheme                                        | Used for                                                                                                             | Where verified                                                                                           |
-| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Muon TSS + Schnorr (+ gateway ECDSA)          | Settlement prices, uPnL on deallocate / liquidate, any data the operator must not be trusted to provide unilaterally | `LibMuon.verifySettlementPriceSig`, `LibMuon.verifyUpnlSig`, ultimately `MuonOracle.verifyTSSAndGW`      |
-| ECDSA / ERC-1271 (single signer)              | Off-chain authorization of intents on behalf of a Party A or Party B account (EOA or smart contract account)         | `LibSignature.verifySignature` -> `SignatureVerifier.verifySignature` -> OpenZeppelin `SignatureChecker` |
-| EIP-712 batches (InstantLayer)                | Operator-pushed batches of pre-authorized actions submitted in a single transaction                                  | InstantLayer facets — see `docs/flows/instant-actions.md`                                                |
-| `IPriceOracle` (collateral / fee-token quote) | Spot quote for collateral and fee tokens at intent creation time                                                     | Direct view-call from facets to a configured oracle adapter                                              |
+| Scheme                                        | Used for                                                                                                             | Where verified                                                                                      |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Muon TSS + Schnorr (+ gateway ECDSA)          | Settlement prices, uPnL on deallocate / liquidate, any data the operator must not be trusted to provide unilaterally | `LibMuon.verifySettlementPriceSig`, `LibMuon.verifyUpnlSig`, ultimately `MuonOracle.verifyTSSAndGW` |
+| ECDSA / ERC-1271 (single signer)              | Off-chain authorization of intents on behalf of a Party A or Party B account (EOA or smart contract account)         | `LibSignature.verifySignature` -> `SignatureVerifier.verifySignature` -> `LibSignatureChecker`      |
+| EIP-712 batches (InstantLayer)                | Operator-pushed batches of pre-authorized actions submitted in a single transaction                                  | InstantLayer facets — see `docs/flows/instant-actions.md`                                           |
+| `IPriceOracle` (collateral / fee-token quote) | Spot quote for collateral and fee tokens at intent creation time                                                     | Direct view-call from facets to a configured oracle adapter                                         |
 
 Settlement (`executeTrades`, exercise, expiration) and any path that converts uPnL into a balance change (`deallocate`, `liquidate`) require Muon. Intent creation and amendment authenticated by the account owner use ECDSA / ERC-1271. Batched off-chain authorizations submitted by the operator use EIP-712 (InstantLayer). The collateral / fee quote during intent creation uses `IPriceOracle` and is independent of Muon.
 
@@ -166,7 +166,7 @@ function verifySignature(bytes32 hashValue, bytes calldata signature, address si
 
 Two guarantees:
 
-1. The signature is valid for `signer` over `hashValue`, where validity follows OpenZeppelin's `SignatureChecker.isValidSignatureNow` — i.e. it succeeds for any of: ECDSA (EOA), ERC-1271 (smart-contract account returning the magic value), or ERC-6492 wrapped signatures via the underlying checker.
+1. The signature is valid for `signer` over `hashValue`, where validity follows `LibSignatureChecker.isValidSignatureNow` (`contracts/libraries/utils/LibSignatureChecker.sol`) — i.e. it succeeds if either the signature is a valid ECDSA signature by `signer` (tried first via `ECDSA.tryRecover`, so this also covers an EIP-7702-delegated EOA signing with its key) or `signer` is a contract that returns the ERC-1271 magic value. ERC-6492 wrapped signatures are not supported. These are OpenZeppelin 4 semantics, kept deliberately instead of OpenZeppelin 5's `SignatureChecker`, which routes on `signer.code.length`.
 2. The hash has not been used before. `isSigUsed[hashValue]` is the global replay-protection map; the hash is therefore the canonical "intent fingerprint" — it must include all binding fields (signer, deadline, nonce, parameters) so distinct authorizations produce distinct hashes.
 
 ```mermaid
@@ -175,16 +175,16 @@ sequenceDiagram
     participant LibSig as LibSignature
     participant App as AppStorage
     participant SV as SignatureVerifier
-    participant SC as OZ SignatureChecker
+    participant SC as LibSignatureChecker
     participant Acct as signer (EOA or 1271 wallet)
 
     Caller->>LibSig: verifySignature(hash, sig, signer)
     LibSig->>App: read signatureVerifier address
     LibSig->>SV: verifySignature(signer, hash, sig)
     SV->>SC: isValidSignatureNow(signer, hash, sig)
-    alt signer is EOA
-        SC->>SC: ECDSA.recover(hash, sig) == signer
-    else signer is contract
+    alt ECDSA recovers signer (EOA key, incl. EIP-7702-delegated EOA)
+        SC->>SC: ECDSA.tryRecover(hash, sig) == signer
+    else otherwise, ERC-1271
         SC->>Acct: isValidSignature(hash, sig)
         Acct-->>SC: 0x1626ba7e | 0xffffffff
     end

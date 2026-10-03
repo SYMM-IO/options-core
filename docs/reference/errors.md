@@ -24,6 +24,7 @@ Every revert path in Options Core uses a typed custom error. Errors are grouped 
 - [System Errors](#system-errors)
 - [Reentrancy Guard Errors](#reentrancy-guard-errors)
 - [Inline Helper Errors](#inline-helper-errors)
+- [Inherited OpenZeppelin 5 Errors](#inherited-openzeppelin-5-errors)
 - [Common Triage Patterns](#common-triage-patterns)
 
 ## Balance Errors
@@ -277,6 +278,30 @@ These errors are declared inside the helper contracts themselves rather than in 
 | ------------------------- | ------------------------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------- |
 | `InvalidSignature`        | `()`                                        | Schnorr signature verification on the Muon report failed.            | `contracts/helpers/MuonOracle.sol:38` (defined `:20`) |
 | `InvalidGatewaySignature` | `(address signer, address expectedGateway)` | Recovered gateway signer differs from the configured `validGateway`. | `contracts/helpers/MuonOracle.sol:43` (defined `:21`) |
+
+## Inherited OpenZeppelin 5 Errors
+
+The helper contracts inherit OpenZeppelin 5, which reverts with custom errors instead of the revert strings OpenZeppelin 4 used. Off-chain code that matches OpenZeppelin 4 revert strings must switch to ABI-decoding these custom errors. They are declared by the OpenZeppelin base contracts, not in this repo, so they do not appear in `contracts/errors/`.
+
+| Error                                             | Raised by                                                                 | Replaces (OpenZeppelin 4 string)                                                              |
+| ------------------------------------------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `AccessControlUnauthorizedAccount(account, role)` | MultiAccount, SymmioPartyA, SymmioPartyB, InstantLayer, MuonOracle        | `AccessControl: account ... is missing role ...`                                              |
+| `EnforcedPause()`                                 | MultiAccount, SymmioPartyB (`whenNotPaused` functions, `pause()` twice)   | `Pausable: paused`                                                                            |
+| `ExpectedPause()`                                 | MultiAccount, SymmioPartyB (`unpause()` while not paused)                 | `Pausable: not paused`                                                                        |
+| `InvalidInitialization()`                         | MultiAccount, SymmioPartyB (`initialize` called a second time)            | `Initializable: contract is already initialized`                                              |
+| `ReentrancyGuardReentrantCall()`                  | SymmioPartyB, InstantLayer (`nonReentrant` functions)                     | `ReentrancyGuard: reentrant call`                                                             |
+| `ERC721InsufficientApproval(operator, tokenId)`   | TradeNFT (`transferFrom`, `safeTransferFrom`)                             | `ERC721: caller is not token owner or approved`                                               |
+| `ERC721IncorrectOwner(sender, tokenId, owner)`    | TradeNFT (`transferFrom`, `safeTransferFrom`, `transferTradeNFT`)         | `ERC721: transfer from incorrect owner`                                                       |
+| `ERC721NonexistentToken(tokenId)`                 | TradeNFT (`ownerOf`, `getApproved`, transfers of an unminted id)          | `ERC721: invalid token ID`                                                                    |
+| `ERC721InvalidReceiver(receiver)`                 | TradeNFT (`safeTransferFrom` to a non-receiver contract, or `address(0)`) | `ERC721: transfer to non ERC721Receiver implementer`, `ERC721: transfer to the zero address`  |
+| `ERC721InvalidOwner(owner)`                       | TradeNFT (`balanceOf(address(0))`)                                        | `ERC721: address zero is not a valid owner`                                                   |
+| `ERC721OutOfBoundsIndex(owner, index)`            | TradeNFT (`tokenByIndex`, `tokenOfOwnerByIndex`)                          | `ERC721Enumerable: global index out of bounds`, `ERC721Enumerable: owner index out of bounds` |
+| `OwnableUnauthorizedAccount(account)`             | TradeNFT (`transferOwnership`, `renounceOwnership`)                       | `Ownable: caller is not the owner`                                                            |
+| `ECDSAInvalidSignature()`                         | MuonOracle (`verifyTSSAndGW` gateway signature recovery)                  | `ECDSA: invalid signature`                                                                    |
+| `ECDSAInvalidSignatureLength(length)`             | MuonOracle (`verifyTSSAndGW` gateway signature recovery)                  | `ECDSA: invalid signature length`                                                             |
+| `ECDSAInvalidSignatureS(s)`                       | MuonOracle (`verifyTSSAndGW` gateway signature recovery)                  | `ECDSA: invalid signature 's' value`                                                          |
+
+`SafeERC20FailedOperation` is not listed: none of the helpers call `SafeERC20` functions (`SymmioPartyB` uses plain `approve` and `transfer` and raises `TokenNotApproved` and `TokenNotTransferred`). `SymmioPartyA.transferTradeNFT` wraps the NFT transfer in `try`/`catch`, so TradeNFT's ERC721 errors surface there as `NFTTransferFailed`.
 
 ## Common Triage Patterns
 

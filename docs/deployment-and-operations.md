@@ -167,4 +167,4 @@ npx hardhat test tests/partyB-open-facet.behavior.ts
 
 `PRIVATE_KEY` and `ETHERSCAN_API_KEY` are Hardhat config variables, read only when a network or verify command needs them. Set them in `.env`/symsec or with `npx hardhat keystore set`.
 
-The Base proxies recorded under `.openzeppelin/legacy-oz4/` (MultiAccount and SymmioPartyB, deployed with OpenZeppelin 4) are abandoned. The next MultiAccount and SymmioPartyB deployment is a fresh OpenZeppelin 5 deployment, not an upgrade.
+The Base proxies deployed with OpenZeppelin 4 are abandoned: MultiAccount `0x798101d0C3B4A0D863AdC67DA77BAA6fCd9610C2` and SymmioPartyB `0x676F287Eb5dF6E0B6B913C26f64660493F98Cc4A`. The old OpenZeppelin 4 upgrades manifest is kept locally, not in git. The next MultiAccount and SymmioPartyB deployment is a fresh OpenZeppelin 5 deployment, not an upgrade.
