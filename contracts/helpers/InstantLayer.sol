@@ -27,9 +27,10 @@ pragma solidity >=0.8.19;
 
 import { AccessControlEnumerable } from "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
-import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { MessageHashUtils } from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+
+import { LibSignatureChecker } from "../libraries/utils/LibSignatureChecker.sol";
 
 /* ────────────────────────── External Interfaces ────────────────────────── */
 
@@ -558,6 +559,6 @@ contract InstantLayer is AccessControlEnumerable, ReentrancyGuardTransient, EIP7
 	 * @return Whether the signature is valid.
 	 */
 	function isValidSignature(address signer, bytes32 hash, bytes calldata signature) public view returns (bool) {
-		return SignatureChecker.isValidSignatureNow(signer, MessageHashUtils.toEthSignedMessageHash(hash), signature);
+		return LibSignatureChecker.isValidSignatureNow(signer, MessageHashUtils.toEthSignedMessageHash(hash), signature);
 	}
 }

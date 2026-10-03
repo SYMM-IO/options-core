@@ -16,6 +16,7 @@ import { shouldBehaveLikeClearingHouseFacet } from "./clearing-house"
 import { shouldBehaveLikeControlFacet } from "./control-facet.behavior"
 import { shouldBehaveLikeTradeNFT } from "./helpers/trade-nft.behavior"
 import { shouldGuardSymmioPartyBAgainstReentrancy } from "./helpers/symmio-partyb-reentrancy.behavior"
+import { shouldBehaveLikeSignatureVerifier } from "./helpers/signature-verifier.behavior"
 
 describe(`${name}-v${version}`, () => {
 	if (process.env.TEST_MODE === TestModeEnum.UNIT_TEST) {
@@ -81,6 +82,10 @@ describe(`${name}-v${version}`, () => {
 
 		describe("Symmio PartyB reentrancy", async function () {
 			shouldGuardSymmioPartyBAgainstReentrancy()
+		})
+
+		describe("Signature Verifier", async function () {
+			shouldBehaveLikeSignatureVerifier()
 		})
 	} else {
 		throw new Error(`Invalid TEST_MODE property. Should be one of: ${Object.keys(TestModeEnum).join(", ")}`)

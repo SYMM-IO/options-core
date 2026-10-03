@@ -4,7 +4,7 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
+import { LibSignatureChecker } from "../libraries/utils/LibSignatureChecker.sol";
 
 /**
  * @notice A minimal contract that hashes and verifies signatures
@@ -12,7 +12,7 @@ import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/Sig
  */
 contract SignatureVerifier {
 	function verifySignature(address signer, bytes32 hash, bytes calldata signature) public view returns (bool) {
-		return SignatureChecker.isValidSignatureNow(signer, hash, signature);
+		return LibSignatureChecker.isValidSignatureNow(signer, hash, signature);
 	}
 
 	/// @notice Verifies that the signer is the owner of the signing contract.
