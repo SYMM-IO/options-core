@@ -10,5 +10,5 @@ Useful commands:
 npm install
 npx hardhat compile
 npx hardhat test
-npx hardhat deploy:diamond --network hardhat --log-data true
+npx hardhat deploy:diamond
 ```

@@ -22,31 +22,27 @@
 		"@openzeppelin/contracts": "5.6.1",
 		"@openzeppelin/contracts-upgradeable": "5.6.1",
 		"@openzeppelin/hardhat-upgrades": "^4.1.0",
+		"@secretlint/secretlint-rule-no-dotenv": "^13.0.7",
+		"@secretlint/secretlint-rule-preset-recommend": "^13.0.7",
+		"@secretlint/secretlint-rule-privatekey": "^13.0.7",
+		"@secretlint/secretlint-rule-secp256k1-privatekey": "^13.0.7",
 		"@types/chai": "^5.2.3",
-		"@types/fs-extra": "^11.0.4",
 		"@types/mocha": "^10.0.10",
 		"@types/node": "^24.19.1",
-		"bignumber.js": "^9.3.1",
 		"builder-pattern": "^2.2.0",
 		"chai": "^6.3.0",
-		"cross-env": "^7.0.3",
 		"dotenv": "^18.0.5",
 		"ethers": "^6.17.0",
-		"fs-extra": "^11.4.1",
 		"hardhat": "^3.18.1",
 		"husky": "^9.1.7",
-		"js-sha3": "^0.9.3",
-		"lint-staged": "^16.4.0",
+		"lint-staged": "^17.6.0",
 		"mocha": "^12.0.3",
 		"prettier": "^3.9.9",
 		"prettier-plugin-solidity": "^2.4.1",
-		"random-ext": "^2.8.0",
-		"rxjs": "^7.8.2",
-		"secretlint": "^9.3.4",
-		"shx": "^0.3.4",
-		"typescript": "^7.0.2",
-		"typescript-json-serializer": "^6.0.1",
-		"winston": "^3.19.0"
+		"secretlint": "^13.0.7",
+		"shx": "^0.4.0",
+		"solhint": "^6.2.4",
+		"typescript": "^7.0.2"
 	},
 	"files": [
 		"/contracts"
@@ -59,7 +55,6 @@
 		"solidity",
 		"typescript"
 	],
-	"packageManager": "yarn@1.22.22",
 	"publishConfig": {
 		"access": "public"
 	},
@@ -67,21 +62,14 @@
 		"clean": "hardhat clean && shx rm -rf ./types ./coverage ./coverage.json",
 		"compile": "symsec --project options-core run npx hardhat compile",
 		"coverage": "hardhat test --coverage",
-		"lint": "yarn lint:sol && yarn lint:ts",
+		"lint": "npm run lint:sol && npm run typecheck",
 		"lint:sol": "solhint --config ./.solhint.json --max-warnings 0 \"contracts/**/*.sol\"",
 		"test": "symsec --project options-core run npx hardhat test",
 		"test:uncheck-muon": "./utils/runTest.sh",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
-		"precommit": "symsec --project options-core run yarn format && symsec --project options-core run  yarn compile && symsec --project options-core run  yarn test",
+		"precommit": "symsec --project options-core run npm run format && symsec --project options-core run npm run compile && symsec --project options-core run npm test",
 		"typecheck": "tsc --noEmit -p ."
-	},
-	"dependencies": {
-		"@secretlint/secretlint-rule-no-dotenv": "^9.3.4",
-		"@secretlint/secretlint-rule-preset-recommend": "^9.3.4",
-		"@secretlint/secretlint-rule-privatekey": "^9.3.4",
-		"@secretlint/secretlint-rule-secp256k1-privatekey": "^9.3.4",
-		"solhint": "^5.2.0"
 	},
 	"lint-staged": {
 		"*": "secretlint"

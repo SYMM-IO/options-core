@@ -11,7 +11,7 @@ tags:
 ---
 # Deployment And Operations
 
-This repo is a Hardhat project using Solidity `0.8.19`, TypeChain for ethers v6, and the OpenZeppelin upgrades plugin for helper contracts.
+This repo is a Hardhat project using Solidity `0.8.25` (`evmVersion: cancun`), Hardhat 3, Node 24, OpenZeppelin 5.6.1, TypeChain for ethers v6 (generated on compile), and the OpenZeppelin upgrades plugin for helper contracts.
 
 ## Common Commands
 
@@ -19,18 +19,20 @@ This repo is a Hardhat project using Solidity `0.8.19`, TypeChain for ethers v6,
 npm install
 npx hardhat compile
 npx hardhat test
-npx hardhat coverage
+npx hardhat test --coverage
 ```
 
-The package scripts also include `yarn compile`, `yarn test`, and `yarn typechain`, but those wrap commands with `symsec --project options-core`. Use the direct `npx hardhat ...` commands if SymSec is not available in your environment.
+The package scripts also include `npm run compile` and `npm test` (plus `npm run coverage`), but the first two wrap commands with `symsec --project options-core`. TypeChain now runs as part of compile, so there is no separate typechain script. Use the direct `npx hardhat ...` commands if SymSec is not available in your environment.
 
 ## Diamond Deployment
 
 The main deployment task is registered in `tasks/deployment/diamond-deploy.task.ts`.
 
 ```bash
-npx hardhat deploy:diamond --network hardhat --log-data true
+npx hardhat deploy:diamond
 ```
+
+This runs on the in-process network and writes `tasks/data/deployed.json` by default; pass `--skip-log` to skip writing it.
 
 Deployment order:
 
@@ -71,9 +73,9 @@ Registered helper tasks:
 Examples:
 
 ```bash
-npx hardhat deploy:multiAccount --network hardhat --symmioaddress <diamond> --admin <admin> --tradenftaddress <tradeNFT>
-npx hardhat deploy:InstantLayer --network hardhat --symmioaddress <diamond> --admin <admin>
-npx hardhat deploy:symmioPartyB --network hardhat --symmioaddress <diamond> --admin <admin>
+npx hardhat deploy:multiAccount --symmioaddress <diamond> --admin <admin> --tradenftaddress <tradeNFT>
+npx hardhat deploy:InstantLayer --symmioaddress <diamond> --admin <admin>
+npx hardhat deploy:symmioPartyB --symmioaddress <diamond> --admin <admin>
 ```
 
 ## Setup Configuration
@@ -138,8 +140,6 @@ The behavior tests are split by protocol area:
 -   `tests/trade-settlement.ts`
 -   `tests/force-action.behavior.ts`
 -   `tests/clearing-house.ts`
--   `tests/instant-action-open.behavior.ts`
--   `tests/instant-action-close.behavior.ts`
 -   `tests/helpers/instant-layer.behavior.ts`
 -   `tests/helpers/multi-account.behavior.ts`
 -   `tests/helpers/symmio-partyb.behavior.ts`
@@ -160,8 +160,10 @@ npx hardhat test tests/partyB-open-facet.behavior.ts
 
 `hardhat.config.ts` defines:
 
--   `hardhat`: default local network.
+-   `default`: in-process local network (`edr-simulated`). It is used when `--network` is omitted.
 -   `polygon`: `https://polygon-rpc.com`.
 -   `base`: `https://mainnet.base.org`.
 
-`PRIVATE_KEY` is read from `.env`; the fallback key in `hardhat.config.ts` is a dummy development key. Base verification uses `BASE_API_KEY`.
+`PRIVATE_KEY` and `ETHERSCAN_API_KEY` are Hardhat config variables, read only when a network or verify command needs them. Set them in `.env`/symsec or with `npx hardhat keystore set`.
+
+The Base proxies recorded under `.openzeppelin/legacy-oz4/` (MultiAccount and SymmioPartyB, deployed with OpenZeppelin 4) are abandoned. The next MultiAccount and SymmioPartyB deployment is a fresh OpenZeppelin 5 deployment, not an upgrade.
