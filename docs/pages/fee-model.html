@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Open, close, and exercise fees, affiliates, and fee collectors."><title>Fee Model | Options Core</title>
+<link rel="icon" type="image/svg+xml" href="../assets/symmio-mark.svg">
+<script>try { if (localStorage.getItem("options-docs-theme") === "light") document.documentElement.dataset.theme = "light"; } catch (_) {}</script>
+<link rel="stylesheet" href="../assets/reader.css"><link rel="stylesheet" href="../assets/docs-portal.css">
+<script src="../assets/chapters.js" defer></script><script src="../assets/reader.js" defer></script><script src="../assets/docs-portal.js" defer></script>
+</head>
+<body class="doc-page" data-version="current"><a class="skip-link" href="#full-document">Skip to document</a>
+<header class="docs-header"><div class="doc-topbar"><nav class="docs-trail" aria-label="Breadcrumb">
+<a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Options Core</span></a>
+<span class="trail-sep" aria-hidden="true">/</span><a class="trail-release" href="../index.html">Documentation</a>
+</nav><nav class="top-actions" aria-label="Page actions"><button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button></nav></div></header><div class="reader-shell"><div data-rail-sections hidden>
+<a class="toc-link level-2" href="#contents">Contents</a>
+<a class="toc-link level-2" href="#overview">Overview</a>
+<a class="toc-link level-2" href="#feestructure-type">FeeStructure Type</a>
+<a class="toc-link level-2" href="#fee-token-vs-collateral-token">Fee Token Vs Collateral Token</a>
+<a class="toc-link level-2" href="#open-fee">Open Fee</a>
+<a class="toc-link level-3" href="#reserve-at-intent-creation">Reserve at intent creation</a>
+<a class="toc-link level-3" href="#collection-at-fill">Collection at fill</a>
+<a class="toc-link level-3" href="#per-component-formula">Per-component formula</a>
+<a class="toc-link level-3" href="#cancel-and-expire-refund">Cancel and expire refund</a>
+<a class="toc-link level-2" href="#close-fee">Close Fee</a>
+<a class="toc-link level-3" href="#per-component-formula-1">Per-component formula</a>
+<a class="toc-link level-2" href="#exercise-fee">Exercise Fee</a>
+<a class="toc-link level-3" href="#cap-and-rate-formula">Cap-and-rate formula</a>
+<a class="toc-link level-3" href="#pnl-net-of-exercise-fee">PnL net of exercise fee</a>
+<a class="toc-link level-3" href="#recipients-default--affiliate">Recipients (default + affiliate)</a>
+<a class="toc-link level-3" href="#insufficient-party-a-fee-balance">Insufficient Party A fee balance</a>
+<a class="toc-link level-2" href="#affiliate-model">Affiliate Model</a>
+<a class="toc-link level-3" href="#registration">Registration</a>
+<a class="toc-link level-3" href="#per-affiliate-fee-config">Per-affiliate fee config</a>
+<a class="toc-link level-3" href="#per-affiliate-collector">Per-affiliate collector</a>
+<a class="toc-link level-3" href="#default-affiliate-semantics">&quot;Default&quot; affiliate semantics</a>
+<a class="toc-link level-3" href="#inactive-affiliate-behavior">Inactive affiliate behavior</a>
+<a class="toc-link level-2" href="#solver-fee">Solver Fee</a>
+<a class="toc-link level-3" href="#storage">Storage</a>
+<a class="toc-link level-3" href="#isolated-vs-cross-routing">Isolated vs cross routing</a>
+<a class="toc-link level-3" href="#composition-with-regular-party-b-balance">Composition with regular Party B balance</a>
+<a class="toc-link level-2" href="#default-fee-collector-lifecycle">Default Fee Collector Lifecycle</a>
+<a class="toc-link level-2" href="#numeric-example">Numeric Example</a>
+<a class="toc-link level-3" href="#open-fee-at-fill-full-quantity-fillprice--100e18">Open fee at fill (full quantity, fillPrice = 100e18)</a>
+<a class="toc-link level-3" href="#close-fee-on-a-4e18-partial-close-at-price--105e18">Close fee on a 4e18 partial close at price = 105e18</a>
+<a class="toc-link level-3" href="#exercise-fee-for-the-remaining-6e18-at-settlement">Exercise fee for the remaining 6e18 at settlement</a>
+<a class="toc-link level-2" href="#errors-reference">Errors Reference</a>
+<a class="toc-link level-2" href="#related-code-map">Related Code Map</a>
+</div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1>Fee Model</h1><p class="hero-copy">Open, close, and exercise fees, affiliates, and fee collectors.</p></div></div></header>
+<article class="doc-article" id="full-document"><p>Three fee events run during a trade&#39;s lifecycle in Options Core: an <strong>open fee</strong> reserved at intent creation and collected at fill, a <strong>close fee</strong> collected at every close-intent fill, and an <strong>exercise fee</strong> subtracted from PnL when the trade settles in-the-money. Every event splits across up to three recipients — the <strong>default fee collector</strong>, an optional <strong>affiliate fee collector</strong>, and the trade&#39;s <strong>Party B (solver)</strong> balance — and is denominated in a <code>feeToken</code> that may differ from the trade&#39;s collateral.</p>
+<h2 id="contents">Contents</h2>
+<ul>
+<li><a href="#overview">Overview</a></li>
+<li><a href="#feestructure-type">FeeStructure Type</a></li>
+<li><a href="#fee-token-vs-collateral-token">Fee Token Vs Collateral Token</a></li>
+<li><a href="#open-fee">Open Fee</a></li>
+<li><a href="#close-fee">Close Fee</a></li>
+<li><a href="#exercise-fee">Exercise Fee</a></li>
+<li><a href="#affiliate-model">Affiliate Model</a></li>
+<li><a href="#solver-fee">Solver Fee</a></li>
+<li><a href="#default-fee-collector-lifecycle">Default Fee Collector Lifecycle</a></li>
+<li><a href="#numeric-example">Numeric Example</a></li>
+<li><a href="#errors-reference">Errors Reference</a></li>
+<li><a href="#related-code-map">Related Code Map</a></li>
+</ul>
+<h2 id="overview">Overview</h2>
+<p>A trade carries a single <code>feeStructure</code> snapshot taken when its open intent is created (<code>contracts/libraries/core/LibPartyAOpen.sol:99-108</code>). The structure exposes three rate buckets — <code>platformFee</code>, <code>affiliateFee</code>, <code>solverFee</code> — each with an <code>openFee</code> and <code>closeFee</code> field, plus a separate <code>exerciseFee</code> defined at the trade-agreement level (<code>contracts/types/BaseTypes.sol:17-40</code>).</p>
+<pre><code class="language-mermaid">flowchart TD
+    PartyA[Party A balance in feeToken]
+    PartyA -- openFee at fill --&gt; Split1{Split}
+    PartyA -- closeFee at fill / settlement --&gt; Split2{Split}
+    PartyA -- exerciseFee from PnL --&gt; Split3{Split}
+
+    Split1 --&gt;|platformFee.openFee| DC1[Default fee collector]
+    Split1 --&gt;|affiliateFee.openFee| AC1[Affiliate fee collector]
+    Split1 --&gt;|solverFee.openFee| PB1[Party B isolated/cross balance]
+
+    Split2 --&gt;|platformFee.closeFee| DC2[Default fee collector]
+    Split2 --&gt;|affiliateFee.closeFee| AC2[Affiliate fee collector]
+    Split2 --&gt;|solverFee.closeFee| PB2[Party B isolated/cross balance]
+
+    Split3 --&gt;|platformFee.closeFee on PnL| DC3[Default fee collector]
+    Split3 --&gt;|affiliateFee.closeFee on PnL| AC3[Affiliate fee collector]
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Trigger</th>
+<th>Code</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Open fee</td>
+<td><code>fillOpenIntent</code> (and reserved at <code>sendOpenIntent</code>)</td>
+<td><code>contracts/libraries/core/LibPartyBOpen.sol:323-350</code>, <code>contracts/libraries/core/LibPartyAOpen.sol:118-125</code></td>
+</tr>
+<tr>
+<td>Close fee</td>
+<td><code>fillCloseIntent</code></td>
+<td><code>contracts/libraries/core/LibPartyBClose.sol:124-153</code></td>
+</tr>
+<tr>
+<td>Exercise fee</td>
+<td><code>executeTrades</code> for ITM trades only</td>
+<td><code>contracts/libraries/core/LibTradeOperations.sol:156-227</code></td>
+</tr>
+</tbody></table>
+<h2 id="feestructure-type">FeeStructure Type</h2>
+<p><code>FeeStructure</code> (<code>contracts/types/BaseTypes.sol:34-40</code>) is embedded in every <code>OpenIntent</code>, <code>CloseIntent</code>, and <code>Trade</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>feeToken</code></td>
+<td>address</td>
+<td>Caller-supplied at <code>sendOpenIntent</code> (<code>contracts/libraries/core/LibPartyAOpen.sol:42,100</code>).</td>
+</tr>
+<tr>
+<td><code>tokenPriceInCollateral</code></td>
+<td>uint256</td>
+<td><code>IPriceOracle.getPrice(feeToken, symbol.collateral)</code> at intent creation (<code>contracts/libraries/core/LibPartyAOpen.sol:101-104</code>).</td>
+</tr>
+<tr>
+<td><code>platformFee</code></td>
+<td>Fee</td>
+<td>Snapshot of <code>Symbol.platformFee</code> for <code>symbolId</code> (<code>contracts/types/SymbolTypes.sol:20-29</code>, <code>contracts/libraries/core/LibPartyAOpen.sol:105</code>).</td>
+</tr>
+<tr>
+<td><code>affiliateFee</code></td>
+<td>Fee</td>
+<td><code>feeLayout.affiliateFees[affiliate][symbolId]</code> (<code>contracts/storages/FeeManagementStorage.sol:16</code>, <code>contracts/libraries/core/LibPartyAOpen.sol:106</code>).</td>
+</tr>
+<tr>
+<td><code>solverFee</code></td>
+<td>Fee</td>
+<td>Caller-supplied at <code>sendOpenIntent</code> (<code>contracts/libraries/core/LibPartyAOpen.sol:42,107</code>).</td>
+</tr>
+</tbody></table>
+<p>Each <code>Fee</code> carries an <code>openFee</code> and <code>closeFee</code> rate (<code>contracts/types/BaseTypes.sol:22-25</code>). Rates are 18-decimal scalars: <code>1e18</code> corresponds to <code>100% × tokenPrice / collateralPrice</code> per unit of <code>quantity * price</code>. The exact formula is in <a href="#open-fee">Open Fee</a>.</p>
+<p>The <code>ExerciseFee</code> (<code>contracts/types/BaseTypes.sol:17-20</code>) is <strong>not</strong> part of <code>FeeStructure</code>. It lives in <code>TradeAgreements.exerciseFee</code> and is supplied by Party A on <code>sendOpenIntent</code> (<code>contracts/types/BaseTypes.sol:42-51</code>); the cap is bounded by <code>1e18</code> at intent validation (<code>contracts/libraries/core/LibPartyAOpen.sol:62</code>).</p>
+<p>Once a trade is created, the snapshot is immutable. Updates to <code>Symbol.platformFee</code> (<code>contracts/facets/Control/ControlFacet.sol:799-809</code>) or <code>affiliateFees</code> (<code>contracts/facets/Control/ControlFacet.sol:366-381</code>) only affect future intents.</p>
+<h2 id="fee-token-vs-collateral-token">Fee Token Vs Collateral Token</h2>
+<p>A trade&#39;s collateral is fixed by the <code>Symbol.collateral</code> field (<code>contracts/types/SymbolTypes.sol:20</code>). The fee token is independent and chosen per intent. The two are reconciled by reading the fee token&#39;s price in collateral once, when the open intent is registered:</p>
+<pre><code class="language-solidity">tokenPriceInCollateral: IPriceOracle(appLayout.priceOracleAddress).getPrice(
+    feeToken,
+    SymbolStorage.layout().symbols[tradeAgreements.symbolId].collateral
+)
+</code></pre>
+<p>(<code>contracts/libraries/core/LibPartyAOpen.sol:101-104</code>).</p>
+<p><code>IPriceOracle.getPrice(token, collateral)</code> returns an 18-decimal price (<code>contracts/interfaces/IPriceOracle.sol:5</code>). Locking that snapshot at intent creation means subsequent fee math is deterministic: an oracle move between intent and fill does not change the fee owed.</p>
+<p>The fee formulas use this price as a divisor to convert &quot;collateral-denominated rate × notional&quot; into &quot;fee-token amount&quot;. Open/close fees use:</p>
+<pre><code class="language-solidity">fee = (quantity * price * rate) / (tokenPriceInCollateral * 1e18);
+</code></pre>
+<p>(<code>contracts/libraries/models/LibOpenIntent.sol:42-43</code>, <code>contracts/libraries/models/LibCloseIntent.sol:26-28</code>).</p>
+<p>The exercise-fee path additionally divides PnL by the <strong>settlement-time</strong> <code>collateralPrice</code> from the Muon settlement signature before the same conversion (<code>contracts/libraries/core/LibTradeOperations.sol:198-202</code>).</p>
+<h2 id="open-fee">Open Fee</h2>
+<h3 id="reserve-at-intent-creation">Reserve at intent creation</h3>
+<p>Normal intents call <code>intent.lockFees()</code> immediately after constructing the intent. <code>lockFees</code> runs <code>_handleFees(self, FeeOp.Lock, self.price)</code> which:</p>
+<ol>
+<li>Computes the three components at <code>self.price</code> using <code>calculateFee</code>.</li>
+<li>Locks each component on Party A&#39;s <code>feeToken</code> balance via <code>_lock</code>. For <code>MarginType.ISOLATED</code>, the lock is <code>isolatedLock</code>; for normal <code>CROSS</code>, it is <code>crossLock(partyBsWhiteList[0], amount)</code>.</li>
+</ol>
+<p>Deferred Party B sells (<code>SELL + CROSS + []</code>) cannot cross-lock open fees at creation because the Party B key is not known yet. Instead, <code>lockDeferredSellEscrow</code> locks the estimated total open fee from Party A&#39;s isolated <code>feeToken</code> and stores it in <code>OpenIntentEscrow.feeLockAmount</code>.</p>
+<p>Normal fee locks are released by <code>unlockFees()</code> on cancel, expire, and immediately before fill. Deferred sell fee escrow is released by <code>releaseDeferredSellEscrow()</code> on cancel/expire or consumed by <code>consumeDeferredSellEscrow()</code> at fill. On partial fills, only the filled quantity&#39;s estimated fee lock is consumed; the remaining fee escrow moves to the residual child intent.</p>
+<h3 id="collection-at-fill">Collection at fill</h3>
+<p>For normal intents, <code>fillOpenIntent</code> first calls <code>intent.unlockFees()</code> and then <code>intent.getFeesFromUser(price)</code>. <code>getFeesFromUser</code> runs <code>_handleFees(self, FeeOp.Subtract, price)</code>, which subtracts each component from Party A&#39;s <code>feeToken</code> balance using:</p>
+<ul>
+<li><code>subForCounterParty(partyB, fee, marginType, reason)</code> for cross or for isolated with a single-Party-B whitelist;</li>
+<li><code>isolatedSub(fee, reason)</code> for isolated with multi-Party-B whitelist (<code>contracts/libraries/models/LibOpenIntent.sol:308-314</code>).</li>
+</ul>
+<p>Deferred Party B sells first consume escrow for the filled slice: the pro-rata isolated fee lock is unlocked, and the actual fill-price open fee amount is allocated into Party A&#39;s cross <code>feeToken</code> bucket against the selected Party B. Then <code>getFeesFromUser(price)</code> subtracts the fees from that cross bucket like any other cross fill. If the fill is partial, the residual child keeps the remaining <code>OpenIntentEscrow.feeLockAmount</code>; if the original intent was already <code>CANCEL_PENDING</code>, the residual child is <code>CANCELED</code> and the remaining escrow is released immediately.</p>
+<p>Note that the actual subtraction uses the <strong>fill price</strong>, not the intent price. The reservation used the intent price; for BUY, fill <code>price ≤ intent.price</code>, so the actual fee is bounded by the locked amount. For SELL, fill <code>price ≥ intent.price</code>, so the actual fee may be greater than the reservation. The normal lock path handles this by unlocking then subtracting at fill; the deferred sell path handles it by allocating the actual fee amount at fill, requiring any difference to be available in Party A&#39;s isolated <code>feeToken</code>.</p>
+<p>The amounts are then credited:</p>
+<pre><code class="language-solidity">defaultFeeCollectorBalance.instantIsolatedAdd(fees[0], IncreaseBalanceReason.PLATFORM_FEE);
+affiliateFeeCollectorBalance.instantIsolatedAdd(fees[1], IncreaseBalanceReason.AFFILIATE_FEE);
+// solver:
+if (isolated) solverFeeCollectorBalance.instantIsolatedAdd(fees[2], IncreaseBalanceReason.SOLVER_FEE);
+else          solverFeeCollectorBalance.scheduledAdd(intent.partyA, fees[2], CROSS, IncreaseBalanceReason.SOLVER_FEE);
+</code></pre>
+<p>(<code>contracts/libraries/core/LibPartyBOpen.sol:333-349</code>).</p>
+<h3 id="per-component-formula">Per-component formula</h3>
+<pre><code>openFee_i = (quantity * fillPrice * rate_i) / (tokenPriceInCollateral * 1e18)
+</code></pre>
+<p>where <code>rate_i ∈ { feeStructure.platformFee.openFee, feeStructure.affiliateFee.openFee, feeStructure.solverFee.openFee }</code> and the divisor is the snapshot from intent creation.</p>
+<h3 id="cancel-and-expire-refund">Cancel and expire refund</h3>
+<p>Any path that ends a normal intent without a fill calls <code>unlockFees()</code>:</p>
+<ul>
+<li>Party-A cancel of a <code>PENDING</code> intent (<code>contracts/libraries/core/LibPartyAOpen.sol:135</code>).</li>
+<li>Party-B accepting a <code>CANCEL_PENDING</code> intent (<code>contracts/libraries/core/LibPartyBOpen.sol:155</code>).</li>
+<li><code>expire()</code> from a Party A cancel after deadline, a Party B unlock after deadline, or a force-cancel (<code>contracts/libraries/models/LibOpenIntent.sol:93</code>).</li>
+</ul>
+<p><code>unlockFees</code> reverses the original <code>_lock</code> calls one-for-one, so no fee leaks into a collector on these paths.</p>
+<p>Deferred Party B sells call <code>releaseDeferredSellEscrow()</code> instead of <code>unlockFees()</code>. That unlocks the reserved isolated <code>feeToken</code> amount and deletes the escrow record, so canceled or expired deferred sells return to Party A&#39;s isolated account just like a normal canceled intent returns its locks. After a partial fill, the same rule applies to the residual child escrow.</p>
+<h2 id="close-fee">Close Fee</h2>
+<p><code>CloseIntent</code> does <strong>not</strong> lock fees on <code>sendCloseIntent</code>. Party A&#39;s <code>feeToken</code> balance must simply be sufficient at fill time. The close-intent struct only carries the snapshot inherited from the trade (<code>contracts/libraries/core/LibPartyAClose.sol:55</code>).</p>
+<p><code>fillCloseIntent</code> collects close fees in two steps (<code>contracts/libraries/core/LibPartyBClose.sol:124-153</code>):</p>
+<ol>
+<li><code>intent.getFeesFromUser(quantity, price)</code> subtracts each component from Party A using <code>subForCounterParty(trade.partyB, fee, marginType, reason)</code> (<code>contracts/libraries/models/LibCloseIntent.sol:84-104</code>).</li>
+<li>The amounts are credited to default collector, affiliate collector, and Party B exactly as on open-fill, with the same isolated-vs-cross branch on the solver leg.</li>
+</ol>
+<h3 id="per-component-formula-1">Per-component formula</h3>
+<pre><code>closeFee_i = (quantity * fillPrice * rate_i) / (tokenPriceInCollateral * 1e18)
+</code></pre>
+<p>where <code>quantity</code> is the partial fill amount and <code>rate_i</code> is the matching <code>closeFee</code> field. The same <code>tokenPriceInCollateral</code> from intent creation is used.</p>
+<h2 id="exercise-fee">Exercise Fee</h2>
+<p>The exercise fee is charged inside <code>executeTrades</code> on the <code>exercised[i] == true</code> branch (<code>contracts/libraries/core/LibTradeOperations.sol:156-227</code>).</p>
+<h3 id="cap-and-rate-formula">Cap-and-rate formula</h3>
+<pre><code class="language-solidity">function calculateExerciseFee(Trade memory self, uint256 settlementPrice, uint256 pnl) internal pure returns (uint256) {
+	uint256 cap = (self.tradeAgreements.exerciseFee.cap * pnl) / 1e18;
+	uint256 fee = (self.tradeAgreements.exerciseFee.rate * settlementPrice * getOpenAmount(self)) / 1e36;
+	return cap &lt; fee ? cap : fee;
+}
+</code></pre>
+<p>(<code>contracts/libraries/models/LibTrade.sol:58-62</code>).</p>
+<p>The fee is the <strong>smaller</strong> of:</p>
+<ul>
+<li><code>cap * pnl / 1e18</code> — fraction of realized PnL.</li>
+<li><code>rate * settlementPrice * openAmount / 1e36</code> — fraction of notional at settlement.</li>
+</ul>
+<p>Validation at intent creation enforces <code>exerciseFee.cap ≤ 1e18</code> (<code>contracts/libraries/core/LibPartyAOpen.sol:62</code>); there is no on-chain bound on <code>rate</code>.</p>
+<h3 id="pnl-net-of-exercise-fee">PnL net of exercise fee</h3>
+<p><code>amountToTransfer = (pnl - exerciseFee) * 1e18 / collateralPrice</code> is then moved between Party A and Party B in collateral units (<code>contracts/libraries/core/LibTradeOperations.sol:168-189</code>). The exercise fee itself is implicit in the differential — it is simply not paid out as PnL — and is then split across <strong>two</strong> collectors below.</p>
+<h3 id="recipients-default--affiliate">Recipients (default + affiliate)</h3>
+<p>After the PnL transfer, the same block converts <code>pnl</code> to collateral units and applies the <strong>closeFee</strong> rates from <code>feeStructure</code> to that base:</p>
+<pre><code class="language-solidity">uint256 pnlInCollateral = (pnl * 1e18) / sig.collateralPrice;
+uint256[2] memory fees = [
+    (pnlInCollateral * s.platformFee.closeFee)  / s.tokenPriceInCollateral,
+    (pnlInCollateral * s.affiliateFee.closeFee) / s.tokenPriceInCollateral
+];
+for (uint8 j; j &lt; 2; ++j)
+    partyAFeeBalance.subForCounterParty(trade.partyB, fees[j], trade.tradeAgreements.marginType, decReasons[j]);
+</code></pre>
+<p>(<code>contracts/libraries/core/LibTradeOperations.sol:191-207</code>). Both halves are then credited to the affiliate collector and default collector via <code>instantIsolatedAdd</code> (lines 217-224).</p>
+<p>There is <strong>no solver-fee component at exercise</strong> — only platform and affiliate. The economics: Party B already received the implicit exercise fee through the <code>pnl - exerciseFee</code> payout, and the explicit close-fee split is taken on top of that from Party A&#39;s fee-token balance.</p>
+<h3 id="insufficient-party-a-fee-balance">Insufficient Party A fee balance</h3>
+<p>The fee subtraction uses <code>subForCounterParty</code>, which enforces a non-negative resulting balance through <code>LibScheduledReleaseBalance</code> (<code>contracts/libraries/models/LibScheduledReleaseBalance.sol</code>). If Party A&#39;s <code>feeToken</code> balance is below <code>fees[0] + fees[1]</code> at settlement time, the entire <code>executeTrades</code> call reverts and the trade stays in <code>OPENED</code>. A fresh settlement with a refilled balance — or an external top-up of Party A&#39;s fee-token balance — is required to make progress. There is no separate insufficient-fee error: the underlying balance library reverts at the subtraction site.</p>
+<h2 id="affiliate-model">Affiliate Model</h2>
+<h3 id="registration">Registration</h3>
+<p>Two roles guard affiliate state (<code>contracts/libraries/core/LibAccessibility.sol:17-18</code>):</p>
+<ul>
+<li><code>AFFILIATE_MANAGER_ROLE</code> — toggles <code>affiliateStatus[affiliate]</code> and sets <code>affiliateFeeCollector[affiliate]</code> (<code>contracts/facets/Control/ControlFacet.sol:344-358</code>).</li>
+<li><code>AFFILIATE_FEE_MANAGER_ROLE</code> (or the affiliate itself) — sets <code>affiliateFees[affiliate][symbolId]</code> via <code>setAffiliateFees</code>, gated additionally by <code>SETTER_ROLE</code> (<code>contracts/facets/Control/ControlFacet.sol:366-381</code>).</li>
+</ul>
+<p>An open intent passes validation iff <code>affiliateStatus[affiliate] || affiliate == address(0)</code> (<code>contracts/libraries/core/LibPartyAOpen.sol:68</code>).</p>
+<h3 id="per-affiliate-fee-config">Per-affiliate fee config</h3>
+<p>The <code>affiliateFees</code> map is <code>affiliate =&gt; symbolId =&gt; Fee</code> (<code>contracts/storages/FeeManagementStorage.sol:16</code>). At intent creation, the value at <code>(affiliate, symbolId)</code> is snapshotted into <code>feeStructure.affiliateFee</code> (<code>contracts/libraries/core/LibPartyAOpen.sol:106</code>). Unset entries default to <code>{ openFee: 0, closeFee: 0 }</code>.</p>
+<h3 id="per-affiliate-collector">Per-affiliate collector</h3>
+<p><code>affiliateFeeCollector[affiliate]</code> is the recipient address. The lookup at fill/settlement falls back to the default collector when unset:</p>
+<pre><code class="language-solidity">address affiliateFeeCollector = feeLayout.affiliateFeeCollector[affiliate] == address(0)
+    ? feeLayout.defaultFeeCollector
+    : feeLayout.affiliateFeeCollector[affiliate];
+</code></pre>
+<p>(<code>contracts/libraries/core/LibPartyBOpen.sol:312-314</code>, <code>contracts/libraries/core/LibPartyBClose.sol:131-133</code>, <code>contracts/libraries/core/LibTradeOperations.sol:212-214</code>).</p>
+<h3 id="default-affiliate-semantics">&quot;Default&quot; affiliate semantics</h3>
+<p><code>affiliate == address(0)</code> is the implicit default. Its <code>affiliateFees[address(0)][symbolId]</code> is the zero fee unless explicitly set, and its collector falls through to <code>defaultFeeCollector</code>. This means an intent without an affiliate pays no affiliate-fee component — the affiliate slot simply collapses into the platform stream by accident.</p>
+<h3 id="inactive-affiliate-behavior">Inactive affiliate behavior</h3>
+<p><code>setAffiliateStatus(affiliate, false)</code> blocks <strong>future</strong> open-intent creations referencing that affiliate (<code>contracts/libraries/core/LibPartyAOpen.sol:68</code> reverts with <code>IntentErrors.InvalidAffiliate</code>). Trades created while the affiliate was active continue to credit that affiliate at fill, close-fill, and settlement using the snapshotted <code>feeStructure.affiliateFee</code> and the <strong>current</strong> value of <code>affiliateFeeCollector[affiliate]</code> (the collector lookup is dynamic, not snapshotted). Setting the collector to <code>address(0)</code> redirects the affiliate&#39;s earned share to the default collector for all subsequent collections.</p>
+<h2 id="solver-fee">Solver Fee</h2>
+<h3 id="storage">Storage</h3>
+<p>The solver fee is credited to a <code>ScheduledReleaseBalance</code> keyed by <code>(intent.partyB, feeToken)</code>:</p>
+<pre><code class="language-solidity">ScheduledReleaseBalance storage solverFeeCollectorBalance = intent.partyB.balanceOf(feeToken);
+solverFeeCollectorBalance.setup(intent.partyB, feeToken);
+</code></pre>
+<p>(<code>contracts/libraries/core/LibPartyBOpen.sol:327-328</code>, mirrored in <code>LibPartyBClose.sol:146-147</code>).</p>
+<h3 id="isolated-vs-cross-routing">Isolated vs cross routing</h3>
+<ul>
+<li><code>MarginType.ISOLATED</code> — credited via <code>instantIsolatedAdd(fee, SOLVER_FEE)</code>. The amount is immediately spendable from Party B&#39;s isolated balance for that token.</li>
+<li><code>MarginType.CROSS</code> — credited via <code>scheduledAdd(intent.partyA, fee, CROSS, SOLVER_FEE)</code>. The amount enters Party B&#39;s cross schedule against Party A and clears through the standard scheduled-release pipeline.</li>
+</ul>
+<h3 id="composition-with-regular-party-b-balance">Composition with regular Party B balance</h3>
+<p>Because the solver fee uses the same <code>ScheduledReleaseBalance</code> as Party B&#39;s collateral position, no separate &quot;solver fee balance&quot; exists. The fee simply increments Party B&#39;s existing balance under the appropriate isolated or cross slot, tagged with <code>IncreaseBalanceReason.SOLVER_FEE</code> for accounting. Withdrawal then follows the normal flow: <code>deallocate</code> → wait <code>partyBDeallocateCooldown</code> → <code>withdraw</code> (see <a href="account-balances.html">account-balances</a>).</p>
+<p>When <code>feeToken == symbol.collateral</code>, the solver-fee credit and the trade&#39;s premium credit accumulate into the same balance entry. When they differ, Party B accrues a separate <code>feeToken</code> balance.</p>
+<h2 id="default-fee-collector-lifecycle">Default Fee Collector Lifecycle</h2>
+<p><code>defaultFeeCollector</code> is a single address in <code>FeeManagementStorage</code> (<code>contracts/storages/FeeManagementStorage.sol:13</code>). It is set and updated by <code>SETTER_ROLE</code> through <code>ControlFacet.setDefaultFeeCollector</code> (<code>contracts/facets/Control/ControlFacet.sol:333-337</code>). The setter rejects <code>address(0)</code>. There is no removal — only replacement.</p>
+<p>The collector&#39;s balance lives in the standard <code>ScheduledReleaseBalance</code> map keyed by <code>(defaultFeeCollector, feeToken)</code> and is credited via <code>instantIsolatedAdd</code>, so the address can immediately deallocate and withdraw earned fees through the normal account flow.</p>
+<p>Updating the address mid-protocol redirects all <strong>future</strong> fee credits. Already-accrued fees remain in the previous collector&#39;s balance and must be withdrawn by that address.</p>
+<h2 id="numeric-example">Numeric Example</h2>
+<p>Assume an isolated CALL trade with these inputs:</p>
+<ul>
+<li><code>symbol.collateral = USDC</code>, <code>feeToken = SYMM</code> (different tokens).</li>
+<li><code>tokenPriceInCollateral = 0.5e18</code> (1 SYMM = 0.5 USDC at intent creation).</li>
+<li><code>quantity = 10e18</code>, intent <code>price = 100e18</code> (premium per unit).</li>
+<li><code>platformFee.openFee = 0.001e18</code>, <code>affiliateFee.openFee = 0.0005e18</code>, <code>solverFee.openFee = 0.002e18</code>.</li>
+<li>Same close-fee rates.</li>
+<li><code>exerciseFee.cap = 0.05e18</code>, <code>exerciseFee.rate = 0.0001e18</code>.</li>
+<li>Settlement <code>settlementPrice = 110e18</code>, <code>strikePrice = 100e18</code>, <code>collateralPrice = 1e18</code>.</li>
+</ul>
+<h3 id="open-fee-at-fill-full-quantity-fillprice--100e18">Open fee at fill (full quantity, fillPrice = 100e18)</h3>
+<pre><code>fee_i = (10e18 * 100e18 * rate_i) / (0.5e18 * 1e18)
+      = (1000e36 * rate_i) / 0.5e36
+      = 2000 * rate_i  (in SYMM 18-dec units)
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Stream</th>
+<th>Rate</th>
+<th>Fee (SYMM)</th>
+<th>Recipient</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Platform</td>
+<td>0.001e18</td>
+<td>2 SYMM</td>
+<td>default fee collector</td>
+</tr>
+<tr>
+<td>Affiliate</td>
+<td>0.0005e18</td>
+<td>1 SYMM</td>
+<td>affiliate (or default)</td>
+</tr>
+<tr>
+<td>Solver</td>
+<td>0.002e18</td>
+<td>4 SYMM</td>
+<td>Party B isolated balance</td>
+</tr>
+</tbody></table>
+<p>Party A&#39;s SYMM balance drops by 7 SYMM total at fill (after 7 SYMM was locked at intent creation).</p>
+<h3 id="close-fee-on-a-4e18-partial-close-at-price--105e18">Close fee on a 4e18 partial close at price = 105e18</h3>
+<pre><code>fee_i = (4e18 * 105e18 * rate_i) / (0.5e36) = 840 * rate_i
+</code></pre>
+<p>Platform: 0.84 SYMM, Affiliate: 0.42 SYMM, Solver: 1.68 SYMM. Same recipients.</p>
+<h3 id="exercise-fee-for-the-remaining-6e18-at-settlement">Exercise fee for the remaining 6e18 at settlement</h3>
+<p><code>pnl = (110e18 - 100e18) * 6e18 / 1e18 = 60e18</code> (in collateral units, USDC).</p>
+<pre><code>cap  = 0.05e18 * 60e18 / 1e18 = 3e18    (3 USDC)
+rate = 0.0001e18 * 110e18 * 6e18 / 1e36 = 0.066e18  (0.066 USDC)
+exerciseFee = min(cap, rate) = 0.066 USDC
+</code></pre>
+<p><code>amountToTransfer = (60e18 - 0.066e18) * 1e18 / 1e18 = 59.934 USDC</code> — paid from Party B to Party A as realized PnL.</p>
+<p>The settlement-time close-fee split on the <strong>two</strong> non-solver streams:</p>
+<pre><code>pnlInCollateral = 60e18 * 1e18 / 1e18 = 60e18
+fees[0] = 60e18 * 0.001e18 / 0.5e18 = 0.12e18   (0.12 SYMM, platform)
+fees[1] = 60e18 * 0.0005e18 / 0.5e18 = 0.06e18  (0.06 SYMM, affiliate)
+</code></pre>
+<p>Party A&#39;s SYMM balance drops by 0.18 SYMM more. Total SYMM drained over the lifecycle: 7 + 3.36 + 0.18 = 10.54 SYMM. Party B&#39;s PnL net cash flow is <code>−59.934 USDC + (premium + solver-fee credits)</code>.</p>
+<h2 id="errors-reference">Errors Reference</h2>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Where</th>
+<th>Cause</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>IntentErrors.InvalidAffiliate(affiliate)</code></td>
+<td><code>contracts/libraries/core/LibPartyAOpen.sol:68</code></td>
+<td><code>affiliate != address(0)</code> and <code>affiliateStatus[affiliate] == false</code> at intent creation.</td>
+</tr>
+<tr>
+<td><code>IntentErrors.InvalidExerciseFee(cap, 1e18)</code></td>
+<td><code>contracts/libraries/core/LibPartyAOpen.sol:62</code></td>
+<td><code>tradeAgreements.exerciseFee.cap &gt; 1e18</code>.</td>
+</tr>
+<tr>
+<td><code>ValidationErrors.UnauthorizedSender(sender, x)</code></td>
+<td><code>contracts/facets/Control/ControlFacet.sol:373</code></td>
+<td><code>setAffiliateFees</code> caller is neither the affiliate nor <code>AFFILIATE_FEE_MANAGER_ROLE</code>.</td>
+</tr>
+<tr>
+<td><code>ValidationErrors.MismatchedLengths()</code></td>
+<td><code>contracts/facets/Control/ControlFacet.sol:374,800</code></td>
+<td><code>setAffiliateFees</code> / <code>setSymbolsPlatformFees</code> called with mismatched array lengths.</td>
+</tr>
+<tr>
+<td><code>ValidationErrors.InvalidSymbol(id)</code></td>
+<td><code>contracts/facets/Control/ControlFacet.sol:804</code></td>
+<td><code>setSymbolsPlatformFees</code> referenced an unknown <code>symbolId</code>.</td>
+</tr>
+<tr>
+<td><code>ValidationErrors.ZeroAddress(&quot;collector&quot;)</code></td>
+<td><code>contracts/facets/Control/ControlFacet.sol:334,355</code></td>
+<td><code>setDefaultFeeCollector</code> or <code>setAffiliateFeesCollector</code> called with <code>address(0)</code>.</td>
+</tr>
+<tr>
+<td>Underflow inside <code>subForCounterParty</code></td>
+<td><code>contracts/libraries/models/LibScheduledReleaseBalance.sol</code></td>
+<td>Party A&#39;s <code>feeToken</code> balance is below the required fee at fill, close-fill, or settlement.</td>
+</tr>
+</tbody></table>
+<h2 id="related-code-map">Related Code Map</h2>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>contracts/types/BaseTypes.sol</code></td>
+<td><code>Fee</code>, <code>ExerciseFee</code>, <code>FeeStructure</code>, <code>FeeOp</code>.</td>
+</tr>
+<tr>
+<td><code>contracts/types/SymbolTypes.sol</code></td>
+<td><code>Symbol.platformFee</code>.</td>
+</tr>
+<tr>
+<td><code>contracts/storages/FeeManagementStorage.sol</code></td>
+<td>Default collector, affiliate status/collector/fees.</td>
+</tr>
+<tr>
+<td><code>contracts/storages/SymbolStorage.sol</code></td>
+<td>Symbol records carrying platform fee.</td>
+</tr>
+<tr>
+<td><code>contracts/storages/AppStorage.sol</code></td>
+<td><code>priceOracleAddress</code> used for <code>tokenPriceInCollateral</code>.</td>
+</tr>
+<tr>
+<td><code>contracts/interfaces/IPriceOracle.sol</code></td>
+<td><code>getPrice(token, collateral)</code> interface.</td>
+</tr>
+<tr>
+<td><code>contracts/facets/Control/ControlFacet.sol</code></td>
+<td><code>setDefaultFeeCollector</code>, <code>setAffiliateStatus</code>, <code>setAffiliateFeesCollector</code>, <code>setAffiliateFees</code>, <code>setSymbolsPlatformFees</code>.</td>
+</tr>
+<tr>
+<td><code>contracts/libraries/core/LibPartyAOpen.sol</code></td>
+<td>Snapshots <code>FeeStructure</code>, calls <code>lockFees</code>.</td>
+</tr>
+<tr>
+<td><code>contracts/libraries/core/LibPartyBOpen.sol</code></td>
+<td><code>unlockFees</code> and open-fee collection at fill.</td>
+</tr>
+<tr>
+<td><code>contracts/libraries/core/LibPartyAClose.sol</code></td>
+<td>Inherits <code>FeeStructure</code> into the close intent.</td>
+</tr>
+<tr>
+<td><code>contracts/libraries/core/LibPartyBClose.sol</code></td>
+<td>Close-fee collection at fill.</td>
+</tr>
+<tr>
+<td><code>contracts/libraries/core/LibTradeOperations.sol</code></td>
+<td>Exercise-fee math and settlement-time close-fee split.</td>
+</tr>
+<tr>
+<td><code>contracts/libraries/models/LibOpenIntent.sol</code></td>
+<td><code>calculateFee</code>, <code>_handleFees</code>, <code>lockFees</code>, <code>unlockFees</code>, <code>getFeesFromUser</code>.</td>
+</tr>
+<tr>
+<td><code>contracts/libraries/models/LibCloseIntent.sol</code></td>
+<td><code>calculateFee</code>, <code>getFeesFromUser</code> for close intents.</td>
+</tr>
+<tr>
+<td><code>contracts/libraries/models/LibTrade.sol</code></td>
+<td><code>calculateExerciseFee</code> (cap-vs-rate min).</td>
+</tr>
+<tr>
+<td><code>contracts/libraries/core/LibAccessibility.sol</code></td>
+<td><code>SETTER_ROLE</code>, <code>AFFILIATE_MANAGER_ROLE</code>, <code>AFFILIATE_FEE_MANAGER_ROLE</code>.</td>
+</tr>
+<tr>
+<td><code>tests/trade-settlement.ts</code></td>
+<td>Exercise-fee <code>min(cap, rate)</code> test scenarios.</td>
+</tr>
+<tr>
+<td><code>tests/partyB-open-facet.behavior.ts</code></td>
+<td>Open-fee fill/refund scenarios.</td>
+</tr>
+<tr>
+<td><code>tests/partyB-close-facet.behavior.ts</code></td>
+<td>Close-fee fill scenarios.</td>
+</tr>
+</tbody></table>
+</article></main></div><footer class="site-footer"><span>Options Core documentation.</span></footer></body></html>

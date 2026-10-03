@@ -8,7 +8,6 @@ import { LibCloseIntentOps } from "../../libraries/models/LibCloseIntent.sol";
 
 import { CloseIntentStorage } from "../../storages/CloseIntentStorage.sol";
 
-import { Trade } from "../../types/TradeTypes.sol";
 import { CloseIntent, CloseIntentStatus } from "../../types/IntentTypes.sol";
 
 import { Pausable } from "../../utils/Pausable.sol";

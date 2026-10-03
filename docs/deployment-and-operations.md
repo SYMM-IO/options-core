@@ -18,12 +18,12 @@ This repo is a Hardhat project using Solidity `0.8.25` (`evmVersion: cancun`), H
 
 ```bash
 npm install
-npx hardhat compile
-npx hardhat test
-npx hardhat test --coverage
+npm run compile
+npm test
+npm run coverage
 ```
 
-The package scripts also include `npm run compile` and `npm test` (plus `npm run coverage`), but the first two wrap commands with `symsec --project options-core`. TypeChain now runs as part of compile, so there is no separate typechain script. Use the direct `npx hardhat ...` commands if SymSec is not available in your environment.
+`npm run compile` generates TypeChain types while compiling contracts, then checks deployed bytecode against the 23,552-byte release budget. A separate TypeChain command is unnecessary. `npm test` runs the Mocha suite with `TEST_MODE=UNIT_TEST`, and `npm run coverage` runs it with Hardhat 3 coverage.
 
 ## Diamond Deployment
 
@@ -148,13 +148,13 @@ The behavior tests are split by protocol area:
 Run the whole suite with:
 
 ```bash
-npx hardhat test
+npm test
 ```
 
-For focused work, pass one test file:
+For a focused behavior group, filter through the suite entry point:
 
 ```bash
-npx hardhat test tests/partyB-open-facet.behavior.ts
+npm test -- --grep Facets_PartyBOpenFacet
 ```
 
 ## Networks
@@ -165,6 +165,6 @@ npx hardhat test tests/partyB-open-facet.behavior.ts
 - `polygon`: `https://polygon-rpc.com`.
 - `base`: `https://mainnet.base.org`.
 
-`PRIVATE_KEY` and `ETHERSCAN_API_KEY` are Hardhat config variables, read only when a network or verify command needs them. Set them in `.env`/symsec or with `npx hardhat keystore set`.
+`PRIVATE_KEY` and `ETHERSCAN_API_KEY` are Hardhat config variables, read only when a network or verify command needs them. Set them in the environment, an ignored `.env`, or with `npx hardhat keystore set`.
 
 The Base proxies deployed with OpenZeppelin 4 are abandoned: MultiAccount `0x798101d0C3B4A0D863AdC67DA77BAA6fCd9610C2` and SymmioPartyB `0x676F287Eb5dF6E0B6B913C26f64660493F98Cc4A`. The old OpenZeppelin 4 upgrades manifest is kept locally, not in git. The next MultiAccount and SymmioPartyB deployment is a fresh OpenZeppelin 5 deployment, not an upgrade.

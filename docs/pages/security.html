@@ -1,0 +1,738 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Trust assumptions, invariants, upgrade authority, and known limits."><title>Security Model | Options Core</title>
+<link rel="icon" type="image/svg+xml" href="../assets/symmio-mark.svg">
+<script>try { if (localStorage.getItem("options-docs-theme") === "light") document.documentElement.dataset.theme = "light"; } catch (_) {}</script>
+<link rel="stylesheet" href="../assets/reader.css"><link rel="stylesheet" href="../assets/docs-portal.css">
+<script src="../assets/chapters.js" defer></script><script src="../assets/reader.js" defer></script><script src="../assets/docs-portal.js" defer></script>
+</head>
+<body class="doc-page" data-version="current"><a class="skip-link" href="#full-document">Skip to document</a>
+<header class="docs-header"><div class="doc-topbar"><nav class="docs-trail" aria-label="Breadcrumb">
+<a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Options Core</span></a>
+<span class="trail-sep" aria-hidden="true">/</span><a class="trail-release" href="../index.html">Documentation</a>
+</nav><nav class="top-actions" aria-label="Page actions"><button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button></nav></div></header><div class="reader-shell"><div data-rail-sections hidden>
+<a class="toc-link level-2" href="#table-of-contents">Table of Contents</a>
+<a class="toc-link level-2" href="#1-threat-model-overview">1. Threat Model Overview</a>
+<a class="toc-link level-2" href="#2-trust-assumptions">2. Trust Assumptions</a>
+<a class="toc-link level-2" href="#3-attack-surface-map">3. Attack Surface Map</a>
+<a class="toc-link level-2" href="#4-key-invariants">4. Key Invariants</a>
+<a class="toc-link level-2" href="#5-reentrancy-posture">5. Reentrancy Posture</a>
+<a class="toc-link level-2" href="#6-pause-model">6. Pause Model</a>
+<a class="toc-link level-2" href="#7-suspension-model">7. Suspension Model</a>
+<a class="toc-link level-2" href="#8-emergency-states">8. Emergency States</a>
+<a class="toc-link level-2" href="#9-upgradeability-surface">9. Upgradeability Surface</a>
+<a class="toc-link level-2" href="#10-signature-schemes-risk">10. Signature Schemes Risk</a>
+<a class="toc-link level-2" href="#11-decimal-normalization">11. Decimal Normalization</a>
+<a class="toc-link level-2" href="#12-known-limitations-and-by-design-oddities">12. Known Limitations and By-Design Oddities</a>
+<a class="toc-link level-2" href="#13-operational-checklist-for-production-deploy">13. Operational Checklist for Production Deploy</a>
+<a class="toc-link level-2" href="#14-auditors-quick-map">14. Auditor&#39;s Quick Map</a>
+<a class="toc-link level-2" href="#15-reporting-and-responsible-disclosure">15. Reporting and Responsible Disclosure</a>
+</div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1>Security Model</h1><p class="hero-copy">Trust assumptions, invariants, upgrade authority, and known limits.</p></div></div></header>
+<article class="doc-article" id="full-document"><p>This document is written for auditors and integrators. It describes the trust assumptions, attack surface, invariants, and operational defenses of Options Core. Per-facet semantics live in <a href="facets.html">facets</a>; per-error semantics live in <a href="errors.html">errors</a>; roles and pause flags live in <a href="roles-and-pauses.html">roles-and-pauses</a>. This page cross-links rather than duplicates.</p>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ul>
+<li><a href="#1-threat-model-overview">1. Threat Model Overview</a></li>
+<li><a href="#2-trust-assumptions">2. Trust Assumptions</a></li>
+<li><a href="#3-attack-surface-map">3. Attack Surface Map</a></li>
+<li><a href="#4-key-invariants">4. Key Invariants</a></li>
+<li><a href="#5-reentrancy-posture">5. Reentrancy Posture</a></li>
+<li><a href="#6-pause-model">6. Pause Model</a></li>
+<li><a href="#7-suspension-model">7. Suspension Model</a></li>
+<li><a href="#8-emergency-states">8. Emergency States</a></li>
+<li><a href="#9-upgradeability-surface">9. Upgradeability Surface</a></li>
+<li><a href="#10-signature-schemes-risk">10. Signature Schemes Risk</a></li>
+<li><a href="#11-decimal-normalization">11. Decimal Normalization</a></li>
+<li><a href="#12-known-limitations-and-by-design-oddities">12. Known Limitations and By-Design Oddities</a></li>
+<li><a href="#13-operational-checklist-for-production-deploy">13. Operational Checklist for Production Deploy</a></li>
+<li><a href="#14-auditors-quick-map">14. Auditor&#39;s Quick Map</a></li>
+<li><a href="#15-reporting-and-responsible-disclosure">15. Reporting and Responsible Disclosure</a></li>
+</ul>
+<h2 id="1-threat-model-overview">1. Threat Model Overview</h2>
+<table>
+<thead>
+<tr>
+<th>Actor</th>
+<th>Motive</th>
+<th>Primary surface</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Party A (rational user)</td>
+<td>Open favorable options, exit via close, NFT transfer, or settlement</td>
+<td><code>PartyAOpenFacet</code>, <code>PartyACloseFacet</code>, <code>TradeFacet</code></td>
+</tr>
+<tr>
+<td>Party A (adversarial)</td>
+<td>Trick Party B into a worse-than-agreed fill, replay signed ops, exfiltrate via withdraw before liquidation</td>
+<td>Open intent threshold, settlement signature, NFT transfer to Party B</td>
+</tr>
+<tr>
+<td>Party B (active solver)</td>
+<td>Lock and fill profitable intents, win partial fills, claim premium</td>
+<td><code>PartyBOpenFacet</code>, <code>PartyBCloseFacet</code>, <code>lockOpenIntent</code> race</td>
+</tr>
+<tr>
+<td>Malicious Party B</td>
+<td>Lock-and-stall to deny fills; under-collateralize then go silent; fill at the worst legal price; grief residual open intents; abuse exclusive settlement window</td>
+<td><code>lockOpenIntent</code> / <code>unlockOpenIntent</code>, fill price threshold (<code>InvalidOpenPrice</code> <code>contracts/libraries/core/LibPartyBOpen.sol:216</code>), child-intent residual handling, <code>PartyBExclusiveWindow</code> (<code>contracts/libraries/core/LibTradeOperations.sol:159</code>)</td>
+</tr>
+<tr>
+<td>Malicious solver / MEV bot</td>
+<td>Frontrun Party A intents; race force-cancel at exact timeout; sandwich settlement</td>
+<td><code>ForceActionsFacet</code>, <code>TradeFacet.executeTrades</code>, <code>lockOpenIntent</code></td>
+</tr>
+<tr>
+<td>Malicious affiliate</td>
+<td>Get whitelisted then redirect fees to an attacker-controlled collector</td>
+<td><code>setAffiliateFeesCollector</code> (<code>contracts/facets/Control/ControlFacet.sol:354</code>); requires <code>AFFILIATE_MANAGER_ROLE</code> to be granted</td>
+</tr>
+<tr>
+<td>Malicious admin (<code>DEFAULT_ADMIN_ROLE</code>)</td>
+<td>Grant arbitrary roles; rewrite fee collectors; whitelist a draining external transfer target; swap signature verifier or oracle</td>
+<td><code>ControlFacet</code> admin surface (see Section 2)</td>
+</tr>
+<tr>
+<td>Malicious clearing house (<code>CLEARING_HOUSE_ROLE</code>)</td>
+<td>Confiscate solvent counterparty; mis-distribute pool; close open trades at off-market prices supplied as <code>prices[]</code></td>
+<td><code>ClearingHouseFacet.confiscate</code>, <code>closeTrades</code>, <code>distributeCollateral</code> (constrained by <code>DistributedAmountExceedsConfiscatedAmount</code> invariant — <code>contracts/libraries/core/LibClearingHouse.sol:305</code>)</td>
+</tr>
+<tr>
+<td>Compromised InstantLayer operator (<code>OPERATOR_ROLE</code>)</td>
+<td>Replay or reorder signed ops, sandwich Party A actions inside the <code>callFromInstantLayer</code> window</td>
+<td><code>InstantLayer.executeBatch</code> / <code>executeTemplate</code> (<code>contracts/helpers/InstantLayer.sol:311,354</code>); bounded by EIP-712 + <code>usedOperationHashes</code></td>
+</tr>
+<tr>
+<td>Muon TSS attacker (quorum compromise)</td>
+<td>Forge <code>UpnlSig</code> / settlement-price sig to fake liquidation, fake exercise PnL, or pass deallocate solvency check</td>
+<td><code>LibMuon.verifyUpnlSig</code> (<code>contracts/libraries/services/LibMuon.sol:59-92</code>), settlement path in <code>TradeFacet.executeTrades</code></td>
+</tr>
+<tr>
+<td>Compromised gateway signer</td>
+<td>Same as TSS compromise downstream — <code>MuonOracle</code> requires the gateway signature alongside Schnorr</td>
+<td><code>MuonOracle</code> (<code>contracts/helpers/MuonOracle.sol:38-43</code>)</td>
+</tr>
+<tr>
+<td>Malicious <code>IPriceOracle</code></td>
+<td>Misprice fee token, causing Party A to overpay or underpay open-intent fees</td>
+<td><code>getPriceOracleAddress</code> (<code>contracts/facets/View/ViewFacet.sol:244</code>); used inside <code>LibPartyAOpen</code> fee math</td>
+</tr>
+<tr>
+<td>Malicious <code>IExpressWithdrawProvider</code></td>
+<td>Reject valid express withdrawals (DoS) or report inflated <code>validAmount</code> (capped by <code>ValidAmountExceedsOriginal</code> — <code>contracts/libraries/core/LibBalanceOperations.sol:170</code>)</td>
+<td><code>initiateExpressWithdraw</code> (<code>contracts/facets/Account/AccountFacet.sol:174</code>)</td>
+</tr>
+<tr>
+<td>Malicious <code>IExternalTransferTarget</code></td>
+<td>Receive funds and refuse to credit, or re-enter on receipt</td>
+<td><code>externalTransfer</code> (<code>contracts/facets/Account/AccountFacet.sol:125</code>); guarded by <code>nonReentrant</code> and per-collateral whitelist</td>
+</tr>
+</tbody></table>
+<h2 id="2-trust-assumptions">2. Trust Assumptions</h2>
+<p>The protocol is trust-minimized at the facet API boundary but trusts a small set of admin keys and external services. Any compromise of the rows below has immediate or near-immediate fund-loss potential.</p>
+<table>
+<thead>
+<tr>
+<th>Trust anchor</th>
+<th>Why it matters</th>
+<th>Reference</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Diamond owner (<code>LibDiamond</code>)</td>
+<td>Sole caller of <code>setAdmin</code> and <code>diamondCut</code>. A compromised owner can replace any selector, including liquidation, settlement, withdraw.</td>
+<td><code>contracts/facets/Control/ControlFacet.sol:53-57</code>, <code>contracts/libraries/core/LibDiamond.sol:68</code></td>
+</tr>
+<tr>
+<td><code>DEFAULT_ADMIN_ROLE</code></td>
+<td>Grants and revokes every other diamond role. Compromise transitively grants every other role below.</td>
+<td><code>contracts/facets/Control/ControlFacet.sol:65-89</code></td>
+</tr>
+<tr>
+<td><code>SETTER_ROLE</code></td>
+<td>Owns timing parameters (<code>forceCancel*Timeout</code>, <code>partyBExclusiveWindow</code>, <code>upnlSigValidTime</code>, <code>settlementPriceSigValidTime</code>), fee collector, <strong>signature verifier address</strong> (<code>contracts/facets/Control/ControlFacet.sol:871</code>), express-withdraw provider config, invalid-withdrawals pool. Compromise can shorten timeouts, replace the EIP-1271 verifier, or redirect protocol fees.</td>
+<td><a href="roles-and-pauses.html#part-1--roles">roles-and-pauses#Part 1 — Roles</a></td>
+</tr>
+<tr>
+<td><code>PARTY_B_MANAGER_ROLE</code></td>
+<td>Activates Party Bs; sets <code>lossCoverage</code> (controls when Party B is declared insolvent); sets <code>oracleId</code>. Compromise can either prevent legitimate liquidation (<code>lossCoverage=0</code> blocks <code>flag*</code> with <code>ZeroLossCoverage</code>) or activate a malicious Party B address.</td>
+<td><code>contracts/facets/Control/ControlFacet.sol:392-411</code></td>
+</tr>
+<tr>
+<td><code>SYMBOL_MANAGER_ROLE</code></td>
+<td>Lists symbols, flips validity, mutates per-symbol platform fees. A malicious listing can pair an option with a hostile collateral or oracle.</td>
+<td><code>contracts/facets/Control/ControlFacet.sol:755-852</code></td>
+</tr>
+<tr>
+<td><code>ORACLE_MANAGER_ROLE</code></td>
+<td>Adds and <strong>mutably overwrites</strong> oracle addresses (<code>updateOracle</code> at <code>contracts/facets/Control/ControlFacet.sol:721</code>); sets the global <code>IPriceOracle</code>. Compromise can repoint pricing under live trades.</td>
+<td><code>contracts/facets/Control/ControlFacet.sol:706-736</code></td>
+</tr>
+<tr>
+<td><code>PAUSER_ROLE</code></td>
+<td>Can halt every flow (12 pause flags) and put any Party B in emergency mode. Used to stop loss; cannot move funds.</td>
+<td><a href="roles-and-pauses.html#part-2--pause-flags">roles-and-pauses#Part 2 — Pause Flags</a></td>
+</tr>
+<tr>
+<td><code>UNPAUSER_ROLE</code></td>
+<td>Can prematurely lift pauses or emergency. Should be a higher-trust key than pauser.</td>
+<td>Same</td>
+</tr>
+<tr>
+<td><code>SUSPENDER_ROLE</code></td>
+<td>Per-address freeze and per-withdrawal freeze. Cannot edit balances; can only deny access until disputer rules.</td>
+<td><code>contracts/facets/Control/ControlFacet.sol:654-676</code>, <code>contracts/facets/Account/AccountFacet.sol:200</code></td>
+</tr>
+<tr>
+<td><code>DISPUTER_ROLE</code></td>
+<td>The only role that can rewrite the <code>validAmount</code> on a suspended withdrawal (<code>AccountFacet.restoreWithdraw</code> at <code>:211</code>). Excess is routed to the invalid-withdrawals pool. Compromise can route arbitrary amounts of a flagged withdrawal back to the user.</td>
+<td><code>contracts/facets/Account/AccountFacet.sol:211</code></td>
+</tr>
+<tr>
+<td><code>CLEARING_HOUSE_ROLE</code></td>
+<td>Sole caller of every <code>ClearingHouseFacet</code> selector. Picks the <code>prices[]</code> for <code>closeTrades</code> (no on-chain price check), drives <code>confiscate</code>/<code>distributeCollateral</code>. Compromise can mis-settle a real liquidation; cannot mint collateral (conservation invariant <code>confiscatedAmount &gt;= distributedAmount</code> at <code>contracts/libraries/core/LibClearingHouse.sol:305</code>).</td>
+<td><a href="liquidation-and-force-actions.html">liquidation-and-force-actions</a></td>
+</tr>
+<tr>
+<td><code>VIRTUAL_DEPOSITOR_ROLE</code></td>
+<td>Can credit isolated balance to any user without an actual ERC-20 transfer (<code>AccountFacet.virtualDepositFor</code> at <code>:51</code>). Compromise allows minting accounting balance up to <code>balanceLimitPerUser</code> and withdrawing real protocol collateral after release.</td>
+<td><code>contracts/facets/Account/AccountFacet.sol:51-55</code></td>
+</tr>
+<tr>
+<td><code>INSTANT_LAYER_ROLE</code></td>
+<td>Toggles <code>AppStorage.callFromInstantLayer</code>, which bypasses <code>whenInstantModeIsNotActive</code> for nested calls. Must be granted only to the deployed <code>InstantLayer</code> address.</td>
+<td><code>contracts/facets/Control/ControlFacet.sol:937-938</code></td>
+</tr>
+<tr>
+<td><code>OPERATOR_ROLE</code> (InstantLayer)</td>
+<td>Calls <code>executeTemplate</code> / <code>executeBatch</code>. Replay-bounded by EIP-712 sig + <code>usedOperationHashes</code>; ordering inside a batch is operator-chosen.</td>
+<td><code>contracts/helpers/InstantLayer.sol:311,354,401-402</code></td>
+</tr>
+<tr>
+<td>Muon TSS quorum</td>
+<td>Signs <code>UpnlSig</code> (deallocate solvency, liquidation insolvency) and <code>SettlementPriceSig</code> (option settlement). Quorum compromise is equivalent to forging PnL and settlement prices.</td>
+<td><code>contracts/libraries/services/LibMuon.sol</code>, <code>contracts/helpers/MuonOracle.sol</code></td>
+</tr>
+<tr>
+<td>Muon gateway signer</td>
+<td>Co-signs the Muon report inside <code>MuonOracle</code>. Compromise alone doesn&#39;t forge a sig (Schnorr is required) but can grief by withholding.</td>
+<td><code>contracts/helpers/MuonOracle.sol:43</code></td>
+</tr>
+<tr>
+<td><code>IPriceOracle</code> integrity</td>
+<td>Used during open-intent creation to convert fee token to collateral. A bad price doesn&#39;t move locked premium but mis-sizes platform/affiliate fees.</td>
+<td><code>contracts/libraries/core/LibPartyAOpen.sol</code> (fee math)</td>
+</tr>
+<tr>
+<td><code>IExpressWithdrawProvider</code> integrity</td>
+<td>Holds custody during express settlement. Provider can refuse (<code>ExpressWithdrawRejectedByProvider</code>) or reduce the redeemable amount; never inflate beyond original.</td>
+<td><code>contracts/libraries/core/LibBalanceOperations.sol:128-170</code></td>
+</tr>
+<tr>
+<td><code>IExternalTransferTarget</code> integrity</td>
+<td>Receives funds during <code>externalTransfer</code>. The target&#39;s <code>deposit</code> is called after the ERC-20 transfer; if it reverts, the whole transaction reverts. Whitelisted per <code>(target, collateral)</code> pair.</td>
+<td><code>contracts/facets/Account/AccountFacet.sol:125</code>, target validation at <code>contracts/libraries/core/LibBalanceOperations.sol:93</code></td>
+</tr>
+<tr>
+<td><code>SignatureVerifier</code> (mutable)</td>
+<td>Shared EOA / ERC-1271 verification helper. Replaceable by <code>SETTER_ROLE</code> via <code>setSignatureVerifier</code> — any swap immediately changes how every protocol-wide signature check resolves.</td>
+<td><code>contracts/facets/Control/ControlFacet.sol:871</code></td>
+</tr>
+<tr>
+<td><code>TradeNFT</code> address</td>
+<td>Configured by <code>SETTER_ROLE</code> (<code>setTradeNftAddress</code> <code>:285</code>). Only this address is allowed to call <code>transferTradeFromNFT</code>. A malicious NFT contract can rewrite trade ownership.</td>
+<td><code>contracts/facets/Trade/TradeFacet.sol:45</code></td>
+</tr>
+</tbody></table>
+<h2 id="3-attack-surface-map">3. Attack Surface Map</h2>
+<p>For each facet, &quot;worst external-caller behavior&quot; assumes the role checks pass for the attacker (i.e. they are a legitimate role holder where applicable, or any address where not).</p>
+<table>
+<thead>
+<tr>
+<th>Facet</th>
+<th>Source</th>
+<th>Role-gated?</th>
+<th>Worst case for an attacker who passes the gate</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>AccountFacet</code> (deposit/transfer/withdraw)</td>
+<td><code>contracts/facets/Account/AccountFacet.sol</code></td>
+<td>Mostly open; <code>virtualDepositFor</code> is <code>VIRTUAL_DEPOSITOR_ROLE</code>; <code>suspendWithdraw</code> / <code>restoreWithdraw</code> are <code>SUSPENDER</code> / <code>DISPUTER</code></td>
+<td>Re-enter through <code>externalTransfer</code> (mitigated by <code>nonReentrant</code>); push another user past <code>balanceLimitPerUser</code> via <code>depositFor</code> to grief; route <code>externalTransfer</code> to a malicious target (mitigated by per-collateral whitelist)</td>
+</tr>
+<tr>
+<td><code>PartyAOpenFacet</code> / <code>PartyACloseFacet</code></td>
+<td><code>contracts/facets/PartyAOpen/</code>, <code>PartyAClose/</code></td>
+<td>Open to non-Party-B; intent-owner gate via <code>onlyPartyAOfTrade</code></td>
+<td>Spam intents to bloat indexes (bounded by <code>MaxTradePerPartyA</code> / <code>MaxCloseOrdersExceeded</code>); pick a bad symbol or affiliate (validated); set deadline at the boundary to force timing-edge failures</td>
+</tr>
+<tr>
+<td><code>PartyBOpenFacet</code> (lock/unlock/fill)</td>
+<td><code>contracts/facets/PartyBOpen/PartyBOpenFacet.sol</code></td>
+<td><code>onlyPartyB</code></td>
+<td>Lock-and-stall (mitigated by Party A <code>cancelOpenIntent</code> → <code>forceCancelOpenIntent</code> after timeout); fill at the worst legal price (<code>price &lt;= intent.price</code> enforced at <code>contracts/libraries/core/LibPartyBOpen.sol:216</code>); fill below required margin (revert path); refuse residual fills</td>
+</tr>
+<tr>
+<td><code>PartyBCloseFacet</code></td>
+<td><code>contracts/facets/PartyBClose/PartyBCloseFacet.sol</code></td>
+<td><code>onlyPartyB</code> of trade</td>
+<td>Same as above for close threshold; refuse <code>acceptCancelCloseIntent</code> (mitigated by <code>forceCancelCloseIntent</code>)</td>
+</tr>
+<tr>
+<td><code>TradeFacet.transferTrade</code> / <code>transferTradeFromNFT</code></td>
+<td><code>contracts/facets/Trade/TradeFacet.sol:32,45</code></td>
+<td>Trade-owner / TradeNFT-only</td>
+<td>Transfer to a Party B (blocked by <code>ReceiverIsPartyB</code>); transfer a CROSS trade (blocked by <code>CrossTradeTransferNotAllowed</code>); re-enter (mitigated by <code>nonReentrant</code>)</td>
+</tr>
+<tr>
+<td><code>TradeFacet.executeTrades</code> (settlement)</td>
+<td><code>contracts/facets/Trade/TradeFacet.sol:61</code></td>
+<td>Anyone after <code>partyBExclusiveWindow</code></td>
+<td>Force-settle inside the exclusive window (blocked by <code>PartyBExclusiveWindowNotOver</code> at <code>contracts/libraries/core/LibTradeOperations.sol:159</code>); replay an old settlement-price signature (blocked by <code>SignatureAlreadyUsed</code> at <code>contracts/libraries/services/LibSignature.sol:19</code>); use a stale signature (blocked by <code>ExpiredSignature</code> at <code>contracts/libraries/services/LibMuon.sol:32</code>); pass a sig for the wrong symbol (<code>MismatchedSymbolId</code>)</td>
+</tr>
+<tr>
+<td><code>ForceActionsFacet</code></td>
+<td><code>contracts/facets/ForceActions/ForceActionsFacet.sol</code></td>
+<td>Anyone after timeout</td>
+<td>Race the timeout (no privilege gained — refunds go to original Party A); call before timeout (<code>CooldownNotOver</code>)</td>
+</tr>
+<tr>
+<td><code>ClearingHouseFacet</code></td>
+<td><code>contracts/facets/ClearingHouse/ClearingHouseFacet.sol</code></td>
+<td><code>CLEARING_HOUSE_ROLE</code> only, plus <code>whenNotLiquidationPaused</code></td>
+<td>Confiscate above counter-party balance (blocked by <code>InsufficientIntBalance</code>); distribute more than confiscated (blocked by <code>DistributedAmountExceedsConfiscatedAmount</code>); flag a solvent party then <code>liquidate*</code> (blocked by <code>Party*Solvent</code>); price-manipulate <code>closeTrades</code> via the <code>prices[]</code> argument — <strong>no on-chain validation of those prices</strong> (see Section 12)</td>
+</tr>
+<tr>
+<td><code>CounterPartyRelationsFacet</code></td>
+<td><code>contracts/facets/CounterPartyRelations/CounterPartyRelationsFacet.sol</code></td>
+<td>Party A self</td>
+<td>Bind to a malicious Party B (only enforced as <code>PartyBNotActive</code>); spam unbinding (cooldown-gated)</td>
+</tr>
+<tr>
+<td><code>ControlFacet</code> admin surface</td>
+<td><code>contracts/facets/Control/ControlFacet.sol</code></td>
+<td>Per-role</td>
+<td>See Section 2 — every misconfiguration is reachable</td>
+</tr>
+<tr>
+<td><code>DiamondCutFacet.diamondCut</code></td>
+<td><code>contracts/facets/DiamondCut/DiamondCutFacet.sol:20</code></td>
+<td>Diamond owner only (<code>onlyOwner</code>)</td>
+<td>Replace any selector, including liquidation/settlement; run arbitrary init code via <code>_calldata</code> delegatecall</td>
+</tr>
+<tr>
+<td><code>DiamondLoupeFacet</code>, <code>ViewFacet</code></td>
+<td>View-only</td>
+<td>None</td>
+<td>Information leak only</td>
+</tr>
+</tbody></table>
+<h2 id="4-key-invariants">4. Key Invariants</h2>
+<p>These are the invariants an auditor should attempt to break. Each row cites the on-chain enforcement point or the structural reason. Items marked &quot;informal&quot; are not enforced by an explicit assert and are properties of the surrounding code.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Invariant</th>
+<th>Enforcement / source</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>I1</td>
+<td>Per-user, per-collateral isolated and locked balances move only through <code>LibBalanceOperations</code> and <code>LibScheduledReleaseBalance</code>; no facet touches storage directly.</td>
+<td>All balance writes routed through these libraries; e.g. <code>contracts/libraries/core/LibBalanceOperations.sol:43-220</code></td>
+</tr>
+<tr>
+<td>I2</td>
+<td>A non-Party-B user&#39;s deposits + virtual deposits − withdrawals into <code>(user, collateral)</code> never exceed <code>balanceLimitPerUser[collateral]</code>.</td>
+<td><code>BalanceLimitExceeded</code> at <code>contracts/libraries/core/LibBalanceOperations.sol:52</code></td>
+</tr>
+<tr>
+<td>I3</td>
+<td>A withdrawal cannot complete before its scheduled release (<code>block.timestamp + releaseInterval(user)</code> set at <code>contracts/facets/Account/AccountFacet.sol:149</code>).</td>
+<td><code>CooldownNotOver(&quot;withdraw&quot;, ...)</code> at <code>contracts/libraries/core/LibBalanceOperations.sol:202</code></td>
+</tr>
+<tr>
+<td>I4</td>
+<td>An express withdrawal cannot be cancelled by the user — only the express provider&#39;s path can refund it.</td>
+<td><code>ExpressWithdrawCancellationNotAllowed</code> at <code>contracts/libraries/core/LibBalanceOperations.sol:224</code></td>
+</tr>
+<tr>
+<td>I5</td>
+<td>Restored express withdrawal <code>validAmount &lt;= original requested amount</code>; the difference is sent to the invalid-withdrawals pool.</td>
+<td><code>ValidAmountExceedsOriginal</code> at <code>contracts/libraries/core/LibBalanceOperations.sol:170</code></td>
+</tr>
+<tr>
+<td>I6</td>
+<td>An open intent&#39;s locked premium for a BUY equals <code>intent.quantity * intent.price</code>, locked at intent creation; on partial fill at a price &lt;= <code>intent.price</code>, the proportional locked premium is consumed and the residual remains locked on the residual intent. Deferred Party B sells are SELL-only and therefore do not use premium locks.</td>
+<td><code>LibPartyAOpen.sol</code>, <code>LibPartyBOpen.sol:164-378</code></td>
+</tr>
+<tr>
+<td>I7</td>
+<td>For normal SELL-side cross intents, MM is cross-locked at intent creation and released on cancel/expire/fill. For deferred Party B sells, MM is isolated-locked in <code>OpenIntentEscrow</code>, then either released on non-fill terminal paths or allocated to the selected Party B cross bucket before <code>increaseMM</code> at fill.</td>
+<td><code>contracts/libraries/models/LibOpenIntent.sol:142-213</code>, <code>increaseMM</code>/<code>decreaseMM</code> at <code>contracts/libraries/models/LibScheduledReleaseBalance.sol:453,458</code></td>
+</tr>
+<tr>
+<td>I8</td>
+<td>Maintenance margin release cannot exceed tracked <code>totalMM</code>.</td>
+<td><code>InsufficientMMBalance</code> at <code>contracts/libraries/models/LibScheduledReleaseBalance.sol:460</code></td>
+</tr>
+<tr>
+<td>I9</td>
+<td>Cross deallocation cannot leave a counter-party with negative debt-coverage capacity.</td>
+<td><code>InsufficientDebtCoverage</code> at <code>contracts/libraries/core/LibAllocationOperations.sol:121</code></td>
+</tr>
+<tr>
+<td>I10</td>
+<td>A balance-affecting cross trade action increments both bilateral nonces (<code>partyA→partyB</code> and <code>partyB→partyA</code>), invalidating any unconsumed off-chain <code>UpnlSig</code> for that pair.</td>
+<td><code>contracts/libraries/core/LibPartyBOpen.sol:365-366</code>, <code>contracts/libraries/core/LibPartyBClose.sol:170-171</code>, <code>contracts/libraries/core/LibTradeOperations.sol:233-234</code>; consumed at <code>contracts/libraries/services/LibMuon.sol:85</code></td>
+</tr>
+<tr>
+<td>I11</td>
+<td>A settlement / exercise signature is single-use globally.</td>
+<td><code>SignatureAlreadyUsed</code> at <code>contracts/libraries/services/LibSignature.sol:19-21</code></td>
+</tr>
+<tr>
+<td>I12</td>
+<td>An <code>InstantLayer</code> signed operation hash is single-use globally.</td>
+<td><code>OperationAlreadyExecuted</code> at <code>contracts/helpers/InstantLayer.sol:401-402</code></td>
+</tr>
+<tr>
+<td>I13</td>
+<td>An <code>InstantLayer</code> signed operation with non-zero <code>nonce</code> must equal <code>nonces[signer] + 1</code>.</td>
+<td><code>InvalidNonce</code> at <code>contracts/helpers/InstantLayer.sol:410</code></td>
+</tr>
+<tr>
+<td>I14</td>
+<td>A Muon report (uPnL or settlement price) is rejected if older than its configured validity window.</td>
+<td><code>ExpiredSignature</code> at <code>contracts/libraries/services/LibMuon.sol:32,66</code></td>
+</tr>
+<tr>
+<td>I15</td>
+<td>Settlement-price signature&#39;s <code>symbolId</code> must match the trade.</td>
+<td><code>MismatchedSymbolId</code> at <code>contracts/libraries/core/LibTradeOperations.sol:111</code></td>
+</tr>
+<tr>
+<td>I16</td>
+<td>Third-party settlement is blocked until <code>block.timestamp &gt;= expirationTimestamp + partyBExclusiveWindow</code>.</td>
+<td><code>PartyBExclusiveWindowNotOver</code> at <code>contracts/libraries/core/LibTradeOperations.sol:159</code></td>
+</tr>
+<tr>
+<td>I17</td>
+<td>A liquidation cannot distribute more than it confiscated (no minting).</td>
+<td><code>DistributedAmountExceedsConfiscatedAmount</code> at <code>contracts/libraries/core/LibClearingHouse.sol:305</code></td>
+</tr>
+<tr>
+<td>I18</td>
+<td>A flagged-or-in-progress <code>(partyA, partyB, collateral)</code> tuple blocks balance-affecting calls for that slice via <code>requireSolvent</code> (which is a flag-only check, not an economic check).</td>
+<td><code>LibParty.isSolvent</code> / <code>requireSolvent</code> at <code>contracts/libraries/models/LibParty.sol:17-30</code>; <code>NotSolvent</code> at <code>contracts/libraries/core/LibAllocationOperations.sol:137</code></td>
+</tr>
+<tr>
+<td>I19</td>
+<td>Cross-margin trades cannot be transferred (NFT or direct).</td>
+<td><code>CrossTradeTransferNotAllowed</code> at <code>contracts/libraries/core/LibTradeOperations.sol:56</code>; <code>NFTMintingNotAllowedForCrossMarginTrade</code> at <code>:241</code></td>
+</tr>
+<tr>
+<td>I20</td>
+<td>A trade NFT cannot be transferred to a registered Party B.</td>
+<td><code>ReceiverIsPartyB</code> at <code>contracts/libraries/core/LibTradeOperations.sol:50</code></td>
+</tr>
+<tr>
+<td>I21</td>
+<td>Only the configured <code>tradeNftAddress</code> can call <code>transferTradeFromNFT</code> (so on-chain ownership stays in sync with NFT custody).</td>
+<td>Trade-NFT-only check inside <code>LibTradeOperations</code> referenced by <code>contracts/facets/Trade/TradeFacet.sol:45</code></td>
+</tr>
+<tr>
+<td>I22</td>
+<td>A <code>lossCoverage == 0</code> Party B cannot be flagged for liquidation.</td>
+<td><code>ZeroLossCoverage</code> at <code>contracts/libraries/core/LibClearingHouse.sol:100,129</code></td>
+</tr>
+<tr>
+<td>I23</td>
+<td>A liquidation is only <code>IN_PROGRESS</code> after <code>_beginLiquidation</code>; the in-progress flag is left set after settlement (no automatic clear) — see Section 12.</td>
+<td><code>contracts/libraries/core/LibClearingHouse.sol:90-93</code></td>
+</tr>
+<tr>
+<td>I24</td>
+<td>A non-affiliate cannot configure their own affiliate fees through <code>setAffiliateFees</code> unless either the caller equals the affiliate or holds <code>AFFILIATE_FEE_MANAGER_ROLE</code>.</td>
+<td><code>contracts/facets/Control/ControlFacet.sol:366-372</code></td>
+</tr>
+<tr>
+<td>I25</td>
+<td>Total open fee paid by Party A at fill is split between <code>defaultFeeCollector</code> (platform fee), either <code>affiliateFeeCollector[affiliate]</code> or the default fee collector (affiliate fee), and the selected Party B (solver fee). The amounts are computed at fill price, not submission price.</td>
+<td><code>contracts/libraries/core/LibPartyBOpen.sol:323-350</code></td>
+</tr>
+<tr>
+<td>I26</td>
+<td>Deferred Party B sell escrow is conserved across partial fills: the filled slice is consumed into the selected Party B cross bucket, the residual slice moves to the child intent, and cancel-pending residuals are released instead of being stranded.</td>
+<td><code>contracts/libraries/core/LibPartyBOpen.sol:254-315</code>; <code>contracts/libraries/models/LibOpenIntent.sol:180-232</code></td>
+</tr>
+</tbody></table>
+<h2 id="5-reentrancy-posture">5. Reentrancy Posture</h2>
+<ul>
+<li>The guard sits in <code>contracts/utils/ReentrancyGuard.sol:14</code>, backed by <code>AccessControlStorage.reentrancyGuardStatus</code>. Reverts with <code>ReentrancyGuardErrors.ReentrantCall</code>.</li>
+<li><code>nonReentrant</code> is applied to every call that performs an external token transfer or external contract call back to a mutable counterparty contract:<ul>
+<li><code>AccountFacet.deposit</code> / <code>depositFor</code> / <code>externalTransfer</code> / <code>initiateExpressWithdraw</code> / <code>completeWithdraw</code> (<code>contracts/facets/Account/AccountFacet.sol:39, 74, 132, 182, 223</code>).</li>
+<li><code>TradeFacet.transferTrade</code> / <code>mintNFTForTrade</code> (<code>contracts/facets/Trade/TradeFacet.sol:32, 71</code>).</li>
+</ul>
+</li>
+<li><strong>Not</strong> guarded:<ul>
+<li><code>PartyB*Facet</code> and <code>PartyA*Facet</code> entrypoints (no external call out beyond storage).</li>
+<li><code>ClearingHouseFacet</code> (operator-only; no external calls).</li>
+<li><code>TradeFacet.executeTrades</code> and <code>transferTradeFromNFT</code> (they read state and mutate; settlement does not call out to user-controlled contracts directly, but <code>transferTradeFromNFT</code> can only be invoked by the configured TradeNFT and so reentrancy depends on TradeNFT correctness).</li>
+</ul>
+</li>
+<li>The guard storage is shared across the diamond (single slot in <code>AccessControlStorage</code>), so re-entry between facets is also blocked while one guard is held.</li>
+</ul>
+<h2 id="6-pause-model">6. Pause Model</h2>
+<p>Defense-in-depth is provided by twelve independent pause flags in <code>StateControlStorage</code> (<code>contracts/storages/StateControlStorage.sol:10-28</code>). <code>globalPaused</code> is the kill switch checked first by every <code>Pausable</code> modifier. See <a href="roles-and-pauses.html#part-2--pause-flags">roles-and-pauses#Part 2 — Pause Flags</a> for the full mapping of flag → modifier → setter.</p>
+<p>Operational implications:</p>
+<ul>
+<li><code>pauseGlobal</code> is the broadest stop-loss; all pause unwinds require <code>UNPAUSER_ROLE</code>, which should be a more conservative key than <code>PAUSER_ROLE</code>.</li>
+<li>Per-domain pauses (deposit, withdraw, internal/external transfer, express withdraw, party A actions, party B actions, third-party actions, liquidating, instant layer) let an incident response halt one bug class without freezing the whole protocol.</li>
+<li>Pause does not move balances. Funds locked at the time of pause stay locked under their normal release model.</li>
+</ul>
+<h2 id="7-suspension-model">7. Suspension Model</h2>
+<p>Suspension is per-address or per-withdrawal and is <strong>not</strong> the same as pause or liquidation flagging. See <a href="roles-and-pauses.html#part-4--suspension-and-emergency">roles-and-pauses#Part 4 — Suspension and Emergency</a>.</p>
+<ul>
+<li><strong>Address suspension</strong> (<code>suspendedAddresses[user]</code>) blocks the user from initiating deposits, transfers, withdrawals, allocations, deallocations, and trade transfers (full list at <code>contracts/utils/Accessibility.sol:53-69</code>). Suspended users can still be liquidated.</li>
+<li><strong>Withdrawal suspension</strong> (<code>suspendedWithdrawal[withdrawId]</code>) freezes one specific pending withdrawal so it can be reviewed before completion or cancellation.</li>
+<li>Suspender flow: <code>SUSPENDER_ROLE</code> flips the flag (<code>AccountFacet.suspendWithdraw</code> at <code>:200</code>, <code>ControlFacet.suspendWithdrawal</code> at <code>:665</code>).</li>
+<li>Disputer flow: <code>DISPUTER_ROLE</code> calls <code>AccountFacet.restoreWithdraw(id, validAmount)</code> at <code>:211</code>. This clears the suspended flag and <strong>rewrites</strong> <code>Withdraw.amount</code> to <code>validAmount</code>. The difference between the original and <code>validAmount</code> is routed to <code>getInvalidWithdrawalsPool</code> (<code>contracts/facets/View/ViewFacet.sol:144</code>). The disputer is the only role that can reduce a withdrawal&#39;s claimable amount; the suspender can only freeze/unfreeze.</li>
+<li>The suspender alone cannot redirect funds. The disputer can redirect a portion to the invalid pool but not to an arbitrary address.</li>
+</ul>
+<h2 id="8-emergency-states">8. Emergency States</h2>
+<p>Party B emergency mode is a focused freeze on opening new exposure with a problematic Party B. See <a href="roles-and-pauses.html#party-b-emergency-mode">roles-and-pauses#Party B emergency mode</a>.</p>
+<ul>
+<li>Two storage levels: <code>partyBsEmergencyMode</code> (global) and <code>partyBEmergencyMode[partyB]</code> (single Party B), at <code>contracts/storages/StateControlStorage.sol:23-24</code>.</li>
+<li>Both are checked inside <code>LibPartyBOpen</code> lock (<code>:51-52</code>) and fill (<code>:184-185</code>). Reverts with <code>PartyBInEmergencyMode(partyB)</code> or <code>PartyBsInEmergencyMode()</code>.</li>
+<li>Emergency mode does <strong>not</strong> block close-side flows, withdrawals, or liquidation. It is specifically meant to stop a Party B from accepting new positions while still letting existing positions wind down.</li>
+<li>Activated by <code>PAUSER_ROLE</code>, deactivated by <code>UNPAUSER_ROLE</code>. Distinct from <code>pausePartyBActions</code>, which freezes every Party B for every action.</li>
+</ul>
+<h2 id="9-upgradeability-surface">9. Upgradeability Surface</h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Upgrade mechanism</th>
+<th>How to verify a clean upgrade</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Diamond (facets)</td>
+<td><code>DiamondCutFacet.diamondCut</code> (<code>contracts/facets/DiamondCut/DiamondCutFacet.sol:20</code>); only callable by Diamond owner (<code>LibDiamond.enforceIsContractOwner</code> at <code>contracts/libraries/core/LibDiamond.sol:68</code>). Bumps <code>AppStorage.version</code>.</td>
+<td>Compare pre/post <code>DiamondLoupeFacet.facets()</code> and <code>facetAddress(selector)</code> for every selector in <code>common/constants.ts</code>; assert no Add overwrites a non-zero facet (enforced by <code>CannotAddExistingFunction</code> at <code>contracts/libraries/core/LibDiamond.sol:104</code>); read <code>getVersion()</code> (<code>contracts/facets/View/ViewFacet.sol:211</code>); inspect the <code>_init</code> delegatecall <code>_calldata</code> if non-empty.</td>
+</tr>
+<tr>
+<td><code>MultiAccount</code></td>
+<td>OpenZeppelin upgradeable (<code>Initializable</code> + <code>AccessControlUpgradeable</code>); deployed behind a proxy by the deployment tooling. (<code>contracts/helpers/MultiAccount.sol:28-40</code>.) The contract itself does not export <code>_authorizeUpgrade</code>; upgrade authority lives in whichever proxy admin pattern the deployer chose.</td>
+<td>After upgrade, re-run <code>MultiAccount</code>-specific behavior tests; verify the <code>DEFAULT_ADMIN_ROLE</code> set is unchanged; verify <code>signatureVerifier</code> and registered MultiAccount allowlists in <code>InstantLayer</code>.</td>
+</tr>
+<tr>
+<td><code>SymmioPartyB</code></td>
+<td>Same — OZ <code>Initializable</code> + <code>AccessControlEnumerableUpgradeable</code> + <code>PausableUpgradeable</code> + <code>ReentrancyGuardUpgradeable</code> (<code>contracts/helpers/SymmioPartyB.sol:25-42</code>). Upgrade authority depends on the deployed proxy pattern.</td>
+<td>Re-verify <code>multicastWhitelist</code>, role assignments, and selector → role mapping after upgrade.</td>
+</tr>
+<tr>
+<td><code>InstantLayer</code></td>
+<td><strong>Not</strong> upgradeable: it is a plain <code>AccessControlEnumerable</code> contract with no <code>Initializable</code> / <code>_authorizeUpgrade</code>. Replacement requires deploying a new instance and re-granting <code>INSTANT_LAYER_ROLE</code> on the diamond, then revoking from the old.</td>
+<td>After replacement: revoke <code>INSTANT_LAYER_ROLE</code> from the old InstantLayer (<code>ControlFacet.revokeRole</code>), grant to the new one, re-register Party Bs and MultiAccounts on the new helper.</td>
+</tr>
+<tr>
+<td><code>TradeNFT</code></td>
+<td>Owns its own state; replaceable by <code>SETTER_ROLE</code> via <code>setTradeNftAddress</code> (<code>contracts/facets/Control/ControlFacet.sol:285</code>).</td>
+<td>After swap, audit any in-flight trades that have minted NFTs — old NFTs become orphaned because <code>transferTradeFromNFT</code> only accepts the configured address.</td>
+</tr>
+<tr>
+<td><code>MuonOracle</code> / <code>SignatureVerifier</code></td>
+<td>Replaceable by <code>SETTER_ROLE</code> (<code>setSignatureVerifier</code> at <code>:871</code>).</td>
+<td>After swap, smoke-test settlement, deallocate, and Party A liquidation paths to confirm signatures still verify.</td>
+</tr>
+</tbody></table>
+<h2 id="10-signature-schemes-risk">10. Signature Schemes Risk</h2>
+<p>For deeper recap see <code>docs/concepts/oracle-and-signatures.md</code> (planned). Three independent signature schemes are in use:</p>
+<ul>
+<li><strong>Muon TSS</strong> for <code>UpnlSig</code> and <code>SettlementPriceSig</code> (<code>contracts/libraries/services/LibMuon.sol</code>, verified through <code>MuonOracle.sol:38-43</code> which combines a Schnorr signature with a gateway ECDSA signature). Risks: TSS quorum compromise, gateway compromise (gateway alone cannot forge), expired signatures (<code>ExpiredSignature</code> at <code>LibMuon.sol:32,66</code>), and replay (settlement-side replay blocked by <code>isSigUsed</code>; uPnL replay blocked by bilateral nonce — <code>LibMuon.sol:85</code>).</li>
+<li><strong>EIP-712 / EIP-1271</strong> for <code>InstantLayer</code> signed operations (<code>contracts/helpers/InstantLayer.sol</code>). Risks: signer key compromise, deadline expiry (<code>DeadlineExpired</code> at <code>:387</code>), nonce/salt collisions (replay blocked at <code>:401-402</code>, ordering at <code>:410</code>).</li>
+<li><strong>EOA / ERC-1271</strong> general signatures via <code>SignatureVerifier</code> (backed by <code>LibSignatureChecker</code>) and <code>LibSignature</code>. Risks: a compromised contract signer (notably MultiAccount-owned SymmioPartyA, which delegates ERC-1271 back to MultiAccount); <code>SignatureVerifier</code> replacement by <code>SETTER_ROLE</code>.</li>
+</ul>
+<p>Signature checks deliberately keep OpenZeppelin 4 semantics through <code>contracts/libraries/utils/LibSignatureChecker.sol</code>: ECDSA <code>tryRecover</code> first, then ERC-1271. This lets an EIP-7702-delegated EOA, which has code, still sign with its own key. OpenZeppelin 5&#39;s stock <code>SignatureChecker</code> routes on <code>signer.code.length</code> and would reject those signatures, so <code>LibSignatureChecker</code> must not be replaced with it without an explicit decision.</p>
+<h2 id="11-decimal-normalization">11. Decimal Normalization</h2>
+<p><code>LibDecimals</code> (<code>contracts/libraries/utils/LibDecimals.sol</code>) is the single source of normalization. All deposits and withdrawals normalize/denormalize between collateral decimals and the protocol&#39;s 1e18 internal precision:</p>
+<ul>
+<li><code>normalizeAmount(token, amount) = (amount * 1e18) / 10**decimals</code> (<code>LibDecimals.sol:13-16</code>)</li>
+<li><code>denormalizeAmount(token, amount) = (amount * 10**decimals) / 1e18</code> (<code>LibDecimals.sol:18-21</code>)</li>
+</ul>
+<p>Both use Solidity 0.8.19 integer division and <strong>truncate</strong>. Known consequences:</p>
+<ul>
+<li>A withdrawal of less than <code>10**(18-decimals)</code> of a low-decimal token (e.g. USDC at 6 decimals: <code>10**12</code> units of internal value) denormalizes to zero — the user effectively forfeits dust on withdrawal.</li>
+<li>A deposit-then-withdraw round trip is not amount-preserving for amounts below the granularity of the token; this is a property of any fixed-precision normalization.</li>
+<li>All other internal math (premium, fee, MM) is in 1e18 collateral units; reads via <code>IERC20Metadata(token).decimals()</code> are made every call (no decimals cache), trusting the token to report a stable value.</li>
+</ul>
+<h2 id="12-known-limitations-and-by-design-oddities">12. Known Limitations and By-Design Oddities</h2>
+<p>Each row is verified against current code.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Location</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>LiquidationDetail.upnl</code> is declared but never written</td>
+<td><code>contracts/types/LiquidationTypes.sol:19</code>; <code>LibClearingHouse</code> comment at <code>:58</code> says <code>// upnl &amp; collateralPrice start at 0</code>. <code>collateralPrice</code> <em>is</em> written at <code>_beginLiquidation</code> (<code>:92</code>); <code>upnl</code> is not.</td>
+<td>Reserved for future bookkeeping. Off-chain tooling should ignore the field.</td>
+</tr>
+<tr>
+<td><code>LiquidationDetail.liquidationTimestamp</code> is declared but never written</td>
+<td><code>contracts/types/LiquidationTypes.sol:21</code></td>
+<td>Same as above. <code>flagTimestamp</code> is written; the begin-liquidation timestamp is not stored.</td>
+</tr>
+<tr>
+<td>No automatic <code>IN_PROGRESS → CANCELLED</code> transition for liquidation</td>
+<td><code>LibClearingHouse._beginLiquidation</code> flips status to <code>IN_PROGRESS</code>; nothing flips it back. <code>inProgressLiquidationIds</code> is left set after settlement.</td>
+<td>See <a href="liquidation-and-force-actions.html#liquidation-status-machine">liquidation-and-force-actions#Liquidation Status Machine</a>. The clearing-house operator is responsible for off-chain bookkeeping after IN_PROGRESS. Side effect: any later <code>requireSolvent</code> for the same tuple permanently reverts unless the operator re-flags-then-unflags.</td>
+</tr>
+<tr>
+<td><code>closeTrades</code> accepts caller-supplied <code>prices[]</code> with no on-chain validation</td>
+<td><code>LibClearingHouse.sol:204-247</code></td>
+<td>The clearing house chooses the close prices for liquidated trades. No oracle / signature is required. Trust this role.</td>
+</tr>
+<tr>
+<td><code>WINDOW_UPDATER_ROLE</code> is declared but never consumed</td>
+<td><code>contracts/libraries/core/LibAccessibility.sol:24</code>; <code>grep WINDOW_UPDATER_ROLE</code> returns only the declaration.</td>
+<td>Reserved; do not rely on it.</td>
+</tr>
+<tr>
+<td><code>MANAGER_ROLE</code> and <code>TRUSTED_ROLE</code> on <code>InstantLayer</code> are granted in the constructor but not consumed</td>
+<td><code>contracts/helpers/InstantLayer.sol:201-202</code></td>
+<td>Reserved.</td>
+</tr>
+<tr>
+<td>Several declared errors are never reverted at runtime</td>
+<td>See <a href="errors.html">errors</a>: <code>BalanceErrors.NonZeroBalanceCounterParty</code>, <code>BalanceErrors.ExpressWithdrawProviderReceiverNotSet</code>, <code>ValidationErrors.EmptyList</code>, <code>PartyRelationsErrors.UnbindingCooldownNotOver</code>, <code>SystemErrors.ExpressWithdrawCollectionPaused</code>, <code>MultiAccount.InvalidCallData</code>.</td>
+<td>Defense-in-depth declarations or stubs for safety. Auditors should not assume these are reachable.</td>
+</tr>
+<tr>
+<td><code>LibParty.requireSolvent</code> is <em>not</em> an economic solvency check</td>
+<td><code>contracts/libraries/models/LibParty.sol:17-30</code></td>
+<td>It only checks that no liquidation id is set for the tuple. Economic solvency lives only inside <code>liquidate*</code>. The naming is a known surface gotcha — see <a href="liquidation-and-force-actions.html#solvency-vs-liquidation-distinction">liquidation-and-force-actions#Solvency vs Liquidation Distinction</a>.</td>
+</tr>
+<tr>
+<td>Cross-margin trades cannot be transferred or NFT-minted</td>
+<td><code>contracts/libraries/core/LibTradeOperations.sol:56,241</code></td>
+<td>Only ISOLATED trades can be moved; CROSS bilateral state would not survive a transfer.</td>
+</tr>
+<tr>
+<td><code>transferTradeFromNFT</code> trusts the configured TradeNFT contract entirely</td>
+<td><code>contracts/facets/Trade/TradeFacet.sol:45</code></td>
+<td>A misconfigured <code>tradeNftAddress</code> (set by <code>SETTER_ROLE</code>) could rewrite trade ownership at will.</td>
+</tr>
+<tr>
+<td><code>setCallFromInstantLayer</code> takes a bool — InstantLayer must self-discipline pairing</td>
+<td><code>contracts/facets/Control/ControlFacet.sol:937</code></td>
+<td>A bug in InstantLayer that fails to set the flag back to <code>false</code> would leave <code>whenInstantModeIsNotActive</code> permanently bypassable for instant-mode users. The deployed InstantLayer toggles around <code>executeBatch</code>/<code>executeTemplate</code> (see <code>contracts/helpers/InstantLayer.sol</code>).</td>
+</tr>
+<tr>
+<td><code>OracleManager.updateOracle</code> overwrites the oracle address in place</td>
+<td><code>contracts/facets/Control/ControlFacet.sol:721</code></td>
+<td>Symbols continue to resolve to the same <code>oracleId</code> but a new contract address; intentionally hot-swappable.</td>
+</tr>
+</tbody></table>
+<h2 id="13-operational-checklist-for-production-deploy">13. Operational Checklist for Production Deploy</h2>
+<p>See <a href="deployment-and-operations.html">deployment-and-operations</a> for the full procedure. The security-relevant subset:</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Why it matters</th>
+<th>Check</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Diamond owner is a multisig (or timelock + multisig)</td>
+<td>Owns <code>setAdmin</code> and <code>diamondCut</code>.</td>
+<td><code>LibDiamond.contractOwner()</code> post-deploy.</td>
+</tr>
+<tr>
+<td><code>DEFAULT_ADMIN_ROLE</code> separated from owner</td>
+<td>Defense-in-depth for role grants.</td>
+<td><code>ViewFacet.getRoleMembers(DEFAULT_ADMIN_ROLE)</code>.</td>
+</tr>
+<tr>
+<td><code>PAUSER_ROLE</code> on a hot-key bot; <code>UNPAUSER_ROLE</code> on a colder key</td>
+<td>Asymmetric trust between halt and resume.</td>
+<td>Same.</td>
+</tr>
+<tr>
+<td><code>CLEARING_HOUSE_ROLE</code> granted only to the official clearing-house executor</td>
+<td>Sole liquidation authority.</td>
+<td>Same.</td>
+</tr>
+<tr>
+<td><code>INSTANT_LAYER_ROLE</code> granted only to the deployed <code>InstantLayer</code> address</td>
+<td>Else <code>callFromInstantLayer</code> becomes a generic backdoor.</td>
+<td>Same.</td>
+</tr>
+<tr>
+<td><code>VIRTUAL_DEPOSITOR_ROLE</code> empty unless a bridge integration is live</td>
+<td>Mints accounting balance.</td>
+<td>Same.</td>
+</tr>
+<tr>
+<td><code>setSignatureVerifier</code> and <code>setPriceOracleAddress</code> configured before any user activity</td>
+<td>Verifier and oracle addresses are non-trivially load-bearing.</td>
+<td><code>ViewFacet.getSignatureVerifier()</code>, <code>getPriceOracleAddress()</code>.</td>
+</tr>
+<tr>
+<td>Each whitelisted collateral has a configured express-withdraw provider (if used) and external transfer target (if used)</td>
+<td>Express/external paths are user-initiated calls into custody contracts.</td>
+<td><code>ViewFacet.getExpressWithdrawProviderConfig</code>, off-chain enumeration.</td>
+</tr>
+<tr>
+<td><code>forceCancelOpenIntentTimeout</code>, <code>forceCancelCloseIntentTimeout</code>, <code>partyBExclusiveWindow</code>, <code>upnlSigValidTime</code>, <code>settlementPriceSigValidTime</code> are set to non-zero, sane values</td>
+<td>Default zero would let force-cancel fire at the same block.</td>
+<td><code>ViewFacet</code> getters in <a href="facets.html#app--protocol-parameters">facets#App / Protocol Parameters</a>.</td>
+</tr>
+<tr>
+<td>At least one <code>defaultFeeCollector</code> set</td>
+<td>Else open-intent fee accounting credits <code>address(0)</code>.</td>
+<td><code>ViewFacet.getDefaultFeeCollector()</code>.</td>
+</tr>
+<tr>
+<td>Per-Party-B <code>lossCoverage</code> set non-zero for liquidatable Party Bs</td>
+<td>Else <code>flag*</code> reverts with <code>ZeroLossCoverage</code>.</td>
+<td><code>ViewFacet.getPartyBConfig(partyB)</code>.</td>
+</tr>
+<tr>
+<td>Helpers (<code>MultiAccount</code>, <code>SymmioPartyB</code>, <code>InstantLayer</code>, <code>TradeNFT</code>, <code>MuonOracle</code>) deployed and their respective owners / admins set to multisig</td>
+<td>Each helper has its own access surface.</td>
+<td>Per-contract role enumeration.</td>
+</tr>
+</tbody></table>
+<h2 id="14-auditors-quick-map">14. Auditor&#39;s Quick Map</h2>
+<p>If you have <strong>1 day</strong>, audit:</p>
+<ol>
+<li><code>contracts/facets/Trade/TradeFacet.sol:61</code> (<code>executeTrades</code>) and <code>contracts/libraries/core/LibTradeOperations.sol</code> settlement path. Settlement is anyone-callable, signature-driven, and ends every trade — getting this wrong loses funds at expiry.</li>
+<li><code>contracts/facets/ClearingHouse/ClearingHouseFacet.sol</code> and <code>contracts/libraries/core/LibClearingHouse.sol</code>. Liquidation, confiscation, distribution. Verify the <code>confiscatedAmount &gt;= distributedAmount</code> invariant (<code>LibClearingHouse.sol:305</code>) and the <code>address(0)</code> Party A path for isolated Party B.</li>
+</ol>
+<p>If you have <strong>1 week</strong>, additionally audit:</p>
+<ol start="3">
+<li><code>contracts/libraries/core/LibPartyBOpen.sol</code> <code>fillOpenIntent</code> (<code>:164-378</code>) — premium math, residual creation, partial-fill accounting, locked-balance bookkeeping, and deferred Party B sell escrow consumption.</li>
+<li><code>contracts/libraries/core/LibPartyBClose.sol</code> <code>fillCloseIntent</code> — PnL computation and bilateral nonce increment (<code>:170-171</code>).</li>
+<li>Scheduled release (<code>contracts/libraries/models/LibScheduledReleaseBalance.sol</code>) — <code>subForCounterParty</code>, <code>scheduledAdd</code>, <code>decreaseMM</code>, the timestamp invariants at <code>:337</code> and <code>:382</code>. This is the most arithmetic-dense file in the protocol.</li>
+<li><code>contracts/helpers/InstantLayer.sol</code> — replay protection (<code>:401-410</code>), template result splicing (<code>executeTemplate</code> at <code>:311</code>), the <code>setCallFromInstantLayer</code> toggle pairing.</li>
+<li><code>contracts/libraries/services/LibMuon.sol</code> and <code>contracts/helpers/MuonOracle.sol</code> — Schnorr verification, gateway co-signing, the bilateral-nonce-bound payload at <code>:85</code>.</li>
+</ol>
+<p>If you have <strong>a month</strong>, additionally audit:</p>
+<ol start="8">
+<li><code>contracts/libraries/core/LibAllocationOperations.sol</code> — cross-margin solvency and debt-coverage logic (<code>:107-137</code>).</li>
+<li><code>contracts/facets/Control/ControlFacet.sol</code> admin surface in full — every setter is a potential griefing vector.</li>
+<li><code>contracts/helpers/MultiAccount.sol</code> and <code>contracts/helpers/SymmioPartyB.sol</code> — selector-restriction logic, ERC-1271 delegation, multicast whitelist.</li>
+<li>The full pause / suspension / emergency matrix, walking each modifier against every function in <a href="facets.html">facets</a>.</li>
+</ol>
+<h2 id="15-reporting-and-responsible-disclosure">15. Reporting and Responsible Disclosure</h2>
+<p>Vulnerabilities should be reported through the project&#39;s official disclosure channels (see project README or <code>https://docs.symm.io</code>). Please do not file public issues for security-sensitive findings. Coordinated disclosure with the project team is expected before any public write-up. If no specific contact is reachable, contact the maintainers through the channels listed in the repository root README.</p>
+</article></main></div><footer class="site-footer"><span>Options Core documentation.</span></footer></body></html>

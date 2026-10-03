@@ -1,0 +1,1748 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Facet selectors, modifiers, preconditions, and accounting effects."><title>Facet API Reference | Options Core</title>
+<link rel="icon" type="image/svg+xml" href="../assets/symmio-mark.svg">
+<script>try { if (localStorage.getItem("options-docs-theme") === "light") document.documentElement.dataset.theme = "light"; } catch (_) {}</script>
+<link rel="stylesheet" href="../assets/reader.css"><link rel="stylesheet" href="../assets/docs-portal.css">
+<script src="../assets/chapters.js" defer></script><script src="../assets/reader.js" defer></script><script src="../assets/docs-portal.js" defer></script>
+</head>
+<body class="doc-page" data-version="current"><a class="skip-link" href="#full-document">Skip to document</a>
+<header class="docs-header"><div class="doc-topbar"><nav class="docs-trail" aria-label="Breadcrumb">
+<a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Options Core</span></a>
+<span class="trail-sep" aria-hidden="true">/</span><a class="trail-release" href="../index.html">Documentation</a>
+</nav><nav class="top-actions" aria-label="Page actions"><button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button></nav></div></header><div class="reader-shell"><div data-rail-sections hidden>
+<a class="toc-link level-2" href="#contents">Contents</a>
+<a class="toc-link level-2" href="#accountfacet">AccountFacet</a>
+<a class="toc-link level-3" href="#deposits">Deposits</a>
+<a class="toc-link level-3" href="#transfers">Transfers</a>
+<a class="toc-link level-3" href="#withdrawals">Withdrawals</a>
+<a class="toc-link level-3" href="#sync-allocation-reserve">Sync, Allocation, Reserve</a>
+<a class="toc-link level-2" href="#clearinghousefacet">ClearingHouseFacet</a>
+<a class="toc-link level-3" href="#isolated-party-b-liquidation">Isolated Party B Liquidation</a>
+<a class="toc-link level-3" href="#cross-party-b-liquidation">Cross Party B Liquidation</a>
+<a class="toc-link level-3" href="#cross-party-a-liquidation">Cross Party A Liquidation</a>
+<a class="toc-link level-3" href="#liquidation-cleanup-and-distribution">Liquidation Cleanup and Distribution</a>
+<a class="toc-link level-2" href="#controlfacet">ControlFacet</a>
+<a class="toc-link level-3" href="#access-control">Access Control</a>
+<a class="toc-link level-3" href="#collateral">Collateral</a>
+<a class="toc-link level-3" href="#system-parameters-and-limits">System Parameters and Limits</a>
+<a class="toc-link level-3" href="#fees">Fees</a>
+<a class="toc-link level-3" href="#party-b-configuration">Party B Configuration</a>
+<a class="toc-link level-3" href="#pauses-all-pauserrole-for-pause-unpauserrole-for-unpause">Pauses (all <code>PAUSER_ROLE</code> for pause, <code>UNPAUSER_ROLE</code> for unpause)</a>
+<a class="toc-link level-3" href="#emergency-modes">Emergency Modes</a>
+<a class="toc-link level-3" href="#suspension">Suspension</a>
+<a class="toc-link level-3" href="#oracles-and-symbols">Oracles and Symbols</a>
+<a class="toc-link level-3" href="#signature-withdraw-targets-instant-layer">Signature, Withdraw, Targets, Instant Layer</a>
+<a class="toc-link level-2" href="#counterpartyrelationsfacet">CounterPartyRelationsFacet</a>
+<a class="toc-link level-3" href="#activateinstantactionmode"><code>activateInstantActionMode()</code></a>
+<a class="toc-link level-3" href="#proposetodeactivateinstantactionmode"><code>proposeToDeactivateInstantActionMode()</code></a>
+<a class="toc-link level-3" href="#deactivateinstantactionmode"><code>deactivateInstantActionMode()</code></a>
+<a class="toc-link level-3" href="#bindtopartybaddress-partyb"><code>bindToPartyB(address partyB)</code></a>
+<a class="toc-link level-3" href="#initiateunbindingfrompartyb"><code>initiateUnbindingFromPartyB()</code></a>
+<a class="toc-link level-3" href="#completeunbindingfrompartyb"><code>completeUnbindingFromPartyB()</code></a>
+<a class="toc-link level-3" href="#cancelunbindingfrompartyb"><code>cancelUnbindingFromPartyB()</code></a>
+<a class="toc-link level-2" href="#diamondcutfacet">DiamondCutFacet</a>
+<a class="toc-link level-3" href="#diamondcutfacetcut-diamondcut-address-init-bytes-calldata"><code>diamondCut(FacetCut[] _diamondCut, address _init, bytes _calldata)</code></a>
+<a class="toc-link level-2" href="#diamondloupefacet">DiamondLoupeFacet</a>
+<a class="toc-link level-2" href="#forceactionsfacet">ForceActionsFacet</a>
+<a class="toc-link level-3" href="#forcecancelopenintentuint256-intentid"><code>forceCancelOpenIntent(uint256 intentId)</code></a>
+<a class="toc-link level-3" href="#forcecancelcloseintentuint256-intentid"><code>forceCancelCloseIntent(uint256 intentId)</code></a>
+<a class="toc-link level-2" href="#partyaopenfacet">PartyAOpenFacet</a>
+<a class="toc-link level-3" href="#sendopenintent"><code>sendOpenIntent(...)</code></a>
+<a class="toc-link level-3" href="#expireopenintentuint256-expiredintentids"><code>expireOpenIntent(uint256[] expiredIntentIds)</code></a>
+<a class="toc-link level-3" href="#cancelopenintentuint256-intentids"><code>cancelOpenIntent(uint256[] intentIds)</code></a>
+<a class="toc-link level-2" href="#partyaclosefacet">PartyACloseFacet</a>
+<a class="toc-link level-3" href="#sendcloseintentuint256-tradeid-uint256-quantity-uint256-price-uint256-deadline-returns-uint256-intentid"><code>sendCloseIntent(uint256 tradeId, uint256 quantity, uint256 price, uint256 deadline) returns (uint256 intentId)</code></a>
+<a class="toc-link level-3" href="#expirecloseintentuint256-expiredintentids"><code>expireCloseIntent(uint256[] expiredIntentIds)</code></a>
+<a class="toc-link level-3" href="#cancelcloseintentuint256-intentids"><code>cancelCloseIntent(uint256[] intentIds)</code></a>
+<a class="toc-link level-2" href="#partybopenfacet">PartyBOpenFacet</a>
+<a class="toc-link level-3" href="#lockopenintentuint256-intentid"><code>lockOpenIntent(uint256 intentId)</code></a>
+<a class="toc-link level-3" href="#unlockopenintentuint256-intentid"><code>unlockOpenIntent(uint256 intentId)</code></a>
+<a class="toc-link level-3" href="#acceptcancelopenintentuint256-intentid"><code>acceptCancelOpenIntent(uint256 intentId)</code></a>
+<a class="toc-link level-3" href="#fillopenintentuint256-intentid-uint256-quantity-uint256-price"><code>fillOpenIntent(uint256 intentId, uint256 quantity, uint256 price)</code></a>
+<a class="toc-link level-2" href="#partybclosefacet">PartyBCloseFacet</a>
+<a class="toc-link level-3" href="#acceptcancelcloseintentuint256-intentid"><code>acceptCancelCloseIntent(uint256 intentId)</code></a>
+<a class="toc-link level-3" href="#fillcloseintentuint256-intentid-uint256-quantity-uint256-price"><code>fillCloseIntent(uint256 intentId, uint256 quantity, uint256 price)</code></a>
+<a class="toc-link level-2" href="#tradefacet">TradeFacet</a>
+<a class="toc-link level-3" href="#transfertradeaddress-receiver-uint256-tradeid"><code>transferTrade(address receiver, uint256 tradeId)</code></a>
+<a class="toc-link level-3" href="#transfertradefromnftaddress-sender-address-receiver-uint256-tradeid"><code>transferTradeFromNFT(address sender, address receiver, uint256 tradeId)</code></a>
+<a class="toc-link level-3" href="#executetradesuint256-tradeids-settlementpricesig-settlementpricesig"><code>executeTrades(uint256[] tradeIds, SettlementPriceSig settlementPriceSig)</code></a>
+<a class="toc-link level-3" href="#mintnftfortradeuint256-tradeid"><code>mintNFTForTrade(uint256 tradeId)</code></a>
+<a class="toc-link level-2" href="#viewfacet">ViewFacet</a>
+<a class="toc-link level-3" href="#account--balance">Account / Balance</a>
+<a class="toc-link level-3" href="#app--protocol-parameters">App / Protocol Parameters</a>
+<a class="toc-link level-3" href="#close-intents">Close Intents</a>
+<a class="toc-link level-3" href="#counter-party-relations">Counter Party Relations</a>
+<a class="toc-link level-3" href="#fees-1">Fees</a>
+<a class="toc-link level-3" href="#liquidation">Liquidation</a>
+<a class="toc-link level-3" href="#open-intents">Open Intents</a>
+<a class="toc-link level-3" href="#pause--suspension-state">Pause / Suspension State</a>
+<a class="toc-link level-3" href="#access-control-1">Access Control</a>
+<a class="toc-link level-3" href="#symbols-and-oracles">Symbols and Oracles</a>
+<a class="toc-link level-3" href="#trades">Trades</a>
+<a class="toc-link level-3" href="#pricing-helpers">Pricing Helpers</a>
+</div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1>Facet API Reference</h1><p class="hero-copy">Facet selectors, modifiers, preconditions, and accounting effects.</p></div></div></header>
+<article class="doc-article" id="full-document"><p>This document is the per-facet, per-function reference for every selector exposed by the Diamond. Each section lists signatures, the caller restriction, the modifiers applied at the facet, the precondition asserted by the called core library, the resulting state effect, the events emitted, and the most relevant revert paths. Source citations point at the implementation in <code>contracts/facets/&lt;Name&gt;/&lt;File&gt;.sol</code>. For end-to-end semantics see <a href="architecture.html">architecture</a> and the flows under <a href="../index.html#flows">docs/flows</a>. Pause flag, role, and modifier definitions live in <a href="roles-and-pauses.html">roles-and-pauses</a>.</p>
+<h2 id="contents">Contents</h2>
+<ul>
+<li><a href="#accountfacet">AccountFacet</a></li>
+<li><a href="#clearinghousefacet">ClearingHouseFacet</a></li>
+<li><a href="#controlfacet">ControlFacet</a></li>
+<li><a href="#counterpartyrelationsfacet">CounterPartyRelationsFacet</a></li>
+<li><a href="#diamondcutfacet">DiamondCutFacet</a></li>
+<li><a href="#diamondloupefacet">DiamondLoupeFacet</a></li>
+<li><a href="#forceactionsfacet">ForceActionsFacet</a></li>
+<li><a href="#partyaopenfacet">PartyAOpenFacet</a></li>
+<li><a href="#partyaclosefacet">PartyACloseFacet</a></li>
+<li><a href="#partybopenfacet">PartyBOpenFacet</a></li>
+<li><a href="#partybclosefacet">PartyBCloseFacet</a></li>
+<li><a href="#tradefacet">TradeFacet</a></li>
+<li><a href="#viewfacet">ViewFacet</a></li>
+</ul>
+<p>Notation: pause modifier names follow <code>Pausable</code>/<code>Accessibility</code>. <code>whenPartyNotPaused(addr)</code> asserts the global pause and the per-side (Party A or Party B) pause that applies to <code>addr</code>. <code>whenInstantModeIsNotActive</code> asserts that Party A has not enabled instant action mode for delegated execution. <code>onlyNotPartyB</code>/<code>onlyPartyB</code> is enforced through <code>AppStorage.partyBConfigs[addr].isActive</code>. Caller restrictions citing &quot;msg.sender = Party A&quot; mean an account that is not configured as a Party B.</p>
+<hr>
+<h2 id="accountfacet">AccountFacet</h2>
+<p>Source: <code>contracts/facets/Account/AccountFacet.sol</code>. Owner of deposit, withdrawal, internal/external transfer, allocation, and reserve flows. Amounts entering through <code>deposit*</code> are denominated in collateral decimals; all other amounts are 18-decimal normalized.</p>
+<h3 id="deposits">Deposits</h3>
+<h4 id="depositaddress-collateral-uint256-amount"><code>deposit(address collateral, uint256 amount)</code></h4>
+<ul>
+<li>Source: <code>contracts/facets/Account/AccountFacet.sol:36</code></li>
+<li>Caller: any non-suspended address (Party A or Party B).</li>
+<li>Modifiers: <code>nonReentrant</code>, <code>whenDepositingNotPaused</code>, <code>whenNotSuspended(msg.sender)</code>, <code>whenPartyNotPaused(msg.sender)</code>.</li>
+<li>Precondition: <code>collateral</code> is whitelisted; the per-user balance limit (if set) is not exceeded.</li>
+<li>Effect: pulls <code>amount</code> of <code>collateral</code>, normalizes to 18 decimals, increases <code>msg.sender</code>&#39;s isolated balance.</li>
+<li>Events: <code>Deposit(sender, user, collateral, amount, newBalance)</code>.</li>
+<li>Reverts: <code>CollateralNotWhitelisted</code>, <code>BalanceLimitReached</code>, ERC-20 transfer failure.</li>
+</ul>
+<h4 id="depositforaddress-collateral-address-user-uint256-amount"><code>depositFor(address collateral, address user, uint256 amount)</code></h4>
+<ul>
+<li>Source: <code>contracts/facets/Account/AccountFacet.sol:68</code></li>
+<li>Caller: any non-suspended address. Sender funds; <code>user</code> is credited.</li>
+<li>Modifiers: <code>nonReentrant</code>, <code>whenDepositingNotPaused</code>, <code>whenNotSuspended(msg.sender)</code>, <code>whenNotSuspended(user)</code>, <code>whenPartyNotPaused(msg.sender)</code>, <code>whenPartyNotPaused(user)</code>.</li>
+<li>Effect: same as <code>deposit</code> but credits <code>user</code>.</li>
+<li>Events: <code>Deposit(sender, user, collateral, amount, newBalance)</code>.</li>
+</ul>
+<h4 id="virtualdepositforaddress-collateral-address-user-uint256-amount"><code>virtualDepositFor(address collateral, address user, uint256 amount)</code></h4>
+<ul>
+<li>Source: <code>contracts/facets/Account/AccountFacet.sol:51</code></li>
+<li>Caller: holders of <code>VIRTUAL_DEPOSITOR_ROLE</code>. Increases <code>user</code>&#39;s isolated balance without pulling tokens.</li>
+<li>Modifiers: <code>whenDepositingNotPaused</code>, <code>whenNotSuspended(user)</code>, <code>onlyRole(VIRTUAL_DEPOSITOR_ROLE)</code>.</li>
+<li>Events: <code>Deposit</code>, <code>VirtualDeposit</code>.</li>
+</ul>
+<h3 id="transfers">Transfers</h3>
+<h4 id="internaltransferaddress-collateral-address-user-uint256-amount"><code>internalTransfer(address collateral, address user, uint256 amount)</code></h4>
+<ul>
+<li>Source: <code>contracts/facets/Account/AccountFacet.sol:92</code></li>
+<li>Caller: Party A only (<code>onlyNotPartyB(msg.sender)</code>).</li>
+<li>Modifiers: <code>whenInternalTransferNotPaused</code>, both-side <code>whenNotSuspended</code>, <code>whenInstantModeIsNotActive(msg.sender)</code>, both-side <code>whenPartyNotPaused</code>, <code>onlyNotPartyB(msg.sender)</code>.</li>
+<li>Effect: moves isolated balance from sender to <code>user</code>.</li>
+<li>Events: <code>InternalTransfer(sender, user, collateral, amount, newRecipientBalance, newSenderBalance)</code>.</li>
+</ul>
+<h4 id="externaltransferaddress-collateral-address-user-uint256-amount-address-target"><code>externalTransfer(address collateral, address user, uint256 amount, address target)</code></h4>
+<ul>
+<li>Source: <code>contracts/facets/Account/AccountFacet.sol:125</code></li>
+<li>Caller: any non-suspended account, no instant mode.</li>
+<li>Modifiers: <code>nonReentrant</code>, <code>whenNotExternalTransferPaused</code>, <code>whenNotSuspended(msg.sender)</code>, <code>whenInstantModeIsNotActive(msg.sender)</code>, <code>whenPartyNotPaused(msg.sender)</code>.</li>
+<li>Precondition: <code>target</code> is configured as a valid <code>IExternalTransferTarget</code> for <code>collateral</code>.</li>
+<li>Effect: debits sender&#39;s isolated balance; calls <code>target.deposit(...)</code> after token transfer.</li>
+<li>Events: <code>ExternalTransfer(sender, user, collateral, amount, target)</code>.</li>
+</ul>
+<h3 id="withdrawals">Withdrawals</h3>
+<h4 id="initiatewithdrawaddress-collateral-uint256-amount-address-to"><code>initiateWithdraw(address collateral, uint256 amount, address to)</code></h4>
+<ul>
+<li>Source: <code>contracts/facets/Account/AccountFacet.sol:149</code></li>
+<li>Caller: Party A or Party B (the underlying user).</li>
+<li>Modifiers: <code>whenWithdrawingNotPaused</code>, <code>whenNotSuspended(msg.sender)</code>, <code>whenInstantModeIsNotActive(msg.sender)</code>, <code>whenNotSuspended(to)</code>, <code>whenPartyNotPaused(msg.sender)</code>.</li>
+<li>Effect: locks <code>amount</code> (18-decimal) from sender&#39;s isolated balance into a pending <code>Withdraw</code> record. The release time is set to <code>block.timestamp + releaseInterval(msg.sender)</code>.</li>
+<li>Events: <code>InitiateWithdraw(id, user, to, collateral, amount, newBalance)</code>.</li>
+</ul>
+<h4 id="initiateexpresswithdrawaddress-collateral-uint256-amount-address-to-address-provider-bytes-userdata"><code>initiateExpressWithdraw(address collateral, uint256 amount, address to, address provider, bytes userData)</code></h4>
+<ul>
+<li>Source: <code>contracts/facets/Account/AccountFacet.sol:174</code></li>
+<li>Caller: same as <code>initiateWithdraw</code> but <code>provider</code> must be a configured <code>IExpressWithdrawProvider</code> for <code>collateral</code>.</li>
+<li>Modifiers: <code>nonReentrant</code>, <code>whenWithdrawingNotPaused</code>, <code>whenNotExpressWithdrawPaused</code>, suspension and party-pause checks as above.</li>
+<li>Events: <code>InitiateWithdraw</code>, <code>InitiateExpressWithdraw(id, user, to, collateral, provider, userData, amount, newBalance)</code>.</li>
+</ul>
+<h4 id="completewithdrawuint256-id"><code>completeWithdraw(uint256 id)</code></h4>
+<ul>
+<li>Source: <code>contracts/facets/Account/AccountFacet.sol:221</code></li>
+<li>Caller: anyone; the credited destination is fixed in the <code>Withdraw</code> record.</li>
+<li>Modifiers: <code>nonReentrant</code>, <code>whenWithdrawingNotPaused</code>, <code>whenWithdrawalNotSuspended(id)</code>, <code>whenPartyNotPaused(msg.sender)</code>.</li>
+<li>Precondition: withdrawal exists, has not been completed/canceled, and its scheduled release time has passed.</li>
+<li>Effect: transfers tokens out; for express withdrawals, settles via the provider.</li>
+<li>Events: <code>CompleteWithdraw(id)</code>.</li>
+</ul>
+<h4 id="cancelwithdrawuint256-id"><code>cancelWithdraw(uint256 id)</code></h4>
+<ul>
+<li>Source: <code>contracts/facets/Account/AccountFacet.sol:233</code></li>
+<li>Caller: the original withdrawer.</li>
+<li>Modifiers: <code>whenWithdrawingNotPaused</code>, <code>whenWithdrawalNotSuspended(id)</code>, <code>whenPartyNotPaused(msg.sender)</code>.</li>
+<li>Effect: returns funds to user&#39;s isolated balance.</li>
+<li>Events: <code>CancelWithdraw(id, user, collateral, amount, newBalance)</code>.</li>
+</ul>
+<h4 id="suspendwithdrawuint256-id"><code>suspendWithdraw(uint256 id)</code></h4>
+<ul>
+<li>Source: <code>contracts/facets/Account/AccountFacet.sol:200</code></li>
+<li>Caller: <code>SUSPENDER_ROLE</code>.</li>
+<li>Effect: marks withdrawal <code>id</code> as suspended, blocking complete/cancel.</li>
+<li>Events: <code>SuspendWithdraw(id, suspender)</code>.</li>
+</ul>
+<h4 id="restorewithdrawuint256-id-uint256-validamount"><code>restoreWithdraw(uint256 id, uint256 validAmount)</code></h4>
+<ul>
+<li>Source: <code>contracts/facets/Account/AccountFacet.sol:211</code></li>
+<li>Caller: <code>DISPUTER_ROLE</code>. Re-enables the withdrawal at a possibly reduced <code>validAmount</code>; the difference is routed to the invalid withdrawals pool.</li>
+<li>Events: <code>RestoreWithdraw(id, validAmount)</code>.</li>
+</ul>
+<h3 id="sync-allocation-reserve">Sync, Allocation, Reserve</h3>
+<h4 id="syncbalancesaddress-collateral-address-partya-address-partybs"><code>syncBalances(address collateral, address partyA, address[] partyBs)</code></h4>
+<ul>
+<li>Source: <code>contracts/facets/Account/AccountFacet.sol:252</code></li>
+<li>Caller: anyone. No pause modifiers.</li>
+<li>Effect: forces release of any matured scheduled-release entries between <code>partyA</code> and each <code>partyB</code> for <code>collateral</code> (cross-margin).</li>
+</ul>
+<h4 id="allocateaddress-collateral-address-counterparty-uint256-amount"><code>allocate(address collateral, address counterParty, uint256 amount)</code></h4>
+<ul>
+<li>Source: <code>contracts/facets/Account/AccountFacet.sol:262</code></li>
+<li>Caller: any non-suspended account, no instant mode.</li>
+<li>Modifiers: <code>whenNotSuspended(msg.sender)</code>, <code>whenInstantModeIsNotActive(msg.sender)</code>, <code>whenPartyNotPaused(msg.sender)</code>.</li>
+<li>Effect: moves <code>amount</code> from sender&#39;s isolated balance into the cross balance with <code>counterParty</code>.</li>
+<li>Events: <code>Allocate(user, collateral, counterParty, amount, newIsolatedBalance, newCrossBalance)</code>.</li>
+</ul>
+<h4 id="deallocateaddress-collateral-address-counterparty-uint256-amount-bool-ispartyb-upnlsig-upnlsig"><code>deallocate(address collateral, address counterParty, uint256 amount, bool isPartyB, UpnlSig upnlSig)</code></h4>
+<ul>
+<li>Source: <code>contracts/facets/Account/AccountFacet.sol:286</code></li>
+<li>Caller: cross-margin participant. <code>upnlSig</code> is a Muon-verified upnl snapshot used to enforce solvency.</li>
+<li>Modifiers: same trio as <code>allocate</code>.</li>
+<li>Precondition: post-deallocation cross balance must remain solvent at <code>upnlSig.upnl</code>; deallocate cooldown must have elapsed (<code>partyADeallocateCooldown</code> or <code>partyBDeallocateCooldown</code>).</li>
+<li>Effect: moves <code>amount</code> back to isolated balance; bumps bilateral nonce.</li>
+<li>Events: <code>Deallocate(user, collateral, counterParty, amount, newIsolatedBalance, newCrossBalance)</code>.</li>
+</ul>
+<h4 id="allocatetoreservebalanceaddress-collateral-uint256-amount"><code>allocateToReserveBalance(address collateral, uint256 amount)</code></h4>
+<ul>
+<li>Source: <code>contracts/facets/Account/AccountFacet.sol:309</code></li>
+<li>Caller: Party A or Party B. Moves isolated balance into reserve balance for clearing-house use.</li>
+<li>Events: <code>AllocateToReserveBalance(user, collateral, amount, newIsolatedBalance)</code>.</li>
+</ul>
+<h4 id="deallocatefromreservebalanceaddress-collateral-uint256-amount"><code>deallocateFromReserveBalance(address collateral, uint256 amount)</code></h4>
+<ul>
+<li>Source: <code>contracts/facets/Account/AccountFacet.sol:322</code></li>
+<li>Caller: same as above. Moves reserve balance back to isolated.</li>
+<li>Events: <code>DeallocateFromReserveBalance(user, collateral, amount, newIsolatedBalance)</code>.</li>
+</ul>
+<hr>
+<h2 id="clearinghousefacet">ClearingHouseFacet</h2>
+<p>Source: <code>contracts/facets/ClearingHouse/ClearingHouseFacet.sol</code>. Liquidation pipeline. Every function is <code>whenNotLiquidationPaused</code> and <code>onlyRole(CLEARING_HOUSE_ROLE)</code>.</p>
+<h3 id="isolated-party-b-liquidation">Isolated Party B Liquidation</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Source</th>
+<th>Effect</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>flagIsolatedPartyBLiquidation(partyB, collateral)</code></td>
+<td><code>:26</code></td>
+<td>Marks <code>partyB</code> flagged for isolated liquidation on <code>collateral</code>; blocks downstream actions for that pair.</td>
+<td><code>FlagIsolatedPartyBLiquidation</code></td>
+</tr>
+<tr>
+<td><code>unflagIsolatedPartyBLiquidation(partyB, collateral)</code></td>
+<td><code>:39</code></td>
+<td>Clears flag if Party B has recovered.</td>
+<td><code>UnflagIsolatedPartyBLiquidation</code></td>
+</tr>
+<tr>
+<td><code>liquidateIsolatedPartyB(partyB, collateral, upnl, collateralPrice)</code></td>
+<td><code>:54</code></td>
+<td>Allocates a new <code>liquidationId</code>, captures snapshot from upnl/price, freezes balances.</td>
+<td><code>LiquidateIsolatedPartyB</code></td>
+</tr>
+</tbody></table>
+<h3 id="cross-party-b-liquidation">Cross Party B Liquidation</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Source</th>
+<th>Effect</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>flagCrossPartyBLiquidation(partyB, partyA, collateral)</code></td>
+<td><code>:92</code></td>
+<td>Flags Party B in the cross context with a specific Party A.</td>
+<td><code>FlagCrossPartyBLiquidation</code></td>
+</tr>
+<tr>
+<td><code>unflagCrossPartyBLiquidation(partyB, partyA, collateral)</code></td>
+<td><code>:101</code></td>
+<td>Clears the cross flag.</td>
+<td><code>UnflagCrossPartyBLiquidation</code></td>
+</tr>
+<tr>
+<td><code>liquidateCrossPartyB(partyB, partyA, collateral, upnl, collateralPrice)</code></td>
+<td><code>:110</code></td>
+<td>Snapshots and starts cross liquidation for Party B.</td>
+<td><code>LiquidateCrossPartyB</code></td>
+</tr>
+</tbody></table>
+<h3 id="cross-party-a-liquidation">Cross Party A Liquidation</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Source</th>
+<th>Effect</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>flagPartyALiquidation(partyA, partyB, collateral)</code></td>
+<td><code>:121</code></td>
+<td>Flags Party A.</td>
+<td><code>FlagPartyALiquidation</code></td>
+</tr>
+<tr>
+<td><code>unflagPartyALiquidation(partyA, partyB, collateral)</code></td>
+<td><code>:130</code></td>
+<td>Clears Party A flag.</td>
+<td><code>UnflagPartyALiquidation</code></td>
+</tr>
+<tr>
+<td><code>liquidateCrossPartyA(liquidationId, partyA, partyB, collateral, upnl, collateralPrice)</code></td>
+<td><code>:139</code></td>
+<td>Executes cross Party A liquidation under existing <code>liquidationId</code>.</td>
+<td><code>LiquidateCrossPartyA</code></td>
+</tr>
+</tbody></table>
+<h3 id="liquidation-cleanup-and-distribution">Liquidation Cleanup and Distribution</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Source</th>
+<th>Effect</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>closeTrades(liquidationId, tradeIds[], prices[])</code></td>
+<td><code>:151</code></td>
+<td>Closes trades belonging to the liquidated party at supplied prices.</td>
+<td><code>CloseTradesForLiquidation</code></td>
+</tr>
+<tr>
+<td><code>cancelOpenIntents(intentIds[])</code></td>
+<td><code>:170</code></td>
+<td>Cancels open intents for the liquidated party.</td>
+<td><code>CancelOpenIntentsForLiquidation</code></td>
+</tr>
+<tr>
+<td><code>cancelCloseIntents(intentIds[])</code></td>
+<td><code>:175</code></td>
+<td>Cancels close intents for the liquidated party.</td>
+<td><code>CancelCloseIntentsForLiquidation</code></td>
+</tr>
+<tr>
+<td><code>confiscate(liquidationId, amount, party, counterParty, marginType)</code></td>
+<td><code>:64</code></td>
+<td>Confiscates <code>amount</code> from <code>party</code> into the liquidation pool for the given margin type.</td>
+<td><code>Confiscate</code></td>
+</tr>
+<tr>
+<td><code>confiscateWithdrawal(withdrawId)</code></td>
+<td><code>:75</code></td>
+<td>Pulls a pending withdrawal into the liquidation pool.</td>
+<td><code>ConfiscateWithdrawal</code></td>
+</tr>
+<tr>
+<td><code>distributeCollateral(liquidationId, partyB, collateral, marginType, partyAs[], amounts[])</code></td>
+<td><code>:80</code></td>
+<td>Distributes pooled collateral back to multiple Party As.</td>
+<td><code>DistributeCollateral</code></td>
+</tr>
+<tr>
+<td><code>allocateFromReserveToCross(party, counterParty, collateral, amount)</code></td>
+<td><code>:160</code></td>
+<td>During liquidation, taps <code>party</code>&#39;s reserve to top up its cross balance with <code>counterParty</code>.</td>
+<td><code>AllocateFromReserveToCross</code></td>
+</tr>
+</tbody></table>
+<p>Reverts across this facet are concentrated in <code>LibClearingHouse</code> and the validation library: <code>LiquidationNotInProgress</code>, <code>AlreadyFlagged</code>, <code>InvalidLiquidationState</code>, <code>Insolvent</code>, <code>InvalidPartyMatch</code>, etc.</p>
+<hr>
+<h2 id="controlfacet">ControlFacet</h2>
+<p>Source: <code>contracts/facets/Control/ControlFacet.sol</code>. Configuration surface for roles, parameters, fees, symbols, oracles, pauses, suspensions, and emergency switches. All setters revert on zero address where applicable (<code>ValidationErrors.ZeroAddress</code>).</p>
+<h3 id="access-control">Access Control</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Source</th>
+<th>Caller</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>setAdmin(address _admin)</code></td>
+<td><code>:53</code></td>
+<td><code>onlyOwner</code> (Diamond owner)</td>
+<td>Grants <code>DEFAULT_ADMIN_ROLE</code>; emits <code>RoleGranted</code>.</td>
+</tr>
+<tr>
+<td><code>grantRole(address _user, bytes32 _role)</code></td>
+<td><code>:65</code></td>
+<td><code>DEFAULT_ADMIN_ROLE</code></td>
+<td>Adds role and role-member set entry; emits <code>RoleGranted</code> only on transition.</td>
+</tr>
+<tr>
+<td><code>revokeRole(address _user, bytes32 _role)</code></td>
+<td><code>:81</code></td>
+<td><code>DEFAULT_ADMIN_ROLE</code></td>
+<td>Removes role; emits <code>RoleRevoked</code> only on transition.</td>
+</tr>
+</tbody></table>
+<h3 id="collateral">Collateral</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Source</th>
+<th>Caller</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>whiteListCollateral(address _collateral)</code></td>
+<td><code>:99</code></td>
+<td><code>SETTER_ROLE</code></td>
+<td>Whitelists collateral for deposits. Emits <code>CollateralWhitelisted</code>.</td>
+</tr>
+<tr>
+<td><code>removeCollateralFromWhitelist(address _collateral)</code></td>
+<td><code>:109</code></td>
+<td><code>SETTER_ROLE</code></td>
+<td>De-whitelists. Emits <code>CollateralRemovedFromWhitelist</code>.</td>
+</tr>
+</tbody></table>
+<h3 id="system-parameters-and-limits">System Parameters and Limits</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Source</th>
+<th>Caller</th>
+<th>Effect / Event</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>setMaxCloseOrdersLength(uint256)</code></td>
+<td><code>:122</code></td>
+<td><code>SETTER_ROLE</code></td>
+<td><code>MaxCloseOrdersLengthUpdated</code>. Reverts <code>ZeroAmount</code>.</td>
+</tr>
+<tr>
+<td><code>setMaxTradePerPartyA(uint256)</code></td>
+<td><code>:132</code></td>
+<td><code>SETTER_ROLE</code></td>
+<td><code>MaxTradePerPartyAUpdated</code>. Reverts <code>ZeroAmount</code>.</td>
+</tr>
+<tr>
+<td><code>setBalanceLimitPerUser(address, uint256)</code></td>
+<td><code>:143</code></td>
+<td><code>SETTER_ROLE</code></td>
+<td><code>BalanceLimitPerUserUpdated</code>.</td>
+</tr>
+<tr>
+<td><code>setTimingParameters(...nine uints)</code></td>
+<td><code>:162</code></td>
+<td><code>SETTER_ROLE</code></td>
+<td>Sets every cooldown/timeout in one transaction; emits the nine corresponding <code>*Updated</code> events.</td>
+</tr>
+<tr>
+<td><code>setPartyADeallocateCooldown(uint256)</code></td>
+<td><code>:204</code></td>
+<td><code>SETTER_ROLE</code></td>
+<td><code>PartyADeallocateCooldownUpdated</code>.</td>
+</tr>
+<tr>
+<td><code>setPartyBDeallocateCooldown(uint256)</code></td>
+<td><code>:213</code></td>
+<td><code>SETTER_ROLE</code></td>
+<td><code>PartyBDeallocateCooldownUpdated</code>.</td>
+</tr>
+<tr>
+<td><code>setForceCancelOpenIntentTimeout(uint256)</code></td>
+<td><code>:222</code></td>
+<td><code>SETTER_ROLE</code></td>
+<td><code>ForceCancelOpenIntentTimeoutUpdated</code>.</td>
+</tr>
+<tr>
+<td><code>setForceCancelCloseIntentTimeout(uint256)</code></td>
+<td><code>:231</code></td>
+<td><code>SETTER_ROLE</code></td>
+<td><code>ForceCancelCloseIntentTimeoutUpdated</code>.</td>
+</tr>
+<tr>
+<td><code>setSettlementPriceSigValidTime(uint256)</code></td>
+<td><code>:240</code></td>
+<td><code>SETTER_ROLE</code></td>
+<td><code>SettlementPriceSigValidTimeUpdated</code>.</td>
+</tr>
+<tr>
+<td><code>setUpnlSigValidTime(uint256)</code></td>
+<td><code>:249</code></td>
+<td><code>SETTER_ROLE</code></td>
+<td><code>UpnlSigValidTimeUpdated</code>.</td>
+</tr>
+<tr>
+<td><code>setPartyBExclusiveWindow(uint256)</code></td>
+<td><code>:258</code></td>
+<td><code>SETTER_ROLE</code></td>
+<td><code>PartyBExclusiveWindowUpdated</code>.</td>
+</tr>
+<tr>
+<td><code>setUnbindingCooldown(uint256)</code></td>
+<td><code>:267</code></td>
+<td><code>SETTER_ROLE</code></td>
+<td><code>UnbindingCooldownUpdated</code>.</td>
+</tr>
+<tr>
+<td><code>setDeactiveInstantActionModeCooldown(uint256)</code></td>
+<td><code>:276</code></td>
+<td><code>SETTER_ROLE</code></td>
+<td><code>DeactiveInstantActionModeCooldownUpdated</code>.</td>
+</tr>
+<tr>
+<td><code>setTradeNftAddress(address)</code></td>
+<td><code>:285</code></td>
+<td><code>SETTER_ROLE</code></td>
+<td><code>TradeNftAddressUpdated</code>.</td>
+</tr>
+<tr>
+<td><code>setPartyBReleaseInterval(address, uint256)</code></td>
+<td><code>:299</code></td>
+<td><code>SETTER_ROLE</code></td>
+<td>Marks the interval as configured. Emits <code>PartyBReleaseIntervalUpdated</code>.</td>
+</tr>
+<tr>
+<td><code>setDefaultReleaseInterval(uint256)</code></td>
+<td><code>:310</code></td>
+<td><code>SETTER_ROLE</code></td>
+<td><code>DefaultReleaseIntervalUpdated</code>.</td>
+</tr>
+<tr>
+<td><code>setMaxConnectedCounterParties(uint256)</code></td>
+<td><code>:319</code></td>
+<td><code>SETTER_ROLE</code></td>
+<td><code>MaxConnectedCounterPartiesUpdated</code>. Reverts <code>ZeroAmount</code>.</td>
+</tr>
+</tbody></table>
+<h3 id="fees">Fees</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Source</th>
+<th>Caller</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>setDefaultFeeCollector(address)</code></td>
+<td><code>:333</code></td>
+<td><code>SETTER_ROLE</code></td>
+<td><code>DefaultFeeCollectorUpdated</code>.</td>
+</tr>
+<tr>
+<td><code>setAffiliateStatus(address, bool)</code></td>
+<td><code>:344</code></td>
+<td><code>AFFILIATE_MANAGER_ROLE</code></td>
+<td><code>AffiliateStatusUpdated</code>.</td>
+</tr>
+<tr>
+<td><code>setAffiliateFeesCollector(address, address)</code></td>
+<td><code>:354</code></td>
+<td><code>AFFILIATE_MANAGER_ROLE</code></td>
+<td><code>AffiliateFeesCollectorUpdated</code>.</td>
+</tr>
+<tr>
+<td><code>setAffiliateFees(address _affiliate, uint256[] symbolIds, Fee[] fees)</code></td>
+<td><code>:366</code></td>
+<td><code>SETTER_ROLE</code>; if <code>_affiliate != msg.sender</code> then also <code>AFFILIATE_FEE_MANAGER_ROLE</code></td>
+<td>Per-symbol fee table; emits <code>AffiliateFeesUpdated</code> per symbol. Reverts <code>MismatchedLengths</code>, <code>UnauthorizedSender</code>.</td>
+</tr>
+</tbody></table>
+<h3 id="party-b-configuration">Party B Configuration</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Source</th>
+<th>Caller</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>setPartyBConfig(address, PartyBConfig)</code></td>
+<td><code>:392</code></td>
+<td><code>PARTY_B_MANAGER_ROLE</code></td>
+<td>Activates/configures Party B; if active, verifies oracleId. Forces manual sync. Emits <code>PartyBConfigUpdated</code>.</td>
+</tr>
+<tr>
+<td><code>setPartyBSupportedSymbolTypes(address, uint256[], bool[])</code></td>
+<td><code>:407</code></td>
+<td><code>PARTY_B_MANAGER_ROLE</code></td>
+<td>Per-type support toggles. Emits <code>PartyBSupportedSymbolTypesUpdated</code>.</td>
+</tr>
+</tbody></table>
+<h3 id="pauses-all-pauserrole-for-pause-unpauserrole-for-unpause">Pauses (all <code>PAUSER_ROLE</code> for pause, <code>UNPAUSER_ROLE</code> for unpause)</h3>
+<table>
+<thead>
+<tr>
+<th>Pause / Unpause</th>
+<th>Source pause / unpause</th>
+<th>Event pair</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Global</td>
+<td><code>:430</code> / <code>:520</code></td>
+<td><code>GlobalPaused</code> / <code>GlobalUnpaused</code></td>
+</tr>
+<tr>
+<td>Deposit</td>
+<td><code>:438</code> / <code>:528</code></td>
+<td><code>DepositPaused</code> / <code>DepositUnpaused</code></td>
+</tr>
+<tr>
+<td>Withdraw</td>
+<td><code>:446</code> / <code>:536</code></td>
+<td><code>WithdrawPaused</code> / <code>WithdrawUnpaused</code></td>
+</tr>
+<tr>
+<td>Express withdraw</td>
+<td><code>:454</code> / <code>:560</code></td>
+<td><code>ExpressWithdrawPaused</code> / <code>ExpressWithdrawUnpaused</code></td>
+</tr>
+<tr>
+<td>Internal transfer</td>
+<td><code>:462</code> / <code>:544</code></td>
+<td><code>InternalTransferPaused</code> / <code>InternalTransferUnpaused</code></td>
+</tr>
+<tr>
+<td>External transfer</td>
+<td><code>:470</code> / <code>:552</code></td>
+<td><code>ExternalTransferPaused</code> / <code>ExternalTransferUnpaused</code></td>
+</tr>
+<tr>
+<td>Party B actions</td>
+<td><code>:478</code> / <code>:568</code></td>
+<td><code>PartyBActionsPaused</code> / <code>PartyBActionsUnpaused</code></td>
+</tr>
+<tr>
+<td>Party A actions</td>
+<td><code>:486</code> / <code>:576</code></td>
+<td><code>PartyAActionsPaused</code> / <code>PartyAActionsUnpaused</code></td>
+</tr>
+<tr>
+<td>Liquidating</td>
+<td><code>:494</code> / <code>:584</code></td>
+<td><code>LiquidatingPaused</code> / <code>LiquidatingUnpaused</code></td>
+</tr>
+<tr>
+<td>Third-party actions</td>
+<td><code>:502</code> / <code>:592</code></td>
+<td><code>ThirdPartyActionsPaused</code> / <code>ThirdPartyActionsUnpaused</code></td>
+</tr>
+<tr>
+<td>Instant layer</td>
+<td><code>:510</code> / <code>:600</code></td>
+<td><code>InstantLayerPaused</code> / <code>InstantLayerUnpaused</code></td>
+</tr>
+</tbody></table>
+<h3 id="emergency-modes">Emergency Modes</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Source</th>
+<th>Caller</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>activePartyBsEmergencyMode()</code></td>
+<td><code>:612</code></td>
+<td><code>PAUSER_ROLE</code></td>
+<td>Sets global Party B emergency flag. <code>PartyBsEmergencyModeActivated</code>.</td>
+</tr>
+<tr>
+<td><code>deactivePartyBsEmergencyMode()</code></td>
+<td><code>:620</code></td>
+<td><code>UNPAUSER_ROLE</code></td>
+<td>Clears global emergency. <code>PartyBsEmergencyModeDeactivated</code>.</td>
+</tr>
+<tr>
+<td><code>activePartyBEmergencyMode(address)</code></td>
+<td><code>:629</code></td>
+<td><code>PAUSER_ROLE</code></td>
+<td>Per-Party-B emergency. <code>PartyBEmergencyModeActivated</code>.</td>
+</tr>
+<tr>
+<td><code>deactivePartyBEmergencyMode(address)</code></td>
+<td><code>:639</code></td>
+<td><code>UNPAUSER_ROLE</code></td>
+<td><code>PartyBEmergencyModeDeactivated</code>.</td>
+</tr>
+</tbody></table>
+<h3 id="suspension">Suspension</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Source</th>
+<th>Caller</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>suspendAddress(address, bool)</code></td>
+<td><code>:654</code></td>
+<td><code>SUSPENDER_ROLE</code></td>
+<td>Per-address suspension. <code>AddressSuspended</code>.</td>
+</tr>
+<tr>
+<td><code>suspendAddresses(address[], bool[])</code></td>
+<td><code>:676</code></td>
+<td><code>SUSPENDER_ROLE</code></td>
+<td>Batch variant. Reverts <code>MismatchedLengths</code>.</td>
+</tr>
+<tr>
+<td><code>suspendWithdrawal(uint256, bool)</code></td>
+<td><code>:665</code></td>
+<td><code>SUSPENDER_ROLE</code></td>
+<td>Per-withdrawal suspension. <code>WithdrawalSuspended</code>. Reverts <code>ZeroAmount</code>.</td>
+</tr>
+</tbody></table>
+<h3 id="oracles-and-symbols">Oracles and Symbols</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Source</th>
+<th>Caller</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>addOracle(string, address)</code></td>
+<td><code>:706</code></td>
+<td><code>ORACLE_MANAGER_ROLE</code></td>
+<td>Allocates new oracle id, persists <code>Oracle</code>. <code>OracleAdded</code>. Reverts <code>EmptyField</code>.</td>
+</tr>
+<tr>
+<td><code>updateOracle(uint256, address)</code></td>
+<td><code>:721</code></td>
+<td><code>ORACLE_MANAGER_ROLE</code></td>
+<td>Overwrites contract address of existing oracle. <code>OracleUpdated</code>. Reverts <code>OracleNotFound</code>.</td>
+</tr>
+<tr>
+<td><code>setPriceOracleAddress(address)</code></td>
+<td><code>:736</code></td>
+<td><code>ORACLE_MANAGER_ROLE</code></td>
+<td>Sets <code>IPriceOracle</code>. <code>PriceOracleAddressUpdated</code>.</td>
+</tr>
+<tr>
+<td><code>addSymbol(name, optionType, oracleId, collateral, platformFee, symbolType)</code></td>
+<td><code>:755</code></td>
+<td><code>SYMBOL_MANAGER_ROLE</code></td>
+<td>Allocates symbol id; verifies oracle. <code>SymbolAdded</code>.</td>
+</tr>
+<tr>
+<td><code>addSymbols(Symbol[])</code></td>
+<td><code>:787</code></td>
+<td><code>SYMBOL_MANAGER_ROLE</code></td>
+<td>Batch add.</td>
+</tr>
+<tr>
+<td><code>setSymbolsPlatformFees(uint256[], Fee[])</code></td>
+<td><code>:799</code></td>
+<td><code>SYMBOL_MANAGER_ROLE</code></td>
+<td>Updates per-symbol platform fee. <code>SymbolPlatformFeeUpdated</code>. Reverts <code>InvalidSymbol</code>.</td>
+</tr>
+<tr>
+<td><code>setSymbolsValidationState(uint256[], bool[])</code></td>
+<td><code>:816</code></td>
+<td><code>SYMBOL_MANAGER_ROLE</code></td>
+<td>Marks symbols valid/invalid. <code>SymbolStateUpdated</code>.</td>
+</tr>
+<tr>
+<td><code>setSymbolsNames(uint256[], string[])</code></td>
+<td><code>:835</code></td>
+<td><code>SYMBOL_MANAGER_ROLE</code></td>
+<td>Renames symbols. <code>SymbolNameUpdated</code>. Reverts <code>EmptyField</code>.</td>
+</tr>
+<tr>
+<td><code>setSymbolsTypes(uint256[], uint256[])</code></td>
+<td><code>:852</code></td>
+<td><code>SYMBOL_MANAGER_ROLE</code></td>
+<td>Updates symbol type. <code>SymbolTypeUpdated</code>.</td>
+</tr>
+</tbody></table>
+<h3 id="signature-withdraw-targets-instant-layer">Signature, Withdraw, Targets, Instant Layer</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Source</th>
+<th>Caller</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>setSignatureVerifier(address)</code></td>
+<td><code>:871</code></td>
+<td><code>SETTER_ROLE</code></td>
+<td><code>SignatureVerifierUpdated</code>.</td>
+</tr>
+<tr>
+<td><code>setExpressWithdrawProviderConfig(address provider, address collateral, ExpressWithdrawProviderConfig)</code></td>
+<td><code>:887</code></td>
+<td><code>SETTER_ROLE</code></td>
+<td><code>ExpressWithdrawProviderConfigUpdated</code>.</td>
+</tr>
+<tr>
+<td><code>setInvalidWithdrawalsAmountsPool(address)</code></td>
+<td><code>:901</code></td>
+<td><code>SETTER_ROLE</code></td>
+<td><code>InvalidWithdrawalsAmountsPoolUpdated</code>.</td>
+</tr>
+<tr>
+<td><code>setExternalTransferTargetValidationStatus(address target, address collateral, bool)</code></td>
+<td><code>:917</code></td>
+<td><code>EXTERNAL_TRANSFER_TARGET_MANAGER_ROLE</code></td>
+<td><code>ExternalTransferTargetValidationStatusUpdated</code>.</td>
+</tr>
+<tr>
+<td><code>setCallFromInstantLayer(bool)</code></td>
+<td><code>:937</code></td>
+<td><code>INSTANT_LAYER_ROLE</code></td>
+<td>Toggles diamond-side instant-layer flag. Reverts <code>SystemErrors.InstantLayerPaused</code> if enabling while paused.</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="counterpartyrelationsfacet">CounterPartyRelationsFacet</h2>
+<p>Source: <code>contracts/facets/CounterPartyRelations/CounterPartyRelationsFacet.sol</code>. Manages Party A → Party B binding and instant action mode (delegated execution from <code>InstantLayer</code>). All functions are <code>onlyNotPartyB(msg.sender)</code> and <code>whenPartyNotPaused(msg.sender)</code>.</p>
+<h3 id="activateinstantactionmode"><code>activateInstantActionMode()</code></h3>
+<ul>
+<li>Source: <code>:29</code></li>
+<li>Caller: Party A.</li>
+<li>Modifiers: <code>onlyNotPartyB</code>, <code>whenInstantModeIsNotActive(msg.sender)</code>, <code>whenPartyNotPaused</code>.</li>
+<li>Effect: enables instant mode for <code>msg.sender</code> immediately.</li>
+<li>Events: <code>ActivateInstantActionMode(user, timestamp)</code>.</li>
+</ul>
+<h3 id="proposetodeactivateinstantactionmode"><code>proposeToDeactivateInstantActionMode()</code></h3>
+<ul>
+<li>Source: <code>:38</code></li>
+<li>Caller: Party A with instant mode active.</li>
+<li>Modifiers: <code>whenInstantModeIsActive(msg.sender)</code>.</li>
+<li>Effect: schedules deactivation at <code>block.timestamp + deactiveInstantActionModeCooldown</code>.</li>
+<li>Events: <code>ProposeToDeactivateInstantActionMode(user, timestamp)</code>.</li>
+</ul>
+<h3 id="deactivateinstantactionmode"><code>deactivateInstantActionMode()</code></h3>
+<ul>
+<li>Source: <code>:52</code></li>
+<li>Caller: Party A. Requires the cooldown set by <code>proposeToDeactivateInstantActionMode</code> to have elapsed.</li>
+<li>Effect: clears the instant-mode flag.</li>
+<li>Events: <code>DeactivateInstantActionMode(user, timestamp)</code>.</li>
+</ul>
+<h3 id="bindtopartybaddress-partyb"><code>bindToPartyB(address partyB)</code></h3>
+<ul>
+<li>Source: <code>:62</code></li>
+<li>Caller: Party A. <code>partyB</code> must be active in <code>partyBConfigs</code>.</li>
+<li>Effect: writes <code>boundPartyB[msg.sender] = partyB</code>.</li>
+<li>Events: <code>BindToPartyB(partyA, partyB)</code>.</li>
+<li>Reverts: <code>AlreadyBound</code>, <code>PartyBNotActive</code>.</li>
+</ul>
+<h3 id="initiateunbindingfrompartyb"><code>initiateUnbindingFromPartyB()</code></h3>
+<ul>
+<li>Source: <code>:71</code></li>
+<li>Caller: Party A with an existing binding.</li>
+<li>Effect: stamps <code>unbindingRequestTime[msg.sender]</code>.</li>
+<li>Events: <code>InitiateUnbindingFromPartyB(partyA, currentBoundPartyB, timestamp)</code>.</li>
+</ul>
+<h3 id="completeunbindingfrompartyb"><code>completeUnbindingFromPartyB()</code></h3>
+<ul>
+<li>Source: <code>:80</code></li>
+<li>Caller: Party A. Requires <code>unbindingCooldown</code> elapsed since initiate.</li>
+<li>Effect: clears <code>boundPartyB</code> and <code>unbindingRequestTime</code>.</li>
+<li>Events: <code>CompleteUnbindingFromPartyB(partyA, previousPartyB)</code>.</li>
+</ul>
+<h3 id="cancelunbindingfrompartyb"><code>cancelUnbindingFromPartyB()</code></h3>
+<ul>
+<li>Source: <code>:90</code></li>
+<li>Caller: Party A during cooldown window.</li>
+<li>Effect: clears <code>unbindingRequestTime</code>.</li>
+<li>Events: <code>CancelUnbindingFromPartyB(partyA, currentBoundPartyB)</code>.</li>
+</ul>
+<hr>
+<h2 id="diamondcutfacet">DiamondCutFacet</h2>
+<p>Source: <code>contracts/facets/DiamondCut/DiamondCutFacet.sol</code>.</p>
+<h3 id="diamondcutfacetcut-diamondcut-address-init-bytes-calldata"><code>diamondCut(FacetCut[] _diamondCut, address _init, bytes _calldata)</code></h3>
+<ul>
+<li>Source: <code>:20</code></li>
+<li>Caller: Diamond contract owner (<code>LibDiamond.enforceIsContractOwner</code>).</li>
+<li>Effect: bumps <code>AppStorage.version</code>; adds, replaces, or removes selectors per <code>_diamondCut</code>; if <code>_init != address(0)</code>, delegatecalls <code>_calldata</code> on <code>_init</code> for initialization.</li>
+<li>Events: <code>DiamondCut(_diamondCut, _init, _calldata)</code>.</li>
+<li>Reverts: <code>LibDiamond.NotContractOwner</code>, <code>IncorrectFacetCutAction</code>, <code>NoSelectorsInFacetForCut</code>, <code>CannotAddFunctionToDiamondThatAlreadyExists</code>, <code>CannotReplaceFunctionThatDoesNotExists</code>, <code>CannotRemoveFunctionThatDoesNotExist</code>, init delegatecall reverts.</li>
+</ul>
+<hr>
+<h2 id="diamondloupefacet">DiamondLoupeFacet</h2>
+<p>Source: <code>contracts/facets/DiamondLoupe/DiamondLoupeFacet.sol</code>. All functions are <code>view</code>, no access control or pause guards. Implements EIP-2535 loupe and ERC-165.</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Source</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>facets()</code></td>
+<td><code>:18</code></td>
+<td>Array of <code>Facet { address facetAddress; bytes4[] functionSelectors; }</code> for every facet currently installed.</td>
+</tr>
+<tr>
+<td><code>facetFunctionSelectors(address _facet)</code></td>
+<td><code>:72</code></td>
+<td>Selectors registered to a single facet address; empty if none.</td>
+</tr>
+<tr>
+<td><code>facetAddresses()</code></td>
+<td><code>:94</code></td>
+<td>Deduplicated list of facet addresses.</td>
+</tr>
+<tr>
+<td><code>facetAddress(bytes4 _functionSelector)</code></td>
+<td><code>:131</code></td>
+<td>Facet address handling the selector, or <code>address(0)</code> if not registered.</td>
+</tr>
+<tr>
+<td><code>supportsInterface(bytes4 _interfaceId)</code></td>
+<td><code>:137</code></td>
+<td>ERC-165 support flag from <code>LibDiamond.diamondStorage().supportedInterfaces</code>.</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="forceactionsfacet">ForceActionsFacet</h2>
+<p>Source: <code>contracts/facets/ForceActions/ForceActionsFacet.sol</code>. Lets anyone push an intent past an unresponsive Party B once timeouts elapse. Both functions are <code>whenPartyNotPaused(msg.sender)</code>.</p>
+<h3 id="forcecancelopenintentuint256-intentid"><code>forceCancelOpenIntent(uint256 intentId)</code></h3>
+<ul>
+<li>Source: <code>:25</code></li>
+<li>Caller: anyone. Intent must be in <code>CANCEL_PENDING</code> and <code>block.timestamp &gt; intent.statusModifyTimestamp + forceCancelOpenIntentTimeout</code>.</li>
+<li>Effect: transitions intent to <code>CANCELED</code>; releases Party A&#39;s normal open-intent locks or deferred Party B sell escrow.</li>
+<li>Events: <code>ForceCancelOpenIntent(intentId)</code>.</li>
+<li>Reverts: <code>ForceCancelCooldown</code>, <code>InvalidIntentStatus</code>.</li>
+</ul>
+<h3 id="forcecancelcloseintentuint256-intentid"><code>forceCancelCloseIntent(uint256 intentId)</code></h3>
+<ul>
+<li>Source: <code>:36</code></li>
+<li>Caller: anyone. Close intent must be <code>CANCEL_PENDING</code> and timeout elapsed (<code>forceCancelCloseIntentTimeout</code>).</li>
+<li>Effect: transitions close intent to <code>CANCELED</code>; trade returns to fillable state.</li>
+<li>Events: <code>ForceCancelCloseIntent(intentId)</code>.</li>
+</ul>
+<hr>
+<h2 id="partyaopenfacet">PartyAOpenFacet</h2>
+<p>Source: <code>contracts/facets/PartyAOpen/PartyAOpenFacet.sol</code>. Open intent lifecycle on the Party A side. All functions are <code>whenPartyNotPaused(msg.sender)</code>.</p>
+<h3 id="sendopenintent"><code>sendOpenIntent(...)</code></h3>
+<ul>
+<li>Source: <code>:48</code></li>
+<li>Signature: <code>sendOpenIntent(address[] partyBsWhiteList, uint256 symbolId, uint256 price, uint256 quantity, uint256 strikePrice, uint256 expirationTimestamp, uint256 mm, TradeSide tradeSide, MarginType marginType, ExerciseFee exerciseFee, Fee solverFee, uint256 deadline, address feeToken, address affiliate, bytes userData) returns (uint256 intentId)</code>.</li>
+<li>Caller: Party A. <code>whenInstantModeIsNotActive(msg.sender)</code> (instant-mode users go through <code>InstantLayer</code>).</li>
+<li>Precondition: symbol valid; deadline in the future; affiliate active if non-zero; normal cross intents name exactly one Party B; deferred <code>SELL + CROSS + []</code> is allowed only for unbound Party A.</li>
+<li>Effect: creates a <code>PENDING</code> <code>OpenIntent</code>, indexes by Party A, then either locks normal premium/fees/MM or stores <code>OpenIntentEscrow</code> for deferred Party B sells.</li>
+<li>Events: <code>SendOpenIntent(partyA, intentId, partyBsWhiteList, packedAgreements)</code>.</li>
+<li>Reverts: <code>InvalidSymbol</code>, <code>DeadlineInPast</code>, <code>InsufficientBalance</code>, <code>InvalidAffiliate</code>, <code>DeferredSellNotAllowedForBoundPartyA</code>, <code>MultiplePartyBNotAllowed</code>, etc.</li>
+</ul>
+<h3 id="expireopenintentuint256-expiredintentids"><code>expireOpenIntent(uint256[] expiredIntentIds)</code></h3>
+<ul>
+<li>Source: <code>:112</code></li>
+<li>Caller: anyone.</li>
+<li>Precondition: each intent&#39;s deadline has passed and status is one of the expirable statuses.</li>
+<li>Effect: marks each intent <code>EXPIRED</code>; refunds normal locks or deferred Party B sell escrow to Party A.</li>
+<li>Events: <code>ExpireOpenIntent(intentId)</code> per id.</li>
+</ul>
+<h3 id="cancelopenintentuint256-intentids"><code>cancelOpenIntent(uint256[] intentIds)</code></h3>
+<ul>
+<li>Source: <code>:129</code></li>
+<li>Caller: Party A (the intent owner).</li>
+<li>Modifiers: <code>whenInstantModeIsNotActive(msg.sender)</code>.</li>
+<li>Effect: depending on current status: <code>PENDING</code> → <code>CANCELED</code> (instant), <code>LOCKED</code> → <code>CANCEL_PENDING</code> (awaits Party B accept), past-deadline → <code>EXPIRED</code>. Normal locks or deferred escrow are released on terminal non-fill transitions.</li>
+<li>Events: <code>CancelOpenIntent(intentId, status)</code> for <code>CANCELED</code>/<code>CANCEL_PENDING</code>; <code>ExpireOpenIntent</code> for the deadline path.</li>
+</ul>
+<hr>
+<h2 id="partyaclosefacet">PartyACloseFacet</h2>
+<p>Source: <code>contracts/facets/PartyAClose/PartyACloseFacet.sol</code>.</p>
+<h3 id="sendcloseintentuint256-tradeid-uint256-quantity-uint256-price-uint256-deadline-returns-uint256-intentid"><code>sendCloseIntent(uint256 tradeId, uint256 quantity, uint256 price, uint256 deadline) returns (uint256 intentId)</code></h3>
+<ul>
+<li>Source: <code>:38</code></li>
+<li>Caller: Party A owner of the trade (<code>onlyPartyAOfTrade(tradeId)</code>).</li>
+<li>Modifiers: <code>whenPartyNotPaused</code>, <code>whenInstantModeIsNotActive</code>.</li>
+<li>Precondition: trade is open with available close quantity; <code>deadline</code> in the future; close-orders count under <code>maxCloseOrdersLength</code>.</li>
+<li>Effect: creates a <code>PENDING</code> <code>CloseIntent</code> indexed by trade.</li>
+<li>Events: <code>SendCloseIntent(tradeId, intentId, price, quantity, deadline)</code>.</li>
+<li>Reverts: <code>InvalidTradeOwner</code>, <code>TradeNotOpen</code>, <code>InsufficientCloseAmount</code>, <code>MaxCloseOrdersExceeded</code>.</li>
+</ul>
+<h3 id="expirecloseintentuint256-expiredintentids"><code>expireCloseIntent(uint256[] expiredIntentIds)</code></h3>
+<ul>
+<li>Source: <code>:53</code></li>
+<li>Caller: anyone. Each intent must be expirable.</li>
+<li>Effect: moves intent to <code>EXPIRED</code>.</li>
+<li>Events: <code>ExpireCloseIntent(intentId)</code> per id.</li>
+</ul>
+<h3 id="cancelcloseintentuint256-intentids"><code>cancelCloseIntent(uint256[] intentIds)</code></h3>
+<ul>
+<li>Source: <code>:69</code></li>
+<li>Caller: Party A. <code>whenInstantModeIsNotActive</code>.</li>
+<li>Effect: <code>PENDING</code> → <code>EXPIRED</code> (deadline) or <code>CANCEL_PENDING</code> (awaits Party B accept).</li>
+<li>Events: <code>ExpireCloseIntent</code> or <code>CancelCloseIntent</code> per id depending on outcome.</li>
+</ul>
+<hr>
+<h2 id="partybopenfacet">PartyBOpenFacet</h2>
+<p>Source: <code>contracts/facets/PartyBOpen/PartyBOpenFacet.sol</code>. All functions are <code>whenPartyNotPaused(msg.sender)</code>.</p>
+<h3 id="lockopenintentuint256-intentid"><code>lockOpenIntent(uint256 intentId)</code></h3>
+<ul>
+<li>Source: <code>:29</code></li>
+<li>Caller: an active Party B (<code>onlyPartyB(msg.sender)</code>) which is whitelisted for <code>intentId</code> (or the whitelist is empty).</li>
+<li>Precondition: intent is <code>PENDING</code>; deadline not passed; Party B supports the symbol type and the symbol&#39;s collateral matches Party B config; Party B is solvent for required isolated/cross balance. Deferred Party B sells must have a live, unconsumed escrow.</li>
+<li>Effect: transitions intent to <code>LOCKED</code>, records <code>partyB</code> and <code>lockTimestamp</code>.</li>
+<li>Events: <code>LockOpenIntent(intentId, partyB)</code>.</li>
+</ul>
+<h3 id="unlockopenintentuint256-intentid"><code>unlockOpenIntent(uint256 intentId)</code></h3>
+<ul>
+<li>Source: <code>:40</code></li>
+<li>Caller: the Party B that locked the intent.</li>
+<li>Effect: returns intent to <code>PENDING</code> if still within deadline, else <code>EXPIRED</code>.</li>
+<li>Events: <code>UnlockOpenIntent(intentId, partyB)</code> or <code>ExpireOpenIntent(intentId)</code>.</li>
+</ul>
+<h3 id="acceptcancelopenintentuint256-intentid"><code>acceptCancelOpenIntent(uint256 intentId)</code></h3>
+<ul>
+<li>Source: <code>:55</code></li>
+<li>Caller: Party B that locked the intent.</li>
+<li>Precondition: intent is <code>CANCEL_PENDING</code>.</li>
+<li>Effect: marks intent <code>CANCELED</code>; refunds Party A&#39;s normal locks or deferred escrow.</li>
+<li>Events: <code>AcceptCancelOpenIntent(intentId)</code>.</li>
+</ul>
+<h3 id="fillopenintentuint256-intentid-uint256-quantity-uint256-price"><code>fillOpenIntent(uint256 intentId, uint256 quantity, uint256 price)</code></h3>
+<ul>
+<li>Source: <code>:69</code></li>
+<li>Caller: Party B that locked the intent.</li>
+<li>Precondition: intent is <code>LOCKED</code>; <code>price &lt;= intent.price</code> for buy-side and <code>price &gt;= intent.price</code> for sell-side; <code>quantity &lt;= remaining</code>; Party B has sufficient balance.</li>
+<li>Effect: creates a new <code>Trade</code>, resolves normal locks or consumes deferred escrow, debits Party B premium and Party A fees, indexes by both parties; if partial fill, spawns a residual intent. Deferred Party B sell residuals carry the remaining escrow to the child, or release it immediately if the child is created as <code>CANCELED</code>.</li>
+<li>Events: <code>FillOpenIntent(intentId, tradeId, quantity, price)</code>. On residual, <code>SendOpenIntent</code> (and possibly <code>CancelOpenIntent</code>) for the new id.</li>
+</ul>
+<hr>
+<h2 id="partybclosefacet">PartyBCloseFacet</h2>
+<p>Source: <code>contracts/facets/PartyBClose/PartyBCloseFacet.sol</code>.</p>
+<h3 id="acceptcancelcloseintentuint256-intentid"><code>acceptCancelCloseIntent(uint256 intentId)</code></h3>
+<ul>
+<li>Source: <code>:26</code></li>
+<li>Caller: Party B counterparty of the trade. <code>whenPartyNotPaused</code>.</li>
+<li>Precondition: close intent is <code>CANCEL_PENDING</code>.</li>
+<li>Effect: marks intent <code>CANCELED</code>.</li>
+<li>Events: <code>AcceptCancelCloseIntent(intentId)</code>.</li>
+</ul>
+<h3 id="fillcloseintentuint256-intentid-uint256-quantity-uint256-price"><code>fillCloseIntent(uint256 intentId, uint256 quantity, uint256 price)</code></h3>
+<ul>
+<li>Source: <code>:38</code></li>
+<li>Caller: Party B counterparty.</li>
+<li>Precondition: intent is <code>PENDING</code> or <code>CANCEL_PENDING</code>; <code>quantity &lt;= intent.quantity</code>; <code>price</code> favorable to Party A relative to <code>intent.price</code>.</li>
+<li>Effect: closes <code>quantity</code> of the trade at <code>price</code>; settles PnL between parties; updates trade open amount and may close trade if fully filled.</li>
+<li>Events: <code>FillCloseIntent(intentId, quantity, price)</code>.</li>
+</ul>
+<hr>
+<h2 id="tradefacet">TradeFacet</h2>
+<p>Source: <code>contracts/facets/Trade/TradeFacet.sol</code>.</p>
+<h3 id="transfertradeaddress-receiver-uint256-tradeid"><code>transferTrade(address receiver, uint256 tradeId)</code></h3>
+<ul>
+<li>Source: <code>:29</code></li>
+<li>Caller: current Party A owner of the trade (<code>onlyPartyAOfTrade(tradeId)</code>).</li>
+<li>Modifiers: <code>nonReentrant</code>, <code>whenPartyNotPaused(msg.sender)</code>, <code>whenNotSuspended(msg.sender)</code>, <code>whenNotSuspended(receiver)</code>.</li>
+<li>Precondition: no pending close intents that block transfer; <code>receiver</code> has compatible counterparty configuration.</li>
+<li>Effect: rewrites trade ownership; if the trade has an associated NFT, transfers the NFT to match.</li>
+<li>Events: <code>TransferTradeByPartyA(sender, receiver, tradeId)</code>.</li>
+</ul>
+<h3 id="transfertradefromnftaddress-sender-address-receiver-uint256-tradeid"><code>transferTradeFromNFT(address sender, address receiver, uint256 tradeId)</code></h3>
+<ul>
+<li>Source: <code>:45</code></li>
+<li>Caller: only the configured <code>tradeNftAddress</code> (enforced inside <code>LibTradeOperations</code>).</li>
+<li>Modifiers: <code>whenPartyNotPaused(sender)</code>, <code>whenNotSuspended(sender)</code>, <code>whenNotSuspended(receiver)</code>.</li>
+<li>Effect: synchronizes trade ownership after an ERC-721 transfer.</li>
+<li>Events: <code>TransferTradeByPartyA(sender, receiver, tradeId)</code>.</li>
+<li>Reverts: <code>OnlyTradeNFT</code> (or equivalent), state-consistency reverts.</li>
+</ul>
+<h3 id="executetradesuint256-tradeids-settlementpricesig-settlementpricesig"><code>executeTrades(uint256[] tradeIds, SettlementPriceSig settlementPriceSig)</code></h3>
+<ul>
+<li>Source: <code>:61</code></li>
+<li>Caller: anyone (third-party-callable). <code>whenNotThirdPartyActionsPaused</code>.</li>
+<li>Precondition: each trade&#39;s symbol matches <code>settlementPriceSig.symbolId</code>; signature is valid and within <code>settlementPriceSigValidTime</code>; trades are at or past <code>expirationTimestamp</code>.</li>
+<li>Effect: per trade, decides exercise vs expire; transfers PnL and exercise fee accordingly; closes trade.</li>
+<li>Events: <code>ExecuteTrades(operator, tradeIds, exercised, expired, settlementPrice, collateralPrice)</code>.</li>
+</ul>
+<h3 id="mintnftfortradeuint256-tradeid"><code>mintNFTForTrade(uint256 tradeId)</code></h3>
+<ul>
+<li>Source: <code>:71</code></li>
+<li>Caller: Party A owner of the trade (<code>onlyPartyAOfTrade(tradeId)</code>).</li>
+<li>Modifiers: <code>nonReentrant</code>. No pause guard.</li>
+<li>Precondition: trade has no NFT yet; <code>tradeNftAddress</code> is set.</li>
+<li>Effect: calls the configured <code>TradeNFT</code> to mint a token bound to the trade.</li>
+</ul>
+<hr>
+<h2 id="viewfacet">ViewFacet</h2>
+<p>Source: <code>contracts/facets/View/ViewFacet.sol</code>. All functions are <code>external view</code>, callable by anyone, with no pause or role guards. Citation column is the line number in <code>ViewFacet.sol</code>.</p>
+<h3 id="account--balance">Account / Balance</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Line</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>getIsolatedBalance(address user, address collateral)</code></td>
+<td>57</td>
+<td>Available isolated balance, 18-decimal.</td>
+</tr>
+<tr>
+<td><code>getIsolatedLockedBalance(address user, address collateral)</code></td>
+<td>67</td>
+<td>Isolated locked-for-intent balance.</td>
+</tr>
+<tr>
+<td><code>getReserveBalance(address user, address collateral)</code></td>
+<td>77</td>
+<td>Reserve sub-balance.</td>
+</tr>
+<tr>
+<td><code>getCrossBalance(address user, address collateral, address counterParty)</code></td>
+<td>88</td>
+<td><code>CrossEntry</code> (balance + scheduled release entries).</td>
+</tr>
+<tr>
+<td><code>getScheduledReleaseEntry(address user, address collateral, address counterParty)</code></td>
+<td>99</td>
+<td>Pending release amounts and timestamps.</td>
+</tr>
+<tr>
+<td><code>getCounterPartyAddresses(address user, address collateral)</code></td>
+<td>109</td>
+<td>Counterparties that have a cross balance with <code>user</code>.</td>
+</tr>
+<tr>
+<td><code>getWithdrawal(uint256 withdrawId)</code></td>
+<td>118</td>
+<td><code>Withdraw</code> record.</td>
+</tr>
+<tr>
+<td><code>getLastWithdrawalId()</code></td>
+<td>126</td>
+<td>Latest allocated withdrawal id.</td>
+</tr>
+<tr>
+<td><code>getExpressWithdrawProviderConfig(address provider, address collateral)</code></td>
+<td>136</td>
+<td>Provider config tuple.</td>
+</tr>
+<tr>
+<td><code>getInvalidWithdrawalsPool()</code></td>
+<td>144</td>
+<td>Pool address that captures invalid withdrawal residuals.</td>
+</tr>
+<tr>
+<td><code>getReleaseInterval(address user)</code></td>
+<td>153</td>
+<td>Effective release interval.</td>
+</tr>
+<tr>
+<td><code>getDefaultReleaseInterval()</code></td>
+<td>161</td>
+<td>Protocol default release interval.</td>
+</tr>
+<tr>
+<td><code>getUserReleaseInterval(address user)</code></td>
+<td>171</td>
+<td><code>(hasConfigured, interval)</code> raw record.</td>
+</tr>
+<tr>
+<td><code>getMaxConnectedCounterParties()</code></td>
+<td>180</td>
+<td>Cap on cross counterparties per user.</td>
+</tr>
+<tr>
+<td><code>isManualSync(address user)</code></td>
+<td>189</td>
+<td>Whether the user requires manual sync.</td>
+</tr>
+<tr>
+<td><code>getNonce(address party, address counterParty)</code></td>
+<td>199</td>
+<td>Bilateral nonce used for off-chain signature invalidation.</td>
+</tr>
+</tbody></table>
+<h3 id="app--protocol-parameters">App / Protocol Parameters</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Line</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>getVersion()</code></td>
+<td>211</td>
+<td><code>uint16</code> Diamond version, bumped per cut.</td>
+</tr>
+<tr>
+<td><code>getBalanceLimitPerUser(address collateral)</code></td>
+<td>220</td>
+<td>Per-user deposit cap.</td>
+</tr>
+<tr>
+<td><code>getMaxCloseOrdersLength()</code></td>
+<td>228</td>
+<td>Limit on concurrent close intents per trade.</td>
+</tr>
+<tr>
+<td><code>getMaxTradePerPartyA()</code></td>
+<td>236</td>
+<td>Cap on active trades per Party A.</td>
+</tr>
+<tr>
+<td><code>getPriceOracleAddress()</code></td>
+<td>244</td>
+<td>Address of <code>IPriceOracle</code> used for fee-token pricing.</td>
+</tr>
+<tr>
+<td><code>isWhitelistedCollateral(address collateral)</code></td>
+<td>253</td>
+<td>Whether the collateral is enabled.</td>
+</tr>
+<tr>
+<td><code>getTradeNftAddress()</code></td>
+<td>261</td>
+<td>Configured <code>TradeNFT</code>.</td>
+</tr>
+<tr>
+<td><code>isSignatureUsed(bytes32 sigHash)</code></td>
+<td>270</td>
+<td>Replay protection bit.</td>
+</tr>
+<tr>
+<td><code>getSignatureVerifier()</code></td>
+<td>278</td>
+<td>Shared <code>SignatureVerifier</code> address.</td>
+</tr>
+<tr>
+<td><code>getPartyADeallocateCooldown()</code></td>
+<td>286</td>
+<td>Seconds.</td>
+</tr>
+<tr>
+<td><code>getPartyBDeallocateCooldown()</code></td>
+<td>294</td>
+<td>Seconds.</td>
+</tr>
+<tr>
+<td><code>getForceCancelOpenIntentTimeout()</code></td>
+<td>302</td>
+<td>Seconds.</td>
+</tr>
+<tr>
+<td><code>getForceCancelCloseIntentTimeout()</code></td>
+<td>310</td>
+<td>Seconds.</td>
+</tr>
+<tr>
+<td><code>getPartyBExclusiveWindow()</code></td>
+<td>318</td>
+<td>Seconds.</td>
+</tr>
+<tr>
+<td><code>getSettlementPriceSigValidTime()</code></td>
+<td>326</td>
+<td>Seconds.</td>
+</tr>
+<tr>
+<td><code>getUpnlSigValidTime()</code></td>
+<td>334</td>
+<td>Seconds.</td>
+</tr>
+<tr>
+<td><code>getPartyBConfig(address partyB)</code></td>
+<td>343</td>
+<td>Full <code>PartyBConfig</code> struct.</td>
+</tr>
+<tr>
+<td><code>isSymbolTypesSupportedByPartyB(address partyB, uint256 symbolType)</code></td>
+<td>353</td>
+<td>Per-Party-B symbol-type support.</td>
+</tr>
+<tr>
+<td><code>isCallFromInstantLayer()</code></td>
+<td>361</td>
+<td>Diamond-side instant-layer toggle (<code>callFromInstantLayer</code>).</td>
+</tr>
+</tbody></table>
+<h3 id="close-intents">Close Intents</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Line</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>getCloseIntent(uint256 intentId)</code></td>
+<td>374</td>
+<td>Full <code>CloseIntent</code>.</td>
+</tr>
+<tr>
+<td><code>getCloseIntentIds(uint256 tradeId)</code></td>
+<td>383</td>
+<td>All close intent ids for a trade.</td>
+</tr>
+<tr>
+<td><code>getCloseIntents(uint256 tradeId, uint256 start, uint256 size)</code></td>
+<td>394</td>
+<td>Paginated close intents.</td>
+</tr>
+<tr>
+<td><code>getLastCloseIntentId()</code></td>
+<td>419</td>
+<td>Last allocated close intent id.</td>
+</tr>
+</tbody></table>
+<h3 id="counter-party-relations">Counter Party Relations</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Line</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>getBoundPartyB(address partyA)</code></td>
+<td>432</td>
+<td>Currently bound Party B, or <code>address(0)</code>.</td>
+</tr>
+<tr>
+<td><code>getUnbindingRequestTime(address partyA)</code></td>
+<td>441</td>
+<td>Timestamp of pending unbinding request.</td>
+</tr>
+<tr>
+<td><code>getUnbindingCooldown()</code></td>
+<td>449</td>
+<td>Cooldown applied to <code>completeUnbindingFromPartyB</code>.</td>
+</tr>
+<tr>
+<td><code>isInstantActionsModeActive(address user)</code></td>
+<td>458</td>
+<td>Whether instant mode is currently active.</td>
+</tr>
+<tr>
+<td><code>getInstantActionsModeDeactivateTime(address user)</code></td>
+<td>467</td>
+<td>Earliest timestamp at which <code>deactivateInstantActionMode</code> can complete.</td>
+</tr>
+<tr>
+<td><code>getDeactiveInstantActionModeCooldown()</code></td>
+<td>475</td>
+<td>Configured cooldown.</td>
+</tr>
+</tbody></table>
+<h3 id="fees-1">Fees</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Line</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>getDefaultFeeCollector()</code></td>
+<td>487</td>
+<td>Default fee collector address.</td>
+</tr>
+<tr>
+<td><code>isAffiliateActive(address affiliate)</code></td>
+<td>496</td>
+<td>Affiliate activation flag.</td>
+</tr>
+<tr>
+<td><code>getAffiliateFeeCollector(address affiliate)</code></td>
+<td>505</td>
+<td>Per-affiliate fee collector.</td>
+</tr>
+<tr>
+<td><code>getAffiliateFee(address affiliate, uint256 symbolId)</code></td>
+<td>515</td>
+<td><code>Fee</code> (open + close basis points).</td>
+</tr>
+</tbody></table>
+<h3 id="liquidation">Liquidation</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Line</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>getInProgressLiquidationId(address partyA, address partyB, address collateral)</code></td>
+<td>530</td>
+<td>Active liquidation id for the tuple, or <code>0</code>.</td>
+</tr>
+<tr>
+<td><code>getLiquidationDetail(uint256 liquidationId)</code></td>
+<td>539</td>
+<td>Snapshot details of a liquidation.</td>
+</tr>
+<tr>
+<td><code>getLastLiquidationId()</code></td>
+<td>547</td>
+<td>Last allocated liquidation id.</td>
+</tr>
+</tbody></table>
+<h3 id="open-intents">Open Intents</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Line</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>getOpenIntent(uint256 intentId)</code></td>
+<td>560</td>
+<td>Full <code>OpenIntent</code>.</td>
+</tr>
+<tr>
+<td><code>getOpenIntentEscrow(uint256 intentId)</code></td>
+<td>564</td>
+<td><code>OpenIntentEscrow</code> for deferred Party B sells; zeroed after release/consume.</td>
+</tr>
+<tr>
+<td><code>isDeferredPartyBSellIntent(uint256 intentId)</code></td>
+<td>568</td>
+<td>Whether the stored intent is <code>SELL + CROSS + empty whitelist</code>.</td>
+</tr>
+<tr>
+<td><code>getActiveOpenIntentIds(address user)</code></td>
+<td>578</td>
+<td>Ids the user appears in.</td>
+</tr>
+<tr>
+<td><code>getActiveOpenIntentsCount(address user)</code></td>
+<td>587</td>
+<td>Length of the active set.</td>
+</tr>
+<tr>
+<td><code>getActiveOpenIntents(address user, uint256 start, uint256 size)</code></td>
+<td>598</td>
+<td>Paginated active intents.</td>
+</tr>
+<tr>
+<td><code>getPartyAOpenIntentIndex(uint256 intentId)</code></td>
+<td>624</td>
+<td>Index inside Party A&#39;s active set.</td>
+</tr>
+<tr>
+<td><code>getPartyBOpenIntentIndex(uint256 intentId)</code></td>
+<td>633</td>
+<td>Index inside Party B&#39;s active set.</td>
+</tr>
+<tr>
+<td><code>getLastOpenIntentId()</code></td>
+<td>641</td>
+<td>Last allocated id.</td>
+</tr>
+</tbody></table>
+<h3 id="pause--suspension-state">Pause / Suspension State</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Line</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>isGlobalPaused()</code></td>
+<td>644</td>
+<td><code>bool</code>.</td>
+</tr>
+<tr>
+<td><code>isDepositingPaused()</code></td>
+<td>652</td>
+<td><code>bool</code>.</td>
+</tr>
+<tr>
+<td><code>isWithdrawingPaused()</code></td>
+<td>660</td>
+<td><code>bool</code>.</td>
+</tr>
+<tr>
+<td><code>isPartyBActionsPaused()</code></td>
+<td>668</td>
+<td><code>bool</code>.</td>
+</tr>
+<tr>
+<td><code>isPartyAActionsPaused()</code></td>
+<td>676</td>
+<td><code>bool</code>.</td>
+</tr>
+<tr>
+<td><code>isLiquidatingPaused()</code></td>
+<td>684</td>
+<td><code>bool</code>.</td>
+</tr>
+<tr>
+<td><code>isThirdPartyActionsPaused()</code></td>
+<td>692</td>
+<td><code>bool</code>.</td>
+</tr>
+<tr>
+<td><code>isInternalTransferPaused()</code></td>
+<td>700</td>
+<td><code>bool</code>.</td>
+</tr>
+<tr>
+<td><code>isExternalTransferPaused()</code></td>
+<td>708</td>
+<td><code>bool</code>.</td>
+</tr>
+<tr>
+<td><code>isExpressWithdrawPaused()</code></td>
+<td>716</td>
+<td><code>bool</code>.</td>
+</tr>
+<tr>
+<td><code>isInstantLayerPaused()</code></td>
+<td>724</td>
+<td><code>bool</code>.</td>
+</tr>
+<tr>
+<td><code>getAllPauseStates()</code></td>
+<td>743</td>
+<td>Twelve-bool tuple covering every pause flag plus emergency mode.</td>
+</tr>
+<tr>
+<td><code>isPartyBsEmergencyMode()</code></td>
+<td>782</td>
+<td>Global Party B emergency.</td>
+</tr>
+<tr>
+<td><code>isPartyBInEmergencyMode(address partyB)</code></td>
+<td>791</td>
+<td>Per-Party-B emergency.</td>
+</tr>
+<tr>
+<td><code>isAddressSuspended(address user)</code></td>
+<td>800</td>
+<td>Address-level suspension.</td>
+</tr>
+<tr>
+<td><code>isWithdrawalSuspended(uint256 withdrawId)</code></td>
+<td>809</td>
+<td>Per-withdrawal suspension.</td>
+</tr>
+</tbody></table>
+<h3 id="access-control-1">Access Control</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Line</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>hasRole(address user, bytes32 role)</code></td>
+<td>823</td>
+<td><code>bool</code>.</td>
+</tr>
+<tr>
+<td><code>getRoleMembers(bytes32 role)</code></td>
+<td>832</td>
+<td>Members of a role.</td>
+</tr>
+<tr>
+<td><code>getRoleMemberCount(bytes32 role)</code></td>
+<td>841</td>
+<td>Member count.</td>
+</tr>
+<tr>
+<td><code>getRoleMember(bytes32 role, uint256 index)</code></td>
+<td>851</td>
+<td>Indexed access.</td>
+</tr>
+</tbody></table>
+<h3 id="symbols-and-oracles">Symbols and Oracles</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Line</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>getOracle(uint256 oracleId)</code></td>
+<td>864</td>
+<td><code>Oracle</code> record.</td>
+</tr>
+<tr>
+<td><code>getLastOracleId()</code></td>
+<td>872</td>
+<td>Last allocated oracle id.</td>
+</tr>
+<tr>
+<td><code>getSymbol(uint256 symbolId)</code></td>
+<td>881</td>
+<td><code>Symbol</code> record.</td>
+</tr>
+<tr>
+<td><code>getSymbols(uint256 start, uint256 size)</code></td>
+<td>891</td>
+<td>Paginated symbols.</td>
+</tr>
+<tr>
+<td><code>getLastSymbolId()</code></td>
+<td>915</td>
+<td>Last allocated symbol id.</td>
+</tr>
+</tbody></table>
+<h3 id="trades">Trades</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Line</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>getTrade(uint256 tradeId)</code></td>
+<td>928</td>
+<td>Full <code>Trade</code>.</td>
+</tr>
+<tr>
+<td><code>getActiveTradeIdsOfPartyA(address user)</code></td>
+<td>937</td>
+<td>Active trade ids for a Party A.</td>
+</tr>
+<tr>
+<td><code>getActiveTradesOfPartyA(address user, uint256 start, uint256 size)</code></td>
+<td>948</td>
+<td>Paginated active trades.</td>
+</tr>
+<tr>
+<td><code>getActiveTradeIdsForPartyB(address partyB, address collateral)</code></td>
+<td>975</td>
+<td>Active trade ids on the Party B side per collateral.</td>
+</tr>
+<tr>
+<td><code>getPartyATradeIndex(uint256 tradeId)</code></td>
+<td>984</td>
+<td>Index inside Party A&#39;s active set.</td>
+</tr>
+<tr>
+<td><code>getPartyBTradeIndex(uint256 tradeId)</code></td>
+<td>993</td>
+<td>Index inside Party B&#39;s active set.</td>
+</tr>
+<tr>
+<td><code>getLastTradeId()</code></td>
+<td>1001</td>
+<td>Last allocated trade id.</td>
+</tr>
+</tbody></table>
+<h3 id="pricing-helpers">Pricing Helpers</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Line</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>getOpenIntentPlatformFee(uint256 intentId)</code></td>
+<td>1014</td>
+<td>Platform fee due for the intent.</td>
+</tr>
+<tr>
+<td><code>getOpenIntentAffiliateFee(uint256 intentId)</code></td>
+<td>1024</td>
+<td>Affiliate fee due for the intent.</td>
+</tr>
+<tr>
+<td><code>getOpenIntentPremium(uint256 intentId)</code></td>
+<td>1034</td>
+<td>Premium that would be locked at <code>intent.price</code>.</td>
+</tr>
+<tr>
+<td><code>getOpenIntentPremiumProportional(uint256 intentId, uint256 price)</code></td>
+<td>1045</td>
+<td>Premium re-priced at <code>price</code>.</td>
+</tr>
+<tr>
+<td><code>getCloseIntentPlatformFee(uint256 intentId, uint256 quantity, uint256 price)</code></td>
+<td>1061</td>
+<td>Platform fee on a partial close.</td>
+</tr>
+<tr>
+<td><code>getCloseIntentAffiliateFee(uint256 intentId, uint256 quantity, uint256 price)</code></td>
+<td>1073</td>
+<td>Affiliate fee on a partial close.</td>
+</tr>
+<tr>
+<td><code>getTradeOpenAmount(uint256 tradeId)</code></td>
+<td>1087</td>
+<td>Currently open quantity.</td>
+</tr>
+<tr>
+<td><code>getTradeAvailableAmountToClose(uint256 tradeId)</code></td>
+<td>1096</td>
+<td>Quantity not already covered by pending close intents.</td>
+</tr>
+<tr>
+<td><code>getTradePnl(uint256 tradeId, uint256 currentPrice, uint256 filledAmount)</code></td>
+<td>1107</td>
+<td>Notional PnL at <code>currentPrice</code> for <code>filledAmount</code>.</td>
+</tr>
+<tr>
+<td><code>getTradePremium(uint256 tradeId)</code></td>
+<td>1116</td>
+<td>Total premium locked on the trade.</td>
+</tr>
+<tr>
+<td><code>getTradeExerciseFee(uint256 tradeId, uint256 settlementPrice, uint256 pnl)</code></td>
+<td>1127</td>
+<td>Exercise fee charged on the supplied <code>pnl</code>/<code>settlementPrice</code> pair.</td>
+</tr>
+</tbody></table>
+</article></main></div><footer class="site-footer"><span>Options Core documentation.</span></footer></body></html>

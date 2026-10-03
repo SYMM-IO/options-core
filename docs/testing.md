@@ -27,15 +27,15 @@ There are no integration tests against live Muon/oracle infrastructure; signatur
 
 ## Running Tests
 
-| Command                                                   | What it runs                                                                                                                                      |
-| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npx hardhat test`                                        | Full suite. Reads `TEST_MODE` from env; must equal `UNIT_TEST` (`tests/main.ts:18`).                                                              |
-| `npx hardhat test tests/partyB-open-facet.behavior.ts`    | Single file.                                                                                                                                      |
-| `npx hardhat test tests/deferred-partyb-sell.behavior.ts` | Deferred Party B sell escrow behavior.                                                                                                            |
-| `npx hardhat test --coverage`                             | Built-in Hardhat 3 coverage. Output: `coverage/lcov.info` and `coverage/html`.                                                                    |
-| `npm test`                                                | Wraps `npx hardhat test` inside `symsec --project options-core run`.                                                                              |
-| `npm run coverage`                                        | Same as `npx hardhat test --coverage`.                                                                                                            |
-| `./utils/runTest.sh`                                      | Toggles in-contract `// == SignatureCheck( ==` blocks off, runs `npm test`, restores them (`utils/runTest.sh:1`, `utils/update_sig_checks.py:5`). |
+| Command                                                 | What it runs                                                                                                                                      |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TEST_MODE=UNIT_TEST npx hardhat test mocha`            | Full suite. Reads `TEST_MODE` from env; must equal `UNIT_TEST` (`tests/main.ts:18`).                                                              |
+| `npm test -- --grep Facets_PartyBOpenFacet`             | Party B open-intent behavior through the suite entry point.                                                                                       |
+| `npm test -- tests/deferred-partyb-sell.behavior.ts`    | Deferred Party B sell escrow behavior.                                                                                                            |
+| `TEST_MODE=UNIT_TEST npx hardhat test mocha --coverage` | Built-in Hardhat 3 coverage. Output: `coverage/lcov.info` and `coverage/html`.                                                                    |
+| `npm test`                                              | Runs `hardhat test mocha` with `TEST_MODE=UNIT_TEST`.                                                                                             |
+| `npm run coverage`                                      | Same as `TEST_MODE=UNIT_TEST npx hardhat test mocha --coverage`.                                                                                  |
+| `./utils/runTest.sh`                                    | Toggles in-contract `// == SignatureCheck( ==` blocks off, runs `npm test`, restores them (`utils/runTest.sh:1`, `utils/update_sig_checks.py:5`). |
 
 Environment requirements:
 
@@ -43,7 +43,7 @@ Environment requirements:
 - `PRIVATE_KEY` is read for non-local networks only; the default in-process network (`default`) does not need it.
 - Mocha timeout is 100,000,000 ms (`hardhat.config.ts`) so long fixture chains do not time out.
 
-The `npm test` / `npm run compile` scripts rely on the SymSec CLI; without it, drop the wrapper and call `npx hardhat ...` directly. TypeChain runs on compile, so there is no separate typechain script.
+`npm test` sets the test mode automatically. Direct `npx hardhat test mocha` commands need `TEST_MODE=UNIT_TEST` in the environment. TypeChain runs on compile.
 
 ## Test Layout
 
@@ -267,7 +267,7 @@ Each `it` starts from the fixture snapshot — there is no manual `snapshot()`/`
 
 ## Coverage
 
-`npx hardhat test --coverage` (or `npm run coverage`) runs the full suite under Hardhat 3's built-in coverage. Output:
+`TEST_MODE=UNIT_TEST npx hardhat test mocha --coverage` (or `npm run coverage`) runs the full suite under Hardhat 3's built-in coverage. Output:
 
 - `coverage/lcov.info` — lcov report.
 - `coverage/html` — HTML report.
@@ -300,9 +300,9 @@ The fixture deploys all four through dedicated tasks (`deploy:stablecoin`, `depl
 
 ## CI Considerations
 
-- `.husky/_/pre-commit:5` runs `npm run precommit`, which is `npm run format && npm run compile && npm test`, each wrapped in `symsec --project options-core run`. Every commit therefore re-runs the full suite.
-- `lint-staged` runs `secretlint` over staged files.
-- There is no GitHub Actions config in this repo; CI is delegated to the SymSec pipeline that owns the `symsec --project options-core` wrapper.
+- `.husky/pre-commit` formats fully staged files and skips paths with unstaged changes. Staged Solidity triggers compilation and the release size check. Staged docs trigger `npm run docs:check`.
+- `.gitlab-ci.yml` runs formatting, compilation, lint, documentation checks, and the Mocha suite on Node 24. Secret detection uses GitLab's included template.
+- Run `npm run check:release` for the combined local compile, lint, test, and documentation checks.
 - `utils/runTest.sh` is the only path that mutates Solidity sources before testing — do not invoke it from CI without ensuring the post-run `update_sig_checks.py 0` step runs even on failure.
 
 ## Code Map

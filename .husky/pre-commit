@@ -1,0 +1,54 @@
+#!/bin/sh
+
+# IMPORTANT: this hook must only ever touch files the author already staged.
+# Never reintroduce `git add -u` here -- it stages every tracked modification in
+# the whole repo, which silently absorbs unrelated work-in-progress into the
+# commit.
+
+STAGED_LIST=$(mktemp)
+FORMAT_LIST=$(mktemp)
+trap 'rm -f "$STAGED_LIST" "$FORMAT_LIST"' EXIT
+
+# Single source of truth for everything below: the paths staged for this commit.
+# ACMR only, so deleted paths are never handed to prettier or re-added.
+git diff --cached --name-only --diff-filter=ACMR > "$STAGED_LIST"
+
+if [ ! -s "$STAGED_LIST" ]; then
+    exit 0
+fi
+
+# Files that also carry unstaged modifications are left alone: `git add` on them
+# would drag those unstaged hunks into the commit too (e.g. after `git add -p`).
+# They are reported so the author can format them deliberately.
+while IFS= read -r file; do
+    if git diff --quiet -- "$file"; then
+        printf '%s\n' "$file" >> "$FORMAT_LIST"
+    else
+        printf 'Skipping format, partially staged: %s\n' "$file"
+    fi
+done < "$STAGED_LIST"
+
+# Run prettier over the staged files only
+if [ -s "$FORMAT_LIST" ]; then
+    echo "Formatting staged files..."
+
+    # One call covers .sol/.ts/.json/...; --ignore-unknown skips anything
+    # prettier has no parser for, and .prettierignore is still honoured.
+    tr '\n' '\0' < "$FORMAT_LIST" | xargs -0 npx prettier --write --ignore-unknown
+    if [ $? -ne 0 ]; then
+        echo "Formatting failed. Aborting commit."
+        exit 1
+    fi
+
+    # Re-stage exactly the files we just formatted -- nothing else.
+    tr '\n' '\0' < "$FORMAT_LIST" | xargs -0 git add --
+fi
+
+# Compile staged Solidity with the same release size gate as npm run compile.
+if grep -q '\.sol$' "$STAGED_LIST"; then
+    npm run compile || exit 1
+fi
+
+if grep -q '^docs/\|^scripts/build-docs.mjs$' "$STAGED_LIST"; then
+    npm run docs:check || exit 1
+fi

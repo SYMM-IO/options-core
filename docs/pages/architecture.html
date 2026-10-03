@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Diamond routing, domain libraries, storage, and helper contracts."><title>Architecture | Options Core</title>
+<link rel="icon" type="image/svg+xml" href="../assets/symmio-mark.svg">
+<script>try { if (localStorage.getItem("options-docs-theme") === "light") document.documentElement.dataset.theme = "light"; } catch (_) {}</script>
+<link rel="stylesheet" href="../assets/reader.css"><link rel="stylesheet" href="../assets/docs-portal.css">
+<script src="../assets/chapters.js" defer></script><script src="../assets/reader.js" defer></script><script src="../assets/docs-portal.js" defer></script>
+</head>
+<body class="doc-page" data-version="current"><a class="skip-link" href="#full-document">Skip to document</a>
+<header class="docs-header"><div class="doc-topbar"><nav class="docs-trail" aria-label="Breadcrumb">
+<a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Options Core</span></a>
+<span class="trail-sep" aria-hidden="true">/</span><a class="trail-release" href="../index.html">Documentation</a>
+</nav><nav class="top-actions" aria-label="Page actions"><button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button></nav></div></header><div class="reader-shell"><div data-rail-sections hidden>
+<a class="toc-link level-2" href="#1-big-picture-overview">1. Big-Picture Overview</a>
+<a class="toc-link level-2" href="#2-the-diamond-pattern">2. The Diamond Pattern</a>
+<a class="toc-link level-3" href="#contractsdiamondsol"><code>contracts/Diamond.sol</code></a>
+<a class="toc-link level-3" href="#contractslibrariescorelibdiamondsol"><code>contracts/libraries/core/LibDiamond.sol</code></a>
+<a class="toc-link level-3" href="#contractsupgradeinitializerdiamondinitsol"><code>contracts/upgradeInitializer/DiamondInit.sol</code></a>
+<a class="toc-link level-3" href="#selector-dispatch">Selector Dispatch</a>
+<a class="toc-link level-2" href="#3-upgrades">3. Upgrades</a>
+<a class="toc-link level-3" href="#upgrade-risks">Upgrade risks</a>
+<a class="toc-link level-2" href="#4-facet-inventory">4. Facet Inventory</a>
+<a class="toc-link level-2" href="#5-storage-architecture">5. Storage Architecture</a>
+<a class="toc-link level-2" href="#6-library-architecture">6. Library Architecture</a>
+<a class="toc-link level-2" href="#7-cross-cutting-concerns">7. Cross-Cutting Concerns</a>
+<a class="toc-link level-3" href="#reentrancy">Reentrancy</a>
+<a class="toc-link level-3" href="#pausing">Pausing</a>
+<a class="toc-link level-3" href="#suspension">Suspension</a>
+<a class="toc-link level-3" href="#decimal-normalization">Decimal Normalization</a>
+<a class="toc-link level-3" href="#bilateral-nonces">Bilateral Nonces</a>
+<a class="toc-link level-3" href="#signature-replay">Signature Replay</a>
+<a class="toc-link level-2" href="#8-external-interfaces">8. External Interfaces</a>
+<a class="toc-link level-2" href="#9-helper-contract-layer-off-diamond">9. Helper Contract Layer (Off-Diamond)</a>
+<a class="toc-link level-2" href="#10-lifecycle-map">10. Lifecycle Map</a>
+<a class="toc-link level-2" href="#11-code-base-map">11. Code-Base Map</a>
+<a class="toc-link level-2" href="#12-compilation-and-build-context">12. Compilation and Build Context</a>
+<a class="toc-link level-2" href="#13-known-constraints-and-design-notes">13. Known Constraints and Design Notes</a>
+</div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1>Architecture</h1><p class="hero-copy">Diamond routing, domain libraries, storage, and helper contracts.</p></div></div></header>
+<article class="doc-article" id="full-document"><p>SYMM Options Core is an EIP-2535 Diamond options-trading protocol implemented in Solidity. The contracts compile with solc 0.8.25 (<code>evmVersion: cancun</code>, <code>viaIR</code>). State and behavior are split across a small set of facets sharing a single delegatecall context (<code>contracts/Diamond.sol</code>). All persistent state lives in domain-scoped diamond storage libraries; control flow is mediated by layered libraries (core, services, models, utils). This document is the entry point and orientation map for the codebase. Per-selector behavior, per-storage layout, role/pause matrices, event/error catalogs, and end-to-end flows live in the dedicated reference documents linked throughout.</p>
+<p>Companion documents:</p>
+<ul>
+<li><a href="facets.html">facets</a> — per-facet, per-selector reference</li>
+<li><a href="types-and-storage.html">types-and-storage</a> — storage layouts, structs, enums, slot computation</li>
+<li><a href="roles-and-pauses.html">roles-and-pauses</a> — role catalog, pause flag matrix, modifiers</li>
+<li><a href="events.html">events</a> — event catalog</li>
+<li><a href="errors.html">errors</a> — error catalog</li>
+<li><a href="../index.html#flows">flows/</a> — deposit, intent, fill, settle, liquidate, withdraw end-to-end traces</li>
+<li><a href="../index.html#concepts">concepts/</a> — domain concept primers (intents, trades, accounts, fees, oracles)</li>
+<li><a href="security.html">security</a> — invariants, trust assumptions, audit-relevant notes</li>
+<li><a href="testing.html">testing</a> — test layout and execution</li>
+<li><a href="deployment-and-operations.html">deployment-and-operations</a> — deployment scripts and operational playbook</li>
+</ul>
+<hr>
+<h2 id="1-big-picture-overview">1. Big-Picture Overview</h2>
+<p>The on-chain surface is a single <code>Diamond</code> contract whose <code>fallback</code> resolves the call&#39;s 4-byte selector to a facet address held in <code>LibDiamond</code> storage and <code>delegatecall</code>s it. A facet is a stateless implementation contract: every read and write happens against the Diamond&#39;s storage slots, addressable via the diamond-storage pointer pattern. Around the Diamond sit a set of off-Diamond helpers — <code>MultiAccount</code>, <code>SymmioPartyA</code>, <code>SymmioPartyB</code>, <code>InstantLayer</code>, <code>TradeNFT</code>, <code>MuonOracle</code>, <code>SignatureVerifier</code> — that compose user-friendly account abstractions, signed-call execution, and oracle/signature verification on top of the raw selector surface.</p>
+<pre><code class="language-mermaid">flowchart LR
+    User[End user / EOA]
+    MA[MultiAccount]
+    PA[SymmioPartyA]
+    PB[SymmioPartyB]
+    IL[InstantLayer]
+    Diamond[Diamond.sol fallback]
+    Lib[Layered libraries]
+    Storage[(Diamond storage)]
+    Oracle[MuonOracle]
+    NFT[TradeNFT]
+
+    User --&gt; MA
+    User --&gt; PB
+    User --&gt; IL
+    MA --&gt; PA
+    PA --&gt; Diamond
+    PB --&gt; Diamond
+    IL --&gt; Diamond
+    Diamond --&gt;|selector lookup| Lib
+    Lib --&gt; Storage
+    Diamond &lt;--&gt; NFT
+    Lib -.-&gt;|verify sig| Oracle
+</code></pre>
+<p>The Diamond never holds the actual logic; logic always lives in facets and libraries. The Diamond never holds long-lived per-user balances in tokens — collateral is pulled in on <code>deposit*</code> and pushed out on <code>completeWithdraw</code>, and accounting happens in 18-decimal normalized units.</p>
+<hr>
+<h2 id="2-the-diamond-pattern">2. The Diamond Pattern</h2>
+<p>The Diamond implements <a href="https://eips.ethereum.org/EIPS/eip-2535">EIP-2535</a>. Three pieces collaborate.</p>
+<h3 id="contractsdiamondsol"><code>contracts/Diamond.sol</code></h3>
+<p>The constructor (<code>contracts/Diamond.sol:17</code>) sets the contract owner via <code>LibDiamond.setContractOwner</code> and registers the single <code>diamondCut(FacetCut[],address,bytes)</code> selector against the supplied <code>_diamondCutFacet</code>. Every other selector is added later via cuts. The fallback (<code>contracts/Diamond.sol:34</code>) loads the diamond-storage struct at the deterministic slot <code>keccak256(&quot;diamond.standard.diamond.storage&quot;)</code>, looks up <code>facetAddressAndSelectorPosition[msg.sig].facetAddress</code>, reverts <code>SystemErrors.FunctionDoesNotExist(selector)</code> if unknown, otherwise <code>delegatecall</code>s into the facet and bubbles return data verbatim. <code>receive()</code> is payable but the rest of the protocol does not use ETH.</p>
+<h3 id="contractslibrariescorelibdiamondsol"><code>contracts/libraries/core/LibDiamond.sol</code></h3>
+<p><code>LibDiamond</code> defines <code>DiamondStorage</code> (<code>contracts/libraries/core/LibDiamond.sol:20</code>) holding:</p>
+<ul>
+<li><code>mapping(bytes4 =&gt; FacetAddressAndSelectorPosition)</code> — primary selector dispatch table.</li>
+<li><code>bytes4[] selectors</code> — flat enumeration used by Loupe and removal bookkeeping.</li>
+<li><code>mapping(bytes4 =&gt; bool) supportedInterfaces</code> — ERC-165 advertisement.</li>
+<li><code>address contractOwner; address pendingOwner</code> — two-step ownership.</li>
+</ul>
+<p>Ownership transfer is two-step: <code>transferOwnership</code> sets <code>pendingOwner</code> and emits <code>OwnershipTransferStarted</code>; <code>acceptOwnership</code> (called by the pending account) finalizes and emits <code>OwnershipTransferred</code>. Only <code>enforceIsContractOwner()</code> may invoke <code>diamondCut</code>. Cut helpers <code>addFunctions</code> / <code>replaceFunctions</code> / <code>removeFunctions</code> enforce: no zero facet address (Add/Replace), zero facet address required (Remove), no overwriting an existing selector with Add, no replace into the Diamond itself (immutable functions), and no replace with the same facet. After the selector mutations, <code>initializeDiamondCut(_init,_calldata)</code> runs the optional initializer via <code>delegatecall</code> so that initialization can write the Diamond&#39;s storage slots; init failure bubbles up the inner revert string or surfaces <code>SystemErrors.InitFunctionReverted</code>.</p>
+<h3 id="contractsupgradeinitializerdiamondinitsol"><code>contracts/upgradeInitializer/DiamondInit.sol</code></h3>
+<p>Run once at deployment via <code>diamondCut(..., _init=DiamondInit, _calldata=abi.encodeCall(DiamondInit.init,()))</code>. It seeds <code>supportedInterfaces[type(IERC165).interfaceId | type(IDiamondCut).interfaceId | type(IDiamondLoupe).interfaceId] = true</code>. Subsequent cuts may re-run a different initializer to migrate state.</p>
+<h3 id="selector-dispatch">Selector Dispatch</h3>
+<p>Selector lookup is a pure storage read; cost is one <code>SLOAD</code> plus the delegatecall. Function selection is global across the Diamond — every facet contributes a disjoint selector set. The <code>DiamondLoupe</code> facet exposes the <code>selectors</code> array and the dispatch table for off-chain inspection.</p>
+<hr>
+<h2 id="3-upgrades">3. Upgrades</h2>
+<p>Upgrades are performed with <code>DiamondCutFacet.diamondCut(FacetCut[] calldata _diamondCut, address _init, bytes calldata _calldata)</code> (<code>contracts/facets/DiamondCut/DiamondCutFacet.sol:20</code>). This facet entry point bumps <code>AppStorage.layout().version</code>, asserts the caller is the contract owner via <code>LibDiamond.enforceIsContractOwner</code>, and delegates to <code>LibDiamond.diamondCut</code>.</p>
+<p>A <code>FacetCut</code> carries:</p>
+<pre><code class="language-solidity">struct FacetCut {
+	address facetAddress;
+	FacetCutAction action; // Add | Replace | Remove
+	bytes4[] functionSelectors;
+}
+</code></pre>
+<pre><code class="language-mermaid">sequenceDiagram
+    actor Owner
+    participant Diamond
+    participant Cut as DiamondCutFacet
+    participant Lib as LibDiamond
+    participant Init as Initializer (optional)
+    Owner-&gt;&gt;Diamond: diamondCut([FacetCut...], _init, _calldata)
+    Diamond-&gt;&gt;Cut: delegatecall(diamondCut(...))
+    Cut-&gt;&gt;Cut: AppStorage.version++
+    Cut-&gt;&gt;Lib: enforceIsContractOwner()
+    Cut-&gt;&gt;Lib: diamondCut(cuts, _init, _calldata)
+    loop for each FacetCut
+        alt action == Add
+            Lib-&gt;&gt;Lib: addFunctions(facet, selectors)
+        else action == Replace
+            Lib-&gt;&gt;Lib: replaceFunctions(facet, selectors)
+        else action == Remove
+            Lib-&gt;&gt;Lib: removeFunctions(address(0), selectors)
+        end
+    end
+    Lib--&gt;&gt;Diamond: emit DiamondCut
+    opt _init != address(0)
+        Lib-&gt;&gt;Init: delegatecall(_calldata)
+        Init--&gt;&gt;Lib: bubbles or InitFunctionReverted
+    end
+</code></pre>
+<p>Notes on the cut semantics:</p>
+<ul>
+<li><strong>Add</strong> requires <code>facetAddress != 0</code>, requires the facet to have code, and rejects adding an already-registered selector (<code>CannotAddExistingFunction</code>).</li>
+<li><strong>Replace</strong> requires the new facet address to differ from the current one (<code>IdenticalReplace</code>), forbids replacing immutable functions defined on the Diamond itself (<code>ImmutableReplace</code>), and requires the selector to already exist (<code>NoReplaceTarget</code>).</li>
+<li><strong>Remove</strong> requires <code>facetAddress == address(0)</code> (<code>InvalidRemoveFacetAddress</code>) and uses swap-and-pop on the <code>selectors</code> array.</li>
+<li>The optional <code>_init</code> runs as a <code>delegatecall</code> so it shares the Diamond&#39;s storage. Pass <code>_init=address(0)</code> and empty calldata to skip; pass either both empty or both nonzero — the mismatched cases revert <code>ZeroAddressWithNonemptyCalldata</code> / <code>NonZeroAddressWithEmptyCalldata</code>.</li>
+</ul>
+<h3 id="upgrade-risks">Upgrade risks</h3>
+<ul>
+<li><strong>Storage layout drift</strong>: every storage library uses an explicit named slot, so adding a facet does not collide. Adding/removing fields inside a <code>Layout</code> struct must respect the existing tail order, since each <code>Layout</code> occupies sequential slots starting from a single base. Initializer scripts must migrate any field that changes type or interpretation.</li>
+<li><strong>Selector ownership</strong>: a single selector can only be served by one facet. Renames of a Solidity function silently change the selector and orphan the old one; deployment scripts must compare against the current dispatch table.</li>
+<li><strong>Init script idempotency</strong>: an init script that double-flips a one-shot flag will brick subsequent cuts. Initializers should be designed for the specific cut they accompany and never reused blindly.</li>
+<li><strong><code>AppStorage.version</code></strong>: bumped on every cut; downstream off-chain consumers can watch this for cache invalidation.</li>
+<li><strong>Owner key</strong>: the contract owner is an unchecked single key; protect via multisig/timelock at deployment.</li>
+</ul>
+<p>See also <a href="deployment-and-operations.html">deployment-and-operations</a> for the operational checklist.</p>
+<hr>
+<h2 id="4-facet-inventory">4. Facet Inventory</h2>
+<p>Deployed facets (from <code>common/constants.ts</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Facet</th>
+<th>Responsibility</th>
+<th>Pause flags respected</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>AccountFacet</code></td>
+<td>Deposits, virtual deposits, internal/external transfers, withdrawal initiate/cancel/complete, express withdraw, sync, allocate/deallocate, reserve.</td>
+<td><code>globalPaused</code>, <code>depositingPaused</code>, <code>withdrawingPaused</code>, <code>internalTransferPaused</code>, <code>externalTransferPaused</code>, <code>expressWithdrawPaused</code>, per-side party pause, suspension, withdrawal suspension.</td>
+<td><a href="facets.html#accountfacet">facets#AccountFacet</a></td>
+</tr>
+<tr>
+<td><code>ClearingHouseFacet</code></td>
+<td>Liquidation flagging and execution, collateral confiscation/distribution, liquidation trade closure, liquidation intent cancellation.</td>
+<td><code>globalPaused</code>, <code>liquidationPaused</code>, <code>CLEARING_HOUSE_ROLE</code> gate.</td>
+<td><a href="facets.html#clearinghousefacet">facets#ClearingHouseFacet</a></td>
+</tr>
+<tr>
+<td><code>ControlFacet</code></td>
+<td>Roles, collateral whitelist, fees, symbols, oracles, timing parameters, Party B config, pause/unpause, suspension, instant-layer flag, balance limits.</td>
+<td>Role-gated; toggles all other pause flags.</td>
+<td><a href="facets.html#controlfacet">facets#ControlFacet</a></td>
+</tr>
+<tr>
+<td><code>CounterPartyRelationsFacet</code></td>
+<td>Party A binding to Party B, unbinding cooldown, instant action mode activate/deactivate.</td>
+<td><code>globalPaused</code>, per-side party pause, suspension.</td>
+<td><a href="facets.html#counterpartyrelationsfacet">facets#CounterPartyRelationsFacet</a></td>
+</tr>
+<tr>
+<td><code>DiamondCutFacet</code></td>
+<td>EIP-2535 cut entry point.</td>
+<td>Owner-gated only.</td>
+<td><a href="facets.html#diamondcutfacet">facets#DiamondCutFacet</a></td>
+</tr>
+<tr>
+<td><code>DiamondLoupeFacet</code></td>
+<td>EIP-2535 introspection.</td>
+<td>None.</td>
+<td><a href="facets.html#diamondloupefacet">facets#DiamondLoupeFacet</a></td>
+</tr>
+<tr>
+<td><code>ForceActionsFacet</code></td>
+<td>Timeout-based forced cancellation of cancel-pending open and close intents.</td>
+<td><code>globalPaused</code>, third-party action pause, per-side party pause.</td>
+<td><a href="facets.html#forceactionsfacet">facets#ForceActionsFacet</a></td>
+</tr>
+<tr>
+<td><code>PartyAOpenFacet</code></td>
+<td>Open intent creation, expiration, Party A cancellation requests.</td>
+<td><code>globalPaused</code>, <code>partyAActionsPaused</code>, suspension, instant-mode gate.</td>
+<td><a href="facets.html#partyaopenfacet">facets#PartyAOpenFacet</a></td>
+</tr>
+<tr>
+<td><code>PartyACloseFacet</code></td>
+<td>Close intent creation, expiration, Party A cancellation requests.</td>
+<td><code>globalPaused</code>, <code>partyAActionsPaused</code>, suspension, instant-mode gate.</td>
+<td><a href="facets.html#partyaclosefacet">facets#PartyACloseFacet</a></td>
+</tr>
+<tr>
+<td><code>PartyBOpenFacet</code></td>
+<td>Party B lock, unlock, accept-cancel, fill open intents.</td>
+<td><code>globalPaused</code>, <code>partyBActionsPaused</code>, Party B emergency mode, exclusive window.</td>
+<td><a href="facets.html#partybopenfacet">facets#PartyBOpenFacet</a></td>
+</tr>
+<tr>
+<td><code>PartyBCloseFacet</code></td>
+<td>Party B fill close intents, accept-cancel.</td>
+<td><code>globalPaused</code>, <code>partyBActionsPaused</code>, Party B emergency mode.</td>
+<td><a href="facets.html#partybclosefacet">facets#PartyBCloseFacet</a></td>
+</tr>
+<tr>
+<td><code>TradeFacet</code></td>
+<td>Trade transfer, NFT-driven ownership sync, settlement execution, trade NFT minting.</td>
+<td><code>globalPaused</code>, NFT-related pauses, party pause.</td>
+<td><a href="facets.html#tradefacet">facets#TradeFacet</a></td>
+</tr>
+<tr>
+<td><code>ViewFacet</code></td>
+<td>Read-only state and helper computations (PnL, fees).</td>
+<td>None.</td>
+<td><a href="facets.html#viewfacet">facets#ViewFacet</a></td>
+</tr>
+</tbody></table>
+<p>The exhaustive selector list (signature, modifiers, preconditions, effects, events, reverts) is in <a href="facets.html">facets</a>. Pause-flag-to-modifier mapping lives in <a href="roles-and-pauses.html">roles-and-pauses</a>.</p>
+<hr>
+<h2 id="5-storage-architecture">5. Storage Architecture</h2>
+<p>Storage uses the diamond-storage pattern: each storage library declares a <code>bytes32</code> slot derived from <code>keccak256(&quot;diamond.standard.storage.&lt;domain&gt;&quot;)</code> and exposes a <code>layout()</code> helper that loads a struct pointer from that slot via inline assembly. Because each domain owns its own slot, layouts can grow independently without colliding, and cuts can introduce new domains without touching existing ones. All amounts inside the Diamond are normalized to 18 decimals at the boundary of <code>AccountFacet</code>.</p>
+<p><code>AppStorage</code> (<code>contracts/storages/AppStorage.sol</code>) anchors global parameters: protocol <code>version</code>, <code>callFromInstantLayer</code> flag, per-collateral <code>balanceLimitPerUser</code>, <code>maxCloseOrdersLength</code>, <code>maxTradePerPartyA</code>, oracle and signature verifier addresses, whitelisted collateral, signature replay set (<code>isSigUsed</code>), Party A/B deallocation cooldowns, force-cancel timeouts, Party B exclusive window, settlement and uPnL signature validity periods, Party B configurations, and per-Party-B supported symbol type set.</p>
+<p>Other domain-scoped libraries (referenced from <code>contracts/storages/</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Storage library</th>
+<th>Main data</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>AppStorage</code></td>
+<td>Global parameters above.</td>
+</tr>
+<tr>
+<td><code>AccountStorage</code></td>
+<td>Isolated balances, release intervals, nonces, withdrawal records, express-withdraw provider config, external transfer targets.</td>
+</tr>
+<tr>
+<td><code>OpenIntentStorage</code></td>
+<td>Open intents, active open intent indexes, last open intent id, deferred Party B sell escrows.</td>
+</tr>
+<tr>
+<td><code>CloseIntentStorage</code></td>
+<td>Close intents by id and by trade, last close intent id.</td>
+</tr>
+<tr>
+<td><code>TradeStorage</code></td>
+<td>Trades, active Party A/Party B trade indexes, last trade id.</td>
+</tr>
+<tr>
+<td><code>SymbolStorage</code></td>
+<td>Oracles, symbols, symbol validity, collateral, option type, platform fees.</td>
+</tr>
+<tr>
+<td><code>FeeManagementStorage</code></td>
+<td>Default fee collector, affiliate status/collectors, affiliate fee config.</td>
+</tr>
+<tr>
+<td><code>LiquidationStorage</code></td>
+<td>Liquidation details, in-progress liquidation id lookup.</td>
+</tr>
+<tr>
+<td><code>CounterPartyRelationsStorage</code></td>
+<td>Bound Party B, unbinding requests, instant action mode, instant mode deactivation cooldown.</td>
+</tr>
+<tr>
+<td><code>StateControlStorage</code></td>
+<td>Pause flags, Party B emergency modes, suspended addresses, suspended withdrawals.</td>
+</tr>
+<tr>
+<td><code>AccessControlStorage</code></td>
+<td>Role membership, reentrancy guard status.</td>
+</tr>
+<tr>
+<td><code>LibDiamond.DiamondStorage</code></td>
+<td>Selector dispatch, loupe selectors array, supported interfaces, owner.</td>
+</tr>
+</tbody></table>
+<p>For the full struct layouts, slot constants, and field types see <a href="types-and-storage.html">types-and-storage</a>.</p>
+<pre><code class="language-mermaid">flowchart LR
+    subgraph Storages
+        AS[AppStorage]
+        AcS[AccountStorage]
+        OIS[OpenIntentStorage]
+        CIS[CloseIntentStorage]
+        TS[TradeStorage]
+        SS[SymbolStorage]
+        FM[FeeManagementStorage]
+        LS[LiquidationStorage]
+        CR[CounterPartyRelationsStorage]
+        SC[StateControlStorage]
+        AC[AccessControlStorage]
+    end
+
+    AccountFacet --&gt; AcS
+    AccountFacet --&gt; AS
+    AccountFacet --&gt; SC
+    AccountFacet --&gt; AC
+    PartyAOpenFacet --&gt; OIS
+    PartyAOpenFacet --&gt; SS
+    PartyAOpenFacet --&gt; AcS
+    PartyAOpenFacet --&gt; AS
+    PartyBOpenFacet --&gt; OIS
+    PartyBOpenFacet --&gt; TS
+    PartyBOpenFacet --&gt; AcS
+    PartyACloseFacet --&gt; CIS
+    PartyACloseFacet --&gt; TS
+    PartyBCloseFacet --&gt; CIS
+    PartyBCloseFacet --&gt; TS
+    PartyBCloseFacet --&gt; AcS
+    TradeFacet --&gt; TS
+    TradeFacet --&gt; AcS
+    TradeFacet --&gt; SS
+    TradeFacet --&gt; FM
+    ForceActionsFacet --&gt; OIS
+    ForceActionsFacet --&gt; CIS
+    ClearingHouseFacet --&gt; LS
+    ClearingHouseFacet --&gt; TS
+    ClearingHouseFacet --&gt; AcS
+    ClearingHouseFacet --&gt; CIS
+    ControlFacet --&gt; AS
+    ControlFacet --&gt; SS
+    ControlFacet --&gt; SC
+    ControlFacet --&gt; AC
+    ControlFacet --&gt; FM
+    CounterPartyRelationsFacet --&gt; CR
+    CounterPartyRelationsFacet --&gt; AS
+    ViewFacet -.read-only.-&gt; AcS
+    ViewFacet -.read-only.-&gt; TS
+    ViewFacet -.read-only.-&gt; OIS
+    ViewFacet -.read-only.-&gt; CIS
+    ViewFacet -.read-only.-&gt; SS
+</code></pre>
+<hr>
+<h2 id="6-library-architecture">6. Library Architecture</h2>
+<p>Libraries under <code>contracts/libraries/</code> are layered. Higher layers depend on lower; lower layers never call upward. Service libraries are the workhorse implementation behind facet entry points; model libraries provide pure manipulators on a single struct family; core libraries provide protocol-wide primitives (Diamond, accessibility, pausing, reentrancy, Muon verification); util libraries are stateless helpers (decimals, math, signatures).</p>
+<pre><code class="language-mermaid">classDiagram
+    class Facets
+    class Services
+    class Models
+    class Core
+    class Utils
+    Facets ..&gt; Services
+    Facets ..&gt; Core
+    Services ..&gt; Models
+    Services ..&gt; Core
+    Services ..&gt; Utils
+    Models ..&gt; Utils
+    Models ..&gt; Core
+    Core ..&gt; Utils
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Examples</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Core (<code>libraries/core</code>)</td>
+<td><code>LibDiamond</code>, <code>LibAccessibility</code>, <code>LibPausable</code>, <code>LibMuon</code>, <code>LibReentrancy</code></td>
+<td>Diamond plumbing, role checks, pause checks, oracle signature verification, reentrancy guard.</td>
+</tr>
+<tr>
+<td>Services (<code>libraries/services</code>)</td>
+<td><code>AccountService</code>, <code>OpenIntentService</code>, <code>CloseIntentService</code>, <code>TradeService</code>, <code>LiquidationService</code>, <code>FeeService</code>, <code>SettlementService</code></td>
+<td>Facet-facing business operations. Each facet entry point is a thin shell that applies modifiers and forwards to a service function.</td>
+</tr>
+<tr>
+<td>Models (<code>libraries/models</code>)</td>
+<td><code>IntentModel</code>, <code>TradeModel</code>, <code>WithdrawModel</code>, <code>SymbolModel</code></td>
+<td>Struct-local helpers (state transitions, getters, validators). Stateless w.r.t. anything outside the passed-in struct.</td>
+</tr>
+<tr>
+<td>Utils (<code>libraries/utils</code>)</td>
+<td><code>DecimalsLib</code>, <code>LibSignature</code>, <code>LibMath</code></td>
+<td>Pure functions: 18-decimal normalization, EIP-712 hashing/recovery, math helpers.</td>
+</tr>
+</tbody></table>
+<p>Facets should contain no inline logic beyond modifier application and a service call. Service functions perform precondition checks, mutate domain storage, and emit events.</p>
+<hr>
+<h2 id="7-cross-cutting-concerns">7. Cross-Cutting Concerns</h2>
+<h3 id="reentrancy">Reentrancy</h3>
+<p><code>LibReentrancy</code> (used through the <code>nonReentrant</code> modifier in <code>Accessibility</code>) flips a guard slot in <code>AccessControlStorage</code>. Token-touching paths — <code>deposit*</code>, <code>externalTransfer</code>, <code>initiateExpressWithdraw</code>, <code>completeWithdraw</code> — all carry <code>nonReentrant</code>. Internal accounting paths that never touch external code generally omit it; see the per-selector <code>Modifiers</code> lines in <a href="facets.html">facets</a>.</p>
+<h3 id="pausing">Pausing</h3>
+<p><code>StateControlStorage</code> holds independent pause flags: global, deposit, withdraw, internal transfer, external transfer, express withdraw, Party A actions, Party B actions, third-party actions, liquidation, instant layer, plus per-side pause maps. Pause modifiers are defined on the <code>Pausable</code> base and applied on each facet selector that should respect the flag. The <code>PAUSER_ROLE</code> flips flags on; <code>UNPAUSER_ROLE</code> flips them off. Each Party B may also enter an emergency mode (per-Party-B pause). Full flag-to-selector matrix is in <a href="roles-and-pauses.html">roles-and-pauses</a>.</p>
+<h3 id="suspension">Suspension</h3>
+<p><code>SUSPENDER_ROLE</code> may suspend an address (any incoming or outgoing user operation reverts) and may also suspend a specific withdrawal id (to halt completion of a withdrawal under dispute). <code>DISPUTER_ROLE</code> may restore disputed withdrawals.</p>
+<h3 id="decimal-normalization">Decimal Normalization</h3>
+<p>User-facing token amounts enter through <code>AccountFacet</code> deposit functions and leave through <code>completeWithdraw</code>. <code>DecimalsLib</code> normalizes to 18 decimals on entry and denormalizes on exit. All storage and inter-facet arithmetic uses 18-decimal units, removing decimals as a foot-gun from the rest of the codebase.</p>
+<h3 id="bilateral-nonces">Bilateral Nonces</h3>
+<p>Each (Party A, Party B) pair tracks a nonce in <code>AccountStorage</code> that increments on accounting-affecting events (allocations, fills, settlements, liquidations). Off-chain signatures bound to a stale nonce are rejected. The mechanism, its rationale, and the off-chain signing protocol are documented in <a href="account-balances.html">account-balances</a>.</p>
+<h3 id="signature-replay">Signature Replay</h3>
+<p><code>AppStorage.isSigUsed</code> (keyed by signature hash) marks every consumed signature to prevent replay across the system. <code>AppStorage.signatureVerifier</code> points at the active <code>SignatureVerifier</code> helper for EOA + ERC-1271 verification.</p>
+<hr>
+<h2 id="8-external-interfaces">8. External Interfaces</h2>
+<table>
+<thead>
+<tr>
+<th>Interface</th>
+<th>Expected behavior</th>
+<th>Caller inside Diamond</th>
+<th>Security note</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>IPriceOracle</code></td>
+<td>Returns the price of the fee token denominated in collateral, used to size up-front fees on intent creation.</td>
+<td><code>OpenIntentService</code> (during open intent creation).</td>
+<td>Owner-set address (<code>AppStorage.priceOracleAddress</code>). Stale or manipulable pricing inflates/deflates user-paid fees; oracle must be a trusted source or apply on-chain TWAP smoothing.</td>
+</tr>
+<tr>
+<td><code>IExpressWithdrawProvider</code></td>
+<td>Receives an express withdraw request, immediately funds the recipient, and is repaid from the locked withdraw record on <code>completeWithdraw</code>.</td>
+<td><code>AccountService</code>.</td>
+<td>Per-collateral configurable. Provider must be solvent and trusted; a malicious provider can drain the locked withdraw on completion.</td>
+</tr>
+<tr>
+<td><code>IExternalTransferTarget</code></td>
+<td>Receives <code>deposit(collateral, user, amount)</code> after the Diamond pushes tokens, integrating the transfer with an external system (e.g., a bridge or CEX).</td>
+<td><code>AccountService.externalTransfer</code>.</td>
+<td>Whitelisted per collateral. Must not re-enter the Diamond and must accept the standardized 18-decimal amount conversion done by the helper.</td>
+</tr>
+<tr>
+<td><code>IMuonOracle</code></td>
+<td>Verifies TSS + gateway signatures over (price, uPnL, settlement) payloads; returns recovered identity for replay checking.</td>
+<td><code>LibMuon</code> (used by settlement, uPnL checks).</td>
+<td>Trust root for fairness. Compromise of the Muon TSS allows arbitrary settlement/PnL forgeries.</td>
+</tr>
+<tr>
+<td><code>ITradeNFT</code></td>
+<td>ERC-721 contract minted on trade open; its ownership transfer drives <code>TradeFacet.transferTradeFromNFT</code>, rebinding the trade to the new owner.</td>
+<td><code>TradeFacet</code>.</td>
+<td>Diamond-side address is set by <code>SETTER_ROLE</code>. NFT contract must restrict mints to the Diamond and call back into <code>transferTradeFromNFT</code> synchronously.</td>
+</tr>
+<tr>
+<td><code>ISignatureVerifier</code></td>
+<td>Verifies arbitrary EOA or ERC-1271 signatures used by InstantLayer and elsewhere.</td>
+<td>Many facets via <code>AppStorage.signatureVerifier</code>.</td>
+<td>Must implement the agreed verification semantics; replacing it with a permissive verifier opens broad signature forgery.</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="9-helper-contract-layer-off-diamond">9. Helper Contract Layer (Off-Diamond)</h2>
+<p>These contracts live next to the Diamond but are independent deployments. They do not share storage; they communicate via Diamond function calls, NFT transfers, and signed messages.</p>
+<p><strong>MultiAccount.</strong> Factory and router for <code>SymmioPartyA</code> smart accounts. A user creates a <code>SymmioPartyA</code> through <code>MultiAccount</code>, then calls into the Diamond by routing through <code>MultiAccount</code> (which forwards to the account, which forwards to the Diamond). It validates account-issued signatures via ERC-1271 and forwards calls originated by the user or by <code>InstantLayer</code>. See <a href="account-balances.html">account-balances</a>.</p>
+<p><strong>SymmioPartyA.</strong> Minimal account contract that proxies calls to the Diamond as <code>msg.sender</code>. Holds NFTs (trade NFTs in particular) and may transfer them on demand. The Diamond sees <code>SymmioPartyA</code> as the user.</p>
+<p><strong>SymmioPartyB.</strong> Upgradeable executor used by the Party B operator. Restricts which selectors can be invoked, supports multicall, manages token approvals, has its own pausability, and validates signatures via ERC-1271. The Diamond sees <code>SymmioPartyB</code> as the Party B principal.</p>
+<p><strong>InstantLayer.</strong> EIP-712 operation executor. Accepts a Party-A-signed and/or Party-B-signed payload describing a Diamond call, verifies the signatures, sets <code>AppStorage.callFromInstantLayer = true</code> for the duration of the call, and dispatches into the Diamond. Templates and batches let Party A pre-authorize a class of operations. Replay protection is enforced via <code>AppStorage.isSigUsed</code>. Selectors that are sensitive to delegated execution (e.g., binding, internal transfers) reject calls when <code>callFromInstantLayer</code> is true via <code>whenInstantModeIsNotActive</code>.</p>
+<p><strong>TradeNFT.</strong> ERC-721 minted when a trade opens. Ownership of the NFT <em>is</em> ownership of the trade: any transfer triggers a Diamond call (<code>TradeFacet.transferTradeFromNFT</code>) that updates <code>TradeStorage</code>&#39;s active trade indexes. Used to make trades transferable / collateralizable off-protocol. See <a href="close-and-settlement.html">close-and-settlement</a>.</p>
+<p><strong>MuonOracle.</strong> Wraps the Muon TSS verifier. Diamond-side verification (<code>LibMuon</code>) calls into it to validate price and PnL attestations.</p>
+<p><strong>SignatureVerifier.</strong> Stateless EOA + ERC-1271 verification helper, registered at <code>AppStorage.signatureVerifier</code>.</p>
+<hr>
+<h2 id="10-lifecycle-map">10. Lifecycle Map</h2>
+<p>A trade&#39;s full life crosses many facets. The map below names each step and points at the flows doc that traces it in detail.</p>
+<pre><code class="language-mermaid">flowchart TD
+    A[deposit / depositFor / virtualDepositFor] --&gt; B[allocate]
+    B --&gt; C[Party A: sendOpenIntent]
+    C --&gt; D[Party B: lockOpenIntent]
+    D --&gt; E[Party B: fillOpenIntent]
+    E --&gt; F[Trade opened]
+    F --&gt;|Party A wants out| G[Party A: sendCloseIntent]
+    G --&gt; H[Party B: fillCloseIntent]
+    F --&gt;|expiry &amp; settlement| I[settleTrade]
+    F --&gt;|undercollateralized| J[ClearingHouse: liquidate]
+    H --&gt; K[Trade closed]
+    I --&gt; K
+    J --&gt; K
+    K --&gt; L[deallocate]
+    L --&gt; M[initiateWithdraw / initiateExpressWithdraw]
+    M --&gt; N[completeWithdraw]
+
+    classDef flow fill:#eef,stroke:#88a,stroke-width:1px;
+    class A,B,M,N flow
+</code></pre>
+<p>Step-by-step traces:</p>
+<ul>
+<li>Deposit / allocate / withdraw: <a href="account-balances.html">account-balances</a></li>
+<li>Open intent → lock → fill: <a href="open-intents.html">open-intents</a></li>
+<li>Close intent → fill: <a href="close-and-settlement.html">close-and-settlement</a></li>
+<li>Settlement at expiry: <a href="close-and-settlement.html">close-and-settlement</a></li>
+<li>Liquidation: <a href="liquidation-and-force-actions.html">liquidation-and-force-actions</a></li>
+</ul>
+<hr>
+<h2 id="11-code-base-map">11. Code-Base Map</h2>
+<p>Top-level layout under <code>contracts/</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Contents</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>contracts/Diamond.sol</code></td>
+<td>EIP-2535 Diamond entry contract; constructor and fallback.</td>
+</tr>
+<tr>
+<td><code>contracts/facets/</code></td>
+<td>One subdirectory per facet: each holds the facet contract and its interface(s).</td>
+</tr>
+<tr>
+<td><code>contracts/libraries/core/</code></td>
+<td>Diamond plumbing, accessibility, pausability, reentrancy, Muon verification.</td>
+</tr>
+<tr>
+<td><code>contracts/libraries/services/</code></td>
+<td>Per-domain business logic invoked from facets.</td>
+</tr>
+<tr>
+<td><code>contracts/libraries/models/</code></td>
+<td>Struct-local helpers and state transitions.</td>
+</tr>
+<tr>
+<td><code>contracts/libraries/utils/</code></td>
+<td>Pure utilities: decimal normalization, math, signature recovery.</td>
+</tr>
+<tr>
+<td><code>contracts/storages/</code></td>
+<td>One library per storage domain; each declares a fixed slot and a <code>Layout</code> struct.</td>
+</tr>
+<tr>
+<td><code>contracts/types/</code></td>
+<td>Cross-domain enums and structs (intent state, trade state, etc.).</td>
+</tr>
+<tr>
+<td><code>contracts/errors/</code></td>
+<td>Custom error catalogs (<code>SystemErrors</code>, per-domain errors).</td>
+</tr>
+<tr>
+<td><code>contracts/interfaces/</code></td>
+<td>External-facing interfaces (<code>IERC165</code>, oracle/provider/target interfaces).</td>
+</tr>
+<tr>
+<td><code>contracts/upgradeInitializer/</code></td>
+<td>One-shot initializer contracts run via <code>diamondCut</code>.</td>
+</tr>
+<tr>
+<td><code>contracts/multiAccount/</code></td>
+<td><code>MultiAccount</code> and <code>SymmioPartyA</code>.</td>
+</tr>
+<tr>
+<td><code>contracts/symmioPartyB/</code></td>
+<td>Upgradeable Party B executor.</td>
+</tr>
+<tr>
+<td><code>contracts/instantLayer/</code></td>
+<td><code>InstantLayer</code> EIP-712 dispatcher.</td>
+</tr>
+<tr>
+<td><code>contracts/tradeNFT/</code></td>
+<td>ERC-721 trade NFT contract.</td>
+</tr>
+<tr>
+<td><code>contracts/oracle/</code></td>
+<td><code>MuonOracle</code>, <code>SignatureVerifier</code>.</td>
+</tr>
+<tr>
+<td><code>contracts/test/</code></td>
+<td>Test-only mocks (oracles, providers, ERC-20s).</td>
+</tr>
+</tbody></table>
+<p>Off-chain:</p>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Contents</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>common/</code></td>
+<td>Shared TypeScript constants and helpers (facet list, deployment metadata).</td>
+</tr>
+<tr>
+<td><code>scripts/</code></td>
+<td>Deployment, cut-generation, and operational scripts.</td>
+</tr>
+<tr>
+<td><code>test/</code></td>
+<td>Hardhat test suite.</td>
+</tr>
+<tr>
+<td><code>docs/</code></td>
+<td>This documentation set.</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="12-compilation-and-build-context">12. Compilation and Build Context</h2>
+<ul>
+<li><strong>Solidity</strong>: the contracts compile with solc <code>0.8.25</code> (<code>evmVersion: cancun</code>, <code>viaIR</code>), pinned in <code>hardhat.config.ts</code>. Source files declare a floor pragma (<code>pragma solidity &gt;=0.8.19;</code>), and the pinned compiler is higher because the OpenZeppelin 5.6.1 imports need <code>&gt;=0.8.24</code>. Built-in checked arithmetic is relied upon; no SafeMath wrappers are used inside the protocol.</li>
+<li><strong>License headers</strong>: Diamond-pattern files inherited from Nick Mudge are <code>GPL-3.0-or-later</code> or <code>MIT</code>; protocol-original files use <code>SYMM-Core-Business-Source-License-1.1</code>. New files must carry an SPDX header consistent with the directory&#39;s existing files.</li>
+<li><strong>Compiler settings</strong>: optimizer is enabled with <code>viaIR</code> for the Diamond build to fit the facet code below the contract size limit; check <code>hardhat.config.ts</code> (or <code>foundry.toml</code> if present) before changing settings, since cut-generation tooling depends on stable selector and bytecode output.</li>
+<li><strong>Toolchain</strong>: Hardhat-based, with TypeScript scripts under <code>scripts/</code> and <code>common/</code>; see <a href="deployment-and-operations.html">deployment-and-operations</a> for build/deploy commands and <a href="testing.html">testing</a> for running tests.</li>
+</ul>
+<hr>
+<h2 id="13-known-constraints-and-design-notes">13. Known Constraints and Design Notes</h2>
+<p>These are bounded protocol-wide guarantees that auditors and integrators should treat as load-bearing.</p>
+<ul>
+<li><strong>Per-Party-A trade cap</strong>: <code>AppStorage.maxTradePerPartyA</code> bounds the count of active trades a Party A may simultaneously hold. Hitting the cap blocks new fills until existing trades close or transfer away. Designed to bound iteration cost over <code>TradeStorage.partyATradeIds[]</code>.</li>
+<li><strong>Max close orders cap</strong>: <code>AppStorage.maxCloseOrdersLength</code> bounds the count of simultaneous open close intents per trade. Designed to bound iteration cost over <code>CloseIntentStorage.tradeCloseIntentIds[trade]</code>.</li>
+<li><strong>Per-user balance limit</strong>: <code>AppStorage.balanceLimitPerUser[collateral]</code> may cap any single user&#39;s normalized balance per collateral. <code>0</code> means unlimited. Enforced inside <code>deposit</code> paths.</li>
+<li><strong>Cooldowns and timing windows</strong>: <code>partyADeallocateCooldown</code>, <code>partyBDeallocateCooldown</code>, <code>forceCancelOpenIntentTimeout</code>, <code>forceCancelCloseIntentTimeout</code>, <code>partyBExclusiveWindow</code>, <code>settlementPriceSigValidTime</code>, <code>upnlSigValidTime</code> — all governed via <code>SETTER_ROLE</code>. Misconfiguration directly weakens liveness or safety.</li>
+<li><strong>Single contract owner</strong>: <code>LibDiamond.contractOwner</code> is a single key with two-step transfer. It alone may invoke <code>diamondCut</code>. Operationally must be a multisig or timelock.</li>
+<li><strong>Oracle / signature trust roots</strong>: <code>priceOracleAddress</code>, <code>signatureVerifier</code>, <code>tradeNftAddress</code>, and the Muon verifier are unilaterally settable. Compromise or misconfiguration of any of them undermines accounting integrity.</li>
+<li><strong>Selector immutability for the Diamond itself</strong>: functions defined directly on <code>Diamond.sol</code> (currently none beyond <code>fallback</code>/<code>receive</code>) are not replaceable via <code>diamondCut</code>. Adding a function to the Diamond contract makes it permanently uncuttable.</li>
+<li><strong>Bilateral-nonce monotonicity</strong>: every accounting-affecting flow must increment the (Party A, Party B) nonce. New facets that mutate balances without doing so create signature replay windows.</li>
+<li><strong>18-decimal invariant</strong>: any path that writes to balance state without first normalizing through <code>DecimalsLib</code> corrupts accounting silently. Do not bypass <code>AccountFacet</code> for token movement.</li>
+<li><strong>Reentrancy boundary</strong>: every external token transfer is wrapped in <code>nonReentrant</code>; any new facet selector that performs external calls must follow suit.</li>
+<li><strong>Pause coverage</strong>: every state-mutating selector must respect at minimum <code>globalPaused</code>. New selectors should be added to the matrix in <a href="roles-and-pauses.html">roles-and-pauses</a> at the same time as they are added to the dispatch.</li>
+</ul>
+<p>For the full set of invariants, trust assumptions, and known-acceptable risks see <a href="security.html">security</a>.</p>
+</article></main></div><footer class="site-footer"><span>Options Core documentation.</span></footer></body></html>

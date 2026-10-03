@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Contract conventions, lint rules, release checks, and Git hooks."><title>Development standards | Options Core</title>
+<link rel="icon" type="image/svg+xml" href="../assets/symmio-mark.svg">
+<script>try { if (localStorage.getItem("options-docs-theme") === "light") document.documentElement.dataset.theme = "light"; } catch (_) {}</script>
+<link rel="stylesheet" href="../assets/reader.css"><link rel="stylesheet" href="../assets/docs-portal.css">
+<script src="../assets/chapters.js" defer></script><script src="../assets/reader.js" defer></script><script src="../assets/docs-portal.js" defer></script>
+</head>
+<body class="doc-page" data-version="current"><a class="skip-link" href="#full-document">Skip to document</a>
+<header class="docs-header"><div class="doc-topbar"><nav class="docs-trail" aria-label="Breadcrumb">
+<a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Options Core</span></a>
+<span class="trail-sep" aria-hidden="true">/</span><a class="trail-release" href="../index.html">Documentation</a>
+</nav><nav class="top-actions" aria-label="Page actions"><button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button></nav></div></header><div class="reader-shell"><div data-rail-sections hidden>
+<a class="toc-link level-2" href="#contract-structure">Contract structure</a>
+<a class="toc-link level-2" href="#formatting-and-lint">Formatting and lint</a>
+<a class="toc-link level-2" href="#build-and-test-commands">Build and test commands</a>
+<a class="toc-link level-2" href="#git-hooks-and-ci">Git hooks and CI</a>
+<a class="toc-link level-2" href="#documentation">Documentation</a>
+</div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1>Development standards</h1><p class="hero-copy">Contract conventions, lint rules, release checks, and Git hooks.</p></div></div></header>
+<article class="doc-article" id="full-document"><p>Options Core follows the development conventions in the sibling <code>perps-core</code> checkout and uses Hardhat 3, Ethers v6, and OpenZeppelin 5. Contracts compile with Solidity 0.8.25, targeting Cancun, with 200 optimizer runs and <code>viaIR</code>.</p>
+<h2 id="contract-structure">Contract structure</h2>
+<p>Facets expose selectors and apply access, pause, and reentrancy modifiers. Shared business logic belongs in the domain libraries under <code>contracts/libraries/core/</code>; model operations belong under <code>contracts/libraries/models/</code>. Each storage domain has a <code>Layout</code> struct and a <code>layout()</code> accessor using its existing Diamond storage slot.</p>
+<p>Preserve storage slots, field order, field types, and enum ordinals when upgrading a deployed Diamond. Treat changes to selectors, custom errors, emitted events, or signed payloads as integration changes and update their reference pages alongside the code.</p>
+<p>Use named imports and remove unused imports. Keep the existing SYMM Core Business Source License headers. Use the OpenZeppelin 5 implementations already installed for ERC-20 transfers, upgradeable helpers, and signature verification. Diamond-specific guards and storage remain in the existing Options Core libraries.</p>
+<h2 id="formatting-and-lint">Formatting and lint</h2>
+<p>Prettier formats Solidity with tabs and a 150-character line width. TypeScript uses tabs with a tab width of two and no semicolons. <code>npm run lint</code> runs Solidity lint and the TypeScript compiler without emitting files.</p>
+<p>The Solidity rules match <code>perps-core/.solhint.json</code>. They use the recommended ruleset with project exceptions for assembly, compiler pragmas, NatSpec, and several gas suggestions. Unused imports and <code>selfdestruct</code> are errors; advisory warnings do not fail lint.</p>
+<h2 id="build-and-test-commands">Build and test commands</h2>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>npm run compile</code></td>
+<td>Compile, generate TypeChain types, and check deployed contract sizes.</td>
+</tr>
+<tr>
+<td><code>npm run check:contract-size</code></td>
+<td>Check existing compiled artifacts and write <code>artifacts/contract-sizes.json</code>.</td>
+</tr>
+<tr>
+<td><code>npm run lint</code></td>
+<td>Solidity and TypeScript checks.</td>
+</tr>
+<tr>
+<td><code>npm test</code></td>
+<td>Run Mocha with <code>TEST_MODE=UNIT_TEST</code>.</td>
+</tr>
+<tr>
+<td><code>npm run coverage</code></td>
+<td>Run the same test mode with Hardhat coverage.</td>
+</tr>
+<tr>
+<td><code>npm run check:release</code></td>
+<td>Compile, lint, run tests, and validate docs.</td>
+</tr>
+</tbody></table>
+<p>The contract size check uses the <code>perps-core</code> budgets and checks deployable artifacts under <code>artifacts/contracts</code>. It warns when deployed bytecode exceeds 22,528 bytes and fails above 23,552 bytes. That leaves 1,024 bytes below the 24,576-byte EIP-170 limit.</p>
+<p>Local builds and tests need no private key. Live deployments and verification resolve Hardhat config variables only when needed. Use environment variables, an ignored <code>.env</code>, or <code>npx hardhat keystore set PRIVATE_KEY</code> and <code>npx hardhat keystore set ETHERSCAN_API_KEY</code>. <code>.env.example</code> lists the supported names.</p>
+<h2 id="git-hooks-and-ci">Git hooks and CI</h2>
+<p><code>npm install</code> initializes Husky through the <code>prepare</code> script. The pre-commit hook formats and re-stages only fully staged paths, skipping files that also have unstaged edits. It compiles and checks contract sizes when Solidity is staged, and checks documentation when docs are staged.</p>
+<p>Run the full test suite before submitting contract changes.</p>
+<p>GitLab CI uses Node 24 and the committed npm lockfile. It checks formatting, compilation, lint, generated docs, and tests. The GitLab secret-detection template remains enabled.</p>
+<h2 id="documentation">Documentation</h2>
+<p>Open <code>docs/index.html</code> in a browser. The site works from a local HTTP server or directly from the HTML files, with the same fonts, reader layout, theme controls, page outline, code controls, and diagram viewer as <code>perps-core</code>.</p>
+<p>Edit the Markdown chapters and run <code>npm run docs:build</code>; do not edit generated chapters directly. One chapter list determines the HTML chapters, catalog, and navigation manifest. <code>npm run docs:check</code> rejects stale output, missing local links, duplicate IDs, and broken heading anchors.</p>
+<p>Run <code>npm run docs</code> for a local server, or <code>npm run docs -- --no-open --port 4174</code> to choose a port without launching a browser. Update the relevant chapter in the same change as contract behavior. Research and design proposals under <code>docs/research/</code> are separate from the current protocol reference.</p>
+</article></main></div><footer class="site-footer"><span>Options Core documentation.</span></footer></body></html>

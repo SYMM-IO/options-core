@@ -44,3 +44,5 @@ detailedDebug.log
 
 .notes/
 .obsidian
+# Husky generated runtime
+.husky/_/

@@ -1,0 +1,1284 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Custom errors, trigger conditions, and call sites."><title>Custom Errors Reference | Options Core</title>
+<link rel="icon" type="image/svg+xml" href="../assets/symmio-mark.svg">
+<script>try { if (localStorage.getItem("options-docs-theme") === "light") document.documentElement.dataset.theme = "light"; } catch (_) {}</script>
+<link rel="stylesheet" href="../assets/reader.css"><link rel="stylesheet" href="../assets/docs-portal.css">
+<script src="../assets/chapters.js" defer></script><script src="../assets/reader.js" defer></script><script src="../assets/docs-portal.js" defer></script>
+</head>
+<body class="doc-page" data-version="current"><a class="skip-link" href="#full-document">Skip to document</a>
+<header class="docs-header"><div class="doc-topbar"><nav class="docs-trail" aria-label="Breadcrumb">
+<a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Options Core</span></a>
+<span class="trail-sep" aria-hidden="true">/</span><a class="trail-release" href="../index.html">Documentation</a>
+</nav><nav class="top-actions" aria-label="Page actions"><button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button></nav></div></header><div class="reader-shell"><div data-rail-sections hidden>
+<a class="toc-link level-2" href="#contents">Contents</a>
+<a class="toc-link level-2" href="#balance-errors">Balance Errors</a>
+<a class="toc-link level-2" href="#intent-errors">Intent Errors</a>
+<a class="toc-link level-2" href="#trade-errors">Trade Errors</a>
+<a class="toc-link level-2" href="#liquidation-errors">Liquidation Errors</a>
+<a class="toc-link level-2" href="#party-relations-errors">Party Relations Errors</a>
+<a class="toc-link level-2" href="#validation-errors">Validation Errors</a>
+<a class="toc-link level-2" href="#system-errors">System Errors</a>
+<a class="toc-link level-3" href="#diamond-cut-and-ownership">Diamond cut and ownership</a>
+<a class="toc-link level-3" href="#pause-flags">Pause flags</a>
+<a class="toc-link level-3" href="#emergency-and-suspension">Emergency and suspension</a>
+<a class="toc-link level-2" href="#reentrancy-guard-errors">Reentrancy Guard Errors</a>
+<a class="toc-link level-2" href="#inline-helper-errors">Inline Helper Errors</a>
+<a class="toc-link level-3" href="#multiaccount-contractshelpersmultiaccountsol">MultiAccount (<code>contracts/helpers/MultiAccount.sol</code>)</a>
+<a class="toc-link level-3" href="#instantlayer-contractshelpersinstantlayersol">InstantLayer (<code>contracts/helpers/InstantLayer.sol</code>)</a>
+<a class="toc-link level-3" href="#tradenft-contractshelperstradenftsol">TradeNFT (<code>contracts/helpers/TradeNFT.sol</code>)</a>
+<a class="toc-link level-3" href="#symmiopartya-contractshelperssymmiopartyasol">SymmioPartyA (<code>contracts/helpers/SymmioPartyA.sol</code>)</a>
+<a class="toc-link level-3" href="#symmiopartyb-contractshelperssymmiopartybsol">SymmioPartyB (<code>contracts/helpers/SymmioPartyB.sol</code>)</a>
+<a class="toc-link level-3" href="#muonoracle-contractshelpersmuonoraclesol">MuonOracle (<code>contracts/helpers/MuonOracle.sol</code>)</a>
+<a class="toc-link level-2" href="#inherited-openzeppelin-5-errors">Inherited OpenZeppelin 5 Errors</a>
+<a class="toc-link level-2" href="#common-triage-patterns">Common Triage Patterns</a>
+</div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1>Custom Errors Reference</h1><p class="hero-copy">Custom errors, trigger conditions, and call sites.</p></div></div></header>
+<article class="doc-article" id="full-document"><p>Every revert path in Options Core uses a typed custom error. Errors are grouped by domain in <code>contracts/errors/*.sol</code>; helper contracts (<code>MultiAccount</code>, <code>InstantLayer</code>, <code>SymmioPartyA</code>, <code>SymmioPartyB</code>, <code>TradeNFT</code>, <code>MuonOracle</code>) define their own inline errors. This page lists every error, its arguments, the trigger condition, and one to three representative callsites with <code>file:line</code>.</p>
+<h2 id="contents">Contents</h2>
+<ul>
+<li><a href="#balance-errors">Balance Errors</a></li>
+<li><a href="#intent-errors">Intent Errors</a></li>
+<li><a href="#trade-errors">Trade Errors</a></li>
+<li><a href="#liquidation-errors">Liquidation Errors</a></li>
+<li><a href="#party-relations-errors">Party Relations Errors</a></li>
+<li><a href="#validation-errors">Validation Errors</a></li>
+<li><a href="#system-errors">System Errors</a></li>
+<li><a href="#reentrancy-guard-errors">Reentrancy Guard Errors</a></li>
+<li><a href="#inline-helper-errors">Inline Helper Errors</a></li>
+<li><a href="#inherited-openzeppelin-5-errors">Inherited OpenZeppelin 5 Errors</a></li>
+<li><a href="#common-triage-patterns">Common Triage Patterns</a></li>
+</ul>
+<h2 id="balance-errors">Balance Errors</h2>
+<p>Source: <code>contracts/errors/BalanceErrors.sol</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Args</th>
+<th>When it reverts</th>
+<th>Sample callsite</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>InsufficientBalance</code></td>
+<td><code>(address user, address token, uint256 requested, uint256 available)</code></td>
+<td>A withdrawal, transfer, allocation, or reserve move tries to consume more isolated, free, or reserve balance than the user holds.</td>
+<td><code>contracts/libraries/core/LibBalanceOperations.sol:76</code></td>
+</tr>
+<tr>
+<td><code>InsufficientIntBalance</code></td>
+<td><code>(address user, address token, uint256 requested, int256 available)</code></td>
+<td>Cross-margin deallocate or clearing-house draw tries to take more than the signed cross balance allows (balance can be negative).</td>
+<td><code>contracts/libraries/core/LibAllocationOperations.sol:107</code></td>
+</tr>
+<tr>
+<td><code>InsufficientLockedBalance</code></td>
+<td><code>(address token, uint256 requested, uint256 balance)</code></td>
+<td>Unlock/release tries to free more than the locked isolated or cross balance.</td>
+<td><code>contracts/libraries/models/LibScheduledReleaseBalance.sol:435</code></td>
+</tr>
+<tr>
+<td><code>InsufficientMMBalance</code></td>
+<td><code>(address token, uint256 requested, uint256 balance)</code></td>
+<td>Maintenance margin release exceeds the tracked <code>totalMM</code> for a counterparty.</td>
+<td><code>contracts/libraries/models/LibScheduledReleaseBalance.sol:460</code></td>
+</tr>
+<tr>
+<td><code>BalanceLimitExceeded</code></td>
+<td><code>(int256 balance, uint256 amount, uint256 limit)</code></td>
+<td>A non-Party B deposit, transfer-in, or allocation would push that user&#39;s per-collateral balance past <code>balanceLimitPerUser[collateral]</code>.</td>
+<td><code>contracts/libraries/core/LibBalanceOperations.sol:52</code></td>
+</tr>
+<tr>
+<td><code>MaxCounterPartyConnectionsReached</code></td>
+<td><code>(uint256 current, uint256 maximum)</code></td>
+<td>Adding a new counterparty schedule entry would exceed <code>accountLayout.maxConnectedCounterParties</code>.</td>
+<td><code>contracts/libraries/models/LibScheduledReleaseBalance.sol:382</code></td>
+</tr>
+<tr>
+<td><code>InvalidSyncTimestamp</code></td>
+<td><code>(uint256 currentTime, uint256 lastTransitionTimestamp)</code></td>
+<td>Scheduled-release sync runs at a timestamp earlier than the entry&#39;s last transition (reorg/clock issue).</td>
+<td><code>contracts/libraries/models/LibScheduledReleaseBalance.sol:337</code></td>
+</tr>
+<tr>
+<td><code>NonZeroBalanceCounterParty</code></td>
+<td><code>(address counterParty, uint256 balance)</code></td>
+<td>Defined for safety against pruning a counterparty that still holds a non-zero scheduled balance; not currently reached at runtime.</td>
+<td>(defined <code>contracts/errors/BalanceErrors.sol:22</code>, no live revert)</td>
+</tr>
+<tr>
+<td><code>BalanceSetupRequired</code></td>
+<td><code>()</code></td>
+<td>A <code>ScheduledReleaseBalance</code> operation runs against an entry whose <code>user</code> or <code>collateral</code> slot is still zero.</td>
+<td><code>contracts/libraries/models/LibScheduledReleaseBalance.sol:59</code></td>
+</tr>
+<tr>
+<td><code>InvalidCounterParty</code></td>
+<td><code>(address party, address counterParty)</code></td>
+<td>Cross allocation supplies a counterparty that is not registered as a Party B.</td>
+<td><code>contracts/libraries/core/LibAllocationOperations.sol:27</code></td>
+</tr>
+<tr>
+<td><code>InsufficientDebtCoverage</code></td>
+<td><code>(address party, address counterParty, int256 partyAReadyToDeallocate, uint256 amount, int256 debt)</code></td>
+<td>Cross deallocate would leave Party A unable to cover an outstanding negative cross balance against the counterparty.</td>
+<td><code>contracts/libraries/core/LibAllocationOperations.sol:121</code></td>
+</tr>
+<tr>
+<td><code>NotSolvent</code></td>
+<td><code>(address user, address counterParty, address collateral, MarginType marginType)</code></td>
+<td>A liquidation id already exists for the <code>(party, counterParty, collateral)</code> tuple, or a cross deallocate would push the party below required collateral.</td>
+<td><code>contracts/libraries/core/LibAllocationOperations.sol:137</code>, <code>contracts/libraries/models/LibParty.sol:18</code></td>
+</tr>
+<tr>
+<td><code>InvalidWithdrawalId</code></td>
+<td><code>(uint256 id)</code></td>
+<td><code>withdraw</code>, <code>cancelWithdraw</code>, or admin status edit references an id greater than <code>lastWithdrawId</code>.</td>
+<td><code>contracts/libraries/core/LibBalanceOperations.sol:188</code>, <code>:220</code></td>
+</tr>
+<tr>
+<td><code>ExpressWithdrawCancellationNotAllowed</code></td>
+<td><code>(address provider)</code></td>
+<td>User tries to cancel a withdrawal that was created through an express provider; only the provider&#39;s path can refund it.</td>
+<td><code>contracts/libraries/core/LibBalanceOperations.sol:224</code></td>
+</tr>
+<tr>
+<td><code>ExpressWithdrawProviderNotActive</code></td>
+<td><code>(address provider)</code></td>
+<td>Express withdrawal references a provider whose <code>isActive</code> flag is off.</td>
+<td><code>contracts/libraries/core/LibBalanceOperations.sol:128</code></td>
+</tr>
+<tr>
+<td><code>ExpressWithdrawProviderReceiverNotSet</code></td>
+<td><code>(address provider)</code></td>
+<td>Defined for express-provider configurations missing a payout receiver; not reached today (a <code>ZeroAddress(&quot;receiver&quot;)</code> revert is hit first at <code>LibBalanceOperations.sol:129</code>).</td>
+<td>(defined <code>contracts/errors/BalanceErrors.sol:36</code>, no live revert)</td>
+</tr>
+<tr>
+<td><code>ExpressWithdrawRejectedByProvider</code></td>
+<td><code>(address provider, string reason)</code></td>
+<td>The provider contract returned <code>valid=false</code> from its callback.</td>
+<td><code>contracts/libraries/core/LibBalanceOperations.sol:134</code></td>
+</tr>
+<tr>
+<td><code>ValidAmountExceedsOriginal</code></td>
+<td><code>(uint256 givenValidAmount, uint256 expressWithdrawAmount)</code></td>
+<td>Provider reports a <code>validAmount</code> greater than the original requested withdrawal amount.</td>
+<td><code>contracts/libraries/core/LibBalanceOperations.sol:170</code></td>
+</tr>
+</tbody></table>
+<h2 id="intent-errors">Intent Errors</h2>
+<p>Source: <code>contracts/errors/IntentErrors.sol</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Args</th>
+<th>When it reverts</th>
+<th>Sample callsite</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>IntentExpired</code></td>
+<td><code>(uint256 intentId, uint256 currentTime, uint256 deadline)</code></td>
+<td>Lock/fill/close acceptance runs after the intent&#39;s <code>deadline</code>.</td>
+<td><code>contracts/libraries/core/LibPartyBOpen.sol:61</code>, <code>contracts/libraries/core/LibPartyBClose.sol:90</code></td>
+</tr>
+<tr>
+<td><code>IntentNotExpired</code></td>
+<td><code>(uint256 intentId, uint256 currentTime, uint256 deadline)</code></td>
+<td>Force-cancel/expire path runs while the deadline is still in the future.</td>
+<td><code>contracts/libraries/models/LibOpenIntent.sol:79</code>, <code>contracts/libraries/models/LibCloseIntent.sol:69</code></td>
+</tr>
+<tr>
+<td><code>ExpirationTimestampPassed</code></td>
+<td><code>(uint256 provided, uint256 current)</code></td>
+<td>Open intent&#39;s contract <code>expirationTimestamp</code> is in the past at create or fill time.</td>
+<td><code>contracts/libraries/core/LibPartyAOpen.sol:61</code>, <code>contracts/libraries/core/LibPartyBOpen.sol:68</code></td>
+</tr>
+<tr>
+<td><code>PartyBSender</code></td>
+<td><code>()</code></td>
+<td>A registered Party B address tries to call a Party A entry point (e.g. <code>sendOpenIntent</code>).</td>
+<td><code>contracts/libraries/core/LibPartyAOpen.sol:52</code></td>
+</tr>
+<tr>
+<td><code>IsolatedModeSellNotAllowed</code></td>
+<td><code>()</code></td>
+<td>Party A submits a sell-side open intent under isolated margin (sells must be cross).</td>
+<td><code>contracts/libraries/core/LibPartyAOpen.sol:64</code></td>
+</tr>
+<tr>
+<td><code>InvalidWhitelistEntry</code></td>
+<td><code>(address partyA)</code></td>
+<td>Party A includes its own address in the Party B whitelist.</td>
+<td><code>contracts/libraries/core/LibPartyAOpen.sol:56</code></td>
+</tr>
+<tr>
+<td><code>InvalidExerciseFee</code></td>
+<td><code>(uint256 cap, uint256 maxCap)</code></td>
+<td>Exercise fee cap exceeds 1e18 (100%).</td>
+<td><code>contracts/libraries/core/LibPartyAOpen.sol:62</code></td>
+</tr>
+<tr>
+<td><code>InvalidAffiliate</code></td>
+<td><code>(address affiliate)</code></td>
+<td>Open intent specifies an affiliate that is neither whitelisted nor <code>address(0)</code>.</td>
+<td><code>contracts/libraries/core/LibPartyAOpen.sol:68</code></td>
+</tr>
+<tr>
+<td><code>MultiplePartyBNotAllowed</code></td>
+<td><code>()</code></td>
+<td>Normal cross-margin open intent does not have exactly one Party B in the whitelist. The only empty-whitelist cross exception is unbound <code>SELL + CROSS</code>.</td>
+<td><code>contracts/libraries/core/LibPartyAOpen.sol:80</code></td>
+</tr>
+<tr>
+<td><code>InvalidOpenQuantity</code></td>
+<td><code>()</code></td>
+<td>Open intent&#39;s <code>quantity</code> field is zero.</td>
+<td><code>contracts/libraries/core/LibPartyAOpen.sol:88</code></td>
+</tr>
+<tr>
+<td><code>DeferredSellNotAllowedForBoundPartyA</code></td>
+<td><code>(address partyA, address boundPartyB)</code></td>
+<td>Bound Party A attempts a deferred Party B sell (<code>SELL + CROSS + empty whitelist</code>) even though its Party B is already fixed.</td>
+<td><code>contracts/libraries/core/LibPartyAOpen.sol:73</code></td>
+</tr>
+<tr>
+<td><code>MissingOpenIntentEscrow</code></td>
+<td><code>(uint256 intentId)</code></td>
+<td>Deferred Party B sell escrow is expected but missing at lock, release, consume, or residual-move time.</td>
+<td><code>contracts/libraries/core/LibPartyBOpen.sol:95</code>, <code>contracts/libraries/models/LibOpenIntent.sol:191</code></td>
+</tr>
+<tr>
+<td><code>OpenIntentEscrowAlreadyConsumed</code></td>
+<td><code>(uint256 intentId)</code></td>
+<td>Deferred Party B sell escrow has already been consumed when a later path tries to use it.</td>
+<td><code>contracts/libraries/core/LibPartyBOpen.sol:96</code>, <code>contracts/libraries/models/LibOpenIntent.sol:192</code></td>
+</tr>
+<tr>
+<td><code>IntentNotFound</code></td>
+<td><code>(uint256 intentId)</code></td>
+<td>Lookup uses an <code>intentId</code> greater than <code>lastOpenIntentId</code>.</td>
+<td><code>contracts/libraries/core/LibPartyBOpen.sol:55</code></td>
+</tr>
+<tr>
+<td><code>OracleMismatch</code></td>
+<td><code>(address partyB, uint256 partyBOracleId, uint256 symbolOracleId)</code></td>
+<td>Party B&#39;s configured oracle id differs from the intent symbol&#39;s oracle id.</td>
+<td><code>contracts/libraries/core/LibPartyBOpen.sol:72</code></td>
+</tr>
+<tr>
+<td><code>SymbolTypeNotSupported</code></td>
+<td><code>(address partyB, uint256 symbolType)</code></td>
+<td>Party B has not enabled the intent&#39;s symbol type.</td>
+<td><code>contracts/libraries/core/LibPartyBOpen.sol:92</code></td>
+</tr>
+<tr>
+<td><code>NotWhitelistedPartyB</code></td>
+<td><code>(address sender, address[] whiteList)</code></td>
+<td>Party B is not in the intent&#39;s <code>partyBsWhiteList</code> (when the list is non-empty).</td>
+<td><code>contracts/libraries/core/LibPartyBOpen.sol:89</code></td>
+</tr>
+<tr>
+<td><code>InvalidOpenPrice</code></td>
+<td><code>(uint256 providedPrice, uint256 thresholdPrice)</code></td>
+<td>Lock/fill price violates Party A&#39;s price threshold (worse than the agreed limit).</td>
+<td><code>contracts/libraries/core/LibPartyBOpen.sol:216</code></td>
+</tr>
+<tr>
+<td><code>InvalidQuantity</code></td>
+<td><code>(uint256 requested, uint256 available)</code></td>
+<td><code>sendCloseIntent</code> quantity exceeds the trade&#39;s currently-closeable amount.</td>
+<td><code>contracts/libraries/core/LibPartyAClose.sol:39</code></td>
+</tr>
+<tr>
+<td><code>TooManyCloseOrders</code></td>
+<td><code>(uint256 current, uint256 maximum)</code></td>
+<td>Trade already has <code>maxCloseOrdersLength</code> active close intents.</td>
+<td><code>contracts/libraries/core/LibPartyAClose.sol:42</code></td>
+</tr>
+<tr>
+<td><code>InvalidClosePrice</code></td>
+<td><code>(uint256 providedPrice, uint256 thresholdPrice)</code></td>
+<td>Party B fill price on a close intent violates the intent&#39;s threshold.</td>
+<td><code>contracts/libraries/core/LibPartyBClose.sol:99</code></td>
+</tr>
+<tr>
+<td><code>InvalidFillAmount</code></td>
+<td><code>(uint256 quantity, uint256 availableAmount)</code></td>
+<td>Fill quantity exceeds remaining open or close intent quantity.</td>
+<td><code>contracts/libraries/core/LibPartyBOpen.sol:213</code>, <code>contracts/libraries/core/LibPartyBClose.sol:75</code></td>
+</tr>
+</tbody></table>
+<h2 id="trade-errors">Trade Errors</h2>
+<p>Source: <code>contracts/errors/TradeErrors.sol</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Args</th>
+<th>When it reverts</th>
+<th>Sample callsite</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>TooManyActiveTradesForPartyA</code></td>
+<td><code>(address partyA, uint256 currentCount, uint256 maxCount)</code></td>
+<td>Opening a trade would push Party A over <code>appLayout.maxActiveTradesForPartyA</code>.</td>
+<td><code>contracts/libraries/models/LibTrade.sol:68</code></td>
+</tr>
+<tr>
+<td><code>TradeExpired</code></td>
+<td><code>(uint256 tradeId, uint256 currentTime, uint256 expirationTimestamp)</code></td>
+<td>A close fill or other trade-state action runs after the option&#39;s contractual <code>expirationTimestamp</code>.</td>
+<td><code>contracts/libraries/core/LibPartyBClose.sol:93</code></td>
+</tr>
+<tr>
+<td><code>ReceiverIsPartyB</code></td>
+<td><code>(address receiver, address partyB)</code></td>
+<td>NFT/transfer flow names a registered Party B as the receiver.</td>
+<td><code>contracts/libraries/core/LibTradeOperations.sol:50</code></td>
+</tr>
+<tr>
+<td><code>CrossTradeTransferNotAllowed</code></td>
+<td><code>(uint256 tradeId)</code></td>
+<td>NFT transfer attempted on a CROSS-margin trade (only ISOLATED is transferable).</td>
+<td><code>contracts/libraries/core/LibTradeOperations.sol:56</code></td>
+</tr>
+<tr>
+<td><code>NFTMintingNotAllowedForCrossMarginTrade</code></td>
+<td><code>(uint256 tradeId)</code></td>
+<td><code>mintNFT</code> called for a CROSS-margin trade.</td>
+<td><code>contracts/libraries/core/LibTradeOperations.sol:241</code></td>
+</tr>
+<tr>
+<td><code>MismatchedSymbolId</code></td>
+<td><code>(uint256 providedSymbolId, uint256 tradeSymbolId)</code></td>
+<td>Settlement signature&#39;s <code>symbolId</code> does not match the trade.</td>
+<td><code>contracts/libraries/core/LibTradeOperations.sol:111</code></td>
+</tr>
+<tr>
+<td><code>TradeNotYetExpired</code></td>
+<td><code>(uint256 tradeId, uint256 currentTime, uint256 expirationTimestamp)</code></td>
+<td>Settle/exercise called before the trade&#39;s <code>expirationTimestamp</code>.</td>
+<td><code>contracts/libraries/core/LibTradeOperations.sol:116</code></td>
+</tr>
+<tr>
+<td><code>PartyBExclusiveWindowNotOver</code></td>
+<td><code>(uint256 currentTime, uint256 requiredTime)</code></td>
+<td>Third party tries to settle inside the post-expiry window reserved for Party B.</td>
+<td><code>contracts/libraries/core/LibTradeOperations.sol:159</code></td>
+</tr>
+</tbody></table>
+<h2 id="liquidation-errors">Liquidation Errors</h2>
+<p>Source: <code>contracts/errors/LiquidationErrors.sol</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Args</th>
+<th>When it reverts</th>
+<th>Sample callsite</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>ZeroLossCoverage</code></td>
+<td><code>(address partyB)</code></td>
+<td>Liquidation start/finalize for a Party B whose <code>lossCoverage</code> config is zero.</td>
+<td><code>contracts/libraries/core/LibClearingHouse.sol:100</code>, <code>:129</code></td>
+</tr>
+<tr>
+<td><code>MismatchedArrayLengths</code></td>
+<td><code>(uint256 tradeIdsLength, uint256 pricesLength)</code></td>
+<td>Liquidation settlement or distribution arrays differ in length.</td>
+<td><code>contracts/libraries/core/LibClearingHouse.sol:205</code>, <code>:289</code></td>
+</tr>
+<tr>
+<td><code>PartyASolvent</code></td>
+<td><code>(address partyA, address partyB, address token)</code></td>
+<td>Clearing house tries to liquidate Party A but available balance is non-negative.</td>
+<td><code>contracts/libraries/core/LibClearingHouse.sol:184</code></td>
+</tr>
+<tr>
+<td><code>PartyBSolvent</code></td>
+<td><code>(address partyA, address partyB, address token)</code></td>
+<td>Clearing house tries to liquidate Party B but its position is solvent.</td>
+<td><code>contracts/libraries/core/LibClearingHouse.sol:118</code>, <code>:148</code></td>
+</tr>
+<tr>
+<td><code>TradeNotInLiquidation</code></td>
+<td><code>(uint256 liquidationId, uint256 tradeId)</code></td>
+<td>Settlement provided a trade that is not part of the active liquidation set.</td>
+<td><code>contracts/libraries/core/LibClearingHouse.sol:221</code></td>
+</tr>
+<tr>
+<td><code>PartiesNotInLiquidation</code></td>
+<td><code>(address partyA, address partyB, address collateral)</code></td>
+<td>Force action references an intent/trade whose pair is not currently in liquidation.</td>
+<td><code>contracts/libraries/core/LibClearingHouse.sol:326</code>, <code>:356</code></td>
+</tr>
+<tr>
+<td><code>PartyNotInLiquidation</code></td>
+<td><code>(address party, address partyA, address partyB, address collateral)</code></td>
+<td>Confiscation or distribution targets an address outside the liquidating pair.</td>
+<td><code>contracts/libraries/core/LibClearingHouse.sol:259</code></td>
+</tr>
+<tr>
+<td><code>DistributedAmountExceedsConfiscatedAmount</code></td>
+<td><code>(uint256 liquidationId)</code></td>
+<td>Distribution would pay out more than was confiscated in this liquidation.</td>
+<td><code>contracts/libraries/core/LibClearingHouse.sol:305</code></td>
+</tr>
+</tbody></table>
+<h2 id="party-relations-errors">Party Relations Errors</h2>
+<p>Source: <code>contracts/errors/PartyRelationsErrors.sol</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Args</th>
+<th>When it reverts</th>
+<th>Sample callsite</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>InstantModeActive</code></td>
+<td><code>(address sender)</code></td>
+<td>Party A is in instant-actions mode and a non-<code>InstantLayer</code> caller hits a guarded entry point, or unbinding starts while still in instant mode.</td>
+<td><code>contracts/utils/Accessibility.sol:72</code>, <code>contracts/libraries/core/LibCounterPartyRelations.sol:62</code></td>
+</tr>
+<tr>
+<td><code>InstantModeNotActive</code></td>
+<td><code>(address sender)</code></td>
+<td>An instant-mode-only entry point is invoked while the user is in normal mode.</td>
+<td><code>contracts/utils/Accessibility.sol:77</code></td>
+</tr>
+<tr>
+<td><code>DeactivationNotProposed</code></td>
+<td><code>(address user)</code></td>
+<td>Finalize-deactivation called without a prior proposal.</td>
+<td><code>contracts/libraries/core/LibCounterPartyRelations.sol:31</code></td>
+</tr>
+<tr>
+<td><code>PartyBNotActive</code></td>
+<td><code>(address partyB)</code></td>
+<td>Bind attempt targets an address that is not registered as a Party B.</td>
+<td><code>contracts/libraries/core/LibCounterPartyRelations.sol:48</code></td>
+</tr>
+<tr>
+<td><code>BoundedToAnotherPartyB</code></td>
+<td><code>(address user, address partyB)</code></td>
+<td>Bind/open intent attempted while the user is bound to a different Party B.</td>
+<td><code>contracts/libraries/core/LibCounterPartyRelations.sol:51</code>, <code>contracts/libraries/core/LibPartyAOpen.sol:72</code></td>
+</tr>
+<tr>
+<td><code>BoundedPartyBNotFound</code></td>
+<td><code>(address user)</code></td>
+<td>Unbind, finalize, or instant-mode toggle called with no current binding.</td>
+<td><code>contracts/libraries/core/LibCounterPartyRelations.sol:19</code>, <code>:60</code>, <code>:74</code></td>
+</tr>
+<tr>
+<td><code>UnbindingAlreadyInProgress</code></td>
+<td><code>(address user, uint256 requestTime)</code></td>
+<td>Start-unbinding called while a previous unbind is mid-cooldown.</td>
+<td><code>contracts/libraries/core/LibCounterPartyRelations.sol:65</code></td>
+</tr>
+<tr>
+<td><code>UnbindingNotInitiated</code></td>
+<td><code>(address user)</code></td>
+<td>Cancel- or finalize-unbinding called without an outstanding request.</td>
+<td><code>contracts/libraries/core/LibCounterPartyRelations.sol:75</code>, <code>:86</code></td>
+</tr>
+<tr>
+<td><code>UnbindingCooldownNotOver</code></td>
+<td><code>(address user, uint256 currentTime, uint256 requiredTime)</code></td>
+<td>Defined for explicit unbinding-cooldown checks; today the same condition reverts via <code>ValidationErrors.CooldownNotOver(&quot;unbinding&quot;, ...)</code> at <code>LibCounterPartyRelations.sol:78</code>.</td>
+<td>(defined <code>contracts/errors/PartyRelationsErrors.sol:19</code>, no direct revert)</td>
+</tr>
+</tbody></table>
+<h2 id="validation-errors">Validation Errors</h2>
+<p>Source: <code>contracts/errors/ValidationErrors.sol</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Args</th>
+<th>When it reverts</th>
+<th>Sample callsite</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>ZeroAddress</code></td>
+<td><code>(string property)</code></td>
+<td>Required address argument is <code>address(0)</code> (the string names which one).</td>
+<td><code>contracts/facets/Control/ControlFacet.sol:54</code>, <code>contracts/libraries/core/LibBalanceOperations.sol:45</code></td>
+</tr>
+<tr>
+<td><code>ZeroAmount</code></td>
+<td><code>()</code></td>
+<td>Required uint argument is zero (deposit, transfer, withdraw amount, fill quantity, etc.).</td>
+<td><code>contracts/libraries/core/LibBalanceOperations.sol:44</code>, <code>contracts/libraries/core/LibPartyBOpen.sol:209</code></td>
+</tr>
+<tr>
+<td><code>EmptyList</code></td>
+<td><code>()</code></td>
+<td>Defined for empty-array guards; not currently reached.</td>
+<td>(defined <code>contracts/errors/ValidationErrors.sol:11</code>, no live revert)</td>
+</tr>
+<tr>
+<td><code>EmptyField</code></td>
+<td><code>(string property)</code></td>
+<td>Required <code>string</code>/<code>bytes</code> field is empty (e.g. collateral name).</td>
+<td><code>contracts/facets/Control/ControlFacet.sol:708</code>, <code>:764</code></td>
+</tr>
+<tr>
+<td><code>LowDeadline</code></td>
+<td><code>(uint256 deadline, uint256 current)</code></td>
+<td>User-supplied deadline is already in the past.</td>
+<td><code>contracts/libraries/core/LibPartyAOpen.sol:66</code>, <code>contracts/libraries/core/LibPartyAClose.sol:37</code></td>
+</tr>
+<tr>
+<td><code>CooldownNotOver</code></td>
+<td><code>(string cooldown, uint256 currentTime, uint256 requiredTime)</code></td>
+<td>A timed cooldown is still pending (withdraw, force-cancel, force-close, unbinding, instant-mode deactivation).</td>
+<td><code>contracts/libraries/core/LibBalanceOperations.sol:202</code>, <code>contracts/libraries/core/LibForceActions.sol:29</code>, <code>contracts/libraries/core/LibCounterPartyRelations.sol:78</code></td>
+</tr>
+<tr>
+<td><code>InvalidState</code></td>
+<td><code>(string property, uint8 currentStatus, uint8[] requiredStatus)</code></td>
+<td>Status/state machine guard fails — issued by <code>requireStatus</code> and similar helpers (intent / trade / liquidation states).</td>
+<td><code>contracts/libraries/models/LibOpenIntent.sol:87</code>, <code>contracts/libraries/core/LibPartyAOpen.sol:127</code></td>
+</tr>
+<tr>
+<td><code>UnauthorizedSender</code></td>
+<td><code>(address sender, address requiredSender)</code></td>
+<td>Caller is not the expected actor (intent owner, trade Party A/B, NFT contract, affiliate self-config).</td>
+<td><code>contracts/libraries/core/LibPartyAClose.sol:33</code>, <code>contracts/libraries/core/LibPartyBClose.sol:41</code>, <code>contracts/utils/Accessibility.sol:43</code></td>
+</tr>
+<tr>
+<td><code>MismatchedLengths</code></td>
+<td><code>()</code></td>
+<td>Two parallel arrays passed to admin/setter functions differ in length.</td>
+<td><code>contracts/facets/Control/ControlFacet.sol:374</code>, <code>:677</code></td>
+</tr>
+<tr>
+<td><code>NotPartyB</code></td>
+<td><code>(address user)</code></td>
+<td>A Party-B-only modifier was hit by a non-Party-B caller.</td>
+<td><code>contracts/utils/Accessibility.sol:27</code></td>
+</tr>
+<tr>
+<td><code>PartyBUser</code></td>
+<td><code>(address user)</code></td>
+<td>A Party-A-only modifier was hit by a registered Party B.</td>
+<td><code>contracts/utils/Accessibility.sol:32</code></td>
+</tr>
+<tr>
+<td><code>MissingRole</code></td>
+<td><code>(address sender, bytes32 role)</code></td>
+<td>Caller lacks the required diamond access-control role.</td>
+<td><code>contracts/utils/Accessibility.sol:37</code></td>
+</tr>
+<tr>
+<td><code>InvalidSymbol</code></td>
+<td><code>(uint256 symbolId)</code></td>
+<td>Symbol id is unknown or its <code>isValid</code> flag is false.</td>
+<td><code>contracts/libraries/core/LibPartyAOpen.sol:59</code>, <code>contracts/facets/Control/ControlFacet.sol:804</code></td>
+</tr>
+<tr>
+<td><code>CollateralNotWhitelisted</code></td>
+<td><code>(address collateral)</code></td>
+<td>Deposit/use of a collateral token that is not in <code>whiteListedCollateral</code>.</td>
+<td><code>contracts/libraries/core/LibBalanceOperations.sol:43</code></td>
+</tr>
+<tr>
+<td><code>OracleNotFound</code></td>
+<td><code>(uint256 oracleId)</code></td>
+<td>Reference to an unregistered oracle id.</td>
+<td><code>contracts/facets/Control/ControlFacet.sol:698</code></td>
+</tr>
+<tr>
+<td><code>ExpiredSignature</code></td>
+<td><code>(uint256 currentTime, uint256 sigTimestamp, uint256 validTime, uint256 expiryTime)</code></td>
+<td>Muon signature is older than <code>validTime</code> or past <code>expiryTime</code>.</td>
+<td><code>contracts/libraries/services/LibMuon.sol:32</code>, <code>:66</code></td>
+</tr>
+<tr>
+<td><code>InvalidSignature</code></td>
+<td><code>(address signer, bytes32 hashValue)</code></td>
+<td>EIP-1271 / EOA signature check fails for the signed payload.</td>
+<td><code>contracts/libraries/services/LibSignature.sol:17</code></td>
+</tr>
+<tr>
+<td><code>SignatureAlreadyUsed</code></td>
+<td><code>(bytes32 hashValue)</code></td>
+<td>Settlement/exercise signature hash has already been consumed (<code>appLayout.isSigUsed</code>).</td>
+<td><code>contracts/libraries/services/LibSignature.sol:19</code></td>
+</tr>
+<tr>
+<td><code>InsufficientBytes</code></td>
+<td><code>(uint256 providedLength, uint256 minimumLength)</code></td>
+<td><code>LibUserData</code> slicing on a <code>bytes</code> payload that is shorter than the required prefix.</td>
+<td><code>contracts/libraries/utils/LibUserData.sol:17</code>, <code>:27</code></td>
+</tr>
+<tr>
+<td><code>ExternalTransferTargetNotWhitelisted</code></td>
+<td><code>(address target, address collateral)</code></td>
+<td>External transfer destination is not in the per-collateral whitelist.</td>
+<td><code>contracts/libraries/core/LibBalanceOperations.sol:93</code></td>
+</tr>
+</tbody></table>
+<h2 id="system-errors">System Errors</h2>
+<p>Source: <code>contracts/errors/SystemErrors.sol</code>. These cover diamond plumbing, pause flags, emergency mode, and address suspension.</p>
+<h3 id="diamond-cut-and-ownership">Diamond cut and ownership</h3>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Args</th>
+<th>When it reverts</th>
+<th>Sample callsite</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>NotContractOwner</code></td>
+<td><code>(address sender, address owner)</code></td>
+<td>Owner-only diamond function called by a non-owner.</td>
+<td><code>contracts/libraries/core/LibDiamond.sol:68</code></td>
+</tr>
+<tr>
+<td><code>NotPendingOwner</code></td>
+<td><code>(address sender, address pendingOwner)</code></td>
+<td><code>acceptOwnership</code> called by an address that is not the pending owner.</td>
+<td><code>contracts/libraries/core/LibDiamond.sol:56</code></td>
+</tr>
+<tr>
+<td><code>IncorrectFacetCutAction</code></td>
+<td><code>(uint8 action)</code></td>
+<td>Diamond cut action enum is out of range.</td>
+<td><code>contracts/libraries/core/LibDiamond.sol:84</code></td>
+</tr>
+<tr>
+<td><code>NoSelectorsInFacet</code></td>
+<td><code>()</code></td>
+<td>A cut entry passed an empty selector array.</td>
+<td><code>contracts/libraries/core/LibDiamond.sol:92</code>, <code>:113</code>, <code>:138</code></td>
+</tr>
+<tr>
+<td><code>CannotAddExistingFunction</code></td>
+<td><code>(bytes4 selector)</code></td>
+<td>Add-cut introduces a selector already routed to another facet.</td>
+<td><code>contracts/libraries/core/LibDiamond.sol:104</code></td>
+</tr>
+<tr>
+<td><code>NoRemoveTarget</code></td>
+<td><code>(bytes4 selector)</code></td>
+<td>Remove-cut targets a selector that isn&#39;t installed.</td>
+<td><code>contracts/libraries/core/LibDiamond.sol:149</code></td>
+</tr>
+<tr>
+<td><code>CannotRemoveImmutableFunction</code></td>
+<td><code>(bytes4 selector)</code></td>
+<td>Remove-cut targets a selector belonging to the diamond itself.</td>
+<td><code>contracts/libraries/core/LibDiamond.sol:152</code></td>
+</tr>
+<tr>
+<td><code>IdenticalReplace</code></td>
+<td><code>(bytes4 selector, address facetAddress)</code></td>
+<td>Replace-cut moves a selector to the facet it is already on.</td>
+<td><code>contracts/libraries/core/LibDiamond.sol:128</code></td>
+</tr>
+<tr>
+<td><code>NoReplaceTarget</code></td>
+<td><code>(bytes4 selector)</code></td>
+<td>Replace-cut targets a selector that does not exist.</td>
+<td><code>contracts/libraries/core/LibDiamond.sol:130</code></td>
+</tr>
+<tr>
+<td><code>ImmutableReplace</code></td>
+<td><code>(bytes4 selector)</code></td>
+<td>Replace-cut targets the diamond&#39;s own immutable selector.</td>
+<td><code>contracts/libraries/core/LibDiamond.sol:126</code></td>
+</tr>
+<tr>
+<td><code>ZeroAddressWithNonemptyCalldata</code></td>
+<td><code>()</code></td>
+<td>Diamond cut init passed <code>address(0)</code> together with non-empty calldata.</td>
+<td><code>contracts/libraries/core/LibDiamond.sol:169</code></td>
+</tr>
+<tr>
+<td><code>NonZeroAddressWithEmptyCalldata</code></td>
+<td><code>()</code></td>
+<td>Diamond cut init passed a real init address with empty calldata.</td>
+<td><code>contracts/libraries/core/LibDiamond.sol:171</code></td>
+</tr>
+<tr>
+<td><code>InitFunctionReverted</code></td>
+<td><code>()</code></td>
+<td>The post-cut init delegatecall reverted with no revert data.</td>
+<td><code>contracts/libraries/core/LibDiamond.sol:182</code></td>
+</tr>
+<tr>
+<td><code>ContractHasNoCode</code></td>
+<td><code>(address contractAddress, string errorMessage)</code></td>
+<td>An address used as a facet/init target has no deployed code.</td>
+<td><code>contracts/libraries/core/LibDiamond.sol:193</code></td>
+</tr>
+<tr>
+<td><code>InvalidRemoveFacetAddress</code></td>
+<td><code>(address providedAddress)</code></td>
+<td>Remove-cut entry must use <code>address(0)</code> for the facet address.</td>
+<td><code>contracts/libraries/core/LibDiamond.sol:143</code></td>
+</tr>
+<tr>
+<td><code>InvalidAddFacetAddress</code></td>
+<td><code>()</code></td>
+<td>Add-cut entry passed <code>address(0)</code> as facet address.</td>
+<td><code>contracts/libraries/core/LibDiamond.sol:97</code></td>
+</tr>
+<tr>
+<td><code>InvalidReplaceFacetAddress</code></td>
+<td><code>()</code></td>
+<td>Replace-cut entry passed <code>address(0)</code> as facet address.</td>
+<td><code>contracts/libraries/core/LibDiamond.sol:117</code></td>
+</tr>
+<tr>
+<td><code>FunctionDoesNotExist</code></td>
+<td><code>(bytes4 functionSelector)</code></td>
+<td>Diamond fallback found no facet for <code>msg.sig</code>.</td>
+<td><code>contracts/Diamond.sol:43</code></td>
+</tr>
+</tbody></table>
+<h3 id="pause-flags">Pause flags</h3>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Args</th>
+<th>When it reverts</th>
+<th>Sample callsite</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>GlobalPaused</code></td>
+<td><code>()</code></td>
+<td><code>globalPaused</code> is set; blocks every guarded entry point.</td>
+<td><code>contracts/utils/Pausable.sol:17</code>, <code>:24</code></td>
+</tr>
+<tr>
+<td><code>ExpressWithdrawPaused</code></td>
+<td><code>()</code></td>
+<td>Express withdrawal initiation is paused.</td>
+<td><code>contracts/utils/Pausable.sol:25</code></td>
+</tr>
+<tr>
+<td><code>ExpressWithdrawCollectionPaused</code></td>
+<td><code>()</code></td>
+<td>Defined for pausing express-withdraw collection; not currently checked.</td>
+<td>(defined <code>contracts/errors/SystemErrors.sol:31</code>, no live revert)</td>
+</tr>
+<tr>
+<td><code>DepositingPaused</code></td>
+<td><code>()</code></td>
+<td><code>depositingPaused</code> is set.</td>
+<td><code>contracts/utils/Pausable.sol:33</code></td>
+</tr>
+<tr>
+<td><code>InternalTransferPaused</code></td>
+<td><code>()</code></td>
+<td>Internal balance transfers are paused.</td>
+<td><code>contracts/utils/Pausable.sol:41</code></td>
+</tr>
+<tr>
+<td><code>ExternalTransferPaused</code></td>
+<td><code>()</code></td>
+<td>External transfer-to-target is paused.</td>
+<td><code>contracts/utils/Pausable.sol:49</code></td>
+</tr>
+<tr>
+<td><code>WithdrawingPaused</code></td>
+<td><code>()</code></td>
+<td>Final withdrawal step is paused.</td>
+<td><code>contracts/utils/Pausable.sol:57</code></td>
+</tr>
+<tr>
+<td><code>PartyAActionsPaused</code></td>
+<td><code>()</code></td>
+<td>Party-A entry points are paused.</td>
+<td><code>contracts/utils/Pausable.sol:74</code></td>
+</tr>
+<tr>
+<td><code>PartyBActionsPaused</code></td>
+<td><code>()</code></td>
+<td>Party-B entry points are paused.</td>
+<td><code>contracts/utils/Pausable.sol:81</code></td>
+</tr>
+<tr>
+<td><code>ThirdPartyActionsPaused</code></td>
+<td><code>()</code></td>
+<td>Third-party entry points (e.g. anyone-can-settle) are paused.</td>
+<td><code>contracts/utils/Pausable.sol:88</code></td>
+</tr>
+<tr>
+<td><code>LiquidatingPaused</code></td>
+<td><code>()</code></td>
+<td>Clearing-house liquidation entry points are paused.</td>
+<td><code>contracts/utils/Pausable.sol:96</code></td>
+</tr>
+<tr>
+<td><code>InstantLayerPaused</code></td>
+<td><code>()</code></td>
+<td>InstantLayer-routed call hits the diamond while <code>instantLayerPaused</code> is set.</td>
+<td><code>contracts/facets/Control/ControlFacet.sol:938</code></td>
+</tr>
+</tbody></table>
+<h3 id="emergency-and-suspension">Emergency and suspension</h3>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Args</th>
+<th>When it reverts</th>
+<th>Sample callsite</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>PartyBInEmergencyMode</code></td>
+<td><code>(address partyB)</code></td>
+<td>A trade-modifying action is attempted against a Party B in per-address emergency mode.</td>
+<td><code>contracts/libraries/core/LibPartyBOpen.sol:51</code>, <code>:184</code></td>
+</tr>
+<tr>
+<td><code>PartyBsInEmergencyMode</code></td>
+<td><code>()</code></td>
+<td>Global Party-B emergency mode is enabled.</td>
+<td><code>contracts/libraries/core/LibPartyBOpen.sol:52</code>, <code>:185</code></td>
+</tr>
+<tr>
+<td><code>UserSuspended</code></td>
+<td><code>(address user)</code></td>
+<td>The user (sender, intent partyA, withdrawal target) is in <code>suspendedAddresses</code>.</td>
+<td><code>contracts/utils/Accessibility.sol:54</code>, <code>contracts/libraries/core/LibPartyAOpen.sol:53</code></td>
+</tr>
+<tr>
+<td><code>WithdrawalSuspended</code></td>
+<td><code>(uint256 withdrawId)</code></td>
+<td>Specific withdrawal id is flagged in <code>suspendedWithdrawal</code>.</td>
+<td><code>contracts/utils/Accessibility.sol:68</code></td>
+</tr>
+</tbody></table>
+<h2 id="reentrancy-guard-errors">Reentrancy Guard Errors</h2>
+<p>Source: <code>contracts/errors/ReentrancyGuardErrors.sol</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Args</th>
+<th>When it reverts</th>
+<th>Sample callsite</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>ReentrantCall</code></td>
+<td><code>()</code></td>
+<td>A <code>nonReentrant</code>-guarded function is re-entered.</td>
+<td><code>contracts/utils/ReentrancyGuard.sol:16</code></td>
+</tr>
+</tbody></table>
+<h2 id="inline-helper-errors">Inline Helper Errors</h2>
+<p>These errors are declared inside the helper contracts themselves rather than in <code>contracts/errors/</code>. Source files are listed per row.</p>
+<h3 id="multiaccount-contractshelpersmultiaccountsol">MultiAccount (<code>contracts/helpers/MultiAccount.sol</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Args</th>
+<th>When it reverts</th>
+<th>Sample callsite</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>NotOwnerOfAccount</code></td>
+<td><code>(address sender, address account, address owner)</code></td>
+<td>Caller is not the recorded owner of the SymmioPartyA account.</td>
+<td><code>contracts/helpers/MultiAccount.sol:411</code> (defined <code>:156</code>)</td>
+</tr>
+<tr>
+<td><code>ContractDeploymentFailed</code></td>
+<td><code>()</code></td>
+<td>CREATE2 returned <code>address(0)</code> when deploying a SymmioPartyA.</td>
+<td><code>contracts/helpers/MultiAccount.sol:306</code> (defined <code>:157</code>)</td>
+</tr>
+<tr>
+<td><code>PartyACallFailed</code></td>
+<td><code>(bytes returnData)</code></td>
+<td>Admin-routed call into the SymmioPartyA reverted.</td>
+<td><code>contracts/helpers/MultiAccount.sol:356</code> (defined <code>:158</code>)</td>
+</tr>
+<tr>
+<td><code>InvalidCallData</code></td>
+<td><code>(bytes callData)</code></td>
+<td>Provided calldata is too short or otherwise unparseable.</td>
+<td>(defined <code>contracts/helpers/MultiAccount.sol:159</code>, no live revert)</td>
+</tr>
+<tr>
+<td><code>UnauthorizedAccess</code></td>
+<td><code>(address account, address sender, bytes4 selector)</code></td>
+<td>Caller cannot invoke the requested selector through MultiAccount.</td>
+<td><code>contracts/helpers/MultiAccount.sol:233</code> (defined <code>:160</code>)</td>
+</tr>
+</tbody></table>
+<h3 id="instantlayer-contractshelpersinstantlayersol">InstantLayer (<code>contracts/helpers/InstantLayer.sol</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Args</th>
+<th>When it reverts</th>
+<th>Sample callsite</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>InvalidSignature</code></td>
+<td><code>(address signer)</code></td>
+<td>EIP-712 signature on a signed operation does not recover to <code>signer</code>.</td>
+<td><code>contracts/helpers/InstantLayer.sol:404</code></td>
+</tr>
+<tr>
+<td><code>DeadlineExpired</code></td>
+<td><code>(uint256 deadline)</code></td>
+<td>Signed operation&#39;s deadline is in the past.</td>
+<td><code>contracts/helpers/InstantLayer.sol:387</code></td>
+</tr>
+<tr>
+<td><code>InvalidNonce</code></td>
+<td><code>(address user, uint256 expected, uint256 provided)</code></td>
+<td>Signed-op nonce does not match the user&#39;s next expected nonce.</td>
+<td><code>contracts/helpers/InstantLayer.sol:410</code></td>
+</tr>
+<tr>
+<td><code>TemplateNotActive</code></td>
+<td><code>(uint256 templateId)</code></td>
+<td>Batch references a template whose <code>active</code> flag is off.</td>
+<td><code>contracts/helpers/InstantLayer.sol:315</code></td>
+</tr>
+<tr>
+<td><code>InvalidTemplate</code></td>
+<td><code>(uint256 templateId)</code></td>
+<td><code>templateId</code> is at or above <code>nextTemplateId</code>.</td>
+<td><code>contracts/helpers/InstantLayer.sol:295</code>, <code>:312</code></td>
+</tr>
+<tr>
+<td><code>OperationFailed</code></td>
+<td><code>(uint256 operationIndex, bytes revertData)</code></td>
+<td>One of the inner calls in a template/batch reverted.</td>
+<td><code>contracts/helpers/InstantLayer.sol:338</code>, <code>:369</code></td>
+</tr>
+<tr>
+<td><code>ArrayLengthMismatch</code></td>
+<td><code>()</code></td>
+<td>Provided <code>signedOps</code> length does not match the template definition.</td>
+<td><code>contracts/helpers/InstantLayer.sol:316</code></td>
+</tr>
+<tr>
+<td><code>UnregisteredMultiAccount</code></td>
+<td><code>(address multiAccount)</code></td>
+<td>Signed op references a <code>MultiAccount</code> that is not registered with InstantLayer.</td>
+<td><code>contracts/helpers/InstantLayer.sol:395</code></td>
+</tr>
+<tr>
+<td><code>UnregisteredPartyB</code></td>
+<td><code>(address partyB)</code></td>
+<td>Party B signer is not registered with InstantLayer.</td>
+<td><code>contracts/helpers/InstantLayer.sol:392</code></td>
+</tr>
+<tr>
+<td><code>OperationAlreadyExecuted</code></td>
+<td><code>(bytes32 hash)</code></td>
+<td>Same signed-operation hash has already been replayed.</td>
+<td><code>contracts/helpers/InstantLayer.sol:401</code></td>
+</tr>
+<tr>
+<td><code>EmptyBatch</code></td>
+<td><code>()</code></td>
+<td><code>executeOperations</code> called with an empty <code>signedOps</code> array.</td>
+<td><code>contracts/helpers/InstantLayer.sol:355</code></td>
+</tr>
+</tbody></table>
+<h3 id="tradenft-contractshelperstradenftsol">TradeNFT (<code>contracts/helpers/TradeNFT.sol</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Args</th>
+<th>When it reverts</th>
+<th>Sample callsite</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>InvalidSymmioAddress</code></td>
+<td><code>()</code></td>
+<td>Constructor/initialize received <code>address(0)</code> for the diamond.</td>
+<td><code>contracts/helpers/TradeNFT.sol:89</code> (defined <code>:76</code>)</td>
+</tr>
+<tr>
+<td><code>UnauthorizedSender</code></td>
+<td><code>(address sender, address requiredSender)</code></td>
+<td>Caller of an admin/internal hook is not the diamond.</td>
+<td>(defined <code>contracts/helpers/TradeNFT.sol:77</code>, used by modifier checks)</td>
+</tr>
+</tbody></table>
+<h3 id="symmiopartya-contractshelperssymmiopartyasol">SymmioPartyA (<code>contracts/helpers/SymmioPartyA.sol</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Args</th>
+<th>When it reverts</th>
+<th>Sample callsite</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>OnlyMultiAccount</code></td>
+<td><code>(address sender, address expectedMultiAccount)</code></td>
+<td>Direct caller is not the controlling MultiAccount.</td>
+<td><code>contracts/helpers/SymmioPartyA.sol:148</code> (defined <code>:54</code>)</td>
+</tr>
+<tr>
+<td><code>NFTTransferFailed</code></td>
+<td><code>()</code></td>
+<td>The TradeNFT transfer call returned <code>false</code>.</td>
+<td><code>contracts/helpers/SymmioPartyA.sol:138</code> (defined <code>:56</code>)</td>
+</tr>
+</tbody></table>
+<h3 id="symmiopartyb-contractshelperssymmiopartybsol">SymmioPartyB (<code>contracts/helpers/SymmioPartyB.sol</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Args</th>
+<th>When it reverts</th>
+<th>Sample callsite</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>InvalidTargetAddress</code></td>
+<td><code>(address self)</code></td>
+<td>Multicast target equals the SymmioPartyB itself.</td>
+<td><code>contracts/helpers/SymmioPartyB.sol:181</code> (defined <code>:103</code>)</td>
+</tr>
+<tr>
+<td><code>TokenNotApproved</code></td>
+<td><code>(address token, address spender, uint256 amount)</code></td>
+<td>ERC20 <code>approve</code> to the diamond returned <code>false</code>.</td>
+<td><code>contracts/helpers/SymmioPartyB.sol:197</code> (defined <code>:104</code>)</td>
+</tr>
+<tr>
+<td><code>TokenNotTransferred</code></td>
+<td><code>(address token, address recipient, uint256 amount)</code></td>
+<td>ERC20 <code>transfer</code> returned <code>false</code>.</td>
+<td><code>contracts/helpers/SymmioPartyB.sol:209</code> (defined <code>:105</code>)</td>
+</tr>
+<tr>
+<td><code>ArrayLengthMismatch</code></td>
+<td><code>(uint256 destinationsLength, uint256 callDatasLength)</code></td>
+<td>Multicast destination and calldata arrays differ in length.</td>
+<td><code>contracts/helpers/SymmioPartyB.sol:236</code> (defined <code>:106</code>)</td>
+</tr>
+<tr>
+<td><code>InvalidAddress</code></td>
+<td><code>(address providedAddress)</code></td>
+<td>Multicast destination is <code>address(0)</code>.</td>
+<td><code>contracts/helpers/SymmioPartyB.sol:255</code> (defined <code>:107</code>)</td>
+</tr>
+<tr>
+<td><code>InvalidCallData</code></td>
+<td><code>(uint256 dataLength)</code></td>
+<td>Multicast calldata is shorter than 4 bytes.</td>
+<td><code>contracts/helpers/SymmioPartyB.sol:256</code> (defined <code>:108</code>)</td>
+</tr>
+<tr>
+<td><code>InsufficientPermissions</code></td>
+<td><code>(address sender, bytes4 selector)</code></td>
+<td>Caller lacks the role configured for that multicast selector.</td>
+<td><code>contracts/helpers/SymmioPartyB.sol:269</code> (defined <code>:109</code>)</td>
+</tr>
+<tr>
+<td><code>DestinationNotWhitelisted</code></td>
+<td><code>(address destination)</code></td>
+<td>Multicast destination not in <code>multicastWhitelist</code>.</td>
+<td><code>contracts/helpers/SymmioPartyB.sol:272</code> (defined <code>:110</code>)</td>
+</tr>
+</tbody></table>
+<h3 id="muonoracle-contractshelpersmuonoraclesol">MuonOracle (<code>contracts/helpers/MuonOracle.sol</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Args</th>
+<th>When it reverts</th>
+<th>Sample callsite</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>InvalidSignature</code></td>
+<td><code>()</code></td>
+<td>Schnorr signature verification on the Muon report failed.</td>
+<td><code>contracts/helpers/MuonOracle.sol:38</code> (defined <code>:20</code>)</td>
+</tr>
+<tr>
+<td><code>InvalidGatewaySignature</code></td>
+<td><code>(address signer, address expectedGateway)</code></td>
+<td>Recovered gateway signer differs from the configured <code>validGateway</code>.</td>
+<td><code>contracts/helpers/MuonOracle.sol:43</code> (defined <code>:21</code>)</td>
+</tr>
+</tbody></table>
+<h2 id="inherited-openzeppelin-5-errors">Inherited OpenZeppelin 5 Errors</h2>
+<p>The helper contracts inherit OpenZeppelin 5, which reverts with custom errors instead of the revert strings OpenZeppelin 4 used. Off-chain code that matches OpenZeppelin 4 revert strings must switch to ABI-decoding these custom errors. They are declared by the OpenZeppelin base contracts, not in this repo, so they do not appear in <code>contracts/errors/</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Raised by</th>
+<th>Replaces (OpenZeppelin 4 string)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>AccessControlUnauthorizedAccount(account, role)</code></td>
+<td>MultiAccount, SymmioPartyA, SymmioPartyB, InstantLayer, MuonOracle</td>
+<td><code>AccessControl: account ... is missing role ...</code></td>
+</tr>
+<tr>
+<td><code>EnforcedPause()</code></td>
+<td>MultiAccount, SymmioPartyB (<code>whenNotPaused</code> functions, <code>pause()</code> twice)</td>
+<td><code>Pausable: paused</code></td>
+</tr>
+<tr>
+<td><code>ExpectedPause()</code></td>
+<td>MultiAccount, SymmioPartyB (<code>unpause()</code> while not paused)</td>
+<td><code>Pausable: not paused</code></td>
+</tr>
+<tr>
+<td><code>InvalidInitialization()</code></td>
+<td>MultiAccount, SymmioPartyB (<code>initialize</code> called a second time)</td>
+<td><code>Initializable: contract is already initialized</code></td>
+</tr>
+<tr>
+<td><code>ReentrancyGuardReentrantCall()</code></td>
+<td>SymmioPartyB, InstantLayer (<code>nonReentrant</code> functions)</td>
+<td><code>ReentrancyGuard: reentrant call</code></td>
+</tr>
+<tr>
+<td><code>ERC721InsufficientApproval(operator, tokenId)</code></td>
+<td>TradeNFT (<code>transferFrom</code>, <code>safeTransferFrom</code>)</td>
+<td><code>ERC721: caller is not token owner or approved</code></td>
+</tr>
+<tr>
+<td><code>ERC721IncorrectOwner(sender, tokenId, owner)</code></td>
+<td>TradeNFT (<code>transferFrom</code>, <code>safeTransferFrom</code>, <code>transferTradeNFT</code>)</td>
+<td><code>ERC721: transfer from incorrect owner</code></td>
+</tr>
+<tr>
+<td><code>ERC721NonexistentToken(tokenId)</code></td>
+<td>TradeNFT (<code>ownerOf</code>, <code>getApproved</code>, transfers of an unminted id)</td>
+<td><code>ERC721: invalid token ID</code></td>
+</tr>
+<tr>
+<td><code>ERC721InvalidReceiver(receiver)</code></td>
+<td>TradeNFT (<code>safeTransferFrom</code> to a non-receiver contract, or <code>address(0)</code>)</td>
+<td><code>ERC721: transfer to non ERC721Receiver implementer</code>, <code>ERC721: transfer to the zero address</code></td>
+</tr>
+<tr>
+<td><code>ERC721InvalidOwner(owner)</code></td>
+<td>TradeNFT (<code>balanceOf(address(0))</code>)</td>
+<td><code>ERC721: address zero is not a valid owner</code></td>
+</tr>
+<tr>
+<td><code>ERC721OutOfBoundsIndex(owner, index)</code></td>
+<td>TradeNFT (<code>tokenByIndex</code>, <code>tokenOfOwnerByIndex</code>)</td>
+<td><code>ERC721Enumerable: global index out of bounds</code>, <code>ERC721Enumerable: owner index out of bounds</code></td>
+</tr>
+<tr>
+<td><code>OwnableUnauthorizedAccount(account)</code></td>
+<td>TradeNFT (<code>transferOwnership</code>, <code>renounceOwnership</code>)</td>
+<td><code>Ownable: caller is not the owner</code></td>
+</tr>
+<tr>
+<td><code>ECDSAInvalidSignature()</code></td>
+<td>MuonOracle (<code>verifyTSSAndGW</code> gateway signature recovery)</td>
+<td><code>ECDSA: invalid signature</code></td>
+</tr>
+<tr>
+<td><code>ECDSAInvalidSignatureLength(length)</code></td>
+<td>MuonOracle (<code>verifyTSSAndGW</code> gateway signature recovery)</td>
+<td><code>ECDSA: invalid signature length</code></td>
+</tr>
+<tr>
+<td><code>ECDSAInvalidSignatureS(s)</code></td>
+<td>MuonOracle (<code>verifyTSSAndGW</code> gateway signature recovery)</td>
+<td><code>ECDSA: invalid signature &#39;s&#39; value</code></td>
+</tr>
+</tbody></table>
+<p><code>SafeERC20FailedOperation</code> is not listed: none of the helpers call <code>SafeERC20</code> functions (<code>SymmioPartyB</code> uses plain <code>approve</code> and <code>transfer</code> and raises <code>TokenNotApproved</code> and <code>TokenNotTransferred</code>). <code>SymmioPartyA.transferTradeNFT</code> wraps the NFT transfer in <code>try</code>/<code>catch</code>, so TradeNFT&#39;s ERC721 errors surface there as <code>NFTTransferFailed</code>.</p>
+<h2 id="common-triage-patterns">Common Triage Patterns</h2>
+<p>The errors below cover the bulk of revert tickets seen in normal trading flows. Each row is &quot;what to check first.&quot;</p>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Quick fix</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>BalanceLimitExceeded</code></td>
+<td>Means <code>deposit + balance</code> would exceed <code>balanceLimitPerUser[collateral]</code>. Check the user&#39;s whitelist tier or have an admin raise the limit; only Party A users are bound by it.</td>
+</tr>
+<tr>
+<td><code>InsufficientBalance</code></td>
+<td>The relevant pocket (isolated free, locked, or reserve) is short. Confirm which by the <code>available</code> field and re-check whether funds are still locked in an open intent.</td>
+</tr>
+<tr>
+<td><code>CollateralNotWhitelisted</code></td>
+<td>Collateral token must be whitelisted via <code>ControlFacet.addCollateral</code> before any deposit.</td>
+</tr>
+<tr>
+<td><code>NotSolvent</code></td>
+<td>A liquidation id already exists for the <code>(party, counterParty, collateral)</code> triple. Wait for liquidation cleanup or pick a different counterparty.</td>
+</tr>
+<tr>
+<td><code>IntentExpired</code> / <code>IntentNotExpired</code></td>
+<td>Off-chain clock drift or stale intent. Resubmit with a fresh <code>deadline</code>, or wait until the deadline really passes for the force/expire path.</td>
+</tr>
+<tr>
+<td><code>NotWhitelistedPartyB</code></td>
+<td>Party A&#39;s <code>partyBsWhiteList</code> excludes the locking solver. Either Party A re-issues the intent with the right whitelist or another Party B picks it up.</td>
+</tr>
+<tr>
+<td><code>OracleMismatch</code></td>
+<td>Party B&#39;s <code>partyBConfigs[partyB].oracleId</code> does not match the symbol&#39;s oracle. Update the Party B config to support that oracle.</td>
+</tr>
+<tr>
+<td><code>SymbolTypeNotSupported</code></td>
+<td>Admin must enable the symbol type for that Party B via <code>ControlFacet.setPartyBSupportedSymbolTypes</code>.</td>
+</tr>
+<tr>
+<td><code>InvalidOpenPrice</code> / <code>InvalidClosePrice</code></td>
+<td>Fill price violated Party A&#39;s threshold; retry with a price that respects the side (better or equal).</td>
+</tr>
+<tr>
+<td><code>InvalidFillAmount</code></td>
+<td>Fill quantity exceeds the remaining intent quantity; reduce it or refresh the off-chain view of <code>availableAmount</code>.</td>
+</tr>
+<tr>
+<td><code>CooldownNotOver</code></td>
+<td>Generic cooldown gate. The <code>cooldown</code> string identifies the bucket: <code>&quot;withdraw&quot;</code>, <code>&quot;forceCancel*&quot;</code>, <code>&quot;forceClose*&quot;</code>, <code>&quot;unbinding&quot;</code>, instant-actions deactivation. Wait for <code>requiredTime</code> to pass.</td>
+</tr>
+<tr>
+<td><code>GlobalPaused</code> / <code>*ActionsPaused</code></td>
+<td>The corresponding pause flag is set by <code>ControlFacet</code>; wait for the operator to unpause or use a different entry path.</td>
+</tr>
+</tbody></table>
+</article></main></div><footer class="site-footer"><span>Options Core documentation.</span></footer></body></html>

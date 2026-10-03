@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Reading paths, chapter map, and documentation maintenance."><title>Options Core documentation | Options Core</title>
+<link rel="icon" type="image/svg+xml" href="../assets/symmio-mark.svg">
+<script>try { if (localStorage.getItem("options-docs-theme") === "light") document.documentElement.dataset.theme = "light"; } catch (_) {}</script>
+<link rel="stylesheet" href="../assets/reader.css"><link rel="stylesheet" href="../assets/docs-portal.css">
+<script src="../assets/chapters.js" defer></script><script src="../assets/reader.js" defer></script><script src="../assets/docs-portal.js" defer></script>
+</head>
+<body class="doc-page" data-version="current"><a class="skip-link" href="#full-document">Skip to document</a>
+<header class="docs-header"><div class="doc-topbar"><nav class="docs-trail" aria-label="Breadcrumb">
+<a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Options Core</span></a>
+<span class="trail-sep" aria-hidden="true">/</span><a class="trail-release" href="../index.html">Documentation</a>
+</nav><nav class="top-actions" aria-label="Page actions"><button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button></nav></div></header><div class="reader-shell"><div data-rail-sections hidden>
+<a class="toc-link level-2" href="#reading-paths">Reading paths</a>
+<a class="toc-link level-2" href="#chapters">Chapters</a>
+<a class="toc-link level-2" href="#maintaining-the-site">Maintaining the site</a>
+</div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1>Options Core documentation</h1><p class="hero-copy">Reading paths, chapter map, and documentation maintenance.</p></div></div></header>
+<article class="doc-article" id="full-document"><p>Open <a href="../index.html">the documentation site</a>, or serve it locally with <code>npm run docs</code>. The static HTML reader is shared with <code>perps-core</code>. It supports chapter search, page outlines, light and dark themes, code controls, and diagrams.</p>
+<h2 id="reading-paths">Reading paths</h2>
+<p>Start with <a href="architecture.html">architecture</a> and <a href="open-intents.html">open intents</a> for the trade lifecycle. Integrators can look up selectors in <a href="facets.html">facets</a>, then check <a href="events.html">events</a> and <a href="errors.html">errors</a>. Reviewers should read <a href="security.html">security</a> alongside the relevant flow. Operators should use <a href="deployment-and-operations.html">deployment and operations</a> and <a href="roles-and-pauses.html">roles and pauses</a>.</p>
+<h2 id="chapters">Chapters</h2>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Chapters</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Development</td>
+<td><a href="development-standards.html">Development standards</a>, <a href="testing.html">testing</a>, <a href="deployment-and-operations.html">deployment and operations</a></td>
+</tr>
+<tr>
+<td>Architecture</td>
+<td><a href="architecture.html">Architecture</a>, <a href="security.html">security</a></td>
+</tr>
+<tr>
+<td>Flows</td>
+<td><a href="account-balances.html">Account balances</a>, <a href="open-intents.html">open intents</a>, <a href="close-and-settlement.html">close and settlement</a>, <a href="instant-actions.html">instant actions</a>, <a href="liquidation-and-force-actions.html">liquidation and force actions</a></td>
+</tr>
+<tr>
+<td>Concepts</td>
+<td><a href="glossary.html">Glossary</a>, <a href="margin-modes.html">margin modes</a>, <a href="fee-model.html">fee model</a>, <a href="oracle-and-signatures.html">oracle and signatures</a>, <a href="scheduled-release.html">scheduled release</a></td>
+</tr>
+<tr>
+<td>Reference</td>
+<td><a href="facets.html">Facets</a>, <a href="events.html">events</a>, <a href="errors.html">errors</a>, <a href="types-and-storage.html">types and storage</a>, <a href="roles-and-pauses.html">roles and pauses</a></td>
+</tr>
+</tbody></table>
+<h2 id="maintaining-the-site">Maintaining the site</h2>
+<p>Edit the Markdown chapters, build them with <code>npm run docs:build</code>, and validate the result with <code>npm run docs:check</code>. The generated HTML, catalog, and chapter manifest are committed, allowing readers to open the site without building it. Keep documentation changes with the contract changes they describe.</p>
+<p>Research under <code>docs/research/</code> contains proposed designs and references. It is separate from the current protocol chapters.</p>
+</article></main></div><footer class="site-footer"><span>Options Core documentation.</span></footer></body></html>

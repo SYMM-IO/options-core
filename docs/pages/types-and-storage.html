@@ -1,0 +1,1939 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Structs, enums, storage layouts, and units."><title>Types And Storage | Options Core</title>
+<link rel="icon" type="image/svg+xml" href="../assets/symmio-mark.svg">
+<script>try { if (localStorage.getItem("options-docs-theme") === "light") document.documentElement.dataset.theme = "light"; } catch (_) {}</script>
+<link rel="stylesheet" href="../assets/reader.css"><link rel="stylesheet" href="../assets/docs-portal.css">
+<script src="../assets/chapters.js" defer></script><script src="../assets/reader.js" defer></script><script src="../assets/docs-portal.js" defer></script>
+</head>
+<body class="doc-page" data-version="current"><a class="skip-link" href="#full-document">Skip to document</a>
+<header class="docs-header"><div class="doc-topbar"><nav class="docs-trail" aria-label="Breadcrumb">
+<a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Options Core</span></a>
+<span class="trail-sep" aria-hidden="true">/</span><a class="trail-release" href="../index.html">Documentation</a>
+</nav><nav class="top-actions" aria-label="Page actions"><button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button></nav></div></header><div class="reader-shell"><div data-rail-sections hidden>
+<a class="toc-link level-2" href="#contents">Contents</a>
+<a class="toc-link level-2" href="#types">Types</a>
+<a class="toc-link level-3" href="#basetypes">BaseTypes</a>
+<a class="toc-link level-3" href="#balancetypes">BalanceTypes</a>
+<a class="toc-link level-3" href="#intenttypes">IntentTypes</a>
+<a class="toc-link level-3" href="#tradetypes">TradeTypes</a>
+<a class="toc-link level-3" href="#symboltypes">SymbolTypes</a>
+<a class="toc-link level-3" href="#liquidationtypes">LiquidationTypes</a>
+<a class="toc-link level-3" href="#withdrawtypes">WithdrawTypes</a>
+<a class="toc-link level-3" href="#muontypes">MuonTypes</a>
+<a class="toc-link level-3" href="#trade--intent-relationships">Trade ↔ Intent Relationships</a>
+<a class="toc-link level-2" href="#storage">Storage</a>
+<a class="toc-link level-3" href="#appstorage">AppStorage</a>
+<a class="toc-link level-3" href="#accountstorage">AccountStorage</a>
+<a class="toc-link level-3" href="#openintentstorage">OpenIntentStorage</a>
+<a class="toc-link level-3" href="#closeintentstorage">CloseIntentStorage</a>
+<a class="toc-link level-3" href="#tradestorage">TradeStorage</a>
+<a class="toc-link level-3" href="#symbolstorage">SymbolStorage</a>
+<a class="toc-link level-3" href="#feemanagementstorage">FeeManagementStorage</a>
+<a class="toc-link level-3" href="#liquidationstorage">LiquidationStorage</a>
+<a class="toc-link level-3" href="#counterpartyrelationsstorage">CounterPartyRelationsStorage</a>
+<a class="toc-link level-3" href="#statecontrolstorage">StateControlStorage</a>
+<a class="toc-link level-3" href="#accesscontrolstorage">AccessControlStorage</a>
+<a class="toc-link level-2" href="#conventions">Conventions</a>
+<a class="toc-link level-3" href="#decimal-normalization">Decimal Normalization</a>
+<a class="toc-link level-3" href="#time-units">Time Units</a>
+<a class="toc-link level-3" href="#price-quantity-premium-margin">Price, Quantity, Premium, Margin</a>
+<a class="toc-link level-3" href="#identifier-counters">Identifier Counters</a>
+</div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1>Types And Storage</h1><p class="hero-copy">Structs, enums, storage layouts, and units.</p></div></div></header>
+<article class="doc-article" id="full-document"><p>This document is the canonical reference for every Solidity struct and enum defined under <code>contracts/types/</code>, and every diamond-storage library defined under <code>contracts/storages/</code>. Internal accounting is normalized to 18 decimals through <code>LibDecimals</code>; timestamps are seconds; prices and premiums are denominated in the symbol&#39;s collateral token. All storage slot constants follow the EIP-2535 <code>keccak256(&quot;diamond.standard.storage.&lt;name&gt;&quot;)</code> derivation pattern.</p>
+<h2 id="contents">Contents</h2>
+<ul>
+<li><a href="#types">Types</a><ul>
+<li><a href="#basetypes">BaseTypes</a></li>
+<li><a href="#balancetypes">BalanceTypes</a></li>
+<li><a href="#intenttypes">IntentTypes</a></li>
+<li><a href="#tradetypes">TradeTypes</a></li>
+<li><a href="#symboltypes">SymbolTypes</a></li>
+<li><a href="#liquidationtypes">LiquidationTypes</a></li>
+<li><a href="#withdrawtypes">WithdrawTypes</a></li>
+<li><a href="#muontypes">MuonTypes</a></li>
+<li><a href="#trade--intent-relationships">Trade ↔ Intent Relationships</a></li>
+</ul>
+</li>
+<li><a href="#storage">Storage</a><ul>
+<li><a href="#appstorage">AppStorage</a></li>
+<li><a href="#accountstorage">AccountStorage</a></li>
+<li><a href="#openintentstorage">OpenIntentStorage</a></li>
+<li><a href="#closeintentstorage">CloseIntentStorage</a></li>
+<li><a href="#tradestorage">TradeStorage</a></li>
+<li><a href="#symbolstorage">SymbolStorage</a></li>
+<li><a href="#feemanagementstorage">FeeManagementStorage</a></li>
+<li><a href="#liquidationstorage">LiquidationStorage</a></li>
+<li><a href="#counterpartyrelationsstorage">CounterPartyRelationsStorage</a></li>
+<li><a href="#statecontrolstorage">StateControlStorage</a></li>
+<li><a href="#accesscontrolstorage">AccessControlStorage</a></li>
+</ul>
+</li>
+<li><a href="#conventions">Conventions</a><ul>
+<li><a href="#decimal-normalization">Decimal Normalization</a></li>
+<li><a href="#time-units">Time Units</a></li>
+<li><a href="#price-quantity-premium-margin">Price, Quantity, Premium, Margin</a></li>
+<li><a href="#identifier-counters">Identifier Counters</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="types">Types</h2>
+<h3 id="basetypes">BaseTypes</h3>
+<p>Source: <code>contracts/types/BaseTypes.sol</code>.</p>
+<h4 id="enum-tradeside--line-7">enum TradeSide — line 7</h4>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>BUY</code></td>
+<td>Party A buys the option.</td>
+</tr>
+<tr>
+<td><code>SELL</code></td>
+<td>Party A writes/sells.</td>
+</tr>
+</tbody></table>
+<h4 id="enum-margintype--line-12">enum MarginType — line 12</h4>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>ISOLATED</code></td>
+<td>Per-position margin; locked on Party A <code>isolatedLockedBalance</code>.</td>
+</tr>
+<tr>
+<td><code>CROSS</code></td>
+<td>Pooled margin against a specific Party B; managed in <code>CrossEntry</code> per counter-party.</td>
+</tr>
+</tbody></table>
+<p>Party A <code>SELL</code> is rejected for <code>ISOLATED</code> (see <code>PartyAOpenFacet.sendOpenIntent</code>).</p>
+<h4 id="struct-exercisefee--line-17">struct ExerciseFee — line 17</h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Units</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>rate</code></td>
+<td><code>uint256</code></td>
+<td>1e18 fraction (e.g. 1e16 = 1%)</td>
+<td>Exercise fee rate applied at settlement; cap is <code>1e18</code>.</td>
+</tr>
+<tr>
+<td><code>cap</code></td>
+<td><code>uint256</code></td>
+<td>collateral, 18 decimals</td>
+<td>Maximum absolute fee charged regardless of <code>rate * notional</code>.</td>
+</tr>
+</tbody></table>
+<h4 id="struct-fee--line-22">struct Fee — line 22</h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Units</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>openFee</code></td>
+<td><code>uint256</code></td>
+<td>1e18 fraction of notional</td>
+<td>Fraction of notional charged when an open intent is filled.</td>
+</tr>
+<tr>
+<td><code>closeFee</code></td>
+<td><code>uint256</code></td>
+<td>1e18 fraction of notional</td>
+<td>Fraction of notional charged when a close intent settles.</td>
+</tr>
+</tbody></table>
+<h4 id="enum-feeop--line-27">enum FeeOp — line 27</h4>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>Subtract</code></td>
+<td>Debit the fee from a free balance.</td>
+</tr>
+<tr>
+<td><code>Add</code></td>
+<td>Credit the fee to a free balance.</td>
+</tr>
+<tr>
+<td><code>Lock</code></td>
+<td>Move fee from free to locked (intent reservation).</td>
+</tr>
+<tr>
+<td><code>Unlock</code></td>
+<td>Release a locked fee back to free.</td>
+</tr>
+</tbody></table>
+<h4 id="struct-feestructure--line-34">struct FeeStructure — line 34</h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Units</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>feeToken</code></td>
+<td><code>address</code></td>
+<td>ERC-20</td>
+<td>Token used to pay platform/affiliate/solver fees.</td>
+</tr>
+<tr>
+<td><code>tokenPriceInCollateral</code></td>
+<td><code>uint256</code></td>
+<td>18-decimal price</td>
+<td>Price of <code>feeToken</code> denominated in collateral, snapshotted at intent creation.</td>
+</tr>
+<tr>
+<td><code>platformFee</code></td>
+<td><code>Fee</code></td>
+<td>—</td>
+<td>Platform open/close fee fractions.</td>
+</tr>
+<tr>
+<td><code>affiliateFee</code></td>
+<td><code>Fee</code></td>
+<td>—</td>
+<td>Affiliate open/close fee fractions.</td>
+</tr>
+<tr>
+<td><code>solverFee</code></td>
+<td><code>Fee</code></td>
+<td>—</td>
+<td>Party B (solver) open/close fee fractions.</td>
+</tr>
+</tbody></table>
+<h4 id="struct-tradeagreements--line-42">struct TradeAgreements — line 42</h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Units</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>symbolId</code></td>
+<td><code>uint256</code></td>
+<td>id</td>
+<td>Reference into <code>SymbolStorage.symbols</code>.</td>
+</tr>
+<tr>
+<td><code>quantity</code></td>
+<td><code>uint256</code></td>
+<td>base units, 18 decimals</td>
+<td>Option contract size; must be nonzero.</td>
+</tr>
+<tr>
+<td><code>strikePrice</code></td>
+<td><code>uint256</code></td>
+<td>collateral, 18 decimals</td>
+<td>Strike price.</td>
+</tr>
+<tr>
+<td><code>expirationTimestamp</code></td>
+<td><code>uint256</code></td>
+<td>unix seconds</td>
+<td>Option expiration; must be in the future at intent creation.</td>
+</tr>
+<tr>
+<td><code>mm</code></td>
+<td><code>uint256</code></td>
+<td>collateral, 18 decimals</td>
+<td>Maintenance margin per quantity locked for sellers.</td>
+</tr>
+<tr>
+<td><code>exerciseFee</code></td>
+<td><code>ExerciseFee</code></td>
+<td>—</td>
+<td>Exercise fee schedule.</td>
+</tr>
+<tr>
+<td><code>tradeSide</code></td>
+<td><code>TradeSide</code></td>
+<td>—</td>
+<td>Party A side.</td>
+</tr>
+<tr>
+<td><code>marginType</code></td>
+<td><code>MarginType</code></td>
+<td>—</td>
+<td>Margin model.</td>
+</tr>
+</tbody></table>
+<p>Used by: <code>OpenIntent</code>, <code>Trade</code>. Consumed in <code>LibPartyAOpen</code>, <code>LibPartyBOpen</code>, <code>LibPartyAClose</code>, <code>LibPartyBClose</code>, <code>LibTradeOperations</code>, <code>LibTrade</code>.</p>
+<h3 id="balancetypes">BalanceTypes</h3>
+<p>Source: <code>contracts/types/BalanceTypes.sol</code>.</p>
+<h4 id="struct-scheduledreleaseentry--line-24">struct ScheduledReleaseEntry — line 24</h4>
+<p>Two-bus delayed-unlock slot. Funds enter <code>scheduled</code>, advance to <code>transitioning</code> after one interval, then to free balance after another.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Units</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>releaseInterval</code></td>
+<td><code>uint256</code></td>
+<td>seconds</td>
+<td>Interval between bus arrivals.</td>
+</tr>
+<tr>
+<td><code>transitioning</code></td>
+<td><code>uint256</code></td>
+<td>18 decimals</td>
+<td>Funds unlocking after one interval.</td>
+</tr>
+<tr>
+<td><code>scheduled</code></td>
+<td><code>uint256</code></td>
+<td>18 decimals</td>
+<td>Funds unlocking after two intervals.</td>
+</tr>
+<tr>
+<td><code>lastTransitionTimestamp</code></td>
+<td><code>uint256</code></td>
+<td>unix seconds</td>
+<td>Aligned to start of the last processed interval.</td>
+</tr>
+</tbody></table>
+<h4 id="struct-crossentry--line-31">struct CrossEntry — line 31</h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Units</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>balance</code></td>
+<td><code>int256</code></td>
+<td>18 decimals</td>
+<td>Signed cross balance vs a specific counter-party (premium PnL etc.).</td>
+</tr>
+<tr>
+<td><code>locked</code></td>
+<td><code>uint256</code></td>
+<td>18 decimals</td>
+<td>Locked premium / fee amount.</td>
+</tr>
+<tr>
+<td><code>totalMM</code></td>
+<td><code>uint256</code></td>
+<td>18 decimals</td>
+<td>Aggregated maintenance margin for SELL trades against this counter-party.</td>
+</tr>
+</tbody></table>
+<h4 id="struct-scheduledreleasebalance--line-46">struct ScheduledReleaseBalance — line 46</h4>
+<p>Per (<code>user</code>, <code>collateral</code>) margin state with packed counter-party enumeration.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>collateral</code></td>
+<td><code>address</code></td>
+<td>Collateral token (ERC-20).</td>
+</tr>
+<tr>
+<td><code>user</code></td>
+<td><code>address</code></td>
+<td>Owner of this slot.</td>
+</tr>
+<tr>
+<td><code>isolatedBalance</code></td>
+<td><code>uint256</code></td>
+<td>Free isolated funds (18 dec).</td>
+</tr>
+<tr>
+<td><code>isolatedLockedBalance</code></td>
+<td><code>uint256</code></td>
+<td>Isolated funds locked behind intents/trades.</td>
+</tr>
+<tr>
+<td><code>reserveBalance</code></td>
+<td><code>uint256</code></td>
+<td>Funds set aside in reserve pool.</td>
+</tr>
+<tr>
+<td><code>crossBalance</code></td>
+<td><code>mapping(address ⇒ CrossEntry)</code></td>
+<td>Per counter-party cross state.</td>
+</tr>
+<tr>
+<td><code>counterPartySchedules</code></td>
+<td><code>mapping(address ⇒ ScheduledReleaseEntry)</code></td>
+<td>Two-bus delayed balances per counter-party.</td>
+</tr>
+<tr>
+<td><code>counterPartyAddresses</code></td>
+<td><code>address[]</code></td>
+<td>Packed enumeration of active counter-parties.</td>
+</tr>
+<tr>
+<td><code>counterPartyIndexes</code></td>
+<td><code>mapping(address ⇒ uint256)</code></td>
+<td>1-based index into <code>counterPartyAddresses</code>; 0 ⇒ absent.</td>
+</tr>
+</tbody></table>
+<p>Used by: <code>LibScheduledReleaseBalance</code>, <code>LibBalanceOperations</code>, <code>LibAllocationOperations</code>, <code>LibParty</code>, the entire <code>Account/</code>, <code>PartyA*</code>, <code>PartyB*</code>, <code>ClearingHouse</code>, <code>ForceActions</code>, <code>Trade</code>, and <code>View</code> facets.</p>
+<h4 id="enum-increasebalancereason--line-66">enum IncreaseBalanceReason — line 66</h4>
+<p>Reasons recorded when balances grow. Members: <code>DEPOSIT</code>, <code>INTERNAL_TRANSFER</code>, <code>EXPRESS_WITHDRAW</code>, <code>AFFILIATE_FEE</code>, <code>SOLVER_FEE</code>, <code>PLATFORM_FEE</code>, <code>PREMIUM</code>, <code>REALIZED_PNL</code>, <code>LIQUIDATION</code>, <code>INVALID_WITHDRAWAL</code>, <code>ALLOCATE_FROM_RESERVE</code>.</p>
+<h4 id="enum-decreasebalancereason--line-80">enum DecreaseBalanceReason — line 80</h4>
+<p>Symmetric reasons for debits. Members: <code>WITHDRAW</code>, <code>INTERNAL_TRANSFER</code>, <code>EXPRESS_WITHDRAW</code>, <code>AFFILIATE_FEE</code>, <code>SOLVER_FEE</code>, <code>PLATFORM_FEE</code>, <code>PREMIUM</code>, <code>REALIZED_PNL</code>, <code>CONFISCATE</code>, <code>LIQUIDATION</code>, <code>EXTERNAL_TRANSFER</code>.</p>
+<h3 id="intenttypes">IntentTypes</h3>
+<p>Source: <code>contracts/types/IntentTypes.sol</code>.</p>
+<h4 id="enum-openintentstatus--line-9">enum OpenIntentStatus — line 9</h4>
+<p><code>PENDING</code>, <code>LOCKED</code>, <code>CANCEL_PENDING</code>, <code>CANCELED</code>, <code>FILLED</code>, <code>EXPIRED</code>. State machine documented in <code>flows/open-intents.md</code>.</p>
+<h4 id="enum-closeintentstatus--line-18">enum CloseIntentStatus — line 18</h4>
+<p><code>PENDING</code>, <code>CANCEL_PENDING</code>, <code>CANCELED</code>, <code>FILLED</code>, <code>EXPIRED</code>.</p>
+<h4 id="struct-openintent--line-26">struct OpenIntent — line 26</h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Units</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>id</code></td>
+<td><code>uint256</code></td>
+<td>id</td>
+<td>Monotonic id from <code>OpenIntentStorage.lastOpenIntentId</code>.</td>
+</tr>
+<tr>
+<td><code>tradeId</code></td>
+<td><code>uint256</code></td>
+<td>id</td>
+<td>Set on FILL; references <code>TradeStorage.trades</code>.</td>
+</tr>
+<tr>
+<td><code>tradeAgreements</code></td>
+<td><code>TradeAgreements</code></td>
+<td>—</td>
+<td>Symbol/quantity/strike/expiry/mm/side/margin terms.</td>
+</tr>
+<tr>
+<td><code>price</code></td>
+<td><code>uint256</code></td>
+<td>18 decimals</td>
+<td>Party A limit premium per unit.</td>
+</tr>
+<tr>
+<td><code>partyBsWhiteList</code></td>
+<td><code>address[]</code></td>
+<td>—</td>
+<td>Allowed Party Bs; empty means any active Party B for isolated intents and deferred Party B sells; normal cross intents require exactly one Party B.</td>
+</tr>
+<tr>
+<td><code>parentId</code></td>
+<td><code>uint256</code></td>
+<td>id</td>
+<td>Original intent id when this is a partial-fill child; <code>0</code> otherwise.</td>
+</tr>
+<tr>
+<td><code>createTimestamp</code></td>
+<td><code>uint256</code></td>
+<td>unix seconds</td>
+<td>Creation time.</td>
+</tr>
+<tr>
+<td><code>statusModifyTimestamp</code></td>
+<td><code>uint256</code></td>
+<td>unix seconds</td>
+<td>Last status transition; used by force/expire timeouts.</td>
+</tr>
+<tr>
+<td><code>deadline</code></td>
+<td><code>uint256</code></td>
+<td>unix seconds</td>
+<td>Latest time the intent may be locked/filled.</td>
+</tr>
+<tr>
+<td><code>feeStructure</code></td>
+<td><code>FeeStructure</code></td>
+<td>—</td>
+<td>Snapshot of fee tokens and fractions at creation.</td>
+</tr>
+<tr>
+<td><code>partyA</code></td>
+<td><code>address</code></td>
+<td>—</td>
+<td>Intent owner.</td>
+</tr>
+<tr>
+<td><code>partyB</code></td>
+<td><code>address</code></td>
+<td>—</td>
+<td>Locking Party B; cleared on unlock.</td>
+</tr>
+<tr>
+<td><code>affiliate</code></td>
+<td><code>address</code></td>
+<td>—</td>
+<td>Affiliate fee recipient routing.</td>
+</tr>
+<tr>
+<td><code>userData</code></td>
+<td><code>bytes</code></td>
+<td>—</td>
+<td>Opaque payload (see <code>LibUserData</code>).</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>OpenIntentStatus</code></td>
+<td>—</td>
+<td>Current state.</td>
+</tr>
+</tbody></table>
+<p>Consumed by: <code>PartyAOpenFacet</code>, <code>PartyBOpenFacet</code>, <code>LibPartyAOpen</code>, <code>LibPartyBOpen</code>, <code>LibOpenIntent</code>, <code>LibForceActions</code>, <code>LibTradeOperations</code>, <code>ViewFacet</code>.</p>
+<h4 id="struct-openintentescrow--line-44">struct OpenIntentEscrow — line 44</h4>
+<p>Temporary escrow record for deferred Party B sells (<code>SELL + CROSS + empty whitelist</code>). It exists while the matching quantity is still pending without a final Party B; after a partial fill, the remaining record is moved from the filled parent intent to the residual child intent.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Units</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>partyA</code></td>
+<td><code>address</code></td>
+<td>—</td>
+<td>Owner whose isolated balances were locked.</td>
+</tr>
+<tr>
+<td><code>collateral</code></td>
+<td><code>address</code></td>
+<td>ERC-20</td>
+<td>Symbol collateral used for seller MM.</td>
+</tr>
+<tr>
+<td><code>feeToken</code></td>
+<td><code>address</code></td>
+<td>ERC-20</td>
+<td>Token reserved for open fees.</td>
+</tr>
+<tr>
+<td><code>mm</code></td>
+<td><code>uint256</code></td>
+<td>18 decimals</td>
+<td>Seller maintenance margin locked from isolated collateral.</td>
+</tr>
+<tr>
+<td><code>feeLockAmount</code></td>
+<td><code>uint256</code></td>
+<td>18 decimals</td>
+<td>Estimated total open fee locked from isolated <code>feeToken</code> at intent price.</td>
+</tr>
+<tr>
+<td><code>exists</code></td>
+<td><code>bool</code></td>
+<td>—</td>
+<td>Whether the escrow is live.</td>
+</tr>
+<tr>
+<td><code>consumed</code></td>
+<td><code>bool</code></td>
+<td>—</td>
+<td>Guard against double consumption before deletion.</td>
+</tr>
+</tbody></table>
+<p>Consumed by: <code>LibOpenIntent.lockDeferredSellEscrow</code>, <code>releaseDeferredSellEscrow</code>, <code>consumeDeferredSellEscrow</code>, <code>moveDeferredSellEscrow</code>, <code>LibPartyBOpen.lockOpenIntent</code>, and <code>ViewFacet.getOpenIntentEscrow</code>.</p>
+<h4 id="struct-closeintent--line-54">struct CloseIntent — line 54</h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Units</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>id</code></td>
+<td><code>uint256</code></td>
+<td>id</td>
+<td>Monotonic id from <code>CloseIntentStorage.lastCloseIntentId</code>.</td>
+</tr>
+<tr>
+<td><code>tradeId</code></td>
+<td><code>uint256</code></td>
+<td>id</td>
+<td>Parent trade reference.</td>
+</tr>
+<tr>
+<td><code>price</code></td>
+<td><code>uint256</code></td>
+<td>18 decimals</td>
+<td>Party A close limit price.</td>
+</tr>
+<tr>
+<td><code>quantity</code></td>
+<td><code>uint256</code></td>
+<td>18 decimals</td>
+<td>Quantity to close.</td>
+</tr>
+<tr>
+<td><code>filledAmount</code></td>
+<td><code>uint256</code></td>
+<td>18 decimals</td>
+<td>Cumulative filled portion.</td>
+</tr>
+<tr>
+<td><code>createTimestamp</code></td>
+<td><code>uint256</code></td>
+<td>unix seconds</td>
+<td>Creation time.</td>
+</tr>
+<tr>
+<td><code>statusModifyTimestamp</code></td>
+<td><code>uint256</code></td>
+<td>unix seconds</td>
+<td>Last status transition.</td>
+</tr>
+<tr>
+<td><code>deadline</code></td>
+<td><code>uint256</code></td>
+<td>unix seconds</td>
+<td>Cancel/expire boundary.</td>
+</tr>
+<tr>
+<td><code>feeStructure</code></td>
+<td><code>FeeStructure</code></td>
+<td>—</td>
+<td>Fee snapshot inherited from open path.</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>CloseIntentStatus</code></td>
+<td>—</td>
+<td>Current state.</td>
+</tr>
+</tbody></table>
+<p>Consumed by: <code>PartyACloseFacet</code>, <code>PartyBCloseFacet</code>, <code>LibPartyAClose</code>, <code>LibPartyBClose</code>, <code>LibCloseIntent</code>, <code>LibForceActions</code>, <code>ViewFacet</code>.</p>
+<h3 id="tradetypes">TradeTypes</h3>
+<p>Source: <code>contracts/types/TradeTypes.sol</code>.</p>
+<h4 id="enum-tradestatus--line-10">enum TradeStatus — line 10</h4>
+<p><code>OPENED</code>, <code>CLOSED</code>, <code>EXERCISED</code>, <code>EXPIRED</code>, <code>LIQUIDATED</code>.</p>
+<h4 id="struct-trade--line-18">struct Trade — line 18</h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Units</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>id</code></td>
+<td><code>uint256</code></td>
+<td>id</td>
+<td>Monotonic id from <code>TradeStorage.lastTradeId</code>.</td>
+</tr>
+<tr>
+<td><code>openIntentId</code></td>
+<td><code>uint256</code></td>
+<td>id</td>
+<td>Origin intent.</td>
+</tr>
+<tr>
+<td><code>tradeAgreements</code></td>
+<td><code>TradeAgreements</code></td>
+<td>—</td>
+<td>Locked-in terms.</td>
+</tr>
+<tr>
+<td><code>activeCloseIntentIds</code></td>
+<td><code>uint256[]</code></td>
+<td>id</td>
+<td>Open close intents pending against this trade.</td>
+</tr>
+<tr>
+<td><code>settledPrice</code></td>
+<td><code>uint256</code></td>
+<td>18 decimals</td>
+<td>Final settlement price after expiry.</td>
+</tr>
+<tr>
+<td><code>openedPrice</code></td>
+<td><code>uint256</code></td>
+<td>18 decimals</td>
+<td>Premium per unit paid at fill.</td>
+</tr>
+<tr>
+<td><code>closedAmountBeforeExpiration</code></td>
+<td><code>uint256</code></td>
+<td>18 decimals</td>
+<td>Quantity closed via close intents prior to expiry.</td>
+</tr>
+<tr>
+<td><code>closePendingAmount</code></td>
+<td><code>uint256</code></td>
+<td>18 decimals</td>
+<td>Quantity reserved by active close intents.</td>
+</tr>
+<tr>
+<td><code>avgClosedPriceBeforeExpiration</code></td>
+<td><code>uint256</code></td>
+<td>18 decimals</td>
+<td>Quantity-weighted average close price.</td>
+</tr>
+<tr>
+<td><code>createTimestamp</code></td>
+<td><code>uint256</code></td>
+<td>unix seconds</td>
+<td>Trade creation time.</td>
+</tr>
+<tr>
+<td><code>statusModifyTimestamp</code></td>
+<td><code>uint256</code></td>
+<td>unix seconds</td>
+<td>Last status transition.</td>
+</tr>
+<tr>
+<td><code>partyA</code></td>
+<td><code>address</code></td>
+<td>—</td>
+<td>Party A.</td>
+</tr>
+<tr>
+<td><code>partyB</code></td>
+<td><code>address</code></td>
+<td>—</td>
+<td>Party B.</td>
+</tr>
+<tr>
+<td><code>affiliate</code></td>
+<td><code>address</code></td>
+<td>—</td>
+<td>Affiliate routing.</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>TradeStatus</code></td>
+<td>—</td>
+<td>Current state.</td>
+</tr>
+<tr>
+<td><code>feeStructure</code></td>
+<td><code>FeeStructure</code></td>
+<td>—</td>
+<td>Fee snapshot.</td>
+</tr>
+</tbody></table>
+<p>Consumed by: <code>TradeFacet</code>, <code>PartyACloseFacet</code>, <code>PartyBCloseFacet</code>, <code>ClearingHouseFacet</code>, <code>ForceActionsFacet</code>, <code>LibTrade</code>, <code>LibTradeOperations</code>, <code>LibClearingHouse</code>, <code>LibPartyAClose</code>, <code>LibPartyBClose</code>, <code>ViewFacet</code>.</p>
+<p>Invariant: <code>closedAmountBeforeExpiration + closePendingAmount + remainingOpenQuantity == tradeAgreements.quantity</code>. For isolated margin, ownership transfers via <code>TradeNFT</code> and <code>TradeFacet.transferTradeFromNFT</code>.</p>
+<h4 id="struct-settlementstate--line-37">struct SettlementState — line 37</h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>amount</code></td>
+<td><code>int256</code></td>
+<td>Pending settlement delta (signed, 18 decimals).</td>
+</tr>
+<tr>
+<td><code>pending</code></td>
+<td><code>bool</code></td>
+<td>Whether a settlement is awaiting resolution.</td>
+</tr>
+</tbody></table>
+<h4 id="struct-settlementpricesig--line-42">struct SettlementPriceSig — line 42</h4>
+<p>Muon-signed settlement payload.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Units</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>reqId</code></td>
+<td><code>bytes</code></td>
+<td>—</td>
+<td>Muon request id.</td>
+</tr>
+<tr>
+<td><code>timestamp</code></td>
+<td><code>uint256</code></td>
+<td>unix seconds</td>
+<td>Signature timestamp.</td>
+</tr>
+<tr>
+<td><code>symbolId</code></td>
+<td><code>uint256</code></td>
+<td>id</td>
+<td>Settled symbol.</td>
+</tr>
+<tr>
+<td><code>settlementPrice</code></td>
+<td><code>uint256</code></td>
+<td>18 decimals</td>
+<td>Final settlement price.</td>
+</tr>
+<tr>
+<td><code>settlementTimestamp</code></td>
+<td><code>uint256</code></td>
+<td>unix seconds</td>
+<td>Time at which the price applies.</td>
+</tr>
+<tr>
+<td><code>collateralPrice</code></td>
+<td><code>uint256</code></td>
+<td>18 decimals</td>
+<td>Collateral USD price for normalization.</td>
+</tr>
+<tr>
+<td><code>gatewaySignature</code></td>
+<td><code>bytes</code></td>
+<td>—</td>
+<td>Gateway EOA signature.</td>
+</tr>
+<tr>
+<td><code>sigs</code></td>
+<td><code>SchnorrSign</code></td>
+<td>—</td>
+<td>TSS Schnorr signature.</td>
+</tr>
+</tbody></table>
+<p>Validated against <code>AppStorage.settlementPriceSigValidTime</code> in <code>LibMuon</code>.</p>
+<h3 id="symboltypes">SymbolTypes</h3>
+<p>Source: <code>contracts/types/SymbolTypes.sol</code>.</p>
+<h4 id="enum-optiontype--line-9">enum OptionType — line 9</h4>
+<p><code>PUT</code>, <code>CALL</code>.</p>
+<h4 id="struct-oracle--line-14">struct Oracle — line 14</h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>id</code></td>
+<td><code>uint256</code></td>
+<td>Oracle id (matches <code>PartyBConfig.oracleId</code>).</td>
+</tr>
+<tr>
+<td><code>contractAddress</code></td>
+<td><code>address</code></td>
+<td>Off-chain oracle gateway address.</td>
+</tr>
+<tr>
+<td><code>name</code></td>
+<td><code>string</code></td>
+<td>Display label.</td>
+</tr>
+</tbody></table>
+<h4 id="struct-symbol--line-20">struct Symbol — line 20</h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>symbolId</code></td>
+<td><code>uint256</code></td>
+<td>Identity in <code>SymbolStorage.symbols</code>.</td>
+</tr>
+<tr>
+<td><code>oracleId</code></td>
+<td><code>uint256</code></td>
+<td>Bound oracle.</td>
+</tr>
+<tr>
+<td><code>symbolType</code></td>
+<td><code>uint256</code></td>
+<td>Free-form category (must be in <code>partyBSupportedSymbolTypes</code>).</td>
+</tr>
+<tr>
+<td><code>platformFee</code></td>
+<td><code>Fee</code></td>
+<td>Per-symbol platform fee fractions.</td>
+</tr>
+<tr>
+<td><code>collateral</code></td>
+<td><code>address</code></td>
+<td>Collateral token; must be in <code>whiteListedCollateral</code>.</td>
+</tr>
+<tr>
+<td><code>name</code></td>
+<td><code>string</code></td>
+<td>Display label.</td>
+</tr>
+<tr>
+<td><code>isValid</code></td>
+<td><code>bool</code></td>
+<td>Manager-controlled enable/disable flag.</td>
+</tr>
+<tr>
+<td><code>optionType</code></td>
+<td><code>OptionType</code></td>
+<td><code>PUT</code> or <code>CALL</code>.</td>
+</tr>
+</tbody></table>
+<p>Consumed by: <code>ControlFacet</code>, <code>PartyA*</code>/<code>PartyB*</code> facets via <code>LibPartyAOpen</code>, <code>LibTradeOperations</code>, <code>ViewFacet</code>.</p>
+<h3 id="liquidationtypes">LiquidationTypes</h3>
+<p>Source: <code>contracts/types/LiquidationTypes.sol</code>.</p>
+<h4 id="enum-liquidationstatus--line-7">enum LiquidationStatus — line 7</h4>
+<p><code>FLAGGED</code>, <code>IN_PROGRESS</code>, <code>CANCELLED</code>.</p>
+<h4 id="enum-liquidationside--line-13">enum LiquidationSide — line 13</h4>
+<p><code>PARTY_A</code>, <code>PARTY_B</code>.</p>
+<h4 id="struct-liquidationdetail--line-18">struct LiquidationDetail — line 18</h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Units</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>upnl</code></td>
+<td><code>int256</code></td>
+<td>18 decimals</td>
+<td>Snapshotted unrealized PnL of the liquidated side.</td>
+</tr>
+<tr>
+<td><code>flagTimestamp</code></td>
+<td><code>uint256</code></td>
+<td>unix seconds</td>
+<td>When <code>flagLiquidation</code> ran.</td>
+</tr>
+<tr>
+<td><code>liquidationTimestamp</code></td>
+<td><code>uint256</code></td>
+<td>unix seconds</td>
+<td>When execution began.</td>
+</tr>
+<tr>
+<td><code>collateralPrice</code></td>
+<td><code>uint256</code></td>
+<td>18 decimals</td>
+<td>Collateral USD price snapshot.</td>
+</tr>
+<tr>
+<td><code>confiscatedAmount</code></td>
+<td><code>uint256</code></td>
+<td>18 decimals</td>
+<td>Total collateral confiscated.</td>
+</tr>
+<tr>
+<td><code>distributedAmount</code></td>
+<td><code>uint256</code></td>
+<td>18 decimals</td>
+<td>Amount distributed to creditors so far.</td>
+</tr>
+<tr>
+<td><code>flagger</code></td>
+<td><code>address</code></td>
+<td>—</td>
+<td>Address that flagged the liquidation.</td>
+</tr>
+<tr>
+<td><code>collateral</code></td>
+<td><code>address</code></td>
+<td>—</td>
+<td>Collateral token.</td>
+</tr>
+<tr>
+<td><code>partyA</code></td>
+<td><code>address</code></td>
+<td>—</td>
+<td>Party A address.</td>
+</tr>
+<tr>
+<td><code>partyB</code></td>
+<td><code>address</code></td>
+<td>—</td>
+<td>Party B address.</td>
+</tr>
+<tr>
+<td><code>side</code></td>
+<td><code>LiquidationSide</code></td>
+<td>—</td>
+<td>Which side is being liquidated.</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>LiquidationStatus</code></td>
+<td>—</td>
+<td>Current liquidation state.</td>
+</tr>
+</tbody></table>
+<p>Consumed by: <code>ClearingHouseFacet</code>, <code>LibClearingHouse</code>, <code>ViewFacet</code>.</p>
+<h3 id="withdrawtypes">WithdrawTypes</h3>
+<p>Source: <code>contracts/types/WithdrawTypes.sol</code>.</p>
+<h4 id="struct-withdraw--line-9">struct Withdraw — line 9</h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Units</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>id</code></td>
+<td><code>uint256</code></td>
+<td>id</td>
+<td>Monotonic id from <code>AccountStorage.lastWithdrawId</code>.</td>
+</tr>
+<tr>
+<td><code>amount</code></td>
+<td><code>uint256</code></td>
+<td>18 decimals</td>
+<td>Internal withdraw amount (denormalized to token decimals on payout).</td>
+</tr>
+<tr>
+<td><code>timestamp</code></td>
+<td><code>uint256</code></td>
+<td>unix seconds</td>
+<td>Initiation time.</td>
+</tr>
+<tr>
+<td><code>collateral</code></td>
+<td><code>address</code></td>
+<td>—</td>
+<td>Collateral token.</td>
+</tr>
+<tr>
+<td><code>user</code></td>
+<td><code>address</code></td>
+<td>—</td>
+<td>Initiator (debited).</td>
+</tr>
+<tr>
+<td><code>to</code></td>
+<td><code>address</code></td>
+<td>—</td>
+<td>Destination address.</td>
+</tr>
+<tr>
+<td><code>provider</code></td>
+<td><code>address</code></td>
+<td>—</td>
+<td>Express withdraw provider, if any.</td>
+</tr>
+<tr>
+<td><code>userData</code></td>
+<td><code>bytes</code></td>
+<td>—</td>
+<td>Opaque payload.</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>WithdrawStatus</code></td>
+<td>—</td>
+<td>Lifecycle state.</td>
+</tr>
+<tr>
+<td><code>isVirtual</code></td>
+<td><code>bool</code></td>
+<td>—</td>
+<td>Whether the withdrawal is virtual (no ERC-20 transfer).</td>
+</tr>
+</tbody></table>
+<p>Consumed by: <code>AccountFacet</code>, <code>ControlFacet</code> (suspension/restoration), <code>ViewFacet</code>.</p>
+<h4 id="struct-upnlsig--line-22">struct UpnlSig — line 22</h4>
+<p>Muon-signed unrealized PnL payload used by liquidation paths.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Units</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>reqId</code></td>
+<td><code>bytes</code></td>
+<td>—</td>
+<td>Muon request id.</td>
+</tr>
+<tr>
+<td><code>partyUpnl</code></td>
+<td><code>int256</code></td>
+<td>18 decimals</td>
+<td>Unrealized PnL of the queried party.</td>
+</tr>
+<tr>
+<td><code>counterPartyUpnl</code></td>
+<td><code>int256</code></td>
+<td>18 decimals</td>
+<td>Counter-party uPnL.</td>
+</tr>
+<tr>
+<td><code>collateralPrice</code></td>
+<td><code>uint256</code></td>
+<td>18 decimals</td>
+<td>Collateral USD price.</td>
+</tr>
+<tr>
+<td><code>timestamp</code></td>
+<td><code>uint256</code></td>
+<td>unix seconds</td>
+<td>Signature timestamp.</td>
+</tr>
+<tr>
+<td><code>gatewaySignature</code></td>
+<td><code>bytes</code></td>
+<td>—</td>
+<td>Gateway signature.</td>
+</tr>
+<tr>
+<td><code>sigs</code></td>
+<td><code>SchnorrSign</code></td>
+<td>—</td>
+<td>TSS Schnorr signature.</td>
+</tr>
+</tbody></table>
+<p>Validity: <code>block.timestamp - timestamp &lt;= AppStorage.upnlSigValidTime</code>.</p>
+<h4 id="enum-withdrawstatus--line-32">enum WithdrawStatus — line 32</h4>
+<p><code>INITIATED</code>, <code>CANCELED</code>, <code>COMPLETED</code>, <code>SUSPENDED</code>.</p>
+<h4 id="struct-expresswithdrawproviderconfig--line-39">struct ExpressWithdrawProviderConfig — line 39</h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>isActive</code></td>
+<td><code>bool</code></td>
+<td>Whether the provider is enabled for the collateral.</td>
+</tr>
+<tr>
+<td><code>isVirtual</code></td>
+<td><code>bool</code></td>
+<td>If true, payout occurs through a virtual flow.</td>
+</tr>
+<tr>
+<td><code>receiver</code></td>
+<td><code>address</code></td>
+<td>Destination receiving advanced funds.</td>
+</tr>
+</tbody></table>
+<h3 id="muontypes">MuonTypes</h3>
+<p>Source: <code>contracts/types/MuonTypes.sol</code>.</p>
+<h4 id="struct-publickey--line-7">struct PublicKey — line 7</h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>x</code></td>
+<td><code>uint256</code></td>
+<td>Schnorr/TSS public key x.</td>
+</tr>
+<tr>
+<td><code>parity</code></td>
+<td><code>uint8</code></td>
+<td>y-coordinate parity.</td>
+</tr>
+</tbody></table>
+<h4 id="struct-muonconfig--line-12">struct MuonConfig — line 12</h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>muonAppId</code></td>
+<td><code>uint256</code></td>
+<td>Muon app id used for verification.</td>
+</tr>
+<tr>
+<td><code>muonPublicKey</code></td>
+<td><code>PublicKey</code></td>
+<td>TSS verification key.</td>
+</tr>
+<tr>
+<td><code>validGateway</code></td>
+<td><code>address</code></td>
+<td>Gateway address whose ECDSA signature is trusted.</td>
+</tr>
+</tbody></table>
+<p>Stored inside <code>MuonOracle</code>/<code>LibMuon</code>; not part of the diamond storage layout.</p>
+<h4 id="struct-schnorrsign--line-18">struct SchnorrSign — line 18</h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>signature</code></td>
+<td><code>uint256</code></td>
+<td>Schnorr <code>s</code> value.</td>
+</tr>
+<tr>
+<td><code>owner</code></td>
+<td><code>address</code></td>
+<td>Public-key derived owner address.</td>
+</tr>
+<tr>
+<td><code>nonce</code></td>
+<td><code>address</code></td>
+<td>Per-signature nonce point.</td>
+</tr>
+</tbody></table>
+<h3 id="trade--intent-relationships">Trade ↔ Intent Relationships</h3>
+<pre><code class="language-mermaid">classDiagram
+    class OpenIntent {
+        +uint256 id
+        +uint256 tradeId
+        +TradeAgreements tradeAgreements
+        +uint256 price
+        +address partyA
+        +address partyB
+        +OpenIntentStatus status
+    }
+    class Trade {
+        +uint256 id
+        +uint256 openIntentId
+        +TradeAgreements tradeAgreements
+        +uint256[] activeCloseIntentIds
+        +uint256 openedPrice
+        +uint256 settledPrice
+        +TradeStatus status
+    }
+    class CloseIntent {
+        +uint256 id
+        +uint256 tradeId
+        +uint256 price
+        +uint256 quantity
+        +uint256 filledAmount
+        +CloseIntentStatus status
+    }
+    class OpenIntentEscrow {
+        +address partyA
+        +address collateral
+        +address feeToken
+        +uint256 mm
+        +uint256 feeLockAmount
+        +bool exists
+        +bool consumed
+    }
+    class TradeAgreements {
+        +uint256 symbolId
+        +uint256 quantity
+        +uint256 strikePrice
+        +uint256 expirationTimestamp
+        +uint256 mm
+        +TradeSide tradeSide
+        +MarginType marginType
+    }
+    class FeeStructure {
+        +address feeToken
+        +uint256 tokenPriceInCollateral
+        +Fee platformFee
+        +Fee affiliateFee
+        +Fee solverFee
+    }
+    OpenIntent &quot;1&quot; --&gt; &quot;1&quot; TradeAgreements : embeds
+    OpenIntent &quot;1&quot; --&gt; &quot;1&quot; FeeStructure : embeds
+    OpenIntent &quot;1&quot; --&gt; &quot;0..1&quot; Trade : produces (on FILLED)
+    OpenIntent &quot;0..1&quot; --&gt; &quot;0..1&quot; OpenIntentEscrow : deferred sell escrow
+    Trade &quot;1&quot; --&gt; &quot;1&quot; TradeAgreements : embeds
+    Trade &quot;1&quot; --&gt; &quot;1&quot; FeeStructure : inherits
+    Trade &quot;1&quot; --&gt; &quot;*&quot; CloseIntent : referenced via activeCloseIntentIds
+    OpenIntent &quot;0..*&quot; --&gt; &quot;0..1&quot; OpenIntent : parentId (partial-fill child)
+</code></pre>
+<h2 id="storage">Storage</h2>
+<p>All storage libraries follow the EIP-2535 pattern: a single <code>Layout</code> struct returned via <code>layout()</code> reading from a fixed <code>bytes32</code> slot derived by <code>keccak256(&quot;diamond.standard.storage.&lt;name&gt;&quot;)</code>.</p>
+<h3 id="appstorage">AppStorage</h3>
+<p>Source: <code>contracts/storages/AppStorage.sol:13</code>. Slot: <code>APP_STORAGE_SLOT = keccak256(&quot;diamond.standard.storage.app&quot;)</code> (line 14).</p>
+<h4 id="struct-partybconfig--line-7">struct PartyBConfig — line 7</h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Units</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>isActive</code></td>
+<td><code>bool</code></td>
+<td>—</td>
+<td>Whether the Party B can lock/fill intents.</td>
+</tr>
+<tr>
+<td><code>lossCoverage</code></td>
+<td><code>uint256</code></td>
+<td>18 decimals</td>
+<td>Additional loss-coverage capacity used in liquidation accounting.</td>
+</tr>
+<tr>
+<td><code>oracleId</code></td>
+<td><code>uint256</code></td>
+<td>id</td>
+<td>Oracle id this Party B serves; must match symbol oracle on lock.</td>
+</tr>
+</tbody></table>
+<h4 id="layout">Layout</h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>version</code></td>
+<td><code>uint16</code></td>
+<td>System version.</td>
+</tr>
+<tr>
+<td><code>callFromInstantLayer</code></td>
+<td><code>bool</code></td>
+<td>Toggled by <code>INSTANT_LAYER_ROLE</code> while executing instant operations.</td>
+</tr>
+<tr>
+<td><code>balanceLimitPerUser</code></td>
+<td><code>mapping(address ⇒ uint256)</code></td>
+<td>Per-collateral deposit cap per user (18 dec).</td>
+</tr>
+<tr>
+<td><code>maxCloseOrdersLength</code></td>
+<td><code>uint256</code></td>
+<td>Cap on <code>Trade.activeCloseIntentIds</code> length.</td>
+</tr>
+<tr>
+<td><code>maxTradePerPartyA</code></td>
+<td><code>uint256</code></td>
+<td>Cap on active trades per Party A.</td>
+</tr>
+<tr>
+<td><code>priceOracleAddress</code></td>
+<td><code>address</code></td>
+<td><code>IPriceOracle</code> used at intent creation for fee-token pricing.</td>
+</tr>
+<tr>
+<td><code>whiteListedCollateral</code></td>
+<td><code>mapping(address ⇒ bool)</code></td>
+<td>Allowed collateral tokens.</td>
+</tr>
+<tr>
+<td><code>tradeNftAddress</code></td>
+<td><code>address</code></td>
+<td><code>TradeNFT</code> contract address.</td>
+</tr>
+<tr>
+<td><code>isSigUsed</code></td>
+<td><code>mapping(bytes32 ⇒ bool)</code></td>
+<td>Replay guard for Muon signatures.</td>
+</tr>
+<tr>
+<td><code>signatureVerifier</code></td>
+<td><code>address</code></td>
+<td>Shared <code>SignatureVerifier</code> helper.</td>
+</tr>
+<tr>
+<td><code>partyADeallocateCooldown</code></td>
+<td><code>uint256</code></td>
+<td>Seconds before Party A funds become free after deallocation.</td>
+</tr>
+<tr>
+<td><code>partyBDeallocateCooldown</code></td>
+<td><code>uint256</code></td>
+<td>Seconds before Party B funds become free after deallocation.</td>
+</tr>
+<tr>
+<td><code>forceCancelOpenIntentTimeout</code></td>
+<td><code>uint256</code></td>
+<td>Seconds after CANCEL_PENDING that anyone may force-cancel.</td>
+</tr>
+<tr>
+<td><code>forceCancelCloseIntentTimeout</code></td>
+<td><code>uint256</code></td>
+<td>Same, for close intents.</td>
+</tr>
+<tr>
+<td><code>partyBExclusiveWindow</code></td>
+<td><code>uint256</code></td>
+<td>Window during which the locking Party B has exclusive rights.</td>
+</tr>
+<tr>
+<td><code>settlementPriceSigValidTime</code></td>
+<td><code>uint256</code></td>
+<td>Validity window for <code>SettlementPriceSig</code>.</td>
+</tr>
+<tr>
+<td><code>upnlSigValidTime</code></td>
+<td><code>uint256</code></td>
+<td>Validity window for <code>UpnlSig</code>.</td>
+</tr>
+<tr>
+<td><code>partyBConfigs</code></td>
+<td><code>mapping(address ⇒ PartyBConfig)</code></td>
+<td>Party B activation/oracle/loss-cover.</td>
+</tr>
+<tr>
+<td><code>partyBSupportedSymbolTypes</code></td>
+<td><code>mapping(address ⇒ mapping(uint256 ⇒ bool))</code></td>
+<td>Which <code>Symbol.symbolType</code> values each Party B accepts.</td>
+</tr>
+</tbody></table>
+<p>Writers: <code>ControlFacet</code>, <code>DiamondCutFacet</code> (version), <code>InstantLayer</code>-flag toggling.
+Readers: most facets and libraries — <code>LibPartyAOpen</code>, <code>LibPartyBOpen</code>, <code>LibPartyAClose</code>, <code>LibPartyBClose</code>, <code>LibForceActions</code>, <code>LibClearingHouse</code>, <code>LibTradeOperations</code>, <code>LibMuon</code>, <code>LibAllocationOperations</code>, <code>ViewFacet</code>.</p>
+<h3 id="accountstorage">AccountStorage</h3>
+<p>Source: <code>contracts/storages/AccountStorage.sol:10</code>. Slot: <code>ACCOUNT_STORAGE_SLOT = keccak256(&quot;diamond.standard.storage.account&quot;)</code> (line 11).</p>
+<h4 id="layout-1">Layout</h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>balances</code></td>
+<td><code>mapping(address ⇒ mapping(address ⇒ ScheduledReleaseBalance))</code></td>
+<td>Indexed by <code>(user, collateral)</code>.</td>
+</tr>
+<tr>
+<td><code>hasConfiguredInterval</code></td>
+<td><code>mapping(address ⇒ bool)</code></td>
+<td>Whether the user has overridden the default release interval.</td>
+</tr>
+<tr>
+<td><code>releaseIntervals</code></td>
+<td><code>mapping(address ⇒ uint256)</code></td>
+<td>Per-user release interval (seconds).</td>
+</tr>
+<tr>
+<td><code>defaultReleaseInterval</code></td>
+<td><code>uint256</code></td>
+<td>Default unlock interval applied when none configured.</td>
+</tr>
+<tr>
+<td><code>maxConnectedCounterParties</code></td>
+<td><code>uint256</code></td>
+<td>Limit for <code>counterPartyAddresses</code> enumeration unless <code>manualSync</code> is set.</td>
+</tr>
+<tr>
+<td><code>manualSync</code></td>
+<td><code>mapping(address ⇒ bool)</code></td>
+<td>Bypasses connected-CP limit but requires manual sync (set for Party Bs).</td>
+</tr>
+<tr>
+<td><code>nonces</code></td>
+<td><code>mapping(address ⇒ mapping(address ⇒ uint256))</code></td>
+<td>Cross-side nonces incremented on each fill, indexed by <code>(party, counterparty)</code>.</td>
+</tr>
+<tr>
+<td><code>withdrawals</code></td>
+<td><code>mapping(uint256 ⇒ Withdraw)</code></td>
+<td>All withdraw requests by id.</td>
+</tr>
+<tr>
+<td><code>lastWithdrawId</code></td>
+<td><code>uint256</code></td>
+<td>Monotonic id counter.</td>
+</tr>
+<tr>
+<td><code>invalidWithdrawalsAmountsPool</code></td>
+<td><code>address</code></td>
+<td>Sink for amounts of invalidated withdrawals.</td>
+</tr>
+<tr>
+<td><code>expressWithdrawProviderConfigs</code></td>
+<td><code>mapping(address ⇒ mapping(address ⇒ ExpressWithdrawProviderConfig))</code></td>
+<td>Indexed by <code>(provider, collateral)</code>.</td>
+</tr>
+<tr>
+<td><code>externalTransferTargets</code></td>
+<td><code>mapping(address ⇒ mapping(address ⇒ bool))</code></td>
+<td>Whitelisted external transfer targets per <code>(target, collateral)</code>.</td>
+</tr>
+</tbody></table>
+<p>Writers: <code>AccountFacet</code>, <code>ControlFacet</code> (intervals, providers, targets, suspended pool).
+Readers: every facet that touches balances, plus <code>ViewFacet</code>.</p>
+<h3 id="openintentstorage">OpenIntentStorage</h3>
+<p>Source: <code>contracts/storages/OpenIntentStorage.sol:9</code>. Slot: <code>OPEN_INTENT_STORAGE_SLOT = keccak256(&quot;diamond.standard.storage.openIntent&quot;)</code> (line 10).</p>
+<h4 id="layout-2">Layout</h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>openIntents</code></td>
+<td><code>mapping(uint256 ⇒ OpenIntent)</code></td>
+<td>Intent lookup by id.</td>
+</tr>
+<tr>
+<td><code>activeOpenIntentsOf</code></td>
+<td><code>mapping(address ⇒ uint256[])</code></td>
+<td>Packed active intent ids per Party A or Party B.</td>
+</tr>
+<tr>
+<td><code>activeOpenIntentsCount</code></td>
+<td><code>mapping(address ⇒ uint256)</code></td>
+<td>Cached length used for capacity checks.</td>
+</tr>
+<tr>
+<td><code>partyAOpenIntentsIndex</code></td>
+<td><code>mapping(uint256 ⇒ uint256)</code></td>
+<td>id → index into <code>activeOpenIntentsOf[partyA]</code> for O(1) removal.</td>
+</tr>
+<tr>
+<td><code>partyBOpenIntentsIndex</code></td>
+<td><code>mapping(uint256 ⇒ uint256)</code></td>
+<td>Same for <code>partyB</code>.</td>
+</tr>
+<tr>
+<td><code>lastOpenIntentId</code></td>
+<td><code>uint256</code></td>
+<td>Monotonic id counter.</td>
+</tr>
+<tr>
+<td><code>openIntentEscrows</code></td>
+<td><code>mapping(uint256 ⇒ OpenIntentEscrow)</code></td>
+<td>Deferred Party B sell escrow by intent id. Empty for normal open intents; deleted on release/full consume, or moved to the residual child on partial fill.</td>
+</tr>
+</tbody></table>
+<p>Writers: <code>PartyAOpenFacet</code>, <code>PartyBOpenFacet</code>, <code>ForceActionsFacet</code>, <code>ClearingHouseFacet</code> (cancel during liquidation), via <code>LibOpenIntent</code> helpers.
+Readers: <code>ViewFacet</code>, <code>LibPartyAOpen</code>, <code>LibPartyBOpen</code>, <code>LibForceActions</code>, <code>LibClearingHouse</code>.</p>
+<h3 id="closeintentstorage">CloseIntentStorage</h3>
+<p>Source: <code>contracts/storages/CloseIntentStorage.sol:9</code>. Slot: <code>CLOSE_INTENT_STORAGE_SLOT = keccak256(&quot;diamond.standard.storage.closeIntent&quot;)</code> (line 10).</p>
+<h4 id="layout-3">Layout</h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>closeIntents</code></td>
+<td><code>mapping(uint256 ⇒ CloseIntent)</code></td>
+<td>Close intent lookup by id.</td>
+</tr>
+<tr>
+<td><code>closeIntentIdsOf</code></td>
+<td><code>mapping(uint256 ⇒ uint256[])</code></td>
+<td>All close intent ids per <code>tradeId</code> (active list lives on <code>Trade</code>).</td>
+</tr>
+<tr>
+<td><code>lastCloseIntentId</code></td>
+<td><code>uint256</code></td>
+<td>Monotonic id counter.</td>
+</tr>
+</tbody></table>
+<p>Writers: <code>PartyACloseFacet</code>, <code>PartyBCloseFacet</code>, <code>ForceActionsFacet</code>, <code>ClearingHouseFacet</code>, via <code>LibCloseIntent</code> / <code>LibPartyAClose</code> / <code>LibPartyBClose</code>.
+Readers: <code>ViewFacet</code>.</p>
+<h3 id="tradestorage">TradeStorage</h3>
+<p>Source: <code>contracts/storages/TradeStorage.sol:9</code>. Slot: <code>TRADE_STORAGE_SLOT = keccak256(&quot;diamond.standard.storage.trade&quot;)</code> (line 10).</p>
+<h4 id="layout-4">Layout</h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>trades</code></td>
+<td><code>mapping(uint256 ⇒ Trade)</code></td>
+<td>Trade lookup by id.</td>
+</tr>
+<tr>
+<td><code>activeTradesOfPartyA</code></td>
+<td><code>mapping(address ⇒ uint256[])</code></td>
+<td>Packed active trade ids per Party A.</td>
+</tr>
+<tr>
+<td><code>activeTradesOfPartyAWithPartyBCount</code></td>
+<td><code>mapping(address ⇒ mapping(address ⇒ mapping(address ⇒ uint256)))</code></td>
+<td>Counter indexed by <code>(partyA, collateral, partyB)</code>; gates liquidation/cross binding.</td>
+</tr>
+<tr>
+<td><code>activeTradesOfPartyB</code></td>
+<td><code>mapping(address ⇒ mapping(address ⇒ uint256[]))</code></td>
+<td>Indexed by <code>(partyB, collateral)</code>.</td>
+</tr>
+<tr>
+<td><code>partyATradesIndex</code></td>
+<td><code>mapping(uint256 ⇒ uint256)</code></td>
+<td>id → index in <code>activeTradesOfPartyA</code>, O(1) removal.</td>
+</tr>
+<tr>
+<td><code>partyBTradesIndex</code></td>
+<td><code>mapping(uint256 ⇒ uint256)</code></td>
+<td>id → index in <code>activeTradesOfPartyB</code>.</td>
+</tr>
+<tr>
+<td><code>lastTradeId</code></td>
+<td><code>uint256</code></td>
+<td>Monotonic id counter.</td>
+</tr>
+</tbody></table>
+<p>Writers: <code>TradeFacet</code>, <code>PartyBOpenFacet</code> (creation on fill), <code>PartyACloseFacet</code>, <code>PartyBCloseFacet</code>, <code>ClearingHouseFacet</code>, via <code>LibTrade</code> / <code>LibTradeOperations</code>.
+Readers: <code>ViewFacet</code>, all close/liquidation libraries.</p>
+<p>Access pattern: trade enumeration is per Party A and per <code>(Party B, collateral)</code>. The <code>(partyA, collateral, partyB)</code> counter is consulted before allowing a new cross binding or starting liquidation.</p>
+<h3 id="symbolstorage">SymbolStorage</h3>
+<p>Source: <code>contracts/storages/SymbolStorage.sol:9</code>. Slot: <code>SYMBOL_STORAGE_SLOT = keccak256(&quot;diamond.standard.storage.symbol&quot;)</code> (line 10).</p>
+<h4 id="layout-5">Layout</h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>oracles</code></td>
+<td><code>mapping(uint256 ⇒ Oracle)</code></td>
+<td>Oracles by id.</td>
+</tr>
+<tr>
+<td><code>lastOracleId</code></td>
+<td><code>uint256</code></td>
+<td>Monotonic oracle id counter.</td>
+</tr>
+<tr>
+<td><code>symbols</code></td>
+<td><code>mapping(uint256 ⇒ Symbol)</code></td>
+<td>Symbols by id.</td>
+</tr>
+<tr>
+<td><code>lastSymbolId</code></td>
+<td><code>uint256</code></td>
+<td>Monotonic symbol id counter.</td>
+</tr>
+</tbody></table>
+<p>Writers: <code>ControlFacet</code> (managers).
+Readers: <code>ViewFacet</code>, <code>LibPartyAOpen</code>, <code>LibTradeOperations</code>, <code>LibClearingHouse</code>.</p>
+<h3 id="feemanagementstorage">FeeManagementStorage</h3>
+<p>Source: <code>contracts/storages/FeeManagementStorage.sol:9</code>. Slot: <code>FEE_MANAGEMENT_STORAGE_SLOT = keccak256(&quot;diamond.standard.storage.feeManagement&quot;)</code> (line 10).</p>
+<h4 id="layout-6">Layout</h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>defaultFeeCollector</code></td>
+<td><code>address</code></td>
+<td>Recipient of platform fees.</td>
+</tr>
+<tr>
+<td><code>affiliateStatus</code></td>
+<td><code>mapping(address ⇒ bool)</code></td>
+<td>Whether an affiliate is enabled.</td>
+</tr>
+<tr>
+<td><code>affiliateFeeCollector</code></td>
+<td><code>mapping(address ⇒ address)</code></td>
+<td>Per-affiliate fee recipient.</td>
+</tr>
+<tr>
+<td><code>affiliateFees</code></td>
+<td><code>mapping(address ⇒ mapping(uint256 ⇒ Fee))</code></td>
+<td>Per-affiliate per-symbol fee schedule.</td>
+</tr>
+</tbody></table>
+<p>Writers: <code>ControlFacet</code> (<code>AFFILIATE_MANAGER_ROLE</code>, <code>SETTER_ROLE</code>).
+Readers: <code>ViewFacet</code>, <code>LibPartyAOpen</code>, <code>LibTradeOperations</code>.</p>
+<h3 id="liquidationstorage">LiquidationStorage</h3>
+<p>Source: <code>contracts/storages/LiquidationStorage.sol:9</code>. Slot: <code>LIQUIDATION_STORAGE_SLOT = keccak256(&quot;diamond.standard.storage.liquidation&quot;)</code> (line 10).</p>
+<h4 id="layout-7">Layout</h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>inProgressLiquidationIds</code></td>
+<td><code>mapping(address ⇒ mapping(address ⇒ mapping(address ⇒ uint256)))</code></td>
+<td>Indexed by <code>(partyA, partyB, collateral)</code>; non-zero blocks new trades.</td>
+</tr>
+<tr>
+<td><code>liquidationDetails</code></td>
+<td><code>mapping(uint256 ⇒ LiquidationDetail)</code></td>
+<td>Liquidation detail by id.</td>
+</tr>
+<tr>
+<td><code>lastLiquidationId</code></td>
+<td><code>uint256</code></td>
+<td>Monotonic id counter.</td>
+</tr>
+</tbody></table>
+<p>Writers: <code>ClearingHouseFacet</code> via <code>LibClearingHouse</code>.
+Readers: <code>ViewFacet</code>, <code>LibPartyAOpen</code>, <code>LibPartyBOpen</code>, <code>LibClearingHouse</code>.</p>
+<h3 id="counterpartyrelationsstorage">CounterPartyRelationsStorage</h3>
+<p>Source: <code>contracts/storages/CounterPartyRelationsStorage.sol:7</code>. Slot: <code>COUNTER_PARTY_RELATIONS_STORAGE_SLOT = keccak256(&quot;diamond.standard.storage.counterPartyRelations&quot;)</code> (line 8).</p>
+<h4 id="layout-8">Layout</h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>boundPartyB</code></td>
+<td><code>mapping(address ⇒ address)</code></td>
+<td>Party A → bound Party B (zero address means unbound).</td>
+</tr>
+<tr>
+<td><code>unbindingRequestTime</code></td>
+<td><code>mapping(address ⇒ uint256)</code></td>
+<td>Timestamp when Party A requested unbinding.</td>
+</tr>
+<tr>
+<td><code>unbindingCooldown</code></td>
+<td><code>uint256</code></td>
+<td>Seconds between request and completion.</td>
+</tr>
+<tr>
+<td><code>instantActionsMode</code></td>
+<td><code>mapping(address ⇒ bool)</code></td>
+<td>Whether Party A is in instant-action mode.</td>
+</tr>
+<tr>
+<td><code>instantActionsModeDeactivateTime</code></td>
+<td><code>mapping(address ⇒ uint256)</code></td>
+<td>When deactivation request was made.</td>
+</tr>
+<tr>
+<td><code>deactiveInstantActionModeCooldown</code></td>
+<td><code>uint256</code></td>
+<td>Cooldown between deactivation request and exit.</td>
+</tr>
+</tbody></table>
+<p>Writers: <code>CounterPartyRelationsFacet</code>, <code>ControlFacet</code> (cooldown setters).
+Readers: <code>ViewFacet</code>, <code>LibPartyAOpen</code>, <code>LibPartyAClose</code>, <code>LibCounterPartyRelations</code>.</p>
+<h3 id="statecontrolstorage">StateControlStorage</h3>
+<p>Source: <code>contracts/storages/StateControlStorage.sol:7</code>. Slot: <code>STATE_CONTROL_STORAGE_SLOT = keccak256(&quot;diamond.standard.storage.stateControl&quot;)</code> (line 8).</p>
+<h4 id="layout-9">Layout</h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>globalPaused</code></td>
+<td><code>bool</code></td>
+<td>Master pause.</td>
+</tr>
+<tr>
+<td><code>depositingPaused</code></td>
+<td><code>bool</code></td>
+<td>Pauses deposit-side flows.</td>
+</tr>
+<tr>
+<td><code>withdrawingPaused</code></td>
+<td><code>bool</code></td>
+<td>Pauses withdrawal-side flows.</td>
+</tr>
+<tr>
+<td><code>partyBActionsPaused</code></td>
+<td><code>bool</code></td>
+<td>Pauses all Party B operations.</td>
+</tr>
+<tr>
+<td><code>partyAActionsPaused</code></td>
+<td><code>bool</code></td>
+<td>Pauses all Party A operations.</td>
+</tr>
+<tr>
+<td><code>liquidatingPaused</code></td>
+<td><code>bool</code></td>
+<td>Pauses liquidation flagging/execution.</td>
+</tr>
+<tr>
+<td><code>thirdPartyActionsPaused</code></td>
+<td><code>bool</code></td>
+<td>Pauses anyone-callable operations (force-cancel, etc.).</td>
+</tr>
+<tr>
+<td><code>internalTransferPaused</code></td>
+<td><code>bool</code></td>
+<td>Pauses internal transfers between users.</td>
+</tr>
+<tr>
+<td><code>externalTransferPaused</code></td>
+<td><code>bool</code></td>
+<td>Pauses transfers to whitelisted external targets.</td>
+</tr>
+<tr>
+<td><code>expressWithdrawPaused</code></td>
+<td><code>bool</code></td>
+<td>Pauses express withdraw provider flow.</td>
+</tr>
+<tr>
+<td><code>instantLayerPaused</code></td>
+<td><code>bool</code></td>
+<td>Pauses InstantLayer entry.</td>
+</tr>
+<tr>
+<td><code>partyBsEmergencyMode</code></td>
+<td><code>bool</code></td>
+<td>Global Party B emergency.</td>
+</tr>
+<tr>
+<td><code>partyBEmergencyMode</code></td>
+<td><code>mapping(address ⇒ bool)</code></td>
+<td>Per-Party B emergency flag.</td>
+</tr>
+<tr>
+<td><code>suspendedAddresses</code></td>
+<td><code>mapping(address ⇒ bool)</code></td>
+<td>Suspended users (cannot send intents/withdraw).</td>
+</tr>
+<tr>
+<td><code>suspendedWithdrawal</code></td>
+<td><code>mapping(uint256 ⇒ bool)</code></td>
+<td>Per-withdrawal suspension by <code>Withdraw.id</code>.</td>
+</tr>
+</tbody></table>
+<p>Writers: <code>ControlFacet</code> (<code>PAUSER_ROLE</code>, <code>UNPAUSER_ROLE</code>, <code>SUSPENDER_ROLE</code>, <code>DISPUTER_ROLE</code>).
+Readers: every facet via <code>Pausable</code> / <code>Accessibility</code> modifiers, plus <code>ViewFacet</code>.</p>
+<h3 id="accesscontrolstorage">AccessControlStorage</h3>
+<p>Source: <code>contracts/storages/AccessControlStorage.sol:9</code>. Slot: <code>ACCESS_CONTROL_STORAGE_SLOT = keccak256(&quot;diamond.standard.storage.accessControl&quot;)</code> (line 10).</p>
+<h4 id="layout-10">Layout</h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>hasRole</code></td>
+<td><code>mapping(address ⇒ mapping(bytes32 ⇒ bool))</code></td>
+<td>Role membership lookup.</td>
+</tr>
+<tr>
+<td><code>roleMembers</code></td>
+<td><code>mapping(bytes32 ⇒ EnumerableSet.AddressSet)</code></td>
+<td>Iterable role member set per role.</td>
+</tr>
+<tr>
+<td><code>reentrancyGuardStatus</code></td>
+<td><code>uint8</code></td>
+<td>OpenZeppelin-style reentrancy guard counter.</td>
+</tr>
+</tbody></table>
+<p>Writers: <code>ControlFacet</code>, <code>LibAccessibility</code> (reentrancy guard transitions on every protected call).
+Readers: every facet via <code>Accessibility</code> modifiers, plus <code>ViewFacet</code>.</p>
+<h2 id="conventions">Conventions</h2>
+<h3 id="decimal-normalization">Decimal Normalization</h3>
+<ul>
+<li>Internal accounting is denominated in 18 decimals across balances, prices, premiums, maintenance margin, fees and PnL.</li>
+<li>Conversion happens at protocol I/O boundaries through <code>LibDecimals</code> (<code>contracts/libraries/utils/LibDecimals.sol</code>):<ul>
+<li><code>normalizeAmount(token, amount)</code> — multiplies by <code>1e18</code> and divides by <code>10**token.decimals()</code> when funds enter the system (deposits, signature payloads denominated in token units, etc.).</li>
+<li><code>denormalizeAmount(token, amount)</code> — inverse, used when funds leave (withdrawals, ERC-20 transfers).</li>
+</ul>
+</li>
+<li>Fee fractions inside <code>Fee.openFee</code> / <code>Fee.closeFee</code> and <code>ExerciseFee.rate</code> are expressed as 1e18-scaled fractions (with <code>1e18</code> representing 100%; <code>ExerciseFee.cap</code> is in absolute collateral, 18 decimals).</li>
+</ul>
+<h3 id="time-units">Time Units</h3>
+<ul>
+<li>All timestamps are unix seconds (<code>block.timestamp</code>).</li>
+<li>Duration parameters in <code>AppStorage</code> (<code>partyADeallocateCooldown</code>, <code>partyBDeallocateCooldown</code>, <code>forceCancelOpenIntentTimeout</code>, <code>forceCancelCloseIntentTimeout</code>, <code>partyBExclusiveWindow</code>, <code>settlementPriceSigValidTime</code>, <code>upnlSigValidTime</code>) and in <code>CounterPartyRelationsStorage</code> (<code>unbindingCooldown</code>, <code>deactiveInstantActionModeCooldown</code>) are in seconds.</li>
+<li><code>ScheduledReleaseEntry.releaseInterval</code> is in seconds; <code>lastTransitionTimestamp</code> is interval-aligned.</li>
+<li>Validity windows for Muon payloads compare <code>block.timestamp - sig.timestamp</code> against the configured window.</li>
+</ul>
+<h3 id="price-quantity-premium-margin">Price, Quantity, Premium, Margin</h3>
+<ul>
+<li><code>OpenIntent.price</code>, <code>CloseIntent.price</code>, <code>Trade.openedPrice</code> and <code>Trade.settledPrice</code> are premium prices per quantity unit, denominated in collateral (18 decimals).</li>
+<li><code>TradeAgreements.strikePrice</code> is in collateral (18 decimals).</li>
+<li><code>TradeAgreements.quantity</code> is the option contract size in 18-decimal base units; partial fills track <code>filledAmount</code> and may produce a child <code>OpenIntent</code> with <code>parentId</code> set.</li>
+<li><code>TradeAgreements.mm</code> is the maintenance margin per quantity unit; for SELL trades it is locked into the seller&#39;s <code>CrossEntry.totalMM</code> against the chosen Party B.</li>
+<li><code>FeeStructure.tokenPriceInCollateral</code> snapshots the fee-token price at intent creation and is used to convert fee-token amounts to collateral on settlement.</li>
+<li>Liquidation <code>upnl</code> and <code>confiscatedAmount</code>/<code>distributedAmount</code> are 18-decimal collateral amounts; collateral USD price snapshots come from the Muon-signed payload.</li>
+</ul>
+<h3 id="identifier-counters">Identifier Counters</h3>
+<p>Each domain owns a monotonic id counter, never reused or compacted: <code>OpenIntentStorage.lastOpenIntentId</code>, <code>CloseIntentStorage.lastCloseIntentId</code>, <code>TradeStorage.lastTradeId</code>, <code>SymbolStorage.lastSymbolId</code> / <code>lastOracleId</code>, <code>LiquidationStorage.lastLiquidationId</code>, <code>AccountStorage.lastWithdrawId</code>. New ids are assigned by pre-incrementing the counter inside the corresponding <code>Lib*</code> model helper.</p>
+</article></main></div><footer class="site-footer"><span>Options Core documentation.</span></footer></body></html>

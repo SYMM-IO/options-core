@@ -1,0 +1,1376 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Diamond and helper events with declaration and emission sites."><title>Events Catalog | Options Core</title>
+<link rel="icon" type="image/svg+xml" href="../assets/symmio-mark.svg">
+<script>try { if (localStorage.getItem("options-docs-theme") === "light") document.documentElement.dataset.theme = "light"; } catch (_) {}</script>
+<link rel="stylesheet" href="../assets/reader.css"><link rel="stylesheet" href="../assets/docs-portal.css">
+<script src="../assets/chapters.js" defer></script><script src="../assets/reader.js" defer></script><script src="../assets/docs-portal.js" defer></script>
+</head>
+<body class="doc-page" data-version="current"><a class="skip-link" href="#full-document">Skip to document</a>
+<header class="docs-header"><div class="doc-topbar"><nav class="docs-trail" aria-label="Breadcrumb">
+<a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Options Core</span></a>
+<span class="trail-sep" aria-hidden="true">/</span><a class="trail-release" href="../index.html">Documentation</a>
+</nav><nav class="top-actions" aria-label="Page actions"><button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button></nav></div></header><div class="reader-shell"><div data-rail-sections hidden>
+<a class="toc-link level-2" href="#contents">Contents</a>
+<a class="toc-link level-2" href="#accountfacet">AccountFacet</a>
+<a class="toc-link level-2" href="#partyaopenfacet-shared-ipartiesevents">PartyAOpenFacet (shared <code>IPartiesEvents</code>)</a>
+<a class="toc-link level-3" href="#sendopenintent"><code>SendOpenIntent</code></a>
+<a class="toc-link level-3" href="#cancelopenintent"><code>CancelOpenIntent</code></a>
+<a class="toc-link level-3" href="#expireopenintent"><code>ExpireOpenIntent</code></a>
+<a class="toc-link level-3" href="#expirecloseintent"><code>ExpireCloseIntent</code></a>
+<a class="toc-link level-3" href="#lockopenintentescrow"><code>LockOpenIntentEscrow</code></a>
+<a class="toc-link level-3" href="#releaseopenintentescrow"><code>ReleaseOpenIntentEscrow</code></a>
+<a class="toc-link level-3" href="#consumeopenintentescrow"><code>ConsumeOpenIntentEscrow</code></a>
+<a class="toc-link level-2" href="#partybopenfacet">PartyBOpenFacet</a>
+<a class="toc-link level-3" href="#lockopenintent"><code>LockOpenIntent</code></a>
+<a class="toc-link level-3" href="#unlockopenintent"><code>UnlockOpenIntent</code></a>
+<a class="toc-link level-3" href="#acceptcancelopenintent"><code>AcceptCancelOpenIntent</code></a>
+<a class="toc-link level-3" href="#fillopenintent"><code>FillOpenIntent</code></a>
+<a class="toc-link level-2" href="#partyaclosefacet">PartyACloseFacet</a>
+<a class="toc-link level-3" href="#sendcloseintent"><code>SendCloseIntent</code></a>
+<a class="toc-link level-3" href="#cancelcloseintent"><code>CancelCloseIntent</code></a>
+<a class="toc-link level-2" href="#partybclosefacet">PartyBCloseFacet</a>
+<a class="toc-link level-3" href="#acceptcancelcloseintent"><code>AcceptCancelCloseIntent</code></a>
+<a class="toc-link level-3" href="#fillcloseintent"><code>FillCloseIntent</code></a>
+<a class="toc-link level-2" href="#tradefacet">TradeFacet</a>
+<a class="toc-link level-3" href="#transfertradebypartya"><code>TransferTradeByPartyA</code></a>
+<a class="toc-link level-3" href="#executetrades"><code>ExecuteTrades</code></a>
+<a class="toc-link level-2" href="#forceactionsfacet">ForceActionsFacet</a>
+<a class="toc-link level-2" href="#clearinghousefacet">ClearingHouseFacet</a>
+<a class="toc-link level-2" href="#counterpartyrelationsfacet">CounterPartyRelationsFacet</a>
+<a class="toc-link level-2" href="#controlfacet">ControlFacet</a>
+<a class="toc-link level-3" href="#roles-and-access">Roles And Access</a>
+<a class="toc-link level-3" href="#collateral-limits-cooldowns">Collateral, Limits, Cooldowns</a>
+<a class="toc-link level-3" href="#fees-and-affiliates">Fees And Affiliates</a>
+<a class="toc-link level-3" href="#party-b-configuration">Party B Configuration</a>
+<a class="toc-link level-3" href="#pause-toggles-no-payload">Pause Toggles (no payload)</a>
+<a class="toc-link level-3" href="#emergency-mode">Emergency Mode</a>
+<a class="toc-link level-3" href="#suspensions">Suspensions</a>
+<a class="toc-link level-3" href="#symbols-and-oracles">Symbols And Oracles</a>
+<a class="toc-link level-3" href="#verifier-withdraw-provider-external-transfer">Verifier, Withdraw Provider, External Transfer</a>
+<a class="toc-link level-2" href="#libscheduledreleasebalance-library-events">LibScheduledReleaseBalance (library events)</a>
+<a class="toc-link level-3" href="#increasebalance"><code>IncreaseBalance</code></a>
+<a class="toc-link level-3" href="#decreasebalance"><code>DecreaseBalance</code></a>
+<a class="toc-link level-3" href="#syncbalance"><code>SyncBalance</code></a>
+<a class="toc-link level-3" href="#lockbalance--unlockbalance"><code>LockBalance</code> / <code>UnlockBalance</code></a>
+<a class="toc-link level-2" href="#libdiamond--diamondcutfacet">LibDiamond / DiamondCutFacet</a>
+<a class="toc-link level-2" href="#instantlayer-helper">InstantLayer (helper)</a>
+<a class="toc-link level-2" href="#multiaccount-helper">MultiAccount (helper)</a>
+<a class="toc-link level-2" href="#symmiopartya-helper">SymmioPartyA (helper)</a>
+<a class="toc-link level-2" href="#symmiopartyb-helper">SymmioPartyB (helper)</a>
+<a class="toc-link level-2" href="#tradenft-helper">TradeNFT (helper)</a>
+<a class="toc-link level-2" href="#muonoracle-helper">MuonOracle (helper)</a>
+<a class="toc-link level-2" href="#defined-but-not-emitted">Defined But Not Emitted</a>
+<a class="toc-link level-2" href="#cross-cutting-patterns">Cross-Cutting Patterns</a>
+<a class="toc-link level-3" href="#nonces">Nonces</a>
+<a class="toc-link level-3" href="#intent-ids-vs-trade-ids">Intent IDs vs Trade IDs</a>
+<a class="toc-link level-3" href="#off-chain-replay-and-state-reconstruction">Off-chain replay and state reconstruction</a>
+</div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1>Events Catalog</h1><p class="hero-copy">Diamond and helper events with declaration and emission sites.</p></div></div></header>
+<article class="doc-article" id="full-document"><p>Catalog of every event emitted by the SYMM Options Core Diamond and its helper contracts. Each entry lists the on-chain signature with <code>indexed</code> markers, the function or state transition that emits it, the meaning and units of each field, the source declaration, and one or more emission sites. Subgraph notes call out keys and reconstruction tips. Verified against the source on the <code>develop</code> branch; all line numbers are real.</p>
+<p>Indexed parameters are marked <code>(idx)</code> in tables; non-indexed are <code>(data)</code>. Most monetary amounts in the Diamond are 18-decimal normalized values; ERC20 amounts in <code>AccountFacet.deposit</code> use the collateral&#39;s native decimals (the emitted <code>amount</code> is the post-normalization 18-decimal value).</p>
+<h2 id="contents">Contents</h2>
+<ul>
+<li><a href="#accountfacet">AccountFacet</a></li>
+<li><a href="#partyaopenfacet-shared-ipartiesevents">PartyAOpenFacet (shared <code>IPartiesEvents</code>)</a></li>
+<li><a href="#partybopenfacet">PartyBOpenFacet</a></li>
+<li><a href="#partyaclosefacet">PartyACloseFacet</a></li>
+<li><a href="#partybclosefacet">PartyBCloseFacet</a></li>
+<li><a href="#tradefacet">TradeFacet</a></li>
+<li><a href="#forceactionsfacet">ForceActionsFacet</a></li>
+<li><a href="#clearinghousefacet">ClearingHouseFacet</a></li>
+<li><a href="#counterpartyrelationsfacet">CounterPartyRelationsFacet</a></li>
+<li><a href="#controlfacet">ControlFacet</a></li>
+<li><a href="#libscheduledreleasebalance-library-events">LibScheduledReleaseBalance (library events)</a></li>
+<li><a href="#libdiamond--diamondcutfacet">LibDiamond / DiamondCutFacet</a></li>
+<li><a href="#instantlayer-helper">InstantLayer (helper)</a></li>
+<li><a href="#multiaccount-helper">MultiAccount (helper)</a></li>
+<li><a href="#symmiopartya-helper">SymmioPartyA (helper)</a></li>
+<li><a href="#symmiopartyb-helper">SymmioPartyB (helper)</a></li>
+<li><a href="#tradenft-helper">TradeNFT (helper)</a></li>
+<li><a href="#muonoracle-helper">MuonOracle (helper)</a></li>
+<li><a href="#defined-but-not-emitted">Defined But Not Emitted</a></li>
+<li><a href="#cross-cutting-patterns">Cross-Cutting Patterns</a></li>
+</ul>
+<hr>
+<h2 id="accountfacet">AccountFacet</h2>
+<p>Source for events: <code>contracts/facets/Account/IAccountEvents.sol</code>. All emissions in <code>contracts/facets/Account/AccountFacet.sol</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Signature</th>
+<th>Trigger</th>
+<th>Decl line</th>
+<th>Emit line(s)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>Deposit</code></td>
+<td><code>(address sender idx, address user idx, address collateral idx, uint256 amount, uint256 newBalance)</code></td>
+<td><code>deposit</code>, <code>depositFor</code>, <code>virtualDepositFor</code> credit <code>user.isolatedBalance</code>. <code>amount</code> is 18-decimal post-normalization.</td>
+<td>8</td>
+<td>41, 57, 82</td>
+</tr>
+<tr>
+<td><code>VirtualDeposit</code></td>
+<td><code>(address sender idx, address user idx, address collateral idx, uint256 amount, uint256 newBalance)</code></td>
+<td><code>virtualDepositFor</code> (no ERC20 transfer; book-only credit).</td>
+<td>9</td>
+<td>58</td>
+</tr>
+<tr>
+<td><code>InternalTransfer</code></td>
+<td><code>(address sender idx, address receiver idx, address collateral idx, uint256 amount, uint256 newBalanceOfSender, uint256 newBalanceOfReceiver)</code></td>
+<td><code>internalTransfer</code> moves isolated balance between in-protocol users.</td>
+<td>10</td>
+<td>107</td>
+</tr>
+<tr>
+<td><code>ExternalTransfer</code></td>
+<td><code>(address sender idx, address user idx, address collateral idx, uint256 amount, address target)</code></td>
+<td><code>externalTransfer</code> sends ERC20 to a whitelisted external <code>target</code> and calls <code>target.onTransfer</code>. <code>amount</code> is the 18-decimal request.</td>
+<td>18</td>
+<td>139</td>
+</tr>
+<tr>
+<td><code>InitiateWithdraw</code></td>
+<td><code>(uint256 id, address user idx, address to idx, address collateral idx, uint256 amount, uint256 newBalance)</code></td>
+<td><code>initiateWithdraw</code> and the non-express path of <code>initiateExpressWithdraw</code>. <code>id</code> is the new withdraw request ID.</td>
+<td>19</td>
+<td>162, 191</td>
+</tr>
+<tr>
+<td><code>InitiateExpressWithdraw</code></td>
+<td><code>(uint256 id, address user idx, address to idx, address collateral idx, address provider, bytes userData, uint256 amount, uint256 newBalance)</code></td>
+<td><code>initiateExpressWithdraw</code> (third-party provider path). Emitted alongside <code>InitiateWithdraw</code>.</td>
+<td>20</td>
+<td>192</td>
+</tr>
+<tr>
+<td><code>CompleteWithdraw</code></td>
+<td><code>(uint256 id)</code></td>
+<td><code>completeWithdraw</code> after cooldown elapses; releases ERC20 to <code>to</code>.</td>
+<td>30</td>
+<td>225</td>
+</tr>
+<tr>
+<td><code>CancelWithdraw</code></td>
+<td><code>(uint256 id, address user idx, address collateral idx, uint256 amount, uint256 newBalance)</code></td>
+<td><code>cancelWithdraw</code> returns funds to user&#39;s isolated balance.</td>
+<td>31</td>
+<td>236</td>
+</tr>
+<tr>
+<td><code>SuspendWithdraw</code></td>
+<td><code>(uint256 id, address suspender)</code></td>
+<td><code>suspendWithdraw</code> (admin-suspended pending withdrawal). <code>suspender = msg.sender</code>.</td>
+<td>32</td>
+<td>202</td>
+</tr>
+<tr>
+<td><code>RestoreWithdraw</code></td>
+<td><code>(uint256 id, uint256 validAmount)</code></td>
+<td><code>restoreWithdraw</code> reactivates a suspended withdrawal at <code>validAmount</code> (may be reduced).</td>
+<td>33</td>
+<td>213</td>
+</tr>
+<tr>
+<td><code>Allocate</code></td>
+<td><code>(address user idx, address collateral idx, address counterParty idx, uint256 amount, uint256 newBalance, int256 newAllocatedBalance)</code></td>
+<td><code>allocate</code> moves isolated balance into a cross-margin slot vs <code>counterParty</code>. <code>newAllocatedBalance</code> is the signed cross balance.</td>
+<td>34</td>
+<td>268</td>
+</tr>
+<tr>
+<td><code>Deallocate</code></td>
+<td><code>(address user idx, address collateral idx, address counterParty idx, uint256 amount, uint256 newBalance, int256 newAllocatedBalance)</code></td>
+<td><code>deallocate</code> returns cross balance to isolated, gated by uPnL signature and cooldown.</td>
+<td>42</td>
+<td>294</td>
+</tr>
+<tr>
+<td><code>AllocateToReserveBalance</code></td>
+<td><code>(address user idx, address collateral idx, uint256 amount, uint256 newBalance)</code></td>
+<td><code>allocateToReserveBalance</code> parks isolated funds in clearing-house-controlled reserve.</td>
+<td>51</td>
+<td>314</td>
+</tr>
+<tr>
+<td><code>DeallocateFromReserveBalance</code></td>
+<td><code>(address user idx, address collateral idx, uint256 amount, uint256 newBalance)</code></td>
+<td><code>deallocateFromReserveBalance</code> returns reserve back to isolated.</td>
+<td>52</td>
+<td>327</td>
+</tr>
+</tbody></table>
+<p>Subgraph notes: <code>id</code> from <code>InitiateWithdraw</code> / <code>InitiateExpressWithdraw</code> is the unique key for the withdrawal lifecycle (<code>Suspend</code>, <code>Restore</code>, <code>Complete</code>, <code>Cancel</code>, <code>ConfiscateWithdrawal</code>). <code>(user, collateral, counterParty)</code> is the natural key for cross-balance reconstruction.</p>
+<hr>
+<h2 id="partyaopenfacet-shared-ipartiesevents">PartyAOpenFacet (shared <code>IPartiesEvents</code>)</h2>
+<p><code>PartyAOpenFacet</code> re-exports the shared <code>IPartiesEvents</code> interface (<code>contracts/facets/PartyAOpen/IPartyAOpenEvents.sol:9</code>). Definitions live in <code>contracts/interfaces/IPartiesEvents.sol</code>. Emissions: <code>contracts/facets/PartyAOpen/PartyAOpenFacet.sol</code>.</p>
+<h3 id="sendopenintent"><code>SendOpenIntent</code></h3>
+<p><code>SendOpenIntent(address indexed partyA, uint256 intentId, address[] partyBsWhiteList, bytes requestedParams)</code></p>
+<ul>
+<li>Decl: <code>contracts/interfaces/IPartiesEvents.sol:10</code></li>
+<li>Emit: <code>contracts/facets/PartyAOpen/PartyAOpenFacet.sol:85</code> (initial intent), <code>contracts/facets/PartyBOpen/PartyBOpenFacet.sol:74</code> (residual intent created when a partial fill leaves leftover quantity).</li>
+<li>Triggered by <code>PartyAOpenFacet.sendOpenIntent</code> and inside <code>PartyBOpenFacet.fillOpenIntent</code> when <code>newIntentId != 0</code>.</li>
+<li><code>requestedParams</code> packs: <code>(symbolId, price, quantity, strikePrice, expirationTimestamp, mm, tradeSide, marginType, exerciseFee.rate, exerciseFee.cap, solverFee.openFee, solverFee.closeFee, deadline)</code> for the original; the residual variant omits <code>solverFee</code> fields. All amounts are 18-decimal.</li>
+<li>Subgraph: <code>intentId</code> is the primary key for <code>OpenIntent</code>. Two emission sites means indexers must accept both.</li>
+</ul>
+<h3 id="cancelopenintent"><code>CancelOpenIntent</code></h3>
+<p><code>CancelOpenIntent(uint256 intentId, OpenIntentStatus finalStatus)</code></p>
+<ul>
+<li>Decl: <code>contracts/interfaces/IPartiesEvents.sol:11</code></li>
+<li>Emit: <code>contracts/facets/PartyAOpen/PartyAOpenFacet.sol:136</code>, <code>contracts/facets/PartyBOpen/PartyBOpenFacet.sol:93</code>.</li>
+<li><code>cancelOpenIntent</code> resolves to either <code>CANCELED</code> (immediate) or <code>CANCEL_PENDING</code> (locked, awaiting Party B). Also fired when the residual intent of a fill is auto-canceled.</li>
+<li><code>finalStatus</code> enum is <code>OpenIntentStatus</code> from <code>contracts/types/IntentTypes.sol</code>.</li>
+</ul>
+<h3 id="expireopenintent"><code>ExpireOpenIntent</code></h3>
+<p><code>ExpireOpenIntent(uint256 intentId)</code></p>
+<ul>
+<li>Decl: <code>contracts/interfaces/IPartiesEvents.sol:12</code></li>
+<li>Emit: <code>contracts/facets/PartyAOpen/PartyAOpenFacet.sol:117</code>, <code>:134</code>, and <code>contracts/facets/PartyBOpen/PartyBOpenFacet.sol:43</code> (lock attempt past deadline).</li>
+<li>Marks the intent as <code>EXPIRED</code>; can be fired by anyone for already-expired intents via <code>expireOpenIntent</code>, indirectly through <code>cancelOpenIntent</code>, or by a Party B trying to lock.</li>
+</ul>
+<h3 id="expirecloseintent"><code>ExpireCloseIntent</code></h3>
+<p><code>ExpireCloseIntent(uint256 intentId)</code></p>
+<ul>
+<li>Decl: <code>contracts/interfaces/IPartiesEvents.sol:13</code></li>
+<li>Emit: <code>contracts/facets/PartyAClose/PartyACloseFacet.sol:58</code>, <code>:73</code>. Same dual path as the open variant.</li>
+</ul>
+<h3 id="lockopenintentescrow"><code>LockOpenIntentEscrow</code></h3>
+<p><code>LockOpenIntentEscrow(uint256 indexed intentId, address indexed partyA, address indexed collateral, uint256 mm, address feeToken, uint256 feeLockAmount)</code></p>
+<ul>
+<li>Decl: <code>contracts/interfaces/IPartiesEvents.sol:14-21</code>; library declaration mirrors it in <code>contracts/libraries/models/LibOpenIntent.sol:24-31</code>.</li>
+<li>Emit: <code>contracts/libraries/models/LibOpenIntent.sol:162</code>.</li>
+<li>Triggered when Party A creates a deferred Party B sell (<code>SELL + CROSS + empty whitelist</code>).</li>
+<li><code>mm</code> is the seller maintenance margin locked from Party A isolated <code>collateral</code>; <code>feeLockAmount</code> is the estimated total open fee locked from Party A isolated <code>feeToken</code> at the intent limit price.</li>
+</ul>
+<h3 id="releaseopenintentescrow"><code>ReleaseOpenIntentEscrow</code></h3>
+<p><code>ReleaseOpenIntentEscrow(uint256 indexed intentId, address indexed partyA, address indexed collateral, uint256 mm, address feeToken, uint256 feeLockAmount)</code></p>
+<ul>
+<li>Decl: <code>contracts/interfaces/IPartiesEvents.sol:22-29</code>; library declaration mirrors it in <code>contracts/libraries/models/LibOpenIntent.sol:32-39</code>.</li>
+<li>Emit: <code>contracts/libraries/models/LibOpenIntent.sol:175</code>.</li>
+<li>Triggered when a deferred Party B sell reaches a non-fill terminal path: pending cancel, Party B accept-cancel, force-cancel, expiry, or clearing-house cancel/expire.</li>
+<li>Subgraph: pair this with <code>LockOpenIntentEscrow</code> to know that the isolated reservation was returned and <code>openIntentEscrows[intentId]</code> was deleted.</li>
+</ul>
+<h3 id="consumeopenintentescrow"><code>ConsumeOpenIntentEscrow</code></h3>
+<p><code>ConsumeOpenIntentEscrow(uint256 indexed intentId, uint256 indexed tradeId, address indexed partyB, uint256 mmConsumed, uint256 feeConsumed)</code></p>
+<ul>
+<li>Decl: <code>contracts/interfaces/IPartiesEvents.sol:30</code>; library declaration mirrors it in <code>contracts/libraries/models/LibOpenIntent.sol:40</code>.</li>
+<li>Emit: <code>contracts/libraries/models/LibOpenIntent.sol:207</code>.</li>
+<li>Triggered during fill of a deferred Party B sell, after the selected Party B is known and before the normal cross fee/premium accounting completes. On partial fills, the event reports only the consumed slice.</li>
+<li><code>mmConsumed</code> is allocated into Party A&#39;s cross collateral bucket against <code>partyB</code>; <code>feeConsumed</code> is the actual fill-price open fee allocated into Party A&#39;s cross <code>feeToken</code> bucket against <code>partyB</code>.</li>
+<li>A residual partial-fill escrow move does not emit a second lock event because the balances stay locked; indexers should follow the residual <code>SendOpenIntent</code> child and read <code>getOpenIntentEscrow(childIntentId)</code>.</li>
+</ul>
+<hr>
+<h2 id="partybopenfacet">PartyBOpenFacet</h2>
+<p>Source: <code>contracts/facets/PartyBOpen/IPartyBOpenEvents.sol</code>. Inherits <code>IPartiesEvents</code>. Emissions in <code>contracts/facets/PartyBOpen/PartyBOpenFacet.sol</code>.</p>
+<h3 id="lockopenintent"><code>LockOpenIntent</code></h3>
+<p><code>LockOpenIntent(uint256 intentId, address indexed partyB)</code></p>
+<ul>
+<li>Decl: <code>IPartyBOpenEvents.sol:11</code></li>
+<li>Emit: <code>PartyBOpenFacet.sol:31</code></li>
+<li>Party B reserves an <code>OpenIntent</code> for exclusive fill (state → <code>LOCKED</code>).</li>
+</ul>
+<h3 id="unlockopenintent"><code>UnlockOpenIntent</code></h3>
+<p><code>UnlockOpenIntent(uint256 intentId, address indexed partyB)</code></p>
+<ul>
+<li>Decl: <code>IPartyBOpenEvents.sol:12</code></li>
+<li>Emit: <code>PartyBOpenFacet.sol:45</code></li>
+<li>Party B releases its lock (state → <code>PENDING</code>). Same call path may emit <code>ExpireOpenIntent</code> instead if past deadline.</li>
+</ul>
+<h3 id="acceptcancelopenintent"><code>AcceptCancelOpenIntent</code></h3>
+<p><code>AcceptCancelOpenIntent(uint256 intentId)</code></p>
+<ul>
+<li>Decl: <code>IPartyBOpenEvents.sol:10</code></li>
+<li>Emit: <code>PartyBOpenFacet.sol:57</code></li>
+<li>Party B accepts a Party A <code>CANCEL_PENDING</code> request (state → <code>CANCELED</code>).</li>
+</ul>
+<h3 id="fillopenintent"><code>FillOpenIntent</code></h3>
+<p><code>FillOpenIntent(uint256 intentId, uint256 tradeId, uint256 quantity, uint256 price)</code></p>
+<ul>
+<li>Decl: <code>IPartyBOpenEvents.sol:13</code></li>
+<li>Emit: <code>PartyBOpenFacet.sol:71</code></li>
+<li><code>quantity</code> and <code>price</code> are 18-decimal. <code>tradeId</code> is the newly created trade. If <code>quantity</code> &lt; requested, a residual <code>SendOpenIntent</code> follows.</li>
+<li>Subgraph: <code>tradeId</code> is the primary key for <code>Trade</code>; pair with the originating <code>intentId</code>.</li>
+</ul>
+<hr>
+<h2 id="partyaclosefacet">PartyACloseFacet</h2>
+<p>Source: <code>contracts/facets/PartyAClose/IPartyACloseEvents.sol</code> (extends <code>IPartiesEvents</code>). Emissions in <code>contracts/facets/PartyAClose/PartyACloseFacet.sol</code>.</p>
+<h3 id="sendcloseintent"><code>SendCloseIntent</code></h3>
+<p><code>SendCloseIntent(uint256 tradeId, uint256 intentId, uint256 price, uint256 quantity, uint256 deadline)</code></p>
+<ul>
+<li>Decl: <code>IPartyACloseEvents.sol:10</code></li>
+<li>Emit: <code>PartyACloseFacet.sol:45</code></li>
+<li>Party A asks to close <code>quantity</code> of <code>tradeId</code> at <code>price</code> before <code>deadline</code> (unix seconds). Field order is <code>(tradeId, intentId, price, quantity, deadline)</code> — note <code>price</code> precedes <code>quantity</code> in the event, opposite to the function signature order.</li>
+</ul>
+<h3 id="cancelcloseintent"><code>CancelCloseIntent</code></h3>
+<p><code>CancelCloseIntent(uint256 intentId)</code></p>
+<ul>
+<li>Decl: <code>IPartyACloseEvents.sol:11</code></li>
+<li>Emit: <code>PartyACloseFacet.sol:75</code></li>
+<li>Resolves to <code>CANCEL_PENDING</code> (the only state that fires this event; expired close intents fire <code>ExpireCloseIntent</code> instead).</li>
+</ul>
+<hr>
+<h2 id="partybclosefacet">PartyBCloseFacet</h2>
+<p>Source: <code>contracts/facets/PartyBClose/IPartyBCloseEvents.sol</code>. Emissions in <code>contracts/facets/PartyBClose/PartyBCloseFacet.sol</code>.</p>
+<h3 id="acceptcancelcloseintent"><code>AcceptCancelCloseIntent</code></h3>
+<p><code>AcceptCancelCloseIntent(uint256 intentId)</code></p>
+<ul>
+<li>Decl: <code>IPartyBCloseEvents.sol:10</code></li>
+<li>Emit: <code>PartyBCloseFacet.sol:28</code></li>
+<li>Party B accepts Party A&#39;s pending close cancellation.</li>
+</ul>
+<h3 id="fillcloseintent"><code>FillCloseIntent</code></h3>
+<p><code>FillCloseIntent(uint256 intentId, uint256 quantity, uint256 price)</code></p>
+<ul>
+<li>Decl: <code>IPartyBCloseEvents.sol:11</code></li>
+<li>Emit: <code>PartyBCloseFacet.sol:40</code></li>
+<li>No new <code>tradeId</code> is emitted — closes operate on the intent&#39;s bound trade. <code>quantity</code> and <code>price</code> are 18-decimal.</li>
+</ul>
+<hr>
+<h2 id="tradefacet">TradeFacet</h2>
+<p>Source: <code>contracts/facets/Trade/ITradeEvents.sol</code>. Emissions in <code>contracts/facets/Trade/TradeFacet.sol</code>.</p>
+<h3 id="transfertradebypartya"><code>TransferTradeByPartyA</code></h3>
+<p><code>TransferTradeByPartyA(address indexed sender, address indexed receiver, uint256 tradeId)</code></p>
+<ul>
+<li>Decl: <code>ITradeEvents.sol:8</code></li>
+<li>Emit: <code>TradeFacet.sol:34</code> (Party A direct transfer), <code>:51</code> (mirrored from <code>TradeNFT</code> via <code>transferTradeFromNFT</code>).</li>
+<li>Tracks ownership change of a <code>Trade</code>. The same event handles both bare transfers and NFT-mediated transfers; pair with <code>TradeNFT.TradeNFTTransferred</code> to disambiguate.</li>
+</ul>
+<h3 id="executetrades"><code>ExecuteTrades</code></h3>
+<p><code>ExecuteTrades(address operator, uint256[] tradeIds, bool[] exercised, bool[] expired, uint256 settlementPrice, uint256 collateralPrice)</code></p>
+<ul>
+<li>Decl: <code>ITradeEvents.sol:9</code></li>
+<li>Emit: <code>TradeFacet.sol:63</code></li>
+<li>Emitted by <code>executeTrades(tradeIds, settlementPriceSig)</code> after expiration. <code>exercised[i]</code> and <code>expired[i]</code> describe per-trade outcome (mutually exclusive). <code>settlementPrice</code> and <code>collateralPrice</code> come from the Muon-signed <code>SettlementPriceSig</code> and are 18-decimal.</li>
+</ul>
+<hr>
+<h2 id="forceactionsfacet">ForceActionsFacet</h2>
+<p>Source: <code>contracts/facets/ForceActions/ForceActionsFacetEvents.sol</code>. Emissions in <code>contracts/facets/ForceActions/ForceActionsFacet.sol</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Signature</th>
+<th>Trigger</th>
+<th>Decl line</th>
+<th>Emit line</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>ForceCancelOpenIntent</code></td>
+<td><code>(uint256 intentId)</code></td>
+<td><code>forceCancelOpenIntent</code> after the configured force-cancel timeout has elapsed.</td>
+<td>8</td>
+<td>27</td>
+</tr>
+<tr>
+<td><code>ForceCancelCloseIntent</code></td>
+<td><code>(uint256 intentId)</code></td>
+<td><code>forceCancelCloseIntent</code> after the configured force-cancel close timeout has elapsed.</td>
+<td>9</td>
+<td>38</td>
+</tr>
+</tbody></table>
+<p>Use these to distinguish force-driven cancellations from voluntary <code>CancelOpenIntent</code> / <code>CancelCloseIntent</code>.</p>
+<hr>
+<h2 id="clearinghousefacet">ClearingHouseFacet</h2>
+<p>Source: <code>contracts/facets/ClearingHouse/IClearingHouseEvents.sol</code>. Emissions in <code>contracts/facets/ClearingHouse/ClearingHouseFacet.sol</code>. All operators are <code>CLEARING_HOUSE_ROLE</code> holders.</p>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Signature</th>
+<th>Trigger</th>
+<th>Decl line</th>
+<th>Emit line</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>FlagIsolatedPartyBLiquidation</code></td>
+<td><code>(address operator idx, address partyB idx, address collateral idx)</code></td>
+<td><code>flagIsolatedPartyBLiquidation</code> opens a liquidation window on Party B&#39;s isolated book.</td>
+<td>10</td>
+<td>31</td>
+</tr>
+<tr>
+<td><code>UnflagIsolatedPartyBLiquidation</code></td>
+<td><code>(address operator idx, address partyB idx, address collateral idx)</code></td>
+<td><code>unflagIsolatedPartyBLiquidation</code> clears the flag.</td>
+<td>11</td>
+<td>44</td>
+</tr>
+<tr>
+<td><code>LiquidateIsolatedPartyB</code></td>
+<td><code>(address operator idx, address partyB idx, address collateral idx, uint256 balance, int256 upnl, uint256 collateralPrice)</code></td>
+<td><code>liquidateIsolatedPartyB</code>. <code>balance</code> is the snapshot isolated balance; <code>upnl</code>/<code>collateralPrice</code> from signature.</td>
+<td>12</td>
+<td>61</td>
+</tr>
+<tr>
+<td><code>Confiscate</code></td>
+<td><code>(address operator idx, address party idx, address counterParty idx, uint256 liquidationId, uint256 amount, MarginType marginType)</code></td>
+<td><code>confiscate</code> seizes <code>amount</code> (18-dec) from <code>(party, counterParty)</code> per <code>liquidationId</code>.</td>
+<td>20</td>
+<td>72</td>
+</tr>
+<tr>
+<td><code>ConfiscateWithdrawal</code></td>
+<td><code>(address operator idx, uint256 withdrawId)</code></td>
+<td><code>confiscateWithdrawal</code> voids a pending withdrawal during liquidation.</td>
+<td>28</td>
+<td>77</td>
+</tr>
+<tr>
+<td><code>DistributeCollateral</code></td>
+<td><code>(address operator idx, address partyB idx, address collateral idx, uint256 liquidationId, address[] partyAs, uint256[] amounts)</code></td>
+<td><code>distributeCollateral</code> parcels confiscated funds back to multiple Party A counterparties.</td>
+<td>29</td>
+<td>89</td>
+</tr>
+<tr>
+<td><code>FlagCrossPartyBLiquidation</code></td>
+<td><code>(address operator, address partyB idx, address partyA idx, address collateral idx)</code></td>
+<td><code>flagCrossPartyBLiquidation</code> (cross-margin variant; <code>operator</code> is non-indexed).</td>
+<td>38</td>
+<td>98</td>
+</tr>
+<tr>
+<td><code>UnflagCrossPartyBLiquidation</code></td>
+<td><code>(address operator, address partyB idx, address partyA idx, address collateral idx)</code></td>
+<td><code>unflagCrossPartyBLiquidation</code>.</td>
+<td>39</td>
+<td>107</td>
+</tr>
+<tr>
+<td><code>LiquidateCrossPartyB</code></td>
+<td><code>(address operator, address partyB idx, address partyA idx, address collateral idx, int256 upnl, uint256 collateralPrice)</code></td>
+<td><code>liquidateCrossPartyB</code>.</td>
+<td>40</td>
+<td>118</td>
+</tr>
+<tr>
+<td><code>FlagPartyALiquidation</code></td>
+<td><code>(address operator, address partyA idx, address partyB idx, address collateral idx)</code></td>
+<td><code>flagPartyALiquidation</code>.</td>
+<td>48</td>
+<td>127</td>
+</tr>
+<tr>
+<td><code>UnflagPartyALiquidation</code></td>
+<td><code>(address operator, address partyA idx, address partyB idx, address collateral idx)</code></td>
+<td><code>unflagPartyALiquidation</code>.</td>
+<td>49</td>
+<td>136</td>
+</tr>
+<tr>
+<td><code>LiquidateCrossPartyA</code></td>
+<td><code>(address operator, uint256 liquidationId, address partyA, address partyB, address collateral, int256 upnl, uint256 collateralPrice)</code></td>
+<td><code>liquidateCrossPartyA</code>. None of the address fields are indexed — filter client-side.</td>
+<td>50</td>
+<td>148</td>
+</tr>
+<tr>
+<td><code>CloseTradesForLiquidation</code></td>
+<td><code>(address operator, uint256 liquidationId, uint256[] tradeIds, uint256[] prices)</code></td>
+<td><code>closeTradesForLiquidation</code> settles a batch of open trades at administered prices.</td>
+<td>59</td>
+<td>157</td>
+</tr>
+<tr>
+<td><code>CancelOpenIntentsForLiquidation</code></td>
+<td><code>(address operator, uint256[] intentIds)</code></td>
+<td><code>cancelOpenIntentsForLiquidation</code>.</td>
+<td>60</td>
+<td>172</td>
+</tr>
+<tr>
+<td><code>CancelCloseIntentsForLiquidation</code></td>
+<td><code>(address operator, uint256[] intentIds)</code></td>
+<td><code>cancelCloseIntentsForLiquidation</code>.</td>
+<td>61</td>
+<td>177</td>
+</tr>
+<tr>
+<td><code>AllocateFromReserveToCross</code></td>
+<td><code>(address operator, address party, address counterParty, address collateral, uint256 amount)</code></td>
+<td><code>allocateFromReserveToCross</code> taps a party&#39;s reserve to cover its cross balance during a liquidation.</td>
+<td>62</td>
+<td>167</td>
+</tr>
+</tbody></table>
+<p><code>FullyLiquidated(address indexed partyB, uint256 liquidationId)</code> is declared (<code>IClearingHouseEvents.sol:37</code>) but never emitted in the current codebase — see <a href="#defined-but-not-emitted">Defined But Not Emitted</a>.</p>
+<p>Subgraph note: <code>liquidationId</code> is the primary key joining <code>Confiscate</code>, <code>DistributeCollateral</code>, <code>LiquidateCrossPartyA</code>, and <code>CloseTradesForLiquidation</code>. The flag/unflag pairs let indexers compute liquidation windows.</p>
+<hr>
+<h2 id="counterpartyrelationsfacet">CounterPartyRelationsFacet</h2>
+<p>Source: <code>contracts/facets/CounterPartyRelations/ICounterPartyRelationsEvents.sol</code>. Emissions in <code>contracts/facets/CounterPartyRelations/CounterPartyRelationsFacet.sol</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Signature</th>
+<th>Trigger</th>
+<th>Decl line</th>
+<th>Emit line</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>ActivateInstantActionMode</code></td>
+<td><code>(address user idx, uint256 timestamp)</code></td>
+<td><code>activateInstantActionMode</code> puts the caller (Party A) into instant mode against its bound Party B.</td>
+<td>8</td>
+<td>31</td>
+</tr>
+<tr>
+<td><code>ProposeToDeactivateInstantActionMode</code></td>
+<td><code>(address user idx, uint256 timestamp)</code></td>
+<td><code>proposeToDeactivateInstantActionMode</code> starts the deactivation cooldown.</td>
+<td>9</td>
+<td>45</td>
+</tr>
+<tr>
+<td><code>DeactivateInstantActionMode</code></td>
+<td><code>(address user idx, uint256 timestamp)</code></td>
+<td><code>deactivateInstantActionMode</code> after cooldown.</td>
+<td>10</td>
+<td>54</td>
+</tr>
+<tr>
+<td><code>BindToPartyB</code></td>
+<td><code>(address partyA idx, address partyB idx)</code></td>
+<td><code>bindToPartyB</code> enforces an exclusive Party B for the caller.</td>
+<td>11</td>
+<td>64</td>
+</tr>
+<tr>
+<td><code>InitiateUnbindingFromPartyB</code></td>
+<td><code>(address partyA idx, address partyB idx, uint256 initiationTime)</code></td>
+<td><code>initiateUnbindingFromPartyB</code> starts the unbinding cooldown timer.</td>
+<td>12</td>
+<td>73</td>
+</tr>
+<tr>
+<td><code>CompleteUnbindingFromPartyB</code></td>
+<td><code>(address partyA idx, address partyB idx)</code></td>
+<td><code>completeUnbindingFromPartyB</code> after <code>unbindingCooldown</code> passes; clears the relationship.</td>
+<td>13</td>
+<td>83</td>
+</tr>
+<tr>
+<td><code>CancelUnbindingFromPartyB</code></td>
+<td><code>(address partyA idx, address partyB idx)</code></td>
+<td><code>cancelUnbindingFromPartyB</code> aborts the pending unbind and keeps the binding active.</td>
+<td>14</td>
+<td>92</td>
+</tr>
+</tbody></table>
+<p><code>timestamp</code>/<code>initiationTime</code> are unix seconds (<code>block.timestamp</code>).</p>
+<hr>
+<h2 id="controlfacet">ControlFacet</h2>
+<p>Source: <code>contracts/facets/Control/IControlEvents.sol</code>. All emissions in <code>contracts/facets/Control/ControlFacet.sol</code>. Most events are admin-driven configuration changes for off-chain audit trails; they are not used for state reconstruction.</p>
+<h3 id="roles-and-access">Roles And Access</h3>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Signature</th>
+<th>Trigger</th>
+<th>Decl</th>
+<th>Emit</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>RoleGranted</code></td>
+<td><code>(bytes32 role idx, address user idx)</code></td>
+<td><code>init</code>, <code>grantRoles</code> per-entry.</td>
+<td>54</td>
+<td>56, 71</td>
+</tr>
+<tr>
+<td><code>RoleRevoked</code></td>
+<td><code>(bytes32 role idx, address user idx)</code></td>
+<td><code>revokeRoles</code> per-entry.</td>
+<td>55</td>
+<td>87</td>
+</tr>
+</tbody></table>
+<p><code>RoleUpdated(address indexed account, bytes32 indexed role, bool granted)</code> is declared (<code>IControlEvents.sol:47</code>) but never emitted; the facet uses <code>RoleGranted</code> / <code>RoleRevoked</code> instead.</p>
+<h3 id="collateral-limits-cooldowns">Collateral, Limits, Cooldowns</h3>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Signature</th>
+<th>Trigger</th>
+<th>Decl</th>
+<th>Emit</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>CollateralWhitelisted</code></td>
+<td><code>(address collateral idx)</code></td>
+<td><code>whitelistCollateral</code></td>
+<td>14</td>
+<td>102</td>
+</tr>
+<tr>
+<td><code>CollateralRemovedFromWhitelist</code></td>
+<td><code>(address collateral idx)</code></td>
+<td><code>removeCollateralFromWhitelist</code></td>
+<td>15</td>
+<td>111</td>
+</tr>
+<tr>
+<td><code>MaxCloseOrdersLengthUpdated</code></td>
+<td><code>(uint256 max)</code></td>
+<td><code>setMaxCloseOrdersLength</code></td>
+<td>16</td>
+<td>125</td>
+</tr>
+<tr>
+<td><code>MaxTradePerPartyAUpdated</code></td>
+<td><code>(uint256 max)</code></td>
+<td><code>setMaxTradePerPartyA</code></td>
+<td>17</td>
+<td>135</td>
+</tr>
+<tr>
+<td><code>BalanceLimitPerUserUpdated</code></td>
+<td><code>(address collateral, uint256 limit)</code></td>
+<td><code>setBalanceLimitPerUser</code></td>
+<td>18</td>
+<td>146</td>
+</tr>
+<tr>
+<td><code>PartyADeallocateCooldownUpdated</code></td>
+<td><code>(uint256 cooldown)</code></td>
+<td><code>setTimingParams</code>, <code>setPartyADeallocateCooldown</code></td>
+<td>19</td>
+<td>187, 206</td>
+</tr>
+<tr>
+<td><code>PartyBDeallocateCooldownUpdated</code></td>
+<td><code>(uint256 cooldown)</code></td>
+<td><code>setTimingParams</code>, <code>setPartyBDeallocateCooldown</code></td>
+<td>20</td>
+<td>188, 215</td>
+</tr>
+<tr>
+<td><code>ForceCancelOpenIntentTimeoutUpdated</code></td>
+<td><code>(uint256 timeout)</code></td>
+<td><code>setTimingParams</code>, <code>setForceCancelOpenIntentTimeout</code></td>
+<td>21</td>
+<td>189, 224</td>
+</tr>
+<tr>
+<td><code>ForceCancelCloseIntentTimeoutUpdated</code></td>
+<td><code>(uint256 timeout)</code></td>
+<td><code>setTimingParams</code>, <code>setForceCancelCloseIntentTimeout</code></td>
+<td>22</td>
+<td>190, 233</td>
+</tr>
+<tr>
+<td><code>SettlementPriceSigValidTimeUpdated</code></td>
+<td><code>(uint256 time)</code></td>
+<td><code>setTimingParams</code>, <code>setSettlementPriceSigValidTime</code></td>
+<td>50</td>
+<td>191, 242</td>
+</tr>
+<tr>
+<td><code>UpnlSigValidTimeUpdated</code></td>
+<td><code>(uint256 time)</code></td>
+<td><code>setTimingParams</code>, <code>setUpnlSigValidTime</code></td>
+<td>51</td>
+<td>192, 251</td>
+</tr>
+<tr>
+<td><code>PartyBExclusiveWindowUpdated</code></td>
+<td><code>(uint256 window)</code></td>
+<td><code>setTimingParams</code>, <code>setPartyBExclusiveWindow</code></td>
+<td>84</td>
+<td>193, 260</td>
+</tr>
+<tr>
+<td><code>UnbindingCooldownUpdated</code></td>
+<td><code>(uint256 cooldown)</code></td>
+<td><code>setTimingParams</code>, <code>setUnbindingCooldown</code></td>
+<td>59</td>
+<td>194, 269</td>
+</tr>
+<tr>
+<td><code>DeactiveInstantActionModeCooldownUpdated</code></td>
+<td><code>(uint256 cooldown)</code></td>
+<td><code>setTimingParams</code>, <code>setDeactiveInstantActionModeCooldown</code></td>
+<td>62</td>
+<td>195, 278</td>
+</tr>
+<tr>
+<td><code>MaxConnectedCounterPartiesUpdated</code></td>
+<td><code>(uint256 max)</code></td>
+<td><code>setMaxConnectedCounterParties</code></td>
+<td>58</td>
+<td>322</td>
+</tr>
+<tr>
+<td><code>PartyBReleaseIntervalUpdated</code></td>
+<td><code>(address partyB idx, uint256 interval)</code></td>
+<td><code>setPartyBReleaseInterval</code></td>
+<td>56</td>
+<td>303</td>
+</tr>
+<tr>
+<td><code>DefaultReleaseIntervalUpdated</code></td>
+<td><code>(uint256 interval)</code></td>
+<td><code>setDefaultReleaseInterval</code></td>
+<td>57</td>
+<td>312</td>
+</tr>
+</tbody></table>
+<h3 id="fees-and-affiliates">Fees And Affiliates</h3>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Signature</th>
+<th>Trigger</th>
+<th>Decl</th>
+<th>Emit</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>DefaultFeeCollectorUpdated</code></td>
+<td><code>(address collector idx)</code></td>
+<td><code>setDefaultFeeCollector</code></td>
+<td>23</td>
+<td>336</td>
+</tr>
+<tr>
+<td><code>AffiliateStatusUpdated</code></td>
+<td><code>(address affiliate idx, bool status)</code></td>
+<td><code>setAffiliateStatus</code></td>
+<td>44</td>
+<td>346</td>
+</tr>
+<tr>
+<td><code>AffiliateFeesCollectorUpdated</code></td>
+<td><code>(address affiliate idx, address feeCollector idx)</code></td>
+<td><code>setAffiliateFeesCollector</code></td>
+<td>45</td>
+<td>357</td>
+</tr>
+<tr>
+<td><code>AffiliateFeesUpdated</code></td>
+<td><code>(address affiliate idx, uint256 symbolId idx, Fee fee)</code></td>
+<td><code>setAffiliateFees</code> per <code>(symbolId, fee)</code> entry.</td>
+<td>46</td>
+<td>379</td>
+</tr>
+</tbody></table>
+<h3 id="party-b-configuration">Party B Configuration</h3>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Signature</th>
+<th>Trigger</th>
+<th>Decl</th>
+<th>Emit</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>PartyBConfigUpdated</code></td>
+<td><code>(address partyB idx, PartyBConfig config)</code></td>
+<td><code>setPartyBConfig</code> (full struct from <code>AppStorage.sol</code>).</td>
+<td>48</td>
+<td>398</td>
+</tr>
+<tr>
+<td><code>PartyBSupportedSymbolTypesUpdated</code></td>
+<td><code>(address partyB idx, uint256 symbolType idx, bool status)</code></td>
+<td><code>setPartyBSupportedSymbolTypes</code> per-entry.</td>
+<td>49</td>
+<td>417</td>
+</tr>
+</tbody></table>
+<h3 id="pause-toggles-no-payload">Pause Toggles (no payload)</h3>
+<p><code>GlobalPaused</code>, <code>DepositPaused</code>, <code>WithdrawPaused</code>, <code>ExpressWithdrawPaused</code>, <code>InternalTransferPaused</code>, <code>ExternalTransferPaused</code>, <code>PartyBActionsPaused</code>, <code>PartyAActionsPaused</code>, <code>LiquidatingPaused</code>, <code>ThirdPartyActionsPaused</code>, <code>InstantLayerPaused</code> and their <code>*Unpaused</code> counterparts. Decl lines 24–39 and 85–90; emit lines 432–602.</p>
+<h3 id="emergency-mode">Emergency Mode</h3>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Signature</th>
+<th>Trigger</th>
+<th>Decl</th>
+<th>Emit</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>PartyBsEmergencyModeActivated</code></td>
+<td><code>()</code></td>
+<td><code>activatePartyBsEmergencyMode</code> (global).</td>
+<td>40</td>
+<td>614</td>
+</tr>
+<tr>
+<td><code>PartyBsEmergencyModeDeactivated</code></td>
+<td><code>()</code></td>
+<td><code>deactivatePartyBsEmergencyMode</code>.</td>
+<td>41</td>
+<td>622</td>
+</tr>
+<tr>
+<td><code>PartyBEmergencyModeActivated</code></td>
+<td><code>(address partyB idx)</code></td>
+<td><code>activatePartyBEmergencyMode</code> (per-partyB).</td>
+<td>42</td>
+<td>632</td>
+</tr>
+<tr>
+<td><code>PartyBEmergencyModeDeactivated</code></td>
+<td><code>(address partyB idx)</code></td>
+<td><code>deactivatePartyBEmergencyMode</code>.</td>
+<td>43</td>
+<td>642</td>
+</tr>
+</tbody></table>
+<h3 id="suspensions">Suspensions</h3>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Signature</th>
+<th>Trigger</th>
+<th>Decl</th>
+<th>Emit</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>AddressSuspended</code></td>
+<td><code>(address user idx, bool status)</code></td>
+<td><code>suspendAddress</code>, <code>suspendAddresses</code> (per-entry).</td>
+<td>60</td>
+<td>657, 683</td>
+</tr>
+<tr>
+<td><code>WithdrawalSuspended</code></td>
+<td><code>(uint256 withdrawId idx, bool status)</code></td>
+<td><code>suspendWithdrawal</code> toggles a specific withdrawal request.</td>
+<td>61</td>
+<td>668</td>
+</tr>
+</tbody></table>
+<h3 id="symbols-and-oracles">Symbols And Oracles</h3>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Signature</th>
+<th>Trigger</th>
+<th>Decl</th>
+<th>Emit</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>OracleAdded</code></td>
+<td><code>(uint256 oracleId idx, string name, address contractAddress)</code></td>
+<td><code>addOracle</code></td>
+<td>64</td>
+<td>713</td>
+</tr>
+<tr>
+<td><code>OracleUpdated</code></td>
+<td><code>(uint256 oracleId idx, address oldAddress, address newAddress)</code></td>
+<td><code>updateOracle</code></td>
+<td>91</td>
+<td>729</td>
+</tr>
+<tr>
+<td><code>PriceOracleAddressUpdated</code></td>
+<td><code>(address oracle idx)</code></td>
+<td><code>setPriceOracle</code></td>
+<td>78</td>
+<td>739</td>
+</tr>
+<tr>
+<td><code>SymbolAdded</code></td>
+<td><code>(uint256 symbolId idx, string name, OptionType optionType, uint256 oracleId, address collateral, Fee platformFee, uint256 symbolType)</code></td>
+<td><code>addSymbol</code></td>
+<td>65</td>
+<td>780</td>
+</tr>
+<tr>
+<td><code>SymbolStateUpdated</code></td>
+<td><code>(uint256 symbolId idx, bool status)</code></td>
+<td><code>setSymbolStates</code> per-entry</td>
+<td>74</td>
+<td>826</td>
+</tr>
+<tr>
+<td><code>SymbolNameUpdated</code></td>
+<td><code>(uint256 symbolId idx, string name)</code></td>
+<td><code>setSymbolNames</code> per-entry</td>
+<td>75</td>
+<td>843</td>
+</tr>
+<tr>
+<td><code>SymbolTypeUpdated</code></td>
+<td><code>(uint256 symbolId idx, uint256 symbolType)</code></td>
+<td><code>setSymbolTypes</code> per-entry</td>
+<td>76</td>
+<td>859</td>
+</tr>
+<tr>
+<td><code>SymbolPlatformFeeUpdated</code></td>
+<td><code>(uint256 _symbolId idx, Fee _oldFee, Fee _newFee)</code></td>
+<td><code>setSymbolPlatformFees</code> per-entry</td>
+<td>77</td>
+<td>807</td>
+</tr>
+</tbody></table>
+<h3 id="verifier-withdraw-provider-external-transfer">Verifier, Withdraw Provider, External Transfer</h3>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Signature</th>
+<th>Trigger</th>
+<th>Decl</th>
+<th>Emit</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>SignatureVerifierUpdated</code></td>
+<td><code>(address verifier idx)</code></td>
+<td><code>setSignatureVerifier</code></td>
+<td>80</td>
+<td>874</td>
+</tr>
+<tr>
+<td><code>ExpressWithdrawProviderConfigUpdated</code></td>
+<td><code>(address provider idx, ExpressWithdrawProviderConfig config)</code></td>
+<td><code>setExpressWithdrawProviderConfig</code></td>
+<td>81</td>
+<td>894</td>
+</tr>
+<tr>
+<td><code>InvalidWithdrawalsAmountsPoolUpdated</code></td>
+<td><code>(address pool idx)</code></td>
+<td><code>setInvalidWithdrawalsAmountsPool</code></td>
+<td>82</td>
+<td>904</td>
+</tr>
+<tr>
+<td><code>ExternalTransferTargetValidationStatusUpdated</code></td>
+<td><code>(address target idx, address collateral idx, bool status)</code></td>
+<td><code>setExternalTransferTargetValidationStatus</code></td>
+<td>92</td>
+<td>926</td>
+</tr>
+<tr>
+<td><code>TradeNftAddressUpdated</code></td>
+<td><code>(address tradeNftAddress idx)</code></td>
+<td><code>setTradeNftAddress</code></td>
+<td>63</td>
+<td>287</td>
+</tr>
+</tbody></table>
+<p><code>SetManualSync</code>, <code>UserWindowUpdated</code>, <code>LiquidationDetailUpdated</code>, <code>SymbolPriceUpdated</code> are declared (decl lines 79, 83, 52, 53) but never emitted.</p>
+<hr>
+<h2 id="libscheduledreleasebalance-library-events">LibScheduledReleaseBalance (library events)</h2>
+<p>Source: <code>contracts/libraries/models/LibScheduledReleaseBalance.sol</code>. These are the low-level balance bookkeeping events emitted by <code>ScheduledReleaseBalanceOps</code>. Reasons are enums from <code>contracts/types/BalanceTypes.sol</code> (<code>IncreaseBalanceReason</code> lines 66–78, <code>DecreaseBalanceReason</code> lines 80–92).</p>
+<h3 id="increasebalance"><code>IncreaseBalance</code></h3>
+<p><code>IncreaseBalance(address indexed user, address indexed counterParty, address indexed collateral, uint256 amount, IncreaseBalanceReason reason, bool isInstant, MarginType marginType)</code></p>
+<ul>
+<li>Decl: <code>LibScheduledReleaseBalance.sol:30-38</code></li>
+<li>Emit: lines 103, 124, 131</li>
+<li>Fired whenever any balance (cross or isolated) credits a user. <code>isInstant=true</code> means the credit is immediately spendable; <code>false</code> means it joins the scheduled-release queue. <code>counterParty == address(0)</code> for isolated credits.</li>
+<li><code>IncreaseBalanceReason</code>: <code>DEPOSIT, INTERNAL_TRANSFER, EXPRESS_WITHDRAW, AFFILIATE_FEE, SOLVER_FEE, PLATFORM_FEE, PREMIUM, REALIZED_PNL, LIQUIDATION, INVALID_WITHDRAWAL, ALLOCATE_FROM_RESERVE</code>.</li>
+</ul>
+<h3 id="decreasebalance"><code>DecreaseBalance</code></h3>
+<p><code>DecreaseBalance(address indexed user, address indexed counterParty, address indexed collateral, uint256 amount, DecreaseBalanceReason reason, MarginType marginType)</code></p>
+<ul>
+<li>Decl: <code>LibScheduledReleaseBalance.sol:40-47</code></li>
+<li>Emit: lines 143, 168, 190, 201, 212</li>
+<li>Fired on every debit. <code>DecreaseBalanceReason</code>: <code>WITHDRAW, INTERNAL_TRANSFER, EXPRESS_WITHDRAW, AFFILIATE_FEE, SOLVER_FEE, PLATFORM_FEE, PREMIUM, REALIZED_PNL, CONFISCATE, LIQUIDATION, EXTERNAL_TRANSFER</code>.</li>
+<li>Subgraph: paired with <code>IncreaseBalance</code>, these are the only reliable source of fine-grained ledger replay because facet-level <code>Deposit</code> / <code>Allocate</code> events do not break out fee splits.</li>
+</ul>
+<h3 id="syncbalance"><code>SyncBalance</code></h3>
+<p><code>SyncBalance(address indexed user, address indexed counterParty, address indexed collateral)</code></p>
+<ul>
+<li>Decl: line 49</li>
+<li>Emit: lines 328, 365</li>
+<li>Marker that scheduled-release balances were drained into spendable. Fires whenever <code>_syncBalance</code> actually advances the cursor.</li>
+</ul>
+<h3 id="lockbalance--unlockbalance"><code>LockBalance</code> / <code>UnlockBalance</code></h3>
+<p><code>LockBalance(address indexed user, address indexed collateral, uint256 amount, MarginType marginType)</code>
+<code>UnlockBalance(address indexed user, address indexed collateral, uint256 amount, MarginType marginType)</code></p>
+<ul>
+<li>Decl: lines 51, 53</li>
+<li>Emit: 431, 443 (lock isolated/cross), 437, 450 (unlock isolated/cross)</li>
+<li>Tracks reservation of balance for pending intents, fees, premium, or margin. Note <code>counterParty</code> is not on the signature — the binding is implied by call context (locks are not cross-counterparty-keyed).</li>
+</ul>
+<hr>
+<h2 id="libdiamond--diamondcutfacet">LibDiamond / DiamondCutFacet</h2>
+<p>Source: <code>contracts/libraries/core/LibDiamond.sol</code>. Standard EIP-2535 Diamond events.</p>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Signature</th>
+<th>Trigger</th>
+<th>Decl</th>
+<th>Emit</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>OwnershipTransferred</code></td>
+<td><code>(address previousOwner idx, address newOwner idx)</code></td>
+<td><code>setContractOwner</code> and <code>acceptOwnership</code>.</td>
+<td>38</td>
+<td>45, 60</td>
+</tr>
+<tr>
+<td><code>OwnershipTransferStarted</code></td>
+<td><code>(address currentOwner idx, address pendingOwner idx)</code></td>
+<td><code>transferOwnership</code> (two-step).</td>
+<td>39</td>
+<td>51</td>
+</tr>
+<tr>
+<td><code>DiamondCut</code></td>
+<td><code>(IDiamondCut.FacetCut[] _diamondCut, address _init, bytes _calldata)</code></td>
+<td><code>diamondCut</code> after every facet add/replace/remove and init delegate.</td>
+<td>71</td>
+<td>87</td>
+</tr>
+</tbody></table>
+<p><code>IDiamondCut.sol:31</code> re-declares <code>DiamondCut</code> as part of the standard interface; the actual emit lives in the library.</p>
+<hr>
+<h2 id="instantlayer-helper">InstantLayer (helper)</h2>
+<p>Helper contract at <code>contracts/helpers/InstantLayer.sol</code>. Routes signed Party A and Party B operations to the Diamond. Events are inline on the contract.</p>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Signature</th>
+<th>Trigger</th>
+<th>Decl line</th>
+<th>Emit line</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>TemplateAdded</code></td>
+<td><code>(uint256 templateId idx, string name)</code></td>
+<td><code>addTemplate</code> registers a new operation template.</td>
+<td>148</td>
+<td>286</td>
+</tr>
+<tr>
+<td><code>TemplateUpdated</code></td>
+<td><code>(uint256 templateId idx, bool active)</code></td>
+<td><code>setTemplateActive</code> toggles a template.</td>
+<td>151</td>
+<td>297</td>
+</tr>
+<tr>
+<td><code>OperationsExecuted</code></td>
+<td><code>(uint256 templateId idx, address executor idx)</code></td>
+<td><code>executeTemplate</code> after a successful template run.</td>
+<td>154</td>
+<td>344</td>
+</tr>
+<tr>
+<td><code>BatchExecuted</code></td>
+<td><code>(address executor idx, uint256 operationCount)</code></td>
+<td><code>executeBatch</code> after a successful template-less batch.</td>
+<td>157</td>
+<td>374</td>
+</tr>
+<tr>
+<td><code>NonceIncremented</code></td>
+<td><code>(address user idx, uint256 newNonce)</code></td>
+<td><code>_verifyOperation</code> whenever an operation uses ordered-nonce protection (<code>nonce != 0</code>).</td>
+<td>160</td>
+<td>413</td>
+</tr>
+<tr>
+<td><code>PartyBRegistered</code></td>
+<td><code>(address partyB idx)</code></td>
+<td><code>registerPartyB</code> and <code>registerPartyBBatch</code>.</td>
+<td>163</td>
+<td>214, 235</td>
+</tr>
+<tr>
+<td><code>PartyBUnregistered</code></td>
+<td><code>(address partyB idx)</code></td>
+<td><code>unregisterPartyB</code>.</td>
+<td>166</td>
+<td>224</td>
+</tr>
+<tr>
+<td><code>MultiAccountRegistered</code></td>
+<td><code>(address multiAccount idx)</code></td>
+<td><code>registerMultiAccount</code>, <code>registerMultiAccountBatch</code>.</td>
+<td>169</td>
+<td>245, 264</td>
+</tr>
+<tr>
+<td><code>MultiAccountUnregistered</code></td>
+<td><code>(address multiAccount idx)</code></td>
+<td><code>unregisterMultiAccount</code>.</td>
+<td>172</td>
+<td>254</td>
+</tr>
+</tbody></table>
+<p><code>NonceIncremented</code> reflects the InstantLayer&#39;s own per-user replay nonce — distinct from the Diamond&#39;s bilateral nonces. Operations using salt-only mode (<code>nonce == 0</code>) do not emit.</p>
+<hr>
+<h2 id="multiaccount-helper">MultiAccount (helper)</h2>
+<p><code>contracts/helpers/MultiAccount.sol</code>. Manages <code>SymmioPartyA</code> sub-accounts.</p>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Signature</th>
+<th>Trigger</th>
+<th>Decl line</th>
+<th>Emit line</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>SetAccountImplementation</code></td>
+<td><code>(bytes oldImplementation, bytes newImplementation)</code></td>
+<td><code>setAccountImplementation</code> updates the deployed bytecode template.</td>
+<td>96</td>
+<td>320</td>
+</tr>
+<tr>
+<td><code>SetSymmioAddress</code></td>
+<td><code>(address oldSymmioAddress, address newSymmioAddress)</code></td>
+<td><code>setSymmioAddress</code> redirects to a new Diamond.</td>
+<td>103</td>
+<td>331</td>
+</tr>
+<tr>
+<td><code>SetTradeNFTAddress</code></td>
+<td><code>(address oldTradeNFTAddress, address newTradeNFTAddress)</code></td>
+<td><code>setTradeNFTAddress</code> redirects to a new TradeNFT.</td>
+<td>110</td>
+<td>342</td>
+</tr>
+<tr>
+<td><code>AddAccount</code></td>
+<td><code>(address user idx, address account idx, string name)</code></td>
+<td><code>addAccount</code> deploys and registers a new <code>SymmioPartyA</code> for <code>user</code>.</td>
+<td>118</td>
+<td>204</td>
+</tr>
+<tr>
+<td><code>EditAccountName</code></td>
+<td><code>(address user idx, address accountAddress idx, string name)</code></td>
+<td><code>editAccountName</code>.</td>
+<td>126</td>
+<td>217</td>
+</tr>
+<tr>
+<td><code>DeployContract</code></td>
+<td><code>(address deployer idx, address contractAddress idx)</code></td>
+<td><code>_deployContract</code> CREATE2 deployment (called from <code>addAccount</code> etc.).</td>
+<td>133</td>
+<td>307</td>
+</tr>
+<tr>
+<td><code>Call</code></td>
+<td><code>(address sender idx, address account idx, bytes callData, bool success, bytes resultData)</code></td>
+<td>Every account-level <code>_call</code> (<code>call</code>, <code>_callBatch</code>, etc.).</td>
+<td>143</td>
+<td>274</td>
+</tr>
+<tr>
+<td><code>AdminPartyACall</code></td>
+<td><code>(address partyA idx, bytes data, bool success, bytes returnData)</code></td>
+<td><code>adminPartyACall</code> admin override route.</td>
+<td>152</td>
+<td>357</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="symmiopartya-helper">SymmioPartyA (helper)</h2>
+<p><code>contracts/helpers/SymmioPartyA.sol</code> — per-user sub-account.</p>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Signature</th>
+<th>Trigger</th>
+<th>Decl</th>
+<th>Emit</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>SetSymmioAddress</code></td>
+<td><code>(address oldSymmioContractAddress, address newSymmioContractAddress)</code></td>
+<td><code>setSymmioAddress</code> (admin only).</td>
+<td>43</td>
+<td>82</td>
+</tr>
+<tr>
+<td><code>NFTTransferred</code></td>
+<td><code>(address to, uint256 tokenId)</code></td>
+<td><code>transferTradeNFT</code> after <code>IERC721.safeTransferFrom</code> succeeds (try/catch).</td>
+<td>50</td>
+<td>136</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="symmiopartyb-helper">SymmioPartyB (helper)</h2>
+<p><code>contracts/helpers/SymmioPartyB.sol</code> — Party B operator router.</p>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Signature</th>
+<th>Trigger</th>
+<th>Decl</th>
+<th>Emit</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>SetSymmioAddress</code></td>
+<td><code>(address oldSymmioAddress, address newSymmioAddress)</code></td>
+<td><code>setSymmioAddress</code>.</td>
+<td>85</td>
+<td>147</td>
+</tr>
+<tr>
+<td><code>SetRestrictedSelector</code></td>
+<td><code>(bytes4 selector, bool state)</code></td>
+<td><code>setRestrictedSelector</code> toggles MANAGER-only selectors.</td>
+<td>92</td>
+<td>160</td>
+</tr>
+<tr>
+<td><code>SetMulticastWhitelist</code></td>
+<td><code>(address addr, bool state)</code></td>
+<td><code>setMulticastWhitelist</code>.</td>
+<td>99</td>
+<td>183</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="tradenft-helper">TradeNFT (helper)</h2>
+<p><code>contracts/helpers/TradeNFT.sol</code> (ERC-721 representation of trades).</p>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Signature</th>
+<th>Trigger</th>
+<th>Decl</th>
+<th>Emit</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>TradeNFTMinted</code></td>
+<td><code>(address indexed owner, uint256 indexed tokenId)</code></td>
+<td><code>mintNFTForTrade</code> (only Symmio Diamond). <code>tokenId == tradeId</code>.</td>
+<td>64</td>
+<td>104</td>
+</tr>
+<tr>
+<td><code>TradeNFTTransferred</code></td>
+<td><code>(uint256 indexed tokenId, address indexed from, address indexed to)</code></td>
+<td><code>_beforeTokenTransfer</code> for user-initiated transfers (skipped when transfer was initiated from the Diamond).</td>
+<td>72</td>
+<td>158</td>
+</tr>
+</tbody></table>
+<p>Note: standard ERC-721 <code>Transfer</code> and <code>Approval</code> events are also emitted by the OpenZeppelin parent.</p>
+<hr>
+<h2 id="muonoracle-helper">MuonOracle (helper)</h2>
+<p><code>contracts/helpers/MuonOracle.sol</code> implements <code>IMuonOracle</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Signature</th>
+<th>Trigger</th>
+<th>Decl</th>
+<th>Emit</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>ConfigUpdated</code></td>
+<td><code>(MuonConfig newConfig)</code></td>
+<td><code>setConfig</code> (SETTER role).</td>
+<td><code>contracts/interfaces/IMuonOracle.sol:7</code></td>
+<td>49</td>
+</tr>
+</tbody></table>
+<p><code>CheckGatewaySignatureUpdated(bool newValue)</code> is declared at <code>IMuonOracle.sol:8</code> but no setter currently emits it.</p>
+<hr>
+<h2 id="defined-but-not-emitted">Defined But Not Emitted</h2>
+<p>The following events exist in interfaces but no contract currently emits them. Indexers can ignore them until a future version wires them up.</p>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Declared at</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>FullyLiquidated</code></td>
+<td><code>contracts/facets/ClearingHouse/IClearingHouseEvents.sol:37</code></td>
+</tr>
+<tr>
+<td><code>RoleUpdated</code></td>
+<td><code>contracts/facets/Control/IControlEvents.sol:47</code></td>
+</tr>
+<tr>
+<td><code>LiquidationDetailUpdated</code></td>
+<td><code>contracts/facets/Control/IControlEvents.sol:52</code></td>
+</tr>
+<tr>
+<td><code>SymbolPriceUpdated</code></td>
+<td><code>contracts/facets/Control/IControlEvents.sol:53</code></td>
+</tr>
+<tr>
+<td><code>SetManualSync</code></td>
+<td><code>contracts/facets/Control/IControlEvents.sol:79</code></td>
+</tr>
+<tr>
+<td><code>UserWindowUpdated</code></td>
+<td><code>contracts/facets/Control/IControlEvents.sol:83</code></td>
+</tr>
+<tr>
+<td><code>CheckGatewaySignatureUpdated</code></td>
+<td><code>contracts/interfaces/IMuonOracle.sol:8</code></td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="cross-cutting-patterns">Cross-Cutting Patterns</h2>
+<h3 id="nonces">Nonces</h3>
+<ul>
+<li>The Diamond uses bilateral <code>nonces[partyA][partyB][collateral]</code> for cross-margin actions, but does not emit a dedicated nonce event — clients read the post-state from facet calls or the <code>ViewFacet</code>.</li>
+<li><code>InstantLayer.NonceIncremented</code> is the only on-chain nonce event and only fires when the operation uses ordered-nonce mode (<code>nonce != 0</code>); salt-only mode is silent.</li>
+<li><code>BindToPartyB</code> / <code>Initiate|Complete|CancelUnbindingFromPartyB</code> define when a bilateral relation exists, which is the base for nonce-keyed off-chain signing.</li>
+</ul>
+<h3 id="intent-ids-vs-trade-ids">Intent IDs vs Trade IDs</h3>
+<ul>
+<li><code>intentId</code> is the primary key for <code>OpenIntent</code> and <code>CloseIntent</code> lifecycles. Carriers: <code>SendOpenIntent</code>, <code>LockOpenIntent</code>, <code>UnlockOpenIntent</code>, <code>AcceptCancelOpenIntent</code>, <code>CancelOpenIntent</code>, <code>ExpireOpenIntent</code>, <code>ForceCancelOpenIntent</code>, <code>SendCloseIntent</code>, <code>FillCloseIntent</code>, <code>CancelCloseIntent</code>, <code>ExpireCloseIntent</code>, <code>ForceCancelCloseIntent</code>, <code>AcceptCancelCloseIntent</code>, <code>CancelOpenIntentsForLiquidation</code>, <code>CancelCloseIntentsForLiquidation</code>.</li>
+<li><code>tradeId</code> is the primary key for <code>Trade</code>. Carriers: <code>FillOpenIntent</code> (creates), <code>SendCloseIntent</code> (references), <code>TransferTradeByPartyA</code>, <code>TradeNFTMinted</code>, <code>TradeNFTTransferred</code>, <code>ExecuteTrades</code>, <code>CloseTradesForLiquidation</code>. <code>tokenId</code> on TradeNFT events equals <code>tradeId</code>.</li>
+<li><code>liquidationId</code> joins all clearing-house events (<code>Confiscate</code>, <code>LiquidateCrossPartyA</code>, <code>DistributeCollateral</code>, <code>CloseTradesForLiquidation</code>, <code>AllocateFromReserveToCross</code> derived from context, <code>CancelOpenIntentsForLiquidation</code>, <code>CancelCloseIntentsForLiquidation</code>).</li>
+<li><code>withdrawId</code> (<code>uint256 id</code> in <code>InitiateWithdraw</code>/<code>InitiateExpressWithdraw</code>) is the key for the withdrawal lifecycle.</li>
+</ul>
+<h3 id="off-chain-replay-and-state-reconstruction">Off-chain replay and state reconstruction</h3>
+<ul>
+<li><code>SendOpenIntent</code> is the canonical &quot;create&quot; event for intents (covers both fresh creation in <code>PartyAOpenFacet</code> and residual creation inside <code>PartyBOpenFacet.fillOpenIntent</code>). Indexers must subscribe to both source files.</li>
+<li><code>LibScheduledReleaseBalance.IncreaseBalance</code> / <code>DecreaseBalance</code> / <code>SyncBalance</code> together are the authoritative ledger for ScheduledReleaseBalance; facet-level <code>Deposit</code>, <code>Allocate</code>, etc. are coarser and can be cross-checked against them.</li>
+<li><code>TransferTradeByPartyA</code> is fired in two places: direct <code>transferTrade</code> and the NFT callback <code>transferTradeFromNFT</code>. Pair with <code>TradeNFTTransferred</code> to disambiguate the source.</li>
+<li><code>ExecuteTrades</code> carries arrays — split per index for per-trade indexing; align <code>tradeIds[i]</code> with <code>exercised[i]</code> and <code>expired[i]</code>.</li>
+<li>Pause/unpause events from <code>ControlFacet</code> are the only on-chain signal of operational state; they&#39;re flag-style with no payload, so indexers must maintain a running stack from each pair.</li>
+<li><code>DiamondCut</code> fully describes facet topology changes; replaying it from genesis reproduces the current selector → facet routing.</li>
+</ul>
+</article></main></div><footer class="site-footer"><span>Options Core documentation.</span></footer></body></html>

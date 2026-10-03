@@ -1,0 +1,1085 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Party binding, helper accounts, and signed InstantLayer batches."><title>Instant Actions Flow | Options Core</title>
+<link rel="icon" type="image/svg+xml" href="../assets/symmio-mark.svg">
+<script>try { if (localStorage.getItem("options-docs-theme") === "light") document.documentElement.dataset.theme = "light"; } catch (_) {}</script>
+<link rel="stylesheet" href="../assets/reader.css"><link rel="stylesheet" href="../assets/docs-portal.css">
+<script src="../assets/chapters.js" defer></script><script src="../assets/reader.js" defer></script><script src="../assets/docs-portal.js" defer></script>
+</head>
+<body class="doc-page" data-version="current"><a class="skip-link" href="#full-document">Skip to document</a>
+<header class="docs-header"><div class="doc-topbar"><nav class="docs-trail" aria-label="Breadcrumb">
+<a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Options Core</span></a>
+<span class="trail-sep" aria-hidden="true">/</span><a class="trail-release" href="../index.html">Documentation</a>
+</nav><nav class="top-actions" aria-label="Page actions"><button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button></nav></div></header><div class="reader-shell"><div data-rail-sections hidden>
+<a class="toc-link level-2" href="#1-overview">1. Overview</a>
+<a class="toc-link level-2" href="#2-party-a-binding-lifecycle">2. Party A Binding Lifecycle</a>
+<a class="toc-link level-3" href="#state-machine">State machine</a>
+<a class="toc-link level-3" href="#transitions">Transitions</a>
+<a class="toc-link level-3" href="#effects-of-binding">Effects of binding</a>
+<a class="toc-link level-2" href="#3-instant-action-mode">3. Instant Action Mode</a>
+<a class="toc-link level-3" href="#state-machine-1">State machine</a>
+<a class="toc-link level-3" href="#transitions-1">Transitions</a>
+<a class="toc-link level-3" href="#what-instant-mode-blocks-for-party-a-direct-calls">What instant mode blocks for Party A direct calls</a>
+<a class="toc-link level-3" href="#symmetric-blocking-on-party-b">Symmetric blocking on Party B</a>
+<a class="toc-link level-2" href="#4-multiaccount-deep-dive">4. MultiAccount Deep-Dive</a>
+<a class="toc-link level-3" href="#account-creation">Account creation</a>
+<a class="toc-link level-3" href="#authorisation-in-call">Authorisation in <code>_call</code></a>
+<a class="toc-link level-3" href="#owner-only-utilities">Owner-only utilities</a>
+<a class="toc-link level-3" href="#admin-paths">Admin paths</a>
+<a class="toc-link level-3" href="#erc-1271-chain">ERC-1271 chain</a>
+<a class="toc-link level-2" href="#5-symmiopartya">5. SymmioPartyA</a>
+<a class="toc-link level-2" href="#6-symmiopartyb">6. SymmioPartyB</a>
+<a class="toc-link level-3" href="#roles">Roles</a>
+<a class="toc-link level-3" href="#call-execution">Call execution</a>
+<a class="toc-link level-3" href="#token-plumbing">Token plumbing</a>
+<a class="toc-link level-3" href="#erc-1271">ERC-1271</a>
+<a class="toc-link level-2" href="#7-instantlayer-deep-dive">7. InstantLayer Deep-Dive</a>
+<a class="toc-link level-3" href="#roles-1">Roles</a>
+<a class="toc-link level-3" href="#eip-712-domain">EIP-712 domain</a>
+<a class="toc-link level-3" href="#signedoperation"><code>SignedOperation</code></a>
+<a class="toc-link level-3" href="#replay-protection">Replay protection</a>
+<a class="toc-link level-3" href="#registration-model">Registration model</a>
+<a class="toc-link level-3" href="#executebatch"><code>executeBatch</code></a>
+<a class="toc-link level-3" href="#executetemplate-and-return-data-injection"><code>executeTemplate</code> and return-data injection</a>
+<a class="toc-link level-3" href="#failure-modes">Failure modes</a>
+<a class="toc-link level-2" href="#8-diamond-callfrominstantlayer-flag">8. Diamond <code>callFromInstantLayer</code> Flag</a>
+<a class="toc-link level-2" href="#9-signature-schemes-summary">9. Signature Schemes Summary</a>
+<a class="toc-link level-2" href="#10-worked-example-party-a-open-intent--party-b-fill">10. Worked Example: Party A Open Intent + Party B Fill</a>
+<a class="toc-link level-2" href="#11-errors-reference">11. Errors Reference</a>
+<a class="toc-link level-3" href="#instantlayer"><code>InstantLayer</code></a>
+<a class="toc-link level-3" href="#multiaccount"><code>MultiAccount</code></a>
+<a class="toc-link level-3" href="#symmiopartya"><code>SymmioPartyA</code></a>
+<a class="toc-link level-3" href="#symmiopartyb"><code>SymmioPartyB</code></a>
+<a class="toc-link level-3" href="#libcounterpartyrelations-via-partyrelationserrors--validationerrors"><code>LibCounterPartyRelations</code> (via <code>PartyRelationsErrors</code> / <code>ValidationErrors</code>)</a>
+<a class="toc-link level-2" href="#12-code-map">12. Code Map</a>
+</div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1>Instant Actions Flow</h1><p class="hero-copy">Party binding, helper accounts, and signed InstantLayer batches.</p></div></div></header>
+<article class="doc-article" id="full-document"><p>Instant actions let Party A and Party B coordinate state changes through off-chain EIP-712 signed operations executed by a trusted operator (the InstantLayer). Instead of each party submitting its own transaction, both sides sign the calldata they want executed, hand the signatures to the operator, and the operator atomically batches them into a single transaction against the Diamond.</p>
+<p>This document describes:</p>
+<ol>
+<li>The overall topology and call paths.</li>
+<li>The on-chain Party A binding state machine that gates instant action mode.</li>
+<li>The instant action mode lifecycle and what it disables.</li>
+<li>The four helper contracts that participate (<code>MultiAccount</code>, <code>SymmioPartyA</code>, <code>SymmioPartyB</code>, <code>InstantLayer</code>).</li>
+<li>The <code>SignedOperation</code> type, signature scheme, replay protection, and execution paths.</li>
+<li>The Diamond <code>callFromInstantLayer</code> flag that authorises the operator at the protocol boundary.</li>
+<li>A worked example combining a Party A intent and a Party B fill in one batch.</li>
+<li>Errors, code map.</li>
+</ol>
+<h2 id="1-overview">1. Overview</h2>
+<pre><code class="language-mermaid">flowchart TD
+    OwnerA[Party A owner EOA]
+    PB[Party B operator EOA]
+    Op[InstantLayer operator EOA]
+
+    OwnerA -- normal calls --&gt; MA[MultiAccount]
+    MA -- onlyOwner --&gt; SymA[SymmioPartyA account]
+    SymA -- forwards --&gt; Diamond[Options Core Diamond]
+
+    PB -- normal calls --&gt; SymB[SymmioPartyB]
+    SymB -- forwards --&gt; Diamond
+
+    OwnerA -. EIP-712 sign .-&gt; Op
+    PB -. EIP-712 sign .-&gt; Op
+    Op --&gt; IL[InstantLayer]
+    IL -- setCallFromInstantLayer true --&gt; Diamond
+    IL -- _call account, calls --&gt; MA
+    IL -- _call calls --&gt; SymB
+    IL -- setCallFromInstantLayer false --&gt; Diamond
+
+    SymA -. ERC-1271 .-&gt; MA
+    SymB -. ERC-1271 .-&gt; Signer[Configured signer]
+</code></pre>
+<p>Two execution channels exist for every party:</p>
+<table>
+<thead>
+<tr>
+<th>Party</th>
+<th>Direct channel</th>
+<th>Instant channel</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Party A</td>
+<td>Owner EOA -&gt; <code>MultiAccount._call</code> -&gt; <code>SymmioPartyA.call</code> -&gt; Diamond</td>
+<td>Operator -&gt; <code>InstantLayer.executeBatch</code> -&gt; <code>MultiAccount._call</code> -&gt; <code>SymmioPartyA.call</code> -&gt; Diamond</td>
+</tr>
+<tr>
+<td>Party B</td>
+<td>Authorised role on <code>SymmioPartyB</code> -&gt; <code>SymmioPartyB._call</code> -&gt; Diamond</td>
+<td>Operator -&gt; <code>InstantLayer.executeBatch</code> -&gt; <code>SymmioPartyB._call</code> -&gt; Diamond</td>
+</tr>
+</tbody></table>
+<p>The Diamond does not see the operator directly. It sees calls coming from <code>SymmioPartyA</code> (Party A&#39;s account) or <code>SymmioPartyB</code> (Party B&#39;s contract), exactly like the direct channel. The only protocol-level distinguishing fact is that the boolean <code>callFromInstantLayer</code> is set to <code>true</code> on the Diamond for the duration of the batch.</p>
+<h2 id="2-party-a-binding-lifecycle">2. Party A Binding Lifecycle</h2>
+<p>Before a Party A can use instant actions, it must bind itself to a single Party B. The binding is a one-to-one relationship stored per Party A account address.</p>
+<h3 id="state-machine">State machine</h3>
+<pre><code class="language-mermaid">stateDiagram-v2
+    [*] --&gt; Unbound
+    Unbound --&gt; Bound: bindToPartyB partyB
+    Bound --&gt; Unbinding: initiateUnbindingFromPartyB
+    Unbinding --&gt; Bound: cancelUnbindingFromPartyB
+    Unbinding --&gt; Unbound: completeUnbindingFromPartyB after unbindingCooldown
+</code></pre>
+<p>All transitions are driven by <code>CounterPartyRelationsFacet</code> and the supporting library at <code>contracts/libraries/core/LibCounterPartyRelations.sol</code>. State is held in <code>CounterPartyRelationsStorage.Layout</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>boundPartyB[partyA]</code></td>
+<td>The bound Party B, or <code>address(0)</code> when unbound.</td>
+</tr>
+<tr>
+<td><code>unbindingRequestTime[partyA]</code></td>
+<td>Timestamp when <code>initiateUnbindingFromPartyB</code> was called, or <code>0</code> when no unbinding is in progress.</td>
+</tr>
+<tr>
+<td><code>unbindingCooldown</code></td>
+<td>Required wait between initiation and completion.</td>
+</tr>
+<tr>
+<td><code>instantActionsMode[partyA]</code></td>
+<td>Whether instant action mode is currently active.</td>
+</tr>
+<tr>
+<td><code>instantActionsModeDeactivateTime[partyA]</code></td>
+<td>Earliest timestamp at which <code>deactivateInstantActionMode</code> will succeed, or <code>0</code> when no deactivation is pending.</td>
+</tr>
+<tr>
+<td><code>deactiveInstantActionModeCooldown</code></td>
+<td>Required wait between proposing and finalising deactivation.</td>
+</tr>
+</tbody></table>
+<h3 id="transitions">Transitions</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Pre-condition</th>
+<th>Effect</th>
+<th>Reverts with</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>bindToPartyB(partyB)</code></td>
+<td><code>boundPartyB[msg.sender] == address(0)</code> and <code>partyB.isPartyB()</code></td>
+<td><code>boundPartyB[msg.sender] = partyB</code></td>
+<td><code>PartyBNotActive</code>, <code>BoundedToAnotherPartyB</code></td>
+</tr>
+<tr>
+<td><code>initiateUnbindingFromPartyB()</code></td>
+<td>A bound Party B exists, instant mode is <strong>not</strong> active, no unbinding already in progress</td>
+<td><code>unbindingRequestTime[msg.sender] = block.timestamp</code></td>
+<td><code>BoundedPartyBNotFound</code>, <code>InstantModeActive</code>, <code>UnbindingAlreadyInProgress</code></td>
+</tr>
+<tr>
+<td><code>cancelUnbindingFromPartyB()</code></td>
+<td>Unbinding in progress</td>
+<td>Clears <code>unbindingRequestTime</code></td>
+<td><code>UnbindingNotInitiated</code></td>
+</tr>
+<tr>
+<td><code>completeUnbindingFromPartyB()</code></td>
+<td>Unbinding in progress and <code>block.timestamp &gt;= unbindingRequestTime + unbindingCooldown</code></td>
+<td>Deletes <code>boundPartyB</code> and <code>unbindingRequestTime</code></td>
+<td><code>BoundedPartyBNotFound</code>, <code>UnbindingNotInitiated</code>, <code>CooldownNotOver</code></td>
+</tr>
+</tbody></table>
+<h3 id="effects-of-binding">Effects of binding</h3>
+<ul>
+<li>Open-intent flows on Party A whitelist their bound Party B as a permitted counterparty.</li>
+<li>Instant action mode requires a non-zero <code>boundPartyB[msg.sender]</code> to activate (<code>activateInstantActionMode</code> reverts with <code>BoundedPartyBNotFound</code> otherwise).</li>
+<li><code>initiateUnbindingFromPartyB</code> is blocked while <code>instantActionsMode[msg.sender]</code> is true. A bound Party A wishing to unbind must first deactivate instant mode (which itself takes a cooldown).</li>
+</ul>
+<h2 id="3-instant-action-mode">3. Instant Action Mode</h2>
+<p>Instant action mode is a per-Party-A flag stored in <code>instantActionsMode[partyA]</code>. It must be explicitly enabled by Party A and explicitly disabled with a delay.</p>
+<h3 id="state-machine-1">State machine</h3>
+<pre><code class="language-mermaid">stateDiagram-v2
+    [*] --&gt; Inactive
+    Inactive --&gt; Active: activateInstantActionMode
+    Active --&gt; DeactivationProposed: proposeToDeactivateInstantActionMode
+    DeactivationProposed --&gt; Inactive: deactivateInstantActionMode after deactiveInstantActionModeCooldown
+</code></pre>
+<h3 id="transitions-1">Transitions</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Pre-condition</th>
+<th>Effect</th>
+<th>Reverts with</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>activateInstantActionMode()</code></td>
+<td>A Party B is bound, instant mode currently inactive</td>
+<td><code>instantActionsMode[msg.sender] = true</code></td>
+<td><code>BoundedPartyBNotFound</code>, <code>whenInstantModeIsNotActive</code> modifier</td>
+</tr>
+<tr>
+<td><code>proposeToDeactivateInstantActionMode()</code></td>
+<td>Instant mode active</td>
+<td><code>instantActionsModeDeactivateTime[msg.sender] = block.timestamp + deactiveInstantActionModeCooldown</code></td>
+<td><code>whenInstantModeIsActive</code> modifier</td>
+</tr>
+<tr>
+<td><code>deactivateInstantActionMode()</code></td>
+<td>Deactivation proposed and cooldown elapsed</td>
+<td>Clears <code>instantActionsMode</code> and <code>instantActionsModeDeactivateTime</code></td>
+<td><code>DeactivationNotProposed</code>, <code>CooldownNotOver</code></td>
+</tr>
+</tbody></table>
+<p>All three are only callable by Party A (<code>onlyNotPartyB(msg.sender)</code>) and respect <code>whenPartyNotPaused</code>.</p>
+<h3 id="what-instant-mode-blocks-for-party-a-direct-calls">What instant mode blocks for Party A direct calls</h3>
+<p>Functions guarded by the <code>whenInstantModeIsNotActive</code> modifier reject direct Party A calls while instant mode is active. The blocked surface is the entire user-action surface that the InstantLayer is expected to mediate:</p>
+<ul>
+<li>Open intent creation, modification, and cancellation.</li>
+<li>Close intent creation, modification, and cancellation.</li>
+<li>Allocation, deallocation, and reserve movement.</li>
+<li>Internal and external transfers.</li>
+<li>Withdrawals.</li>
+</ul>
+<p>Deposits remain available because they only add value to the account and have no counter-party coordination requirement.</p>
+<p>The intent of this gate is simple: while Party A has authorised the InstantLayer to act through signed operations, Party A must not also be sending conflicting direct transactions. A two-step deactivation (propose + wait) gives the operator time to drain in-flight signed work before user-driven flows resume.</p>
+<h3 id="symmetric-blocking-on-party-b">Symmetric blocking on Party B</h3>
+<p>The Diamond enforces that Party B can only act through <code>SymmioPartyB</code>. Whether Party B is acting &quot;directly&quot; (its operator EOA calling <code>SymmioPartyB._call</code>) or &quot;through InstantLayer&quot; is invisible to the Diamond: both paths arrive as <code>msg.sender == SymmioPartyB</code>. The InstantLayer simply uses the <code>callFromInstantLayer</code> flag to authorise itself at the <code>SymmioPartyB</code> boundary, see section 6.</p>
+<h2 id="4-multiaccount-deep-dive">4. MultiAccount Deep-Dive</h2>
+<p><code>contracts/helpers/MultiAccount.sol</code> is an upgradeable contract that:</p>
+<ul>
+<li>Deploys <code>SymmioPartyA</code> accounts via CREATE2 and indexes them per owner.</li>
+<li>Forwards calls to those accounts on behalf of either the owner or the InstantLayer.</li>
+<li>Acts as the ERC-1271 verifier for accounts it owns.</li>
+<li>Custodies trade NFTs and exposes a thin admin path for the owner.</li>
+</ul>
+<h3 id="account-creation">Account creation</h3>
+<pre><code class="language-solidity">function addAccount(string memory name) external whenNotPaused;
+</code></pre>
+<p>Each call:</p>
+<ol>
+<li>Computes <code>salt = keccak256(&quot;MultiAccount_&quot; || saltCounter)</code>, then increments <code>saltCounter</code>.</li>
+<li>Deploys a new <code>SymmioPartyA</code> via CREATE2, with constructor args <code>(address(this), symmioAddress)</code>. The deployed account therefore knows its <code>MultiAccount</code> (<code>multiAccountAddress</code>) and the Diamond (<code>symmioAddress</code>) at construction.</li>
+<li>Stores <code>accounts[msg.sender].push(Account({account, name}))</code>, <code>indexOfAccount[account] = idx</code>, and <code>owners[account] = msg.sender</code>.</li>
+<li>Emits <code>AddAccount(user, account, name)</code> and <code>DeployContract(deployer, contractAddress)</code>.</li>
+</ol>
+<p>Accounts are immutable contracts; only the bytecode used for new deployments can be swapped via <code>setAccountImplementation</code> (SETTER_ROLE).</p>
+<h3 id="authorisation-in-call">Authorisation in <code>_call</code></h3>
+<pre><code class="language-solidity">function _call(address account, bytes[] calldata _callDatas) external whenNotPaused returns (bytes[] memory);
+</code></pre>
+<p>The check is:</p>
+<pre><code>if (msg.sender != owners[account] &amp;&amp; !ISymmio(symmioAddress).isCallFromInstantLayer())
+    revert UnauthorizedAccess(account, msg.sender, bytes4(0));
+</code></pre>
+<p>Two callers are admitted:</p>
+<ol>
+<li><code>msg.sender == owners[account]</code>: the registered owner of the target Party A account.</li>
+<li>Any caller, provided the Diamond currently reports <code>isCallFromInstantLayer() == true</code>. This is what lets the InstantLayer route into accounts it does not own.</li>
+</ol>
+<p>Each entry in <code>_callDatas</code> is forwarded to <code>SymmioPartyA(account).call(callData)</code>. A failure inside the account is rethrown by <code>innerCall</code> using assembly to preserve the original revert data. Successful results are emitted in the <code>Call</code> event and returned as a <code>bytes[]</code>.</p>
+<h3 id="owner-only-utilities">Owner-only utilities</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Caller</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>editAccountName(account, name)</code></td>
+<td><code>owners[account]</code></td>
+<td>Updates display name.</td>
+</tr>
+<tr>
+<td><code>transferTradeNFT(account, to, tokenId)</code></td>
+<td><code>owners[account]</code></td>
+<td>Calls <code>SymmioPartyA.transferTradeNFT(tradeNFTAddress, to, tokenId)</code>.</td>
+</tr>
+<tr>
+<td><code>verifySignatureOfAccount(account, hash, sig)</code></td>
+<td>anyone (view)</td>
+<td>Returns the EIP-1271 magic value if <code>sig</code> is a valid signature by <code>owners[account]</code> over <code>hash</code>.</td>
+</tr>
+</tbody></table>
+<h3 id="admin-paths">Admin paths</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Role</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>setAccountImplementation(bytes)</code></td>
+<td><code>SETTER_ROLE</code></td>
+<td>Updates bytecode used for new accounts.</td>
+</tr>
+<tr>
+<td><code>setSymmioAddress(addr)</code></td>
+<td><code>SETTER_ROLE</code></td>
+<td>Re-points future deployments and authorisation checks.</td>
+</tr>
+<tr>
+<td><code>setTradeNFTAddress(addr)</code></td>
+<td><code>SETTER_ROLE</code></td>
+<td>Updates NFT contract address.</td>
+</tr>
+<tr>
+<td><code>adminCallPartyA(partyA, data)</code></td>
+<td><code>SETTER_ROLE</code></td>
+<td>Arbitrary low-level call into a <code>SymmioPartyA</code>; rethrows on failure.</td>
+</tr>
+<tr>
+<td><code>pause()</code> / <code>unpause()</code></td>
+<td><code>PAUSER_ROLE</code> / <code>UNPAUSER_ROLE</code></td>
+<td>Pauses non-view functions.</td>
+</tr>
+</tbody></table>
+<h3 id="erc-1271-chain">ERC-1271 chain</h3>
+<p>Because <code>SymmioPartyA</code> is a contract, it cannot produce ECDSA signatures. The chain used when an off-chain protocol asks &quot;is this signature valid for the Party A account?&quot; is:</p>
+<pre><code>caller -&gt; SymmioPartyA.isValidSignature(hash, sig)
+       -&gt; MultiAccount.verifySignatureOfAccount(account, hash, sig)
+       -&gt; SignatureVerifier.isValidSignatureEIP1271(owners[account], hash, sig)
+       -&gt; LibSignatureChecker.isValidSignatureNow(owners[account], hash, sig)
+</code></pre>
+<p>This means signatures attributed to a Party A account are validated against the EOA recorded in <code>owners[account]</code> at validation time. Transferring ownership of an account (not currently exposed) would invalidate prior signatures.</p>
+<h2 id="5-symmiopartya">5. SymmioPartyA</h2>
+<p><code>contracts/helpers/SymmioPartyA.sol</code> is a deliberately small per-account contract.</p>
+<pre><code class="language-solidity">function call(bytes memory callData) external onlyMultiAccount returns (bool, bytes memory) {
+	return symmioAddress.call{ value: 0 }(callData);
+}
+</code></pre>
+<p>Properties:</p>
+<ul>
+<li>Only the originating <code>MultiAccount</code> may call it (<code>onlyMultiAccount</code> modifier checks <code>msg.sender == multiAccountAddress</code>).</li>
+<li>It forwards arbitrary <code>callData</code> to the Diamond as a value-less call. The result and success flag are returned to the <code>MultiAccount</code>, which surfaces them.</li>
+<li>It implements <code>IERC721Receiver</code> so it can hold trade NFTs minted to the account.</li>
+<li><code>transferTradeNFT(nftContract, to, tokenId)</code> is restricted to the <code>MultiAccount</code>, wraps <code>safeTransferFrom</code>, and converts any failure into <code>NFTTransferFailed</code>.</li>
+<li>It implements ERC-1271 by delegating to the <code>MultiAccount</code> (which in turn delegates to the owner EOA, see section 4).</li>
+<li><code>setSymmioAddress(addr)</code> is gated by <code>DEFAULT_ADMIN_ROLE</code>, granted at construction to the <code>MultiAccount</code>. Combined with <code>MultiAccount.adminCallPartyA</code>, this gives the <code>MultiAccount</code>&#39;s <code>SETTER_ROLE</code> holders an upgrade path for the Diamond address inside an account.</li>
+</ul>
+<p>The Diamond therefore sees <code>msg.sender == SymmioPartyA</code> for every Party A call regardless of whether it originated from the owner or the InstantLayer.</p>
+<h2 id="6-symmiopartyb">6. SymmioPartyB</h2>
+<p><code>contracts/helpers/SymmioPartyB.sol</code> is an upgradeable, per-Party-B contract that fronts all of Party B&#39;s interactions with the Diamond. Unlike Party A&#39;s per-account contracts, a Party B typically operates a single <code>SymmioPartyB</code> contract.</p>
+<h3 id="roles">Roles</h3>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>DEFAULT_ADMIN_ROLE</code></td>
+<td>Updates Symmio address, manages restricted selectors.</td>
+</tr>
+<tr>
+<td><code>SETTER_ROLE</code></td>
+<td>Updates the EIP-1271 signer address.</td>
+</tr>
+<tr>
+<td><code>MANAGER_ROLE</code></td>
+<td>May call restricted selectors on the Diamond, manage the multicast whitelist, withdraw ERC-20s.</td>
+</tr>
+<tr>
+<td><code>TRUSTED_ROLE</code></td>
+<td>May call non-restricted selectors on the Diamond, approve tokens, perform multicast calls to whitelisted external contracts.</td>
+</tr>
+<tr>
+<td><code>PAUSER_ROLE</code> / <code>UNPAUSER_ROLE</code></td>
+<td>Pause / unpause non-view operations.</td>
+</tr>
+</tbody></table>
+<h3 id="call-execution">Call execution</h3>
+<p>Two entry points exist:</p>
+<pre><code class="language-solidity">function _call(bytes[] calldata _callDatas) external whenNotPaused nonReentrant;
+function _multicastCall(address[] calldata destAddresses, bytes[] calldata _callDatas) external whenNotPaused nonReentrant;
+</code></pre>
+<p><code>_call</code> always targets <code>symmioAddress</code>. <code>_multicastCall</code> allows Party B to fan out to other contracts but only to whitelisted destinations and only when the caller has <code>TRUSTED_ROLE</code>.</p>
+<p>For each call the contract dispatches to <code>_executeCall</code>, which encapsulates the access logic:</p>
+<table>
+<thead>
+<tr>
+<th>Target</th>
+<th>Selector</th>
+<th>Required caller</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>symmioAddress</code></td>
+<td><code>restrictedSelectors[selector] == true</code></td>
+<td><code>MANAGER_ROLE</code></td>
+</tr>
+<tr>
+<td><code>symmioAddress</code></td>
+<td>non-restricted</td>
+<td><code>MANAGER_ROLE</code> or <code>TRUSTED_ROLE</code> or <code>ISymmio.isCallFromInstantLayer() == true</code></td>
+</tr>
+<tr>
+<td>not <code>symmioAddress</code></td>
+<td>any</td>
+<td><code>multicastWhitelist[dest] == true</code> and <code>TRUSTED_ROLE</code></td>
+</tr>
+</tbody></table>
+<p>The Diamond&#39;s <code>callFromInstantLayer</code> flag is the third admit path for Symmio-bound calls. This is what lets the InstantLayer push Party B calldata through <code>SymmioPartyB._call</code> without holding a Party B role on the contract: while the flag is set, anyone can invoke <code>_call</code> with non-restricted selectors. Restricted selectors (configured by Party B&#39;s admin) remain reachable only through <code>MANAGER_ROLE</code>, even from the InstantLayer, which prevents the operator from invoking sensitive admin-style selectors via signed operations.</p>
+<p>Failures are rethrown verbatim (<code>revert(add(_resultData, 32), mload(_resultData))</code>), so Diamond errors propagate cleanly through <code>SymmioPartyB._call</code> -&gt; <code>InstantLayer._executeOperationSafe</code> -&gt; <code>OperationFailed</code>.</p>
+<h3 id="token-plumbing">Token plumbing</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Role</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>_approve(token, amount)</code></td>
+<td><code>TRUSTED_ROLE</code></td>
+<td>Approves Symmio to spend Party B&#39;s tokens.</td>
+</tr>
+<tr>
+<td><code>withdrawERC20(token, amount)</code></td>
+<td><code>MANAGER_ROLE</code></td>
+<td>Sweeps tokens to the caller.</td>
+</tr>
+</tbody></table>
+<h3 id="erc-1271">ERC-1271</h3>
+<pre><code class="language-solidity">function isValidSignature(bytes32 hash, bytes calldata signature) external view returns (bytes4);
+</code></pre>
+<p>Returns the magic value when <code>signature</code> is a valid signature by the configured <code>signer</code> over <code>hash</code>. The <code>signer</code> is set via <code>setSigner</code> (SETTER_ROLE). This is the EOA whose signatures the Diamond accepts when Party B participates in EIP-712 schemes that allow contract signers (open intent acceptance, oracle attestation, etc.).</p>
+<h2 id="7-instantlayer-deep-dive">7. InstantLayer Deep-Dive</h2>
+<p><code>contracts/helpers/InstantLayer.sol</code> is the executor that consumes signed operations, verifies them, toggles the Diamond&#39;s instant flag, and dispatches each operation through the right helper.</p>
+<h3 id="roles-1">Roles</h3>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>SETTER_ROLE</code></td>
+<td>Register / unregister Party Bs and MultiAccounts; add / activate templates.</td>
+</tr>
+<tr>
+<td><code>OPERATOR_ROLE</code></td>
+<td>Call <code>executeBatch</code> and <code>executeTemplate</code>. Granted automatically to every registered Party B address.</td>
+</tr>
+<tr>
+<td><code>MANAGER_ROLE</code></td>
+<td>Manager-level admin.</td>
+</tr>
+<tr>
+<td><code>TRUSTED_ROLE</code></td>
+<td>Trusted-level admin.</td>
+</tr>
+<tr>
+<td><code>DEFAULT_ADMIN_ROLE</code></td>
+<td>Role administration.</td>
+</tr>
+</tbody></table>
+<p>All five are granted to the constructor <code>_admin</code> argument.</p>
+<h3 id="eip-712-domain">EIP-712 domain</h3>
+<pre><code class="language-solidity">EIP712(&quot;SymmioInstantLayer&quot;, &quot;1&quot;);
+</code></pre>
+<p>So the domain separator is computed over <code>name = &quot;SymmioInstantLayer&quot;</code>, <code>version = &quot;1&quot;</code>, the chain id, and <code>address(this)</code>.</p>
+<h3 id="signedoperation"><code>SignedOperation</code></h3>
+<pre><code class="language-solidity">bytes32 public constant OPERATION_TYPEHASH = keccak256(
+    &quot;SignedOperation(address accountSource,address signer,bytes callData,uint256 nonce,bytes32 salt,uint256 deadline)&quot;
+);
+
+struct SignedOperation {
+    address accountSource;
+    address signer;
+    bytes callData;
+    uint256 nonce;
+    bytes32 salt;
+    uint256 deadline;
+    bytes signature;
+}
+</code></pre>
+<p>The struct hash is</p>
+<pre><code>keccak256(abi.encode(
+    OPERATION_TYPEHASH,
+    accountSource,
+    signer,
+    keccak256(callData),
+    nonce,
+    salt,
+    deadline
+));
+</code></pre>
+<p>The signed digest is <code>_hashTypedDataV4(structHash)</code>, exposed as <code>getOperationHash</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>accountSource</code></td>
+<td><code>address(0)</code> for a Party B operation, or the registered <code>MultiAccount</code> for a Party A operation. Selects the dispatch path.</td>
+</tr>
+<tr>
+<td><code>signer</code></td>
+<td>Party A operations: the <code>SymmioPartyA</code> account address (the on-chain identity that the Diamond sees as <code>msg.sender</code>). Party B operations: the <code>SymmioPartyB</code> address. In both cases the actual ECDSA signature is checked against this address using <code>LibSignatureChecker.isValidSignatureNow</code>, which falls through to ERC-1271 because both addresses are contracts. The chains are described in sections 4 and 6.</td>
+</tr>
+<tr>
+<td><code>callData</code></td>
+<td>The raw calldata to send to the Diamond. It is included in the typed-data hash via <code>keccak256(callData)</code>, so any modification invalidates the signature. (The single exception: <code>executeTemplate</code> mutates a working copy of <code>callData</code> for return-data injection; the signature is still verified against the original <code>callData</code> because verification happens before the copy is mutated.)</td>
+</tr>
+<tr>
+<td><code>nonce</code></td>
+<td>If <code>0</code>, only salt-based replay protection applies. If non-zero, must equal <code>nonces[signer] + 1</code>; on success the value is written and <code>nonces[signer]++</code> is emitted.</td>
+</tr>
+<tr>
+<td><code>salt</code></td>
+<td>An arbitrary 32-byte value the signer chooses. It guarantees that two operations with otherwise identical fields hash differently. Required even when <code>nonce != 0</code>.</td>
+</tr>
+<tr>
+<td><code>deadline</code></td>
+<td>Unix timestamp after which the operation is rejected with <code>DeadlineExpired</code>.</td>
+</tr>
+<tr>
+<td><code>signature</code></td>
+<td>ECDSA or ERC-1271 signature over <code>getOperationHash(...)</code>. ECDSA is verified with <code>MessageHashUtils.toEthSignedMessageHash(hash)</code> (i.e. the <code>\x19Ethereum Signed Message:\n32</code> prefix), since <code>LibSignatureChecker.isValidSignatureNow</code> is invoked on that prefixed hash.</td>
+</tr>
+</tbody></table>
+<h3 id="replay-protection">Replay protection</h3>
+<p>Every successful verification writes <code>usedOperationHashes[hash] = true</code>. A re-submitted signed operation reverts with <code>OperationAlreadyExecuted(hash)</code>. This applies whether or not <code>nonce</code> is in use.</p>
+<p>The <code>nonce</code> mechanism is layered on top:</p>
+<ul>
+<li><code>nonce == 0</code> (&quot;salt-only mode&quot;): pure idempotency, no ordering. Signers can pre-sign many operations and the operator can execute them in any order.</li>
+<li><code>nonce &gt; 0</code> (&quot;ordered mode&quot;): each successful verification asserts <code>nonce == nonces[signer] + 1</code> and increments <code>nonces[signer]</code>. This pins operations to a strict per-signer sequence and fills a gap if signers want hard ordering across batches.</li>
+</ul>
+<p>Both modes rely on <code>usedOperationHashes</code> to prevent re-execution. <code>salt</code> is the only mechanism that allows two semantically identical calls to coexist as distinct operations.</p>
+<h3 id="registration-model">Registration model</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Role</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>registerPartyB(addr)</code> / <code>registerPartyBBatch([addr])</code></td>
+<td><code>SETTER_ROLE</code></td>
+<td>Sets <code>registeredPartyBs[addr] = true</code>. <strong>Also grants <code>OPERATOR_ROLE</code> to <code>addr</code></strong>, so registered Party Bs can submit their own batches.</td>
+</tr>
+<tr>
+<td><code>unregisterPartyB(addr)</code></td>
+<td><code>SETTER_ROLE</code></td>
+<td>Clears the flag and revokes <code>OPERATOR_ROLE</code>.</td>
+</tr>
+<tr>
+<td><code>registerMultiAccount(addr)</code> / <code>registerMultiAccountBatch([addr])</code></td>
+<td><code>SETTER_ROLE</code></td>
+<td>Sets <code>registeredMultiAccounts[addr] = true</code>. <strong>Does not</strong> grant <code>OPERATOR_ROLE</code> to the <code>MultiAccount</code>.</td>
+</tr>
+<tr>
+<td><code>unregisterMultiAccount(addr)</code></td>
+<td><code>SETTER_ROLE</code></td>
+<td>Clears the flag.</td>
+</tr>
+</tbody></table>
+<p><code>_verifyOperation</code> enforces:</p>
+<ul>
+<li><code>accountSource == address(0)</code> -&gt; <code>registeredPartyBs[signer]</code> must be true; else <code>UnregisteredPartyB</code>.</li>
+<li><code>accountSource != address(0)</code> -&gt; <code>registeredMultiAccounts[accountSource]</code> must be true; else <code>UnregisteredMultiAccount</code>. (No registration check on <code>signer</code> itself; the <code>MultiAccount</code> is trusted to know which addresses are its accounts because it is the one that deployed them.)</li>
+</ul>
+<h3 id="executebatch"><code>executeBatch</code></h3>
+<pre><code class="language-solidity">function executeBatch(SignedOperation[] calldata signedOps) external nonReentrant onlyRole(OPERATOR_ROLE);
+</code></pre>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant Op as Operator
+    participant IL as InstantLayer
+    participant Dia as Diamond
+    participant MA as MultiAccount
+    participant SA as SymmioPartyA
+    participant SB as SymmioPartyB
+
+    Op-&gt;&gt;IL: executeBatch(signedOps)
+    IL-&gt;&gt;IL: require signedOps.length &gt; 0
+    IL-&gt;&gt;Dia: setCallFromInstantLayer(true)
+    loop each signedOp i
+        IL-&gt;&gt;IL: deadline check
+        IL-&gt;&gt;IL: registration check
+        IL-&gt;&gt;IL: getOperationHash + replay check
+        IL-&gt;&gt;IL: signature check (ECDSA or ERC-1271)
+        IL-&gt;&gt;IL: nonce check (if nonce != 0)
+        alt accountSource == 0 (Party B op)
+            IL-&gt;&gt;SB: _call([callData])
+            SB-&gt;&gt;Dia: callData
+        else accountSource != 0 (Party A op)
+            IL-&gt;&gt;MA: _call(signer, [callData])
+            MA-&gt;&gt;SA: call(callData)
+            SA-&gt;&gt;Dia: callData
+        end
+        IL-&gt;&gt;IL: store result[i]
+        opt op reverts
+            IL-&gt;&gt;Dia: setCallFromInstantLayer(false)
+            IL--&gt;&gt;Op: revert OperationFailed(i, revertData)
+        end
+    end
+    IL-&gt;&gt;Dia: setCallFromInstantLayer(false)
+    IL--&gt;&gt;Op: emit BatchExecuted
+</code></pre>
+<p>Notes:</p>
+<ul>
+<li>The flag is set before verification of operation 0 and cleared on the way out, including in the failure branch. If the trailing <code>setCallFromInstantLayer(false)</code> itself reverts (it should not, modulo Diamond storage corruption), the entire batch reverts and the flag stays at its prior value.</li>
+<li>The loop is <code>success &amp;&amp; i &lt; length</code>. The first failure sets <code>success = false</code>, clears the flag, and reverts with <code>OperationFailed(i, revertData)</code>. There is no partial commit.</li>
+<li><code>_executeOperationSafe</code> wraps each operation:</li>
+</ul>
+<pre><code>callDatas[0] = signedOp.callData;
+if (accountSource == 0)
+    signer.call(abi.encodeWithSelector(ISymmioPartyB._call.selector, callDatas));
+else
+    accountSource.call(abi.encodeWithSelector(IMultiAccount._call.selector, signer, callDatas));
+</code></pre>
+<p>If the call returns non-empty data, <code>_executeOperationSafe</code> decodes it as <code>bytes[]</code> (the return type of both <code>_call</code> shapes) and surfaces the first element as <code>result</code>. This is what makes <code>result[i]</code> directly usable as the underlying Diamond return value.</p>
+<h3 id="executetemplate-and-return-data-injection"><code>executeTemplate</code> and return-data injection</h3>
+<pre><code class="language-solidity">function executeTemplate(uint256 templateId, SignedOperation[] calldata signedOps) external nonReentrant onlyRole(OPERATOR_ROLE);
+</code></pre>
+<p>A <code>Template</code> is a fixed sequence of <code>Operation</code> records added by <code>SETTER_ROLE</code>:</p>
+<pre><code class="language-solidity">struct Operation {
+	uint256[] insertionPoints;
+	uint256[] sourceIndices;
+}
+
+struct Template {
+	string name;
+	Operation[] operations;
+	bool active;
+}
+</code></pre>
+<p>Each batch position is paired with the template&#39;s <code>Operation</code> at the same index. <code>_insertResults</code> patches the working copy of <code>callData</code> before dispatch:</p>
+<pre><code>for i in 0..insertionPoints.length:
+    if sourceIndices[i] &lt; results.length:
+        value = abi.decode(results[sourceIndices[i]], (bytes32))
+        // store `value` at byte offset `insertionPoints[i]` inside callData
+        // the `+ 36` accounts for the bytes-length prefix and 32-byte offset
+        mstore(callData + 36 + insertionPoints[i], value)
+</code></pre>
+<p>Practical implications:</p>
+<ul>
+<li>Only 32-byte values flow between operations (<code>abi.decode(..., (bytes32))</code>). Suitable for IDs, addresses, and uint256/uint*-returning functions; not for dynamic types.</li>
+<li>The template author must know the static layout of the placeholder bytes inside the signed <code>callData</code> so that signers can pre-sign with arbitrary placeholder bytes (often zeros) and trust the runtime to overwrite the specified offsets.</li>
+<li>The signature is verified against the <strong>original</strong> <code>signedOp.callData</code> (through <code>keccak256(signedOp.callData)</code> in the typed-data hash), not the patched copy. Signers therefore explicitly authorise the placeholder layout, not the post-injection bytes.</li>
+<li>If <code>sourceIndices[i] &gt;= results.length</code>, that insertion is silently skipped; this allows trailing placeholders that would only be consumed by later, longer templates.</li>
+</ul>
+<p>A typical template flow: operation 0 creates an open intent and returns its <code>intentId</code>; operation 1 is a Party B fill that takes the same <code>intentId</code> as a parameter. The signers do not know the <code>intentId</code> at signing time; the template injects it.</p>
+<h3 id="failure-modes">Failure modes</h3>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Error</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>executeBatch</code> entry</td>
+<td><code>EmptyBatch</code></td>
+<td>Empty array.</td>
+</tr>
+<tr>
+<td><code>executeTemplate</code> entry</td>
+<td><code>InvalidTemplate(id)</code></td>
+<td><code>id &gt;= nextTemplateId</code>.</td>
+</tr>
+<tr>
+<td><code>executeTemplate</code> entry</td>
+<td><code>TemplateNotActive(id)</code></td>
+<td>Active flag false.</td>
+</tr>
+<tr>
+<td><code>executeTemplate</code> entry</td>
+<td><code>ArrayLengthMismatch</code></td>
+<td><code>signedOps.length != template.operations.length</code>.</td>
+</tr>
+<tr>
+<td><code>_verifyOperation</code></td>
+<td><code>DeadlineExpired(deadline)</code></td>
+<td><code>deadline &lt; block.timestamp</code>.</td>
+</tr>
+<tr>
+<td><code>_verifyOperation</code></td>
+<td><code>UnregisteredPartyB(signer)</code> / <code>UnregisteredMultiAccount(accountSource)</code></td>
+<td>Registration check.</td>
+</tr>
+<tr>
+<td><code>_verifyOperation</code></td>
+<td><code>OperationAlreadyExecuted(hash)</code></td>
+<td>Replay.</td>
+</tr>
+<tr>
+<td><code>_verifyOperation</code></td>
+<td><code>InvalidSignature(signer)</code></td>
+<td>Signature did not validate.</td>
+</tr>
+<tr>
+<td><code>_verifyOperation</code></td>
+<td><code>InvalidNonce(signer, expected, provided)</code></td>
+<td>Ordered-nonce mismatch.</td>
+</tr>
+<tr>
+<td><code>_executeOperationSafe</code></td>
+<td><code>OperationFailed(i, revertData)</code></td>
+<td>The downstream call reverted; raw revert data is included.</td>
+</tr>
+<tr>
+<td>Constructor / admin</td>
+<td>OZ access control errors</td>
+<td>Role gate failures.</td>
+</tr>
+</tbody></table>
+<p>Because every helper rethrows downstream revert data, the <code>revertData</code> field in <code>OperationFailed</code> typically encodes a Diamond error (e.g. <code>MarginInsufficient</code>, <code>IntentNotFound</code>).</p>
+<h2 id="8-diamond-callfrominstantlayer-flag">8. Diamond <code>callFromInstantLayer</code> Flag</h2>
+<p>The Diamond exposes:</p>
+<pre><code class="language-solidity">function setCallFromInstantLayer(bool) external; // restricted to INSTANT_LAYER_ROLE
+function isCallFromInstantLayer() external view returns (bool);
+</code></pre>
+<p>Properties:</p>
+<ul>
+<li>The setter is gated such that only addresses holding the Diamond&#39;s <code>INSTANT_LAYER_ROLE</code> can flip it. The deployment ceremony grants this role exclusively to the <code>InstantLayer</code> contract.</li>
+<li>The flag is transient relative to a transaction: <code>executeBatch</code> and <code>executeTemplate</code> set it to <code>true</code> immediately before dispatching the first operation and clear it before returning. If those calls revert, the entire transaction reverts and the storage write is rolled back; there is no path where the flag is left set across transactions in the happy or unhappy path.</li>
+<li><code>MultiAccount._call</code> reads the flag to admit non-owner callers (section 4).</li>
+<li><code>SymmioPartyB._executeCall</code> reads the flag to admit non-roled callers for non-restricted selectors (section 6).</li>
+<li>The Diamond may also use the flag to relax its own modifiers in places where a Party A direct call would normally be blocked (e.g. while instant mode is active for Party A, the flag&#39;s truthiness is what allows the InstantLayer-relayed Party A call to proceed past <code>whenInstantModeIsNotActive</code>-style gates that admit instant traffic).</li>
+</ul>
+<p>The flag is a single boolean, not a stack: nested or reentrant <code>executeBatch</code> calls would clobber it. The InstantLayer protects against that with <code>nonReentrant</code> on both execution entry points.</p>
+<h2 id="9-signature-schemes-summary">9. Signature Schemes Summary</h2>
+<table>
+<thead>
+<tr>
+<th>Surface</th>
+<th>Signer</th>
+<th>Hash computation</th>
+<th>Verifier</th>
+<th>Caller-visible error</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>InstantLayer</code> operation</td>
+<td>EOA owning a Party A account (via ERC-1271 through <code>SymmioPartyA</code> -&gt; <code>MultiAccount</code>)</td>
+<td><code>EIP712(&quot;SymmioInstantLayer&quot;,&quot;1&quot;)</code> over <code>OPERATION_TYPEHASH</code></td>
+<td><code>LibSignatureChecker.isValidSignatureNow(signer, MessageHashUtils.toEthSignedMessageHash(hash), sig)</code></td>
+<td><code>InvalidSignature(signer)</code></td>
+</tr>
+<tr>
+<td><code>InstantLayer</code> operation</td>
+<td>EOA configured as <code>signer</code> on <code>SymmioPartyB</code> (via ERC-1271 through <code>SymmioPartyB</code>)</td>
+<td>same</td>
+<td>same</td>
+<td><code>InvalidSignature(signer)</code></td>
+</tr>
+<tr>
+<td>Direct ERC-1271 query on <code>SymmioPartyA</code></td>
+<td><code>owners[account]</code></td>
+<td>hash supplied by caller</td>
+<td><code>LibSignatureChecker.isValidSignatureNow(owners[account], hash, sig)</code></td>
+<td>returns <code>0xffffffff</code></td>
+</tr>
+<tr>
+<td>Direct ERC-1271 query on <code>SymmioPartyB</code></td>
+<td><code>signer</code></td>
+<td>hash supplied by caller</td>
+<td>same with <code>signer</code></td>
+<td>returns <code>0xffffffff</code></td>
+</tr>
+</tbody></table>
+<p><code>LibSignatureChecker.isValidSignatureNow</code> (<code>contracts/libraries/utils/LibSignatureChecker.sol</code>) first attempts <code>ECDSA.tryRecover</code>; if recovery fails or the recovered address is not <code>signer</code>, it falls through to OpenZeppelin&#39;s <code>SignatureChecker.isValidERC1271SignatureNow</code>, which calls <code>IERC1271.isValidSignature</code> on <code>signer</code>. These are OpenZeppelin 4 semantics, kept deliberately: OpenZeppelin 5&#39;s <code>LibSignatureChecker.isValidSignatureNow</code> routes on <code>signer.code.length</code> and would reject a raw-key signature from an EIP-7702-delegated EOA. This is what enables both EOA owners and contract-based signers (e.g. multisigs) to act as the <code>signer</code> field of a <code>SignedOperation</code>.</p>
+<p>Note that <code>InstantLayer.isValidSignature</code> wraps the typed-data hash with <code>MessageHashUtils.toEthSignedMessageHash</code> before delegating to <code>LibSignatureChecker</code>. ERC-1271 signers on Party A and Party B contracts must therefore accept signatures over the prefixed hash, not the raw typed-data hash. The wrapper is applied uniformly so that EOA signers can use a normal <code>personal_sign</code>-style flow and contract signers can compose with it.</p>
+<h2 id="10-worked-example-party-a-open-intent--party-b-fill">10. Worked Example: Party A Open Intent + Party B Fill</h2>
+<p>Setup:</p>
+<ul>
+<li>Party A&#39;s owner EOA controls account <code>A</code> deployed by <code>MultiAccount</code> <code>MA</code>. <code>MA</code> is registered in <code>InstantLayer</code> (<code>registeredMultiAccounts[MA] == true</code>).</li>
+<li>Party B operates <code>SymmioPartyB</code> <code>B</code>. <code>B</code> is registered (<code>registeredPartyBs[B] == true</code>) and B&#39;s signer EOA backs <code>B</code>&#39;s ERC-1271.</li>
+<li>Party A has bound to <code>B</code> and activated instant action mode.</li>
+<li>A template <code>T</code> exists: <code>operations.length == 2</code>, with <code>operations[1].insertionPoints = [&lt;offset of intentId in fill calldata&gt;]</code>, <code>operations[1].sourceIndices = [0]</code>.</li>
+</ul>
+<p>Flow:</p>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant OwnerA as Party A owner
+    participant SignerB as Party B signer
+    participant Op as Operator
+    participant IL as InstantLayer
+    participant Dia as Diamond
+    participant MA as MultiAccount
+    participant SA as SymmioPartyA (A)
+    participant SB as SymmioPartyB (B)
+
+    OwnerA-&gt;&gt;OwnerA: build openIntent calldata C0
+    OwnerA-&gt;&gt;OwnerA: sign SignedOperation{accountSource=MA, signer=A, callData=C0, salt=s0, nonce=0, deadline=d}
+    SignerB-&gt;&gt;SignerB: build fill calldata C1 with placeholder for intentId
+    SignerB-&gt;&gt;SignerB: sign SignedOperation{accountSource=0, signer=B, callData=C1, salt=s1, nonce=0, deadline=d}
+    OwnerA--&gt;&gt;Op: signedOp0
+    SignerB--&gt;&gt;Op: signedOp1
+    Op-&gt;&gt;IL: executeTemplate(T, [signedOp0, signedOp1])
+    IL-&gt;&gt;Dia: setCallFromInstantLayer(true)
+    IL-&gt;&gt;IL: verify signedOp0
+    IL-&gt;&gt;MA: _call(A, [C0])
+    MA-&gt;&gt;SA: call(C0)
+    SA-&gt;&gt;Dia: openIntent
+    Dia--&gt;&gt;SA: intentId
+    SA--&gt;&gt;MA: success, intentId encoded
+    MA--&gt;&gt;IL: bytes[] = [intentId]
+    IL-&gt;&gt;IL: results[0] = intentId
+    IL-&gt;&gt;IL: verify signedOp1
+    IL-&gt;&gt;IL: _insertResults(C1, [offset], [0], results) -&gt; C1&#39;
+    IL-&gt;&gt;SB: _call([C1&#39;])
+    SB-&gt;&gt;Dia: fillIntent(intentId, ...)
+    Dia--&gt;&gt;SB: ok
+    SB--&gt;&gt;IL: ok
+    IL-&gt;&gt;Dia: setCallFromInstantLayer(false)
+    IL--&gt;&gt;Op: emit OperationsExecuted
+</code></pre>
+<p>Observations:</p>
+<ul>
+<li>Two separate signers authored the two operations independently; the operator only orders and submits.</li>
+<li>Party A&#39;s signer never knew the resulting <code>intentId</code> and did not need to. They authorised the create-intent calldata; the template guarantees the resulting id is wired into the fill at a known offset.</li>
+<li>If the fill reverts on chain (e.g. price moved beyond Party B&#39;s tolerance), the create also reverts because <code>executeTemplate</code> is atomic. Party A is not exposed to a half-completed state.</li>
+<li>A vanilla <code>executeBatch</code> would also work for this pattern provided Party B can pre-compute the <code>intentId</code> (e.g. by asking the Diamond&#39;s view layer first), or provided Party B accepts a generic &quot;fill latest open intent created by A&quot; selector if the protocol exposes one. Templates are the right tool when the id is only known after operation 0 returns.</li>
+</ul>
+<h2 id="11-errors-reference">11. Errors Reference</h2>
+<h3 id="instantlayer"><code>InstantLayer</code></h3>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Condition</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>InvalidSignature(signer)</code></td>
+<td><code>LibSignatureChecker</code> returned false.</td>
+</tr>
+<tr>
+<td><code>DeadlineExpired(deadline)</code></td>
+<td><code>deadline &lt; block.timestamp</code>.</td>
+</tr>
+<tr>
+<td><code>InvalidNonce(user, expected, provided)</code></td>
+<td><code>nonce != 0</code> and <code>nonce != nonces[signer] + 1</code>.</td>
+</tr>
+<tr>
+<td><code>TemplateNotActive(templateId)</code></td>
+<td>Template flagged inactive.</td>
+</tr>
+<tr>
+<td><code>InvalidTemplate(templateId)</code></td>
+<td>Template id never minted.</td>
+</tr>
+<tr>
+<td><code>OperationFailed(opIndex, revertData)</code></td>
+<td>The dispatched call reverted; <code>revertData</code> is the downstream payload.</td>
+</tr>
+<tr>
+<td><code>ArrayLengthMismatch</code></td>
+<td><code>signedOps.length != template.operations.length</code>.</td>
+</tr>
+<tr>
+<td><code>UnregisteredMultiAccount(addr)</code></td>
+<td><code>accountSource</code> not registered.</td>
+</tr>
+<tr>
+<td><code>UnregisteredPartyB(addr)</code></td>
+<td><code>signer</code> not registered as Party B.</td>
+</tr>
+<tr>
+<td><code>OperationAlreadyExecuted(hash)</code></td>
+<td>Replay of a previously consumed operation.</td>
+</tr>
+<tr>
+<td><code>EmptyBatch</code></td>
+<td><code>executeBatch</code> called with zero ops.</td>
+</tr>
+</tbody></table>
+<h3 id="multiaccount"><code>MultiAccount</code></h3>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Condition</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>NotOwnerOfAccount(sender, account, owner)</code></td>
+<td>Owner-only call from non-owner.</td>
+</tr>
+<tr>
+<td><code>ContractDeploymentFailed</code></td>
+<td>CREATE2 returned <code>address(0)</code>.</td>
+</tr>
+<tr>
+<td><code>PartyACallFailed(returnData)</code></td>
+<td><code>adminCallPartyA</code> call reverted.</td>
+</tr>
+<tr>
+<td><code>InvalidCallData(callData)</code></td>
+<td>Reserved for downstream guards.</td>
+</tr>
+<tr>
+<td><code>UnauthorizedAccess(account, sender, selector)</code></td>
+<td><code>_call</code> rejected: not the owner and instant-layer flag not set.</td>
+</tr>
+</tbody></table>
+<h3 id="symmiopartya"><code>SymmioPartyA</code></h3>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Condition</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>OnlyMultiAccount(sender, expected)</code></td>
+<td><code>call</code> / <code>transferTradeNFT</code> invoked by anyone other than the originating <code>MultiAccount</code>.</td>
+</tr>
+<tr>
+<td><code>NFTTransferFailed</code></td>
+<td><code>safeTransferFrom</code> reverted.</td>
+</tr>
+</tbody></table>
+<h3 id="symmiopartyb"><code>SymmioPartyB</code></h3>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Condition</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>InvalidTargetAddress(self)</code></td>
+<td>Multicast whitelist tried to add <code>address(this)</code>.</td>
+</tr>
+<tr>
+<td><code>TokenNotApproved(token, spender, amount)</code></td>
+<td>ERC-20 <code>approve</code> returned false.</td>
+</tr>
+<tr>
+<td><code>TokenNotTransferred(token, recipient, amount)</code></td>
+<td>ERC-20 <code>transfer</code> returned false.</td>
+</tr>
+<tr>
+<td><code>ArrayLengthMismatch(destLen, callLen)</code></td>
+<td>Multicast arrays mismatched.</td>
+</tr>
+<tr>
+<td><code>InvalidAddress(addr)</code></td>
+<td><code>_executeCall</code> saw <code>address(0)</code> destination.</td>
+</tr>
+<tr>
+<td><code>InvalidCallData(len)</code></td>
+<td>Calldata shorter than 4 bytes.</td>
+</tr>
+<tr>
+<td><code>InsufficientPermissions(sender, selector)</code></td>
+<td>Caller lacks <code>MANAGER_ROLE</code> / <code>TRUSTED_ROLE</code> and instant-layer flag is false.</td>
+</tr>
+<tr>
+<td><code>DestinationNotWhitelisted(dest)</code></td>
+<td>Multicast destination not whitelisted.</td>
+</tr>
+</tbody></table>
+<h3 id="libcounterpartyrelations-via-partyrelationserrors--validationerrors"><code>LibCounterPartyRelations</code> (via <code>PartyRelationsErrors</code> / <code>ValidationErrors</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Condition</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>BoundedPartyBNotFound(partyA)</code></td>
+<td>Operation requires a binding that does not exist.</td>
+</tr>
+<tr>
+<td><code>BoundedToAnotherPartyB(partyA, current)</code></td>
+<td><code>bindToPartyB</code> while already bound.</td>
+</tr>
+<tr>
+<td><code>PartyBNotActive(partyB)</code></td>
+<td><code>bindToPartyB</code> target not registered as Party B.</td>
+</tr>
+<tr>
+<td><code>InstantModeActive(partyA)</code></td>
+<td><code>initiateUnbindingFromPartyB</code> while instant mode is on.</td>
+</tr>
+<tr>
+<td><code>UnbindingAlreadyInProgress(partyA, requestedAt)</code></td>
+<td>Re-entry into <code>initiateUnbindingFromPartyB</code>.</td>
+</tr>
+<tr>
+<td><code>UnbindingNotInitiated(partyA)</code></td>
+<td><code>cancelUnbindingFromPartyB</code> / <code>completeUnbindingFromPartyB</code> with no pending unbind.</td>
+</tr>
+<tr>
+<td><code>DeactivationNotProposed(partyA)</code></td>
+<td><code>deactivateInstantActionMode</code> without <code>proposeToDeactivateInstantActionMode</code>.</td>
+</tr>
+<tr>
+<td><code>CooldownNotOver(label, now, until)</code></td>
+<td>Generic timed-release gate.</td>
+</tr>
+</tbody></table>
+<h2 id="12-code-map">12. Code Map</h2>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>contracts/helpers/InstantLayer.sol</code></td>
+<td>EIP-712 verifier + executor; templates; replay/nonce; flag toggling.</td>
+</tr>
+<tr>
+<td><code>contracts/helpers/MultiAccount.sol</code></td>
+<td>Per-owner registry of Party A accounts; CREATE2 deployer; owner / instant-layer dispatch; ERC-1271 root for Party A.</td>
+</tr>
+<tr>
+<td><code>contracts/helpers/SymmioPartyA.sol</code></td>
+<td>Per-account forwarder to the Diamond; NFT custody; ERC-1271 delegate.</td>
+</tr>
+<tr>
+<td><code>contracts/helpers/SymmioPartyB.sol</code></td>
+<td>Per-Party-B forwarder; role-gated dispatch; multicast whitelist; ERC-1271 against configured signer.</td>
+</tr>
+<tr>
+<td><code>contracts/helpers/SignatureVerifier.sol</code></td>
+<td>Shared <code>LibSignatureChecker</code> wrapper used by <code>MultiAccount</code> and <code>SymmioPartyB</code>.</td>
+</tr>
+<tr>
+<td><code>contracts/facets/CounterPartyRelations/CounterPartyRelationsFacet.sol</code></td>
+<td>External entry points for binding and instant-mode lifecycle.</td>
+</tr>
+<tr>
+<td><code>contracts/libraries/core/LibCounterPartyRelations.sol</code></td>
+<td>Internal logic and storage mutation for binding and instant-mode lifecycle.</td>
+</tr>
+<tr>
+<td><code>contracts/storages/CounterPartyRelationsStorage.sol</code></td>
+<td>Diamond storage for the relations and instant-mode state.</td>
+</tr>
+<tr>
+<td><code>contracts/interfaces/ISymmio.sol</code></td>
+<td>Includes <code>setCallFromInstantLayer</code> and <code>isCallFromInstantLayer</code>.</td>
+</tr>
+<tr>
+<td><code>contracts/interfaces/IMultiAccount.sol</code></td>
+<td>External shape consumed by <code>InstantLayer._executeOperationSafe</code>.</td>
+</tr>
+<tr>
+<td><code>contracts/interfaces/ISymmioPartyA.sol</code></td>
+<td>External shape consumed by <code>MultiAccount.innerCall</code>.</td>
+</tr>
+</tbody></table>
+</article></main></div><footer class="site-footer"><span>Options Core documentation.</span></footer></body></html>

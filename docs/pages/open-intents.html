@@ -1,0 +1,1141 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Create, lock, fill, and cancel intents, including deferred sell escrow."><title>Open Intent Flow | Options Core</title>
+<link rel="icon" type="image/svg+xml" href="../assets/symmio-mark.svg">
+<script>try { if (localStorage.getItem("options-docs-theme") === "light") document.documentElement.dataset.theme = "light"; } catch (_) {}</script>
+<link rel="stylesheet" href="../assets/reader.css"><link rel="stylesheet" href="../assets/docs-portal.css">
+<script src="../assets/chapters.js" defer></script><script src="../assets/reader.js" defer></script><script src="../assets/docs-portal.js" defer></script>
+</head>
+<body class="doc-page" data-version="current"><a class="skip-link" href="#full-document">Skip to document</a>
+<header class="docs-header"><div class="doc-topbar"><nav class="docs-trail" aria-label="Breadcrumb">
+<a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Options Core</span></a>
+<span class="trail-sep" aria-hidden="true">/</span><a class="trail-release" href="../index.html">Documentation</a>
+</nav><nav class="top-actions" aria-label="Page actions"><button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button></nav></div></header><div class="reader-shell"><div data-rail-sections hidden>
+<a class="toc-link level-2" href="#state-machine">State Machine</a>
+<a class="toc-link level-2" href="#end-to-end-sequence">End-To-End Sequence</a>
+<a class="toc-link level-2" href="#anatomy-of-an-openintent">Anatomy Of An OpenIntent</a>
+<a class="toc-link level-2" href="#sendopenintent">sendOpenIntent</a>
+<a class="toc-link level-3" href="#parameters">Parameters</a>
+<a class="toc-link level-3" href="#validation-order">Validation order</a>
+<a class="toc-link level-3" href="#whitelist-semantics">Whitelist semantics</a>
+<a class="toc-link level-3" href="#accounting-effects-on-creation">Accounting effects on creation</a>
+<a class="toc-link level-3" href="#events-and-errors">Events and errors</a>
+<a class="toc-link level-2" href="#deferred-party-b-sell-escrow">Deferred Party B Sell Escrow</a>
+<a class="toc-link level-3" href="#what-gets-locked">What gets locked</a>
+<a class="toc-link level-3" href="#what-happens-at-fill">What happens at fill</a>
+<a class="toc-link level-3" href="#what-happens-when-it-does-not-fill">What happens when it does not fill</a>
+<a class="toc-link level-2" href="#lockopenintent">lockOpenIntent</a>
+<a class="toc-link level-2" href="#unlockopenintent">unlockOpenIntent</a>
+<a class="toc-link level-2" href="#fillopenintent">fillOpenIntent</a>
+<a class="toc-link level-3" href="#preconditions">Preconditions</a>
+<a class="toc-link level-3" href="#numeric-examples-for-price-favorability">Numeric examples for price favorability</a>
+<a class="toc-link level-3" href="#state-transition-and-trade-creation">State transition and trade creation</a>
+<a class="toc-link level-3" href="#fee-collection-breakdown">Fee collection breakdown</a>
+<a class="toc-link level-3" href="#premium-and-mm-flow">Premium and MM flow</a>
+<a class="toc-link level-3" href="#cross-margin-nonce-increment">Cross-margin nonce increment</a>
+<a class="toc-link level-2" href="#partial-fills">Partial Fills</a>
+<a class="toc-link level-2" href="#cancellation-paths">Cancellation Paths</a>
+<a class="toc-link level-2" href="#expiration">Expiration</a>
+<a class="toc-link level-2" href="#fee-accounting">Fee Accounting</a>
+<a class="toc-link level-2" href="#errors-reference">Errors Reference</a>
+<a class="toc-link level-2" href="#worked-numeric-example">Worked Numeric Example</a>
+<a class="toc-link level-3" href="#submission-sendopenintent">Submission: <code>sendOpenIntent</code></a>
+<a class="toc-link level-3" href="#lock-b1lockopenintentn">Lock: <code>B1.lockOpenIntent(N)</code></a>
+<a class="toc-link level-3" href="#partial-fill-b1fillopenintentn-qty3e18-price98e18">Partial fill: <code>B1.fillOpenIntent(N, qty=3e18, price=98e18)</code></a>
+<a class="toc-link level-2" href="#related-code-map">Related Code Map</a>
+</div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1>Open Intent Flow</h1><p class="hero-copy">Create, lock, fill, and cancel intents, including deferred sell escrow.</p></div></div></header>
+<article class="doc-article" id="full-document"><p>An open intent is Party A&#39;s binding request to open an option position. It carries the full trade specification (symbol, side, quantity, strike, expiration, margin type, fees, deadline) and a Party B whitelist. Most intents lock their premium, maintenance margin, and open fees directly in the balance bucket that will later be charged. There is one deliberate exception: an unbound <code>SELL + CROSS</code> intent with an empty Party B whitelist is a <strong>deferred Party B sell</strong>. Because the selected Party B is not known yet, its maintenance margin and estimated open fees are temporarily locked from Party A&#39;s isolated balance in <code>OpenIntentEscrow</code>, then moved into the selected Party B cross bucket at fill.</p>
+<p>Party B reserves the intent with <code>lockOpenIntent</code>, optionally returns it with <code>unlockOpenIntent</code>, and finalizes it with <code>fillOpenIntent</code>, which atomically creates a <code>Trade</code>, resolves the locks or escrow, transfers premium, distributes the three open-fee streams, and (if partial) spawns a child intent for the remainder. Deferred Party B sells can also be partially filled: the filled slice consumes a pro-rata piece of escrow, and the residual child carries the remaining escrow forward. Cancellation is two-phased: a <code>PENDING</code> intent cancels immediately; a <code>LOCKED</code> intent enters <code>CANCEL_PENDING</code> and either Party B accepts, the deadline elapses, or anyone calls <code>forceCancelOpenIntent</code> after <code>forceCancelOpenIntentTimeout</code>.</p>
+<h2 id="state-machine">State Machine</h2>
+<p><code>OpenIntentStatus</code> (<code>contracts/types/IntentTypes.sol:9-16</code>) has six values. Every transition below is gated by the function listed on the edge.</p>
+<pre><code class="language-mermaid">stateDiagram-v2
+    [*] --&gt; PENDING: PartyAOpenFacet.sendOpenIntent
+    PENDING --&gt; LOCKED: PartyBOpenFacet.lockOpenIntent
+    LOCKED --&gt; PENDING: PartyBOpenFacet.unlockOpenIntent (deadline not passed)
+    PENDING --&gt; CANCELED: PartyAOpenFacet.cancelOpenIntent
+    LOCKED --&gt; CANCEL_PENDING: PartyAOpenFacet.cancelOpenIntent
+    CANCEL_PENDING --&gt; CANCELED: PartyBOpenFacet.acceptCancelOpenIntent
+    CANCEL_PENDING --&gt; CANCELED: ForceActionsFacet.forceCancelOpenIntent (after timeout)
+    PENDING --&gt; EXPIRED: PartyAOpenFacet.expireOpenIntent / cancelOpenIntent (after deadline)
+    LOCKED --&gt; EXPIRED: PartyBOpenFacet.unlockOpenIntent / expireOpenIntent (after deadline)
+    CANCEL_PENDING --&gt; EXPIRED: PartyAOpenFacet.expireOpenIntent (after deadline)
+    LOCKED --&gt; FILLED: PartyBOpenFacet.fillOpenIntent
+    CANCEL_PENDING --&gt; FILLED: PartyBOpenFacet.fillOpenIntent
+    FILLED --&gt; [*]
+    CANCELED --&gt; [*]
+    EXPIRED --&gt; [*]
+</code></pre>
+<p>Every terminal state (<code>CANCELED</code>, <code>EXPIRED</code>, <code>FILLED</code>) calls <code>LibOpenIntentOps.unregister</code> to remove the intent from <code>activeOpenIntentsOf</code> for both parties. <code>LOCKED</code> and <code>PENDING</code> are the only non-terminal active states; <code>CANCEL_PENDING</code> is also active but only Party B can move it forward (other than expiration).</p>
+<h2 id="end-to-end-sequence">End-To-End Sequence</h2>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant A as Party A
+    participant FA as PartyAOpenFacet
+    participant FB as PartyBOpenFacet
+    participant Lib as LibPartyAOpen / LibPartyBOpen
+    participant Bal as ScheduledReleaseBalance
+    participant IS as OpenIntentStorage
+    participant TS as TradeStorage
+    participant B as Party B
+
+    A-&gt;&gt;FA: sendOpenIntent(whitelist, agreements, price, deadline, fees, ...)
+    FA-&gt;&gt;Lib: LibPartyAOpen.sendOpenIntent
+    Lib-&gt;&gt;Lib: validate sender, symbol, deadline, exerciseFee cap, affiliate, marginType, whitelist
+    Lib-&gt;&gt;Lib: requireSolvent (cross only)
+    Lib-&gt;&gt;IS: ++lastOpenIntentId; store OpenIntent (PENDING)
+    alt deferred PartyB SELL+CROSS+empty whitelist
+        Lib-&gt;&gt;Bal: isolatedLock(mm collateral + estimated open fees)
+        Lib-&gt;&gt;IS: store OpenIntentEscrow(intentId)
+    else normal intent
+        Lib-&gt;&gt;Bal: lockFees(price)
+        Lib-&gt;&gt;Bal: lockPremiumIfBuy(price)
+        Lib-&gt;&gt;Bal: lockMMIfSell(mm)
+    end
+    FA--&gt;&gt;A: emit SendOpenIntent(intentId, ...)
+
+    B-&gt;&gt;FB: lockOpenIntent(intentId)
+    FB-&gt;&gt;Lib: LibPartyBOpen.lockOpenIntent
+    Lib-&gt;&gt;Lib: validate suspensions, emergency, status, deadline, symbol oracle id, symbol type, whitelist, solvency
+    Lib-&gt;&gt;IS: status = LOCKED; partyB = sender; registerForPartyB
+    FB--&gt;&gt;B: emit LockOpenIntent(intentId, partyB)
+
+    B-&gt;&gt;FB: fillOpenIntent(intentId, quantity, price)
+    FB-&gt;&gt;Lib: LibPartyBOpen.fillOpenIntent
+    Lib-&gt;&gt;Lib: validate sender = partyB, status in {LOCKED, CANCEL_PENDING}, price favorable, quantity &lt;= intent.quantity
+    Lib-&gt;&gt;TS: ++lastTradeId; store Trade(OPENED)
+    alt deferred PartyB sell
+        Lib-&gt;&gt;Bal: isolatedUnlock escrow; allocate mm + actual fill-price fees to PartyA cross bucket for selected PartyB
+    else normal intent
+        Lib-&gt;&gt;Bal: unlockFees + unlockPremiumIfBuy + unlockMMIfSell
+    end
+    alt partial fill
+        Lib-&gt;&gt;IS: ++lastOpenIntentId; create child intent (PENDING or CANCELED)
+        alt deferred PartyB sell
+            Lib-&gt;&gt;IS: move residual escrow to child or release it if child is CANCELED
+        else normal intent
+            Lib-&gt;&gt;Bal: re-lock fees / premium / MM for child
+        end
+        Lib-&gt;&gt;IS: original.quantity = filled
+    end
+    Lib-&gt;&gt;Bal: getFeesFromUser(price) -&gt; 3 fee streams charged from Party A
+    Lib-&gt;&gt;Bal: defaultFeeCollector += platformFee; affiliateCollector += affiliateFee; partyB += solverFee
+    alt BUY
+        Lib-&gt;&gt;Bal: partyA.subForCounterParty(partyB, premium)
+    else SELL
+        Lib-&gt;&gt;Bal: partyA.increaseMM(partyB, trade.mm)
+        Lib-&gt;&gt;Bal: partyB.subForCounterParty(partyA, premium)
+        Lib-&gt;&gt;Bal: partyA.scheduledAdd(partyB, premium)
+    end
+    Lib-&gt;&gt;Bal: cross only - bump nonces[A][B] and nonces[B][A]
+    FB--&gt;&gt;B: emit FillOpenIntent(intentId, tradeId, qty, price)
+</code></pre>
+<h2 id="anatomy-of-an-openintent">Anatomy Of An OpenIntent</h2>
+<p><code>OpenIntent</code> is defined in <code>contracts/types/IntentTypes.sol:26-42</code>. It embeds <code>TradeAgreements</code> (<code>contracts/types/BaseTypes.sol:42-51</code>) and <code>FeeStructure</code> (<code>contracts/types/BaseTypes.sol:34-40</code>).</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>id</code></td>
+<td><code>uint256</code></td>
+<td>Auto-assigned from <code>OpenIntentStorage.lastOpenIntentId</code> (<code>contracts/storages/OpenIntentStorage.sol:18</code>).</td>
+</tr>
+<tr>
+<td><code>tradeId</code></td>
+<td><code>uint256</code></td>
+<td><code>0</code> until <code>FILLED</code>; then set to the spawned <code>Trade.id</code> (<code>LibPartyBOpen.sol:353-356</code>).</td>
+</tr>
+<tr>
+<td><code>tradeAgreements.symbolId</code></td>
+<td><code>uint256</code></td>
+<td>Index into <code>SymbolStorage.symbols</code>.</td>
+</tr>
+<tr>
+<td><code>tradeAgreements.quantity</code></td>
+<td><code>uint256</code></td>
+<td>Contract size in 18-decimal units. On partial fill the original is overwritten to the filled amount and a child holds the remainder (<code>LibPartyBOpen.sol:317-318</code>).</td>
+</tr>
+<tr>
+<td><code>tradeAgreements.strikePrice</code></td>
+<td><code>uint256</code></td>
+<td>Strike in collateral, 18-decimal.</td>
+</tr>
+<tr>
+<td><code>tradeAgreements.expirationTimestamp</code></td>
+<td><code>uint256</code></td>
+<td>Option expiration (UNIX seconds). Must be <code>&gt; block.timestamp</code> at creation and at fill (<code>LibPartyAOpen.sol:60</code>, <code>LibPartyBOpen.sol:67-68,207-209</code>).</td>
+</tr>
+<tr>
+<td><code>tradeAgreements.mm</code></td>
+<td><code>uint256</code></td>
+<td>Maintenance margin in collateral. Only meaningful for <code>SELL</code> (cross). On partial fill the trade gets <code>mm * filled / quantity</code> and the child gets the remainder (<code>LibPartyBOpen.sol:234,282-285</code>).</td>
+</tr>
+<tr>
+<td><code>tradeAgreements.exerciseFee.rate</code></td>
+<td><code>uint256</code></td>
+<td>Per-contract exercise-fee rate, 18-decimal.</td>
+</tr>
+<tr>
+<td><code>tradeAgreements.exerciseFee.cap</code></td>
+<td><code>uint256</code></td>
+<td>PnL-fraction cap, must be <code>&lt;= 1e18</code> (<code>LibPartyAOpen.sol:62</code>).</td>
+</tr>
+<tr>
+<td><code>tradeAgreements.tradeSide</code></td>
+<td><code>TradeSide</code></td>
+<td><code>BUY</code> (Party A pays premium) or <code>SELL</code> (Party A receives premium and posts MM).</td>
+</tr>
+<tr>
+<td><code>tradeAgreements.marginType</code></td>
+<td><code>MarginType</code></td>
+<td><code>ISOLATED</code> or <code>CROSS</code>. <code>SELL + ISOLATED</code> is rejected (<code>LibPartyAOpen.sol:63</code>).</td>
+</tr>
+<tr>
+<td><code>price</code></td>
+<td><code>uint256</code></td>
+<td>Party A&#39;s limit price in collateral per contract, 18-decimal. Acts as a cap for <code>BUY</code> and a floor for <code>SELL</code>.</td>
+</tr>
+<tr>
+<td><code>partyBsWhiteList</code></td>
+<td><code>address[]</code></td>
+<td>See whitelist semantics below. Empty means &quot;any active Party B&quot; for isolated intents and deferred Party B sells; normal cross intents require exactly one Party B.</td>
+</tr>
+<tr>
+<td><code>parentId</code></td>
+<td><code>uint256</code></td>
+<td><code>0</code> for top-level intents; otherwise the id of the intent that spawned this one via partial fill (<code>LibPartyBOpen.sol:295</code>).</td>
+</tr>
+<tr>
+<td><code>createTimestamp</code></td>
+<td><code>uint256</code></td>
+<td><code>block.timestamp</code> at submission.</td>
+</tr>
+<tr>
+<td><code>statusModifyTimestamp</code></td>
+<td><code>uint256</code></td>
+<td>Timestamp of last state change. Used by <code>forceCancelOpenIntent</code> to enforce cooldown (<code>LibForceActions.sol:28</code>).</td>
+</tr>
+<tr>
+<td><code>deadline</code></td>
+<td><code>uint256</code></td>
+<td>Latest timestamp at which Party B may lock or fill. After this point the intent can only expire.</td>
+</tr>
+<tr>
+<td><code>feeStructure.feeToken</code></td>
+<td><code>address</code></td>
+<td>Token used for the three open-fee streams. May differ from the symbol&#39;s collateral.</td>
+</tr>
+<tr>
+<td><code>feeStructure.tokenPriceInCollateral</code></td>
+<td><code>uint256</code></td>
+<td>Snapshot of <code>IPriceOracle.getPrice(feeToken, collateral)</code> at creation (<code>LibPartyAOpen.sol:101</code>). Frozen for the intent&#39;s lifetime.</td>
+</tr>
+<tr>
+<td><code>feeStructure.platformFee</code></td>
+<td><code>Fee</code></td>
+<td>Snapshot of <code>Symbol.platformFee</code> at submission.</td>
+</tr>
+<tr>
+<td><code>feeStructure.affiliateFee</code></td>
+<td><code>Fee</code></td>
+<td>Snapshot of <code>affiliateFees[affiliate][symbolId]</code> (zero if no affiliate).</td>
+</tr>
+<tr>
+<td><code>feeStructure.solverFee</code></td>
+<td><code>Fee</code></td>
+<td>Caller-supplied per-trade Party B fee.</td>
+</tr>
+<tr>
+<td><code>partyA</code></td>
+<td><code>address</code></td>
+<td>Originator (<code>msg.sender</code> in non-instant flows).</td>
+</tr>
+<tr>
+<td><code>partyB</code></td>
+<td><code>address</code></td>
+<td><code>address(0)</code> while <code>PENDING</code>; assigned on <code>LOCKED</code>; cleared on <code>unlockOpenIntent</code> (<code>LibPartyBOpen.sol:135-138</code>).</td>
+</tr>
+<tr>
+<td><code>affiliate</code></td>
+<td><code>address</code></td>
+<td>Affiliate identity; must be active or <code>address(0)</code> (<code>LibPartyAOpen.sol:68</code>).</td>
+</tr>
+<tr>
+<td><code>userData</code></td>
+<td><code>bytes</code></td>
+<td>Arbitrary user payload, suffixed with a 32-byte counter via <code>LibUserData.addCounter</code> (<code>LibUserData.sol:10</code>); the counter is incremented on each child intent (<code>LibUserData.sol:37</code>).</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>OpenIntentStatus</code></td>
+<td>Current state.</td>
+</tr>
+</tbody></table>
+<h2 id="sendopenintent">sendOpenIntent</h2>
+<p>Entry point: <code>PartyAOpenFacet.sendOpenIntent</code> (<code>contracts/facets/PartyAOpen/PartyAOpenFacet.sol:48-105</code>). Body delegates to <code>LibPartyAOpen.sendOpenIntent</code> (<code>contracts/libraries/core/LibPartyAOpen.sol:35-117</code>).</p>
+<h3 id="parameters">Parameters</h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>partyBsWhiteList</code></td>
+<td>Allowed Party B addresses. See semantics table.</td>
+</tr>
+<tr>
+<td><code>symbolId</code></td>
+<td>Lookup key into <code>SymbolStorage.symbols</code>; must be <code>isValid</code>.</td>
+</tr>
+<tr>
+<td><code>price</code></td>
+<td>Party A&#39;s limit price (collateral, 18-decimal).</td>
+</tr>
+<tr>
+<td><code>quantity</code></td>
+<td>Trade size (must be non-zero).</td>
+</tr>
+<tr>
+<td><code>strikePrice</code></td>
+<td>Strike (collateral, 18-decimal).</td>
+</tr>
+<tr>
+<td><code>expirationTimestamp</code></td>
+<td>Option expiration.</td>
+</tr>
+<tr>
+<td><code>mm</code></td>
+<td>Maintenance margin in collateral; meaningful only for <code>SELL</code>.</td>
+</tr>
+<tr>
+<td><code>tradeSide</code></td>
+<td><code>BUY</code> or <code>SELL</code>.</td>
+</tr>
+<tr>
+<td><code>marginType</code></td>
+<td><code>ISOLATED</code> or <code>CROSS</code>.</td>
+</tr>
+<tr>
+<td><code>exerciseFee</code></td>
+<td><code>(rate, cap)</code> with <code>cap &lt;= 1e18</code>.</td>
+</tr>
+<tr>
+<td><code>solverFee</code></td>
+<td><code>(openFee, closeFee)</code> paid to Party B; rate denominated like platform/affiliate fees.</td>
+</tr>
+<tr>
+<td><code>deadline</code></td>
+<td>Latest fill/lock time.</td>
+</tr>
+<tr>
+<td><code>feeToken</code></td>
+<td>ERC-20 used for open-fee streams.</td>
+</tr>
+<tr>
+<td><code>affiliate</code></td>
+<td>Affiliate id (must be active or zero).</td>
+</tr>
+<tr>
+<td><code>userData</code></td>
+<td>Application-specific bytes; counter is appended internally.</td>
+</tr>
+</tbody></table>
+<h3 id="validation-order">Validation order</h3>
+<ol>
+<li><code>whenPartyNotPaused(msg.sender)</code> and <code>whenInstantModeIsNotActive(msg.sender)</code> modifiers (facet level).</li>
+<li><code>sender.isPartyB()</code> is false (<code>LibPartyAOpen.sol:52</code>) - reverts <code>IntentErrors.PartyBSender</code>.</li>
+<li><code>StateControlStorage.suspendedAddresses[sender]</code> is false (<code>LibPartyAOpen.sol:53</code>).</li>
+<li>No whitelist entry equals <code>msg.sender</code> (<code>LibPartyAOpen.sol:55-57</code>).</li>
+<li><code>Symbol.isValid</code> is true (<code>LibPartyAOpen.sol:59</code>).</li>
+<li><code>tradeAgreements.expirationTimestamp &gt;= block.timestamp</code> (<code>LibPartyAOpen.sol:60</code>).</li>
+<li><code>exerciseFee.cap &lt;= 1e18</code> (<code>LibPartyAOpen.sol:62</code>).</li>
+<li>Not <code>SELL + ISOLATED</code> (<code>LibPartyAOpen.sol:63</code>).</li>
+<li><code>deadline &gt;= block.timestamp</code> (<code>LibPartyAOpen.sol:66</code>).</li>
+<li><code>affiliate</code> is active or zero (<code>LibPartyAOpen.sol:68</code>).</li>
+<li>Compute <code>deferredSell = SELL + CROSS + empty whitelist</code> (<code>LibOpenIntent.sol:70-72</code>).</li>
+<li>If Party A is bound to a Party B (<code>CounterPartyRelationsStorage.boundPartyB[sender]</code>), deferred sell is rejected with <code>DeferredSellNotAllowedForBoundPartyA</code>; otherwise the whitelist must be exactly <code>[boundPartyB]</code> (<code>LibPartyAOpen.sol:70-75</code>).</li>
+<li>For normal <code>CROSS</code>: whitelist length must be exactly 1; both <code>(sender, partyB[0])</code> and <code>(partyB[0], sender)</code> must satisfy <code>requireSolvent</code> for the symbol&#39;s collateral (<code>LibPartyAOpen.sol:78-83</code>).</li>
+<li>For deferred <code>SELL + CROSS</code>: the Party B side is not known yet, so no bilateral solvency check is possible at submission. Solvency is checked when a Party B locks and fills.</li>
+<li>For <code>ISOLATED</code> with a single whitelisted Party B: <code>partyB[0].requireSolvent(address(0), collateral, ISOLATED)</code> (<code>LibPartyAOpen.sol:84-86</code>). Multi-Party-B isolated intents skip the solvency check.</li>
+<li><code>quantity != 0</code> (<code>LibPartyAOpen.sol:88</code>).</li>
+</ol>
+<h3 id="whitelist-semantics">Whitelist semantics</h3>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th><code>marginType</code></th>
+<th>Bound?</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>[]</code> (empty)</td>
+<td><code>ISOLATED</code></td>
+<td>not bound</td>
+<td>Any active Party B may lock.</td>
+</tr>
+<tr>
+<td><code>[]</code> + <code>BUY</code></td>
+<td><code>CROSS</code></td>
+<td>n/a</td>
+<td>Reverts <code>MultiplePartyBNotAllowed</code>.</td>
+</tr>
+<tr>
+<td><code>[]</code> + <code>SELL</code></td>
+<td><code>CROSS</code></td>
+<td>not bound</td>
+<td>Deferred Party B sell: any active Party B may lock; escrow is locked from Party A isolated balance until fill/cancel/expire.</td>
+</tr>
+<tr>
+<td><code>[]</code> + <code>SELL</code></td>
+<td><code>CROSS</code></td>
+<td>bound</td>
+<td>Reverts <code>DeferredSellNotAllowedForBoundPartyA</code>.</td>
+</tr>
+<tr>
+<td><code>[]</code> + <code>BUY</code></td>
+<td>any</td>
+<td>bound</td>
+<td>Reverts <code>BoundedToAnotherPartyB</code>.</td>
+</tr>
+<tr>
+<td><code>[X]</code></td>
+<td><code>ISOLATED</code></td>
+<td>not bound</td>
+<td>Only <code>X</code> may lock; X solvency checked at submission.</td>
+</tr>
+<tr>
+<td><code>[X]</code></td>
+<td><code>CROSS</code></td>
+<td>not bound</td>
+<td>Only <code>X</code> may lock; bilateral solvency required.</td>
+</tr>
+<tr>
+<td><code>[X]</code></td>
+<td>any</td>
+<td>bound to <code>X</code></td>
+<td>Allowed.</td>
+</tr>
+<tr>
+<td><code>[X]</code></td>
+<td>any</td>
+<td>bound to <code>Y != X</code></td>
+<td>Reverts <code>BoundedToAnotherPartyB</code>.</td>
+</tr>
+<tr>
+<td><code>[X, Y, ...]</code></td>
+<td><code>ISOLATED</code></td>
+<td>not bound</td>
+<td>Any of the listed addresses may lock; no solvency precheck.</td>
+</tr>
+<tr>
+<td><code>[X, Y, ...]</code></td>
+<td><code>CROSS</code></td>
+<td>n/a</td>
+<td>Reverts <code>MultiplePartyBNotAllowed</code>.</td>
+</tr>
+<tr>
+<td>any list containing <code>msg.sender</code></td>
+<td>any</td>
+<td>n/a</td>
+<td>Reverts <code>InvalidWhitelistEntry</code>.</td>
+</tr>
+</tbody></table>
+<h3 id="accounting-effects-on-creation">Accounting effects on creation</h3>
+<p><code>LibPartyAOpen.sol:118-125</code> registers the intent and then takes one of two accounting paths.</p>
+<p>Normal intents call the usual lock helpers:</p>
+<table>
+<thead>
+<tr>
+<th>Helper</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>register</code></td>
+<td>Pushes the intent into <code>activeOpenIntentsOf[partyA]</code> and increments <code>activeOpenIntentsCount[partyA]</code> (<code>LibOpenIntent.sol:81-90</code>).</td>
+</tr>
+<tr>
+<td><code>lockFees</code></td>
+<td>Locks the platform, affiliate, and solver fees (computed at <code>intent.price</code>) from Party A&#39;s <code>feeToken</code> balance via <code>_handleFees(FeeOp.Lock)</code> (<code>LibOpenIntent.sol:281-340</code>). Lock target is isolated or cross as a function of <code>marginType</code>.</td>
+</tr>
+<tr>
+<td><code>lockPremiumIfBuy</code></td>
+<td>If <code>BUY</code>, locks <code>quantity * price / 1e18</code> of the symbol&#39;s collateral. Isolated lock for <code>ISOLATED</code>; cross lock against <code>partyBsWhiteList[0]</code> for <code>CROSS</code> (<code>LibOpenIntent.sol:263-268</code>).</td>
+</tr>
+<tr>
+<td><code>lockMMIfSell</code></td>
+<td>If <code>SELL</code>, cross-locks <code>mm</code> from Party A against <code>partyBsWhiteList[0]</code> (<code>LibOpenIntent.sol:271-278</code>).</td>
+</tr>
+</tbody></table>
+<p>Deferred Party B sells call <code>lockDeferredSellEscrow</code> instead. It locks <code>mm</code> from Party A&#39;s isolated symbol-collateral balance and locks the estimated open fee amount from Party A&#39;s isolated <code>feeToken</code> balance. The escrow record is stored at <code>OpenIntentStorage.openIntentEscrows[intentId]</code> and emits <code>LockOpenIntentEscrow</code>. No cross bucket is touched until a Party B actually locks and fills the intent.</p>
+<h3 id="events-and-errors">Events and errors</h3>
+<p>Emits <code>IPartiesEvents.SendOpenIntent(partyA, intentId, partyBsWhiteList, requestedParams)</code> where <code>requestedParams</code> is an <code>abi.encodePacked</code> blob of all numeric/enumerated parameters (<code>PartyAOpenFacet.sol:85-104</code>).</p>
+<p>Reverts: <code>IntentErrors.PartyBSender</code>, <code>SystemErrors.UserSuspended</code>, <code>IntentErrors.InvalidWhitelistEntry</code>, <code>ValidationErrors.InvalidSymbol</code>, <code>IntentErrors.ExpirationTimestampPassed</code>, <code>IntentErrors.InvalidExerciseFee</code>, <code>IntentErrors.IsolatedModeSellNotAllowed</code>, <code>ValidationErrors.LowDeadline</code>, <code>IntentErrors.InvalidAffiliate</code>, <code>IntentErrors.DeferredSellNotAllowedForBoundPartyA</code>, <code>PartyRelationsErrors.BoundedToAnotherPartyB</code>, <code>IntentErrors.MultiplePartyBNotAllowed</code>, <code>BalanceErrors.NotSolvent</code>, <code>IntentErrors.InvalidOpenQuantity</code>, plus any <code>BalanceErrors.InsufficientBalance</code> thrown by the locking or escrow helpers.</p>
+<h2 id="deferred-party-b-sell-escrow">Deferred Party B Sell Escrow</h2>
+<p>Deferred Party B sell is the exception that allows a cross-margin sell to be broadcast without naming the Party B at creation time:</p>
+<pre><code>tradeSide == SELL
+marginType == CROSS
+partyBsWhiteList.length == 0
+partyA is not bound to a Party B
+</code></pre>
+<p>The intent still creates a <strong>cross</strong> trade at fill. The temporary escrow is only a creation-time holding area because the cross bucket key <code>(partyA, partyB, collateral)</code> is not known yet.</p>
+<h3 id="what-gets-locked">What gets locked</h3>
+<p><code>lockDeferredSellEscrow</code> locks two isolated balances from Party A:</p>
+<table>
+<thead>
+<tr>
+<th>Asset</th>
+<th>Amount</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Symbol collateral</td>
+<td><code>tradeAgreements.mm</code></td>
+<td>Seller MM must exist before the broadcast can be filled.</td>
+</tr>
+<tr>
+<td><code>feeToken</code></td>
+<td><code>calculateOpenFeeAmount(intent, intent.price)</code></td>
+<td>Estimated platform + affiliate + solver open fees at the limit price.</td>
+</tr>
+</tbody></table>
+<p>The stored <code>OpenIntentEscrow</code> keeps <code>partyA</code>, <code>collateral</code>, <code>feeToken</code>, <code>mm</code>, <code>feeLockAmount</code>, <code>exists</code>, and <code>consumed</code>. <code>getOpenIntentEscrow(intentId)</code> exposes the record for indexers and monitors.</p>
+<h3 id="what-happens-at-fill">What happens at fill</h3>
+<p>When Party B fills the deferred sell, the selected Party B is now known. The escrow is consumed before the normal fee and premium accounting:</p>
+<ol>
+<li>Unlock the filled slice of <code>mm</code> from Party A isolated collateral.</li>
+<li>Allocate that same <code>mm</code> slice to Party A&#39;s cross collateral bucket against the selected Party B.</li>
+<li>Unlock the filled slice of the original <code>feeLockAmount</code> from Party A isolated <code>feeToken</code>.</li>
+<li>Allocate <code>calculateOpenFeeAmountForQuantity(intent, filledQuantity, fillPrice)</code> to Party A&#39;s cross fee-token bucket against the selected Party B.</li>
+<li>Continue through <code>getFeesFromUser(fillPrice)</code>, fee distribution, <code>increaseMM</code>, and premium transfer using the normal cross sell path.</li>
+</ol>
+<p>On full fill the escrow record is deleted. On partial fill the filled parent intent&#39;s escrow record is deleted, and the remaining <code>mm</code> / <code>feeLockAmount</code> record is moved to the residual child intent. No new lock event is emitted for that move because the same isolated balances remain locked.</p>
+<p>For a sell, a better fill means <code>fillPrice &gt;= intent.price</code>, so the actual fee can be greater than the estimated lock. In that case the extra amount must be available in Party A&#39;s isolated <code>feeToken</code> balance at fill; otherwise the allocation reverts. This is intentional: the protocol does not over-lock based on an unknown future better price.</p>
+<h3 id="what-happens-when-it-does-not-fill">What happens when it does not fill</h3>
+<p>Every terminal non-fill path releases the escrow back to Party A isolated balances:</p>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Release point</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>cancelOpenIntent</code> while <code>PENDING</code></td>
+<td>immediate <code>CANCELED</code>.</td>
+</tr>
+<tr>
+<td><code>cancelOpenIntent</code> while <code>LOCKED</code></td>
+<td>no release yet; status becomes <code>CANCEL_PENDING</code>.</td>
+</tr>
+<tr>
+<td><code>acceptCancelOpenIntent</code></td>
+<td><code>CANCELED</code>, escrow released.</td>
+</tr>
+<tr>
+<td><code>forceCancelOpenIntent</code></td>
+<td><code>CANCELED</code>, escrow released after timeout.</td>
+</tr>
+<tr>
+<td><code>expireOpenIntent</code> / deadline paths</td>
+<td><code>EXPIRED</code>, escrow released.</td>
+</tr>
+<tr>
+<td>Clearing-house <code>cancelOpenIntents</code></td>
+<td><code>CANCELED</code> or <code>EXPIRED</code>, escrow released before the clearing house can separately confiscate available balances.</td>
+</tr>
+</tbody></table>
+<p>The events are <code>LockOpenIntentEscrow</code>, <code>ReleaseOpenIntentEscrow</code>, and <code>ConsumeOpenIntentEscrow</code>. They are intentionally separate from <code>LockBalance</code> / <code>UnlockBalance</code> so off-chain systems can distinguish &quot;isolated funds reserved for future Party B selection&quot; from ordinary isolated or cross intent locks.</p>
+<h2 id="lockopenintent">lockOpenIntent</h2>
+<p>Entry point: <code>PartyBOpenFacet.lockOpenIntent</code> (<code>contracts/facets/PartyBOpen/PartyBOpenFacet.sol:29-32</code>). Body: <code>LibPartyBOpen.lockOpenIntent</code> (<code>contracts/libraries/core/LibPartyBOpen.sol:36-104</code>).</p>
+<p>Modifiers: <code>whenPartyNotPaused(msg.sender)</code>, <code>onlyPartyB(msg.sender)</code>.</p>
+<p>Preconditions, in order:</p>
+<ol>
+<li>Neither <code>intent.partyA</code> nor <code>sender</code> is suspended (<code>LibPartyBOpen.sol:47-48</code>).</li>
+<li>Neither <code>partyBEmergencyMode[sender]</code> nor the global <code>partyBsEmergencyMode</code> is set (<code>LibPartyBOpen.sol:51-52</code>).</li>
+<li><code>intentId &lt;= lastOpenIntentId</code> (<code>LibPartyBOpen.sol:55</code>).</li>
+<li><code>intent.status == PENDING</code> (<code>LibPartyBOpen.sol:58</code>).</li>
+<li><code>block.timestamp &lt;= intent.deadline</code> (<code>LibPartyBOpen.sol:61</code>).</li>
+<li><code>Symbol.isValid</code> (<code>LibPartyBOpen.sol:64</code>).</li>
+<li><code>block.timestamp &lt; intent.tradeAgreements.expirationTimestamp</code> (<code>LibPartyBOpen.sol:67-68</code>).</li>
+<li><code>partyBConfigs[sender].oracleId == symbol.oracleId</code> (<code>LibPartyBOpen.sol:71</code>).</li>
+<li>Whitelist match: empty whitelist allows any Party B; otherwise sender must be in the list (<code>LibPartyBOpen.sol:75-89</code>).</li>
+<li><code>partyBSupportedSymbolTypes[sender][symbol.symbolType]</code> (<code>LibPartyBOpen.sol:92</code>).</li>
+<li>If this is a deferred Party B sell, <code>openIntentEscrows[intentId]</code> must exist and not already be consumed (<code>LibPartyBOpen.sol:94-97</code>).</li>
+<li><code>sender.requireSolvent(intent.partyA, symbol.collateral, intent.tradeAgreements.marginType)</code> (<code>LibPartyBOpen.sol:100</code>).</li>
+</ol>
+<p>State transition: <code>status = LOCKED</code>, <code>partyB = sender</code>, push intent id into <code>activeOpenIntentsOf[sender]</code> via <code>registerForPartyB</code> (<code>LibOpenIntent.sol:93-98</code>), bump <code>statusModifyTimestamp</code>. Emits <code>LockOpenIntent(intentId, partyB)</code>.</p>
+<h2 id="unlockopenintent">unlockOpenIntent</h2>
+<p>Entry point: <code>PartyBOpenFacet.unlockOpenIntent</code> (<code>contracts/facets/PartyBOpen/PartyBOpenFacet.sol:40-47</code>). Body: <code>LibPartyBOpen.unlockOpenIntent</code> (<code>contracts/libraries/core/LibPartyBOpen.sol:111-140</code>).</p>
+<p>Only <code>intent.partyB</code> may call. Status must be <code>LOCKED</code>. Sender must be solvent versus <code>intent.partyA</code> for the symbol&#39;s collateral with <code>MarginType.ISOLATED</code> (<code>LibPartyBOpen.sol:123-124</code>; the marginType parameter is hard-coded to <code>ISOLATED</code> regardless of intent&#39;s actual margin type).</p>
+<p>Branching:</p>
+<ul>
+<li><code>block.timestamp &gt; intent.deadline</code>: calls <code>intent.expire()</code> (status becomes <code>EXPIRED</code>, all locks released, intent removed from both parties&#39; active lists). Facet emits <code>ExpireOpenIntent</code>.</li>
+<li>Otherwise: status reverts to <code>PENDING</code>, <code>intent.unregister(true)</code> removes the intent from Party B&#39;s active list only (Party A&#39;s entry is preserved), then <code>partyB</code> is cleared. Facet emits <code>UnlockOpenIntent</code>.</li>
+</ul>
+<h2 id="fillopenintent">fillOpenIntent</h2>
+<p>Entry point: <code>PartyBOpenFacet.fillOpenIntent</code> (<code>contracts/facets/PartyBOpen/PartyBOpenFacet.sol:69-96</code>). Body: <code>LibPartyBOpen.fillOpenIntent</code> (<code>contracts/libraries/core/LibPartyBOpen.sol:164-385</code>).</p>
+<h3 id="preconditions">Preconditions</h3>
+<ol>
+<li><code>sender == intent.partyB</code> (<code>LibPartyBOpen.sol:181-182</code>).</li>
+<li>Neither party suspended; <code>partyB</code> not in emergency mode; <code>partyBsEmergencyMode</code> false (<code>LibPartyBOpen.sol:184-188</code>).</li>
+<li><code>Symbol.isValid</code> (<code>LibPartyBOpen.sol:190-191</code>).</li>
+<li><code>intent.status in {LOCKED, CANCEL_PENDING}</code> (<code>LibPartyBOpen.sol:193-199</code>).</li>
+<li>For <code>CROSS</code>: <code>partyA.requireSolvent(partyB, ...)</code> and always <code>partyB.requireSolvent(partyA, ...)</code> (<code>LibPartyBOpen.sol:201-204</code>).</li>
+<li><code>block.timestamp &lt;= intent.deadline</code> and <code>block.timestamp &lt; intent.tradeAgreements.expirationTimestamp</code> (<code>LibPartyBOpen.sol:206-209</code>).</li>
+<li><code>quantity &gt; 0</code> and <code>quantity &lt;= intent.tradeAgreements.quantity</code> (<code>LibPartyBOpen.sol:211-213</code>).</li>
+<li>Price favorability:<ul>
+<li><code>BUY</code>: <code>price &lt;= intent.price</code>. Reverts <code>InvalidOpenPrice</code> otherwise.</li>
+<li><code>SELL</code>: <code>price &gt;= intent.price</code>. Reverts <code>InvalidOpenPrice</code> otherwise (<code>LibPartyBOpen.sol:216-219</code>).</li>
+</ul>
+</li>
+</ol>
+<h3 id="numeric-examples-for-price-favorability">Numeric examples for price favorability</h3>
+<ul>
+<li>Party A <code>BUY</code> with <code>intent.price = 100e18</code>: a fill at <code>98e18</code> is accepted (better for buyer); a fill at <code>101e18</code> reverts <code>InvalidOpenPrice(101e18, 100e18)</code>.</li>
+<li>Party A <code>SELL</code> with <code>intent.price = 100e18</code>: a fill at <code>101e18</code> is accepted (better for seller); a fill at <code>99e18</code> reverts <code>InvalidOpenPrice(99e18, 100e18)</code>.</li>
+</ul>
+<h3 id="state-transition-and-trade-creation">State transition and trade creation</h3>
+<p><code>LibPartyBOpen.sol:225-252</code> allocates a new <code>Trade</code> with:</p>
+<ul>
+<li><code>id = ++TradeStorage.lastTradeId</code>.</li>
+<li><code>openIntentId = intentId</code>.</li>
+<li><code>quantity = quantity</code> (the fill amount).</li>
+<li><code>mm = intent.mm * quantity / intent.quantity</code> (proportional).</li>
+<li><code>openedPrice = price</code>, <code>status = OPENED</code>, <code>feeStructure</code> and <code>affiliate</code> inherited.</li>
+</ul>
+<p>Normal intent locks are released first (<code>unlockFees</code>, <code>unlockPremiumIfBuy</code>, <code>unlockMMIfSell</code>). Deferred Party B sells instead consume escrow: the filled slice of Party A&#39;s isolated <code>mm</code> lock is unlocked and allocated into Party A&#39;s cross bucket against the selected Party B; the filled slice of the isolated fee lock is unlocked and the actual fill-price fee amount is allocated into the same Party B cross fee-token bucket. This makes the subsequent cross fee debit and <code>increaseMM</code> path run through the same accounting as a normal single-Party-B cross sell. The intent is then marked <code>FILLED</code>, <code>tradeId</code> is set, and <code>intent.unregister(false)</code> removes it from both parties&#39; active lists. The new trade is pushed into <code>activeTradesOfPartyA[partyA]</code> and <code>activeTradesOfPartyB[partyB][collateral]</code> via <code>LibTradeOps.register</code> (<code>LibTrade.sol:64-85</code>), which enforces <code>maxTradePerPartyA</code> and adds Party B as a counterparty on Party A&#39;s balance.</p>
+<h3 id="fee-collection-breakdown">Fee collection breakdown</h3>
+<p><code>LibPartyBOpen.sol:323-350</code> charges all three open-fee streams from Party A in the <code>feeToken</code> at the actual fill <code>price</code> via <code>getFeesFromUser</code> (<code>LibOpenIntent.sol:329-330</code>). Each fee is computed as <code>quantity * price * rate / (tokenPriceInCollateral * 1e18)</code> (<code>LibOpenIntent.sol:42-43</code>); the snapshotted <code>tokenPriceInCollateral</code> lets fees be denominated in a token different from the collateral.</p>
+<table>
+<thead>
+<tr>
+<th>Stream</th>
+<th>Recipient</th>
+<th>How credited</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>fees[0]</code> platform</td>
+<td><code>FeeManagementStorage.defaultFeeCollector</code></td>
+<td><code>instantIsolatedAdd(PLATFORM_FEE)</code>.</td>
+</tr>
+<tr>
+<td><code>fees[1]</code> affiliate</td>
+<td><code>affiliateFeeCollector[intent.affiliate]</code> (or <code>defaultFeeCollector</code> if unset)</td>
+<td><code>instantIsolatedAdd(AFFILIATE_FEE)</code>.</td>
+</tr>
+<tr>
+<td><code>fees[2]</code> solver</td>
+<td><code>intent.partyB</code></td>
+<td>For <code>ISOLATED</code>: <code>instantIsolatedAdd(SOLVER_FEE)</code>. For <code>CROSS</code>: <code>scheduledAdd(intent.partyA, ..., SOLVER_FEE)</code> (counted against the bilateral cross channel).</td>
+</tr>
+</tbody></table>
+<h3 id="premium-and-mm-flow">Premium and MM flow</h3>
+<p>After fees are settled and the trade is registered (<code>LibPartyBOpen.sol:353-360</code>):</p>
+<ul>
+<li><code>BUY</code>: <code>partyA.balanceOf(collateral).subForCounterParty(partyB, premium, marginType, PREMIUM)</code> where <code>premium = quantity * openedPrice / 1e18</code> (<code>LibTrade.sol:46-48</code>). Premium moves from Party A&#39;s locked-or-cross balance to Party B&#39;s scheduled-add channel internally.</li>
+<li><code>SELL</code>: <code>partyA.balanceOf(collateral).increaseMM(partyB, trade.mm)</code>, then <code>partyB.balanceOf(collateral).subForCounterParty(partyA, premium, marginType, PREMIUM)</code>, then <code>partyA.balanceOf(collateral).scheduledAdd(partyB, premium, marginType, PREMIUM)</code>. <code>totalMM</code> (<code>CrossEntry.totalMM</code>, <code>LibScheduledReleaseBalance.sol:453-456</code>) tracks Party A&#39;s accumulated maintenance margin against this Party B for liquidation accounting.</li>
+</ul>
+<h3 id="cross-margin-nonce-increment">Cross-margin nonce increment</h3>
+<p>When <code>marginType == CROSS</code>, both <code>nonces[partyA][partyB]</code> and <code>nonces[partyB][partyA]</code> are incremented (<code>LibPartyBOpen.sol:381-383</code>). This invalidates any off-chain signatures (settlement, uPnL, deallocation) issued before the fill. ISOLATED fills do not bump nonces.</p>
+<h2 id="partial-fills">Partial Fills</h2>
+<p>Open intents may be partially filled. Deferred Party B sells use the same child-intent model, with an escrow-specific rollover:</p>
+<ul>
+<li>The filled slice consumes <code>trade.mm = intent.mm * filled / originalQuantity</code>.</li>
+<li>The filled slice unlocks the matching estimated fee lock at the intent limit price and allocates the actual fill-price fee amount into the selected Party B cross bucket.</li>
+<li>The child intent receives the remaining <code>quantity</code>, remaining <code>mm</code>, empty whitelist, <code>parentId = original.id</code>, and the remaining escrow record.</li>
+<li>If the original intent was already <code>CANCEL_PENDING</code>, the residual child is created as <code>CANCELED</code>; for deferred sells, the remaining escrow is released immediately instead of being moved to that canceled child.</li>
+</ul>
+<p>When <code>quantity &lt; intent.tradeAgreements.quantity</code>:</p>
+<pre><code class="language-mermaid">flowchart TD
+    Original[&quot;Original intent (status: LOCKED or CANCEL_PENDING) Q&quot;] --&gt; Fill[&quot;fillOpenIntent(qty=q)&quot;]
+    Fill --&gt; Trade[&quot;Trade(quantity=q, mm=mm*q/Q, openedPrice=p)&quot;]
+    Fill --&gt; ChildBranch{&quot;original.status?&quot;}
+    ChildBranch --&gt;|LOCKED| ChildPending[&quot;Child intent PENDING (Q-q, mm-mm&#39;, parentId=orig.id)&quot;]
+    ChildBranch --&gt;|CANCEL_PENDING| ChildCanceled[&quot;Child intent CANCELED (Q-q, mm-mm&#39;, parentId=orig.id)&quot;]
+    ChildPending --&gt; Relock[&quot;normal: relock residual funds; deferred sell: move residual escrow&quot;]
+    ChildCanceled --&gt; SkipLock[&quot;normal: existing residual handling; deferred sell: release residual escrow&quot;]
+</code></pre>
+<p>Implementation: <code>LibPartyBOpen.sol:264-318</code>. The child gets <code>id = ++lastOpenIntentId</code>, copies all intent fields except <code>quantity</code> (residual), <code>mm</code> (residual), and <code>partyB</code> (cleared), and bumps the user-data counter via <code>LibUserData.incrementCounter</code>. Normal intents lock residual fees / premium / MM on the child. Deferred sells call <code>moveDeferredSellEscrow</code> for a <code>PENDING</code> child or <code>releaseDeferredSellEscrow</code> for a <code>CANCELED</code> child. The original intent&#39;s <code>tradeAgreements.quantity</code> is then overwritten to <code>quantity</code> (the filled amount).</p>
+<p>After this, the facet re-emits <code>SendOpenIntent</code> for the child and, if the child is <code>CANCELED</code>, also emits <code>CancelOpenIntent(child.id, CANCELED)</code> (<code>PartyBOpenFacet.sol:73-95</code>).</p>
+<h2 id="cancellation-paths">Cancellation Paths</h2>
+<pre><code class="language-mermaid">flowchart TD
+    Start([Intent exists]) --&gt; Status{Current status}
+    Status --&gt;|PENDING| AcheckA{deadline passed?}
+    AcheckA --&gt;|no| PendingCancel[&quot;cancelOpenIntent: status=CANCELED; release normal locks or deferred escrow; unregister&quot;]
+    AcheckA --&gt;|yes| ExpireFromPending[&quot;cancelOpenIntent or expireOpenIntent: intent.expire() -&gt; EXPIRED&quot;]
+    Status --&gt;|LOCKED| AcheckB{deadline passed?}
+    AcheckB --&gt;|no| LockedCancel[&quot;cancelOpenIntent: status=CANCEL_PENDING (no funds released)&quot;]
+    AcheckB --&gt;|yes| ExpireFromLocked[&quot;cancelOpenIntent (PartyA) or unlockOpenIntent (PartyB) or expireOpenIntent: intent.expire() -&gt; EXPIRED&quot;]
+    LockedCancel --&gt; CPBranch{Next actor}
+    CPBranch --&gt;|PartyB acceptCancelOpenIntent| Accepted[&quot;status=CANCELED; release normal locks or deferred escrow; unregister&quot;]
+    CPBranch --&gt;|PartyB fillOpenIntent| Filled[&quot;status=FILLED; child intent CANCELED for residual&quot;]
+    CPBranch --&gt;|anyone forceCancelOpenIntent after timeout| Forced[&quot;status=CANCELED; unlock fees+premium+MM; unregister&quot;]
+    CPBranch --&gt;|deadline passes, expireOpenIntent| ExpireFromCP[&quot;intent.expire() -&gt; EXPIRED&quot;]
+    Status --&gt;|CANCEL_PENDING| CpDeadline{deadline passed?}
+    CpDeadline --&gt;|yes| ExpireFromCP
+    Status --&gt;|FILLED, CANCELED, EXPIRED| Terminal[/no-op or revert/]
+</code></pre>
+<p>Function summary:</p>
+<table>
+<thead>
+<tr>
+<th>Caller</th>
+<th>Function</th>
+<th>Source</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Party A</td>
+<td><code>cancelOpenIntent([ids])</code></td>
+<td><code>PartyAOpenFacet.sol:129</code></td>
+<td>Blocked when Party A&#39;s instant mode is active. Per id: PENDING -&gt; CANCELED; LOCKED -&gt; CANCEL_PENDING; either -&gt; EXPIRED if past deadline (<code>LibPartyAOpen.sol:119-145</code>). Emits <code>CancelOpenIntent</code> or <code>ExpireOpenIntent</code> accordingly.</td>
+</tr>
+<tr>
+<td>Party B</td>
+<td><code>acceptCancelOpenIntent(id)</code></td>
+<td><code>PartyBOpenFacet.sol:55</code></td>
+<td>Only for <code>CANCEL_PENDING</code> and only by the locking Party B. Releases normal locks or deferred escrow and unregisters (<code>LibPartyBOpen.sol:142-162</code>).</td>
+</tr>
+<tr>
+<td>Anyone</td>
+<td><code>forceCancelOpenIntent(id)</code></td>
+<td><code>ForceActionsFacet.sol:25</code></td>
+<td>Requires <code>CANCEL_PENDING</code> and <code>block.timestamp &gt; statusModifyTimestamp + AppStorage.forceCancelOpenIntentTimeout</code> (<code>LibForceActions.sol:23-41</code>).</td>
+</tr>
+<tr>
+<td>Anyone</td>
+<td><code>expireOpenIntent([ids])</code></td>
+<td><code>PartyAOpenFacet.sol:112</code></td>
+<td>Per id: requires <code>block.timestamp &gt; deadline</code> and current status in <code>{PENDING, LOCKED, CANCEL_PENDING}</code> (<code>LibOpenIntent.sol:123-139</code>).</td>
+</tr>
+</tbody></table>
+<h2 id="expiration">Expiration</h2>
+<p><code>expireOpenIntent</code> (<code>PartyAOpenFacet.sol:112-119</code>) is gated only by <code>whenPartyNotPaused(msg.sender)</code>; it can be called by any address (the modifier checks the caller&#39;s pause state, not Party A&#39;s). Each id is processed independently via <code>intent.expire()</code>:</p>
+<ul>
+<li>Reverts <code>IntentErrors.IntentNotExpired(intentId, now, deadline)</code> if <code>block.timestamp &lt;= deadline</code> (<code>LibOpenIntent.sol:123-124</code>).</li>
+<li>Reverts <code>ValidationErrors.InvalidState</code> if status is not <code>PENDING</code>, <code>LOCKED</code>, or <code>CANCEL_PENDING</code> (<code>LibOpenIntent.sol:126-133</code>).</li>
+<li>Otherwise sets status to <code>EXPIRED</code>, releases normal locks or deferred escrow via <code>unlockForCancelOrExpire</code>, and unregisters from both parties&#39; active lists.</li>
+</ul>
+<p>Party A&#39;s <code>cancelOpenIntent</code> and Party B&#39;s <code>unlockOpenIntent</code> also invoke <code>intent.expire()</code> when called past the deadline, producing the same effect plus the corresponding <code>ExpireOpenIntent</code> event.</p>
+<h2 id="fee-accounting">Fee Accounting</h2>
+<p>The three open-fee streams are platform, affiliate, and solver. All are denominated in <code>feeToken</code> units but their rates are applied to a notional in collateral terms.</p>
+<p><code>LibOpenIntent.calculateFee</code> (<code>contracts/libraries/models/LibOpenIntent.sol:42-47</code>):</p>
+<pre><code>fee = (quantity * price * rate) / (tokenPriceInCollateral * 1e18)
+</code></pre>
+<p>Where <code>quantity</code>, <code>price</code>, <code>rate</code>, and <code>tokenPriceInCollateral</code> are 18-decimal. The product <code>quantity * price / 1e18</code> is the notional in collateral; multiplying by <code>rate / 1e18</code> yields the rate-scaled notional in collateral; dividing by <code>tokenPriceInCollateral / 1e18</code> converts to fee-token units.</p>
+<p>At submission, normal intents compute fees using <code>intent.price</code> (the limit price) and lock them from Party A&#39;s <code>feeToken</code> balance via <code>lockFees</code>. At fill, the previously locked amounts are released via <code>unlockFees</code> and a fresh charge is computed at the actual fill <code>price</code> and debited via <code>getFeesFromUser</code>. Because the actual fill price is bounded by the limit (<code>&lt;= price</code> for BUY, <code>&gt;= price</code> for SELL), the locked amount is sufficient for BUYs but may differ in either direction for SELLs; the unlock-then-resubtract pattern handles both.</p>
+<p>Deferred Party B sells use the same fee formula but a different holding path. At submission, <code>lockDeferredSellEscrow</code> locks the estimated total open fee from Party A isolated <code>feeToken</code> because the cross counterparty is not known. At fill, <code>consumeDeferredSellEscrow</code> unlocks the filled slice of that isolated lock and allocates the actual fill-price fee amount for the filled quantity into Party A&#39;s cross <code>feeToken</code> bucket against the selected Party B. <code>getFeesFromUser(fillPrice)</code> then subtracts those fees from that cross bucket and distributes platform, affiliate, and solver fees normally. If the fill price is better for the seller and the actual fee exceeds the estimate for that filled slice, the extra amount is pulled from available isolated <code>feeToken</code> during allocation.</p>
+<p><code>tokenPriceInCollateral</code> is captured once via <code>IPriceOracle.getPrice(feeToken, symbol.collateral)</code> at submission (<code>LibPartyAOpen.sol:101-104</code>) and frozen on the intent. Subsequent oracle moves do not affect this intent&#39;s fees.</p>
+<p>When <code>marginType == ISOLATED</code> and the whitelist has more than one Party B (<code>isolated &amp;&amp; !singlePartyB</code>), fees are taken from / refunded to Party A&#39;s isolated balance directly (<code>LibOpenIntent.sol:308-324</code>). Otherwise they pass through <code>subForCounterParty</code> / <code>scheduledAdd</code> against the single whitelisted or assigned Party B. Deferred Party B sells rely on the assigned <code>intent.partyB</code> after lock because <code>partyBsWhiteList[0]</code> does not exist.</p>
+<h2 id="errors-reference">Errors Reference</h2>
+<p>Every revert reachable from <code>sendOpenIntent</code>, <code>lockOpenIntent</code>, <code>unlockOpenIntent</code>, <code>acceptCancelOpenIntent</code>, <code>fillOpenIntent</code>, <code>cancelOpenIntent</code>, <code>expireOpenIntent</code>, <code>forceCancelOpenIntent</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Source</th>
+<th>Triggered by</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>IntentErrors.PartyBSender</code></td>
+<td><code>IntentErrors.sol:14</code></td>
+<td>Party B address calls <code>sendOpenIntent</code>.</td>
+</tr>
+<tr>
+<td><code>IntentErrors.IsolatedModeSellNotAllowed</code></td>
+<td><code>IntentErrors.sol:15</code></td>
+<td><code>tradeSide=SELL</code> with <code>marginType=ISOLATED</code>.</td>
+</tr>
+<tr>
+<td><code>IntentErrors.InvalidWhitelistEntry</code></td>
+<td><code>IntentErrors.sol:16</code></td>
+<td>Sender appears in own whitelist.</td>
+</tr>
+<tr>
+<td><code>IntentErrors.InvalidExerciseFee</code></td>
+<td><code>IntentErrors.sol:17</code></td>
+<td><code>exerciseFee.cap &gt; 1e18</code>.</td>
+</tr>
+<tr>
+<td><code>IntentErrors.InvalidAffiliate</code></td>
+<td><code>IntentErrors.sol:18</code></td>
+<td>Affiliate not active and non-zero.</td>
+</tr>
+<tr>
+<td><code>IntentErrors.MultiplePartyBNotAllowed</code></td>
+<td><code>IntentErrors.sol:19</code></td>
+<td>Normal <code>CROSS</code> intent without exactly one whitelisted Party B; unbound <code>SELL + CROSS + []</code> is the exception.</td>
+</tr>
+<tr>
+<td><code>IntentErrors.InvalidOpenQuantity</code></td>
+<td><code>IntentErrors.sol:20</code></td>
+<td><code>quantity == 0</code> at submission.</td>
+</tr>
+<tr>
+<td><code>IntentErrors.DeferredSellNotAllowedForBoundPartyA</code></td>
+<td><code>IntentErrors.sol:21</code></td>
+<td>Bound Party A attempts deferred Party B sell (<code>SELL + CROSS + []</code>).</td>
+</tr>
+<tr>
+<td><code>IntentErrors.MissingOpenIntentEscrow</code></td>
+<td><code>IntentErrors.sol:22</code></td>
+<td>Deferred Party B sell is locked/filled/released without a live escrow record.</td>
+</tr>
+<tr>
+<td><code>IntentErrors.OpenIntentEscrowAlreadyConsumed</code></td>
+<td><code>IntentErrors.sol:23</code></td>
+<td>Deferred Party B sell escrow was already consumed before a second operation attempted to use it.</td>
+</tr>
+<tr>
+<td><code>IntentErrors.IntentExpired</code></td>
+<td><code>IntentErrors.sol:9</code></td>
+<td><code>lockOpenIntent</code> or <code>fillOpenIntent</code> after <code>deadline</code>.</td>
+</tr>
+<tr>
+<td><code>IntentErrors.IntentNotExpired</code></td>
+<td><code>IntentErrors.sol:10</code></td>
+<td><code>expireOpenIntent</code> before <code>deadline</code>.</td>
+</tr>
+<tr>
+<td><code>IntentErrors.ExpirationTimestampPassed</code></td>
+<td><code>IntentErrors.sol:11</code></td>
+<td>Option <code>expirationTimestamp</code> already past.</td>
+</tr>
+<tr>
+<td><code>IntentErrors.IntentNotFound</code></td>
+<td><code>IntentErrors.sol:26</code></td>
+<td><code>lockOpenIntent</code> for <code>intentId &gt; lastOpenIntentId</code>.</td>
+</tr>
+<tr>
+<td><code>IntentErrors.OracleMismatch</code></td>
+<td><code>IntentErrors.sol:27</code></td>
+<td><code>partyBConfig.oracleId != symbol.oracleId</code> on lock.</td>
+</tr>
+<tr>
+<td><code>IntentErrors.SymbolTypeNotSupported</code></td>
+<td><code>IntentErrors.sol:28</code></td>
+<td>Party B not enabled for the symbol type on lock.</td>
+</tr>
+<tr>
+<td><code>IntentErrors.NotWhitelistedPartyB</code></td>
+<td><code>IntentErrors.sol:29</code></td>
+<td>Lock attempt by address not in non-empty whitelist.</td>
+</tr>
+<tr>
+<td><code>IntentErrors.InvalidOpenPrice</code></td>
+<td><code>IntentErrors.sol:30</code></td>
+<td>Fill price violates favorability rule.</td>
+</tr>
+<tr>
+<td><code>IntentErrors.InvalidFillAmount</code></td>
+<td><code>IntentErrors.sol:38</code></td>
+<td><code>quantity &gt; intent.quantity</code> at fill.</td>
+</tr>
+<tr>
+<td><code>ValidationErrors.LowDeadline</code></td>
+<td><code>ValidationErrors.sol:13</code></td>
+<td><code>deadline &lt; block.timestamp</code> at submission.</td>
+</tr>
+<tr>
+<td><code>ValidationErrors.InvalidSymbol</code></td>
+<td><code>ValidationErrors.sol:25</code></td>
+<td><code>Symbol.isValid</code> is false.</td>
+</tr>
+<tr>
+<td><code>ValidationErrors.InvalidState</code></td>
+<td><code>ValidationErrors.sol:15</code></td>
+<td>Status guard fails (cancel, lock, unlock, accept, fill, expire, force).</td>
+</tr>
+<tr>
+<td><code>ValidationErrors.UnauthorizedSender</code></td>
+<td><code>ValidationErrors.sol:16</code></td>
+<td>Caller is not the required actor (Party A on cancel; locking Party B on unlock/accept/fill).</td>
+</tr>
+<tr>
+<td><code>ValidationErrors.ZeroAmount</code></td>
+<td><code>ValidationErrors.sol:10</code></td>
+<td><code>quantity == 0</code> at fill.</td>
+</tr>
+<tr>
+<td><code>ValidationErrors.NotPartyB</code></td>
+<td><code>ValidationErrors.sol:20</code></td>
+<td><code>onlyPartyB</code> modifier on <code>lockOpenIntent</code>.</td>
+</tr>
+<tr>
+<td><code>ValidationErrors.CooldownNotOver</code></td>
+<td><code>ValidationErrors.sol:14</code></td>
+<td><code>forceCancelOpenIntent</code> before <code>forceCancelOpenIntentTimeout</code> elapses.</td>
+</tr>
+<tr>
+<td><code>PartyRelationsErrors.BoundedToAnotherPartyB</code></td>
+<td><code>PartyRelationsErrors.sol:15</code></td>
+<td>Whitelist incompatible with bound Party B.</td>
+</tr>
+<tr>
+<td><code>PartyRelationsErrors.InstantModeActive</code></td>
+<td><code>PartyRelationsErrors.sol:9</code></td>
+<td><code>whenInstantModeIsNotActive</code> modifier.</td>
+</tr>
+<tr>
+<td><code>BalanceErrors.NotSolvent</code></td>
+<td><code>BalanceErrors.sol:30</code></td>
+<td><code>requireSolvent</code> failure on submission, lock, unlock, or fill.</td>
+</tr>
+<tr>
+<td><code>BalanceErrors.InsufficientBalance</code></td>
+<td><code>BalanceErrors.sol:11</code></td>
+<td>Free balance too low to satisfy a <code>lockFees</code>/<code>lockPremiumIfBuy</code>/<code>lockMMIfSell</code>/<code>subForCounterParty</code> call.</td>
+</tr>
+<tr>
+<td><code>BalanceErrors.InsufficientLockedBalance</code></td>
+<td><code>BalanceErrors.sol:13</code></td>
+<td>Unlock attempts to release more than is locked.</td>
+</tr>
+<tr>
+<td><code>BalanceErrors.InsufficientMMBalance</code></td>
+<td><code>BalanceErrors.sol:14</code></td>
+<td><code>decreaseMM</code> underflow (post-fill paths only).</td>
+</tr>
+<tr>
+<td><code>SystemErrors.UserSuspended</code></td>
+<td><code>SystemErrors.sol:47</code></td>
+<td>Suspended Party A or Party B at submission, lock, or fill.</td>
+</tr>
+<tr>
+<td><code>SystemErrors.PartyBInEmergencyMode</code></td>
+<td><code>SystemErrors.sol:43</code></td>
+<td>Party B-specific emergency flag set on lock or fill.</td>
+</tr>
+<tr>
+<td><code>SystemErrors.PartyBsInEmergencyMode</code></td>
+<td><code>SystemErrors.sol:44</code></td>
+<td>Global Party B emergency flag set on lock or fill.</td>
+</tr>
+<tr>
+<td><code>SystemErrors.PartyAActionsPaused</code> / <code>PartyBActionsPaused</code> / <code>ThirdPartyActionsPaused</code></td>
+<td><code>SystemErrors.sol:36-38</code></td>
+<td>Caller-side pause flags via <code>whenPartyNotPaused</code>.</td>
+</tr>
+</tbody></table>
+<h2 id="worked-numeric-example">Worked Numeric Example</h2>
+<p>Setup (all amounts in 18-decimal collateral; assume <code>feeToken == collateral</code> so <code>tokenPriceInCollateral = 1e18</code>):</p>
+<ul>
+<li>Party A balance: <code>2_000e18</code> collateral, free, isolated.</li>
+<li>Party A is unbound, not suspended; Party B <code>B1</code> is active, supports the symbol type, has matching oracle id, is solvent, and is the sole whitelist entry.</li>
+<li>Symbol: <code>symbolId = 7</code>, valid, expiration <code>T+30d</code>.</li>
+<li>Intent params: <code>tradeSide = BUY</code>, <code>marginType = ISOLATED</code>, <code>quantity = 5e18</code> (5 contracts), <code>price = 100e18</code>, <code>mm = 0</code>, <code>exerciseFee = (rate=0, cap=0)</code>, <code>solverFee = (openFee=1e16, closeFee=0)</code>, platform <code>openFee = 5e15</code>, affiliate inactive (<code>affiliate = address(0)</code> -&gt; <code>affiliateFee = 0</code>).</li>
+</ul>
+<h3 id="submission-sendopenintent">Submission: <code>sendOpenIntent</code></h3>
+<p>Locks computed at <code>intent.price = 100e18</code>:</p>
+<ul>
+<li>Premium lock: <code>5e18 * 100e18 / 1e18 = 500e18</code> collateral (BUY), isolated lock.</li>
+<li>Platform fee lock: <code>5e18 * 100e18 * 5e15 / (1e18 * 1e18) = 2.5e15</code> -&gt; <code>2_500_000_000_000_000</code> (<code>0.0025</code> units), isolated lock on feeToken (== collateral here).</li>
+<li>Affiliate fee lock: <code>0</code>.</li>
+<li>Solver fee lock: <code>5e18 * 100e18 * 1e16 / (1e18 * 1e18) = 5e15</code> (<code>0.005</code>), isolated lock.</li>
+</ul>
+<p>Party A isolated balance state after submission:</p>
+<ul>
+<li>Free: <code>2_000e18 - 500e18 - 0.0025 - 0.005 = 1_499.9925e18</code>.</li>
+<li>Locked: <code>500.0075e18</code>.</li>
+</ul>
+<p>Intent stored with <code>id = N</code>, <code>status = PENDING</code>, <code>partyB = 0x0</code>, <code>userData</code> suffixed with counter <code>0</code>.</p>
+<h3 id="lock-b1lockopenintentn">Lock: <code>B1.lockOpenIntent(N)</code></h3>
+<p>Status <code>PENDING -&gt; LOCKED</code>, <code>partyB = B1</code>. No balance change.</p>
+<h3 id="partial-fill-b1fillopenintentn-qty3e18-price98e18">Partial fill: <code>B1.fillOpenIntent(N, qty=3e18, price=98e18)</code></h3>
+<p>Favorability: <code>98e18 &lt;= 100e18</code> so accepted for BUY.</p>
+<p>Trade created:</p>
+<ul>
+<li><code>id = M</code>, <code>quantity = 3e18</code>, <code>mm = 0 * 3 / 5 = 0</code>, <code>openedPrice = 98e18</code>, <code>feeStructure</code> and <code>affiliate</code> inherited.</li>
+</ul>
+<p>All original intent locks released (<code>unlockFees</code>, <code>unlockPremiumIfBuy</code>, <code>unlockMMIfSell</code>):</p>
+<ul>
+<li>Free += <code>500e18 + 0.0025 + 0.005 = 500.0075e18</code>. Balance: free <code>2_000e18</code>, locked <code>0</code>.</li>
+</ul>
+<p>Child intent <code>N+1</code> is created (because <code>5e18 &gt; 3e18</code>):</p>
+<ul>
+<li><code>quantity = 5e18 - 3e18 = 2e18</code>, <code>mm = 0</code>, <code>parentId = N</code>, <code>partyB = 0x0</code>, <code>status = PENDING</code>, <code>userData</code> counter <code>1</code>.</li>
+<li>New locks at <code>intent.price = 100e18</code>:<ul>
+<li>Premium lock: <code>2e18 * 100e18 / 1e18 = 200e18</code>.</li>
+<li>Platform fee lock: <code>2e18 * 100e18 * 5e15 / 1e36 = 1e15</code> (<code>0.001</code>).</li>
+<li>Solver fee lock: <code>2e18 * 100e18 * 1e16 / 1e36 = 2e15</code> (<code>0.002</code>).</li>
+</ul>
+</li>
+</ul>
+<p>Original intent&#39;s <code>tradeAgreements.quantity</code> overwritten to <code>3e18</code>; status set to <code>FILLED</code>; <code>tradeId = M</code>; unregistered from active lists.</p>
+<p>Open fees from Party A computed at fill price <code>98e18</code> for the filled <code>quantity = 3e18</code>:</p>
+<ul>
+<li>Platform fee: <code>3e18 * 98e18 * 5e15 / 1e36 = 1.47e15</code> (<code>0.00147</code>) -&gt; credited to <code>defaultFeeCollector</code> (<code>PLATFORM_FEE</code>).</li>
+<li>Affiliate fee: <code>0</code> -&gt; credited to <code>defaultFeeCollector</code> (<code>affiliateFeeCollector[address(0)]</code> is <code>address(0)</code>, so falls back to default).</li>
+<li>Solver fee: <code>3e18 * 98e18 * 1e16 / 1e36 = 2.94e15</code> (<code>0.00294</code>) -&gt; isolated-credited to <code>B1</code> (because intent is <code>ISOLATED</code>).</li>
+</ul>
+<p>Premium transfer: <code>partyA.subForCounterParty(B1, 3e18 * 98e18 / 1e18 = 294e18, ISOLATED, PREMIUM)</code>.</p>
+<p>Final Party A balance state:</p>
+<ul>
+<li>Free: <code>2_000e18 - 0.00147 - 0 - 0.00294 - 294e18 = 1_705.99559e18</code>, of which <code>200e18 + 0.001 + 0.002 = 200.003e18</code> is locked under the child intent <code>N+1</code>.</li>
+<li>Counterparties on Party A&#39;s <code>collateral</code> balance now include <code>B1</code> (via <code>LibTradeOps.register</code> -&gt; <code>addCounterParty</code>).</li>
+</ul>
+<p>Trade <code>M</code> is now <code>OPENED</code> and active for both parties; child intent <code>N+1</code> is the residual <code>PENDING</code> intent that any whitelisted Party B (still <code>[B1]</code>, inherited) can lock and fill independently.</p>
+<h2 id="related-code-map">Related Code Map</h2>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>File</th>
+<th>Lines</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Party A facet entry</td>
+<td><code>contracts/facets/PartyAOpen/PartyAOpenFacet.sol</code></td>
+<td>48-139</td>
+</tr>
+<tr>
+<td>Party A facet interface</td>
+<td><code>contracts/facets/PartyAOpen/IPartyAOpenFacet.sol</code></td>
+<td>12-32</td>
+</tr>
+<tr>
+<td>Party A events</td>
+<td><code>contracts/interfaces/IPartiesEvents.sol</code></td>
+<td>10-30</td>
+</tr>
+<tr>
+<td>Party B facet entry</td>
+<td><code>contracts/facets/PartyBOpen/PartyBOpenFacet.sol</code></td>
+<td>29-96</td>
+</tr>
+<tr>
+<td>Party B facet interface</td>
+<td><code>contracts/facets/PartyBOpen/IPartyBOpenFacet.sol</code></td>
+<td>12-18</td>
+</tr>
+<tr>
+<td>Party B events</td>
+<td><code>contracts/facets/PartyBOpen/IPartyBOpenEvents.sol</code></td>
+<td>9-14</td>
+</tr>
+<tr>
+<td>Force actions facet</td>
+<td><code>contracts/facets/ForceActions/ForceActionsFacet.sol</code></td>
+<td>25-39</td>
+</tr>
+<tr>
+<td>Force actions events</td>
+<td><code>contracts/facets/ForceActions/ForceActionsFacetEvents.sol</code></td>
+<td>7-9</td>
+</tr>
+<tr>
+<td>Open intent submission/cancel core logic</td>
+<td><code>contracts/libraries/core/LibPartyAOpen.sol</code></td>
+<td>35-145</td>
+</tr>
+<tr>
+<td>Open intent lock/unlock/accept/fill core logic</td>
+<td><code>contracts/libraries/core/LibPartyBOpen.sol</code></td>
+<td>36-368</td>
+</tr>
+<tr>
+<td>Force-cancel logic</td>
+<td><code>contracts/libraries/core/LibForceActions.sol</code></td>
+<td>23-41</td>
+</tr>
+<tr>
+<td>Open intent model ops (register, expire, lock helpers, fee math, deferred escrow)</td>
+<td><code>contracts/libraries/models/LibOpenIntent.sol</code></td>
+<td>42-340</td>
+</tr>
+<tr>
+<td>Trade model ops (register, premium, MM, exercise fee, close)</td>
+<td><code>contracts/libraries/models/LibTrade.sol</code></td>
+<td>28-123</td>
+</tr>
+<tr>
+<td>Solvency helper (<code>requireSolvent</code>, <code>isPartyB</code>, <code>balanceOf</code>)</td>
+<td><code>contracts/libraries/models/LibParty.sol</code></td>
+<td>17-43</td>
+</tr>
+<tr>
+<td>User-data counter helpers</td>
+<td><code>contracts/libraries/utils/LibUserData.sol</code></td>
+<td>10-45</td>
+</tr>
+<tr>
+<td>Balance lock primitives (<code>isolatedLock</code>, <code>crossLock</code>, <code>increaseMM</code>)</td>
+<td><code>contracts/libraries/models/LibScheduledReleaseBalance.sol</code></td>
+<td>427-462</td>
+</tr>
+<tr>
+<td>Storage layout</td>
+<td><code>contracts/storages/OpenIntentStorage.sol</code></td>
+<td>9-27</td>
+</tr>
+<tr>
+<td>AppStorage timeouts and Party B configs</td>
+<td><code>contracts/storages/AppStorage.sol</code></td>
+<td>13-50</td>
+</tr>
+<tr>
+<td><code>OpenIntent</code>, <code>OpenIntentEscrow</code>, and status types</td>
+<td><code>contracts/types/IntentTypes.sol</code></td>
+<td>9-65</td>
+</tr>
+<tr>
+<td><code>TradeAgreements</code>, <code>FeeStructure</code>, <code>MarginType</code>, <code>TradeSide</code>, <code>Fee</code>, <code>ExerciseFee</code>, <code>FeeOp</code></td>
+<td><code>contracts/types/BaseTypes.sol</code></td>
+<td>7-51</td>
+</tr>
+<tr>
+<td>Intent error definitions</td>
+<td><code>contracts/errors/IntentErrors.sol</code></td>
+<td>7-40</td>
+</tr>
+<tr>
+<td>Validation error definitions and <code>requireStatus</code> helper</td>
+<td><code>contracts/errors/ValidationErrors.sol</code></td>
+<td>7-48</td>
+</tr>
+<tr>
+<td>Party-relations errors</td>
+<td><code>contracts/errors/PartyRelationsErrors.sol</code></td>
+<td>7-21</td>
+</tr>
+<tr>
+<td>System errors (suspension, emergency, pauses)</td>
+<td><code>contracts/errors/SystemErrors.sol</code></td>
+<td>7-49</td>
+</tr>
+<tr>
+<td>Balance errors</td>
+<td><code>contracts/errors/BalanceErrors.sol</code></td>
+<td>9-39</td>
+</tr>
+<tr>
+<td>Party A behavior tests</td>
+<td><code>tests/partyA-open-facet.behavior.ts</code></td>
+<td>full file</td>
+</tr>
+<tr>
+<td>Party B behavior tests</td>
+<td><code>tests/partyB-open-facet.behavior.ts</code></td>
+<td>full file</td>
+</tr>
+<tr>
+<td>Deferred Party B sell behavior tests</td>
+<td><code>tests/deferred-partyb-sell.behavior.ts</code></td>
+<td>full file</td>
+</tr>
+</tbody></table>
+</article></main></div><footer class="site-footer"><span>Options Core documentation.</span></footer></body></html>

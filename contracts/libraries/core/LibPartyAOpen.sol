@@ -18,7 +18,7 @@ import { CounterPartyRelationsStorage } from "../../storages/CounterPartyRelatio
 
 import { OpenIntent, OpenIntentStatus } from "../../types/IntentTypes.sol";
 import { ScheduledReleaseBalance } from "../../types/BalanceTypes.sol";
-import { ExerciseFee, TradeSide, TradeAgreements, MarginType, FeeStructure, Fee } from "../../types/BaseTypes.sol";
+import { TradeSide, TradeAgreements, MarginType, FeeStructure, Fee } from "../../types/BaseTypes.sol";
 
 import { ValidationErrors } from "../../errors/ValidationErrors.sol";
 import { IntentErrors } from "../../errors/IntentErrors.sol";

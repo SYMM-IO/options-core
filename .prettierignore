@@ -9,3 +9,13 @@ src/types
 coverage.json
 types
 contracts/helpers/SchnorrSECP256K1Verifier.sol
+# Static docs are generated and vendored from the shared SYMMIO reader.
+docs/pages
+docs/index.html
+docs/assets
+.husky/_
+docs/research
+docs/superpowers
+
+# Machine-local agent settings
+.claude/settings.local.json

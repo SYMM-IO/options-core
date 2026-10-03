@@ -1,0 +1,909 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Deposits, withdrawals, allocation, reserves, and transfers."><title>Account And Balance Flows | Options Core</title>
+<link rel="icon" type="image/svg+xml" href="../assets/symmio-mark.svg">
+<script>try { if (localStorage.getItem("options-docs-theme") === "light") document.documentElement.dataset.theme = "light"; } catch (_) {}</script>
+<link rel="stylesheet" href="../assets/reader.css"><link rel="stylesheet" href="../assets/docs-portal.css">
+<script src="../assets/chapters.js" defer></script><script src="../assets/reader.js" defer></script><script src="../assets/docs-portal.js" defer></script>
+</head>
+<body class="doc-page" data-version="current"><a class="skip-link" href="#full-document">Skip to document</a>
+<header class="docs-header"><div class="doc-topbar"><nav class="docs-trail" aria-label="Breadcrumb">
+<a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Options Core</span></a>
+<span class="trail-sep" aria-hidden="true">/</span><a class="trail-release" href="../index.html">Documentation</a>
+</nav><nav class="top-actions" aria-label="Page actions"><button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button></nav></div></header><div class="reader-shell"><div data-rail-sections hidden>
+<a class="toc-link level-2" href="#overview-and-mental-model">Overview And Mental Model</a>
+<a class="toc-link level-2" href="#balance-shape">Balance Shape</a>
+<a class="toc-link level-2" href="#deposit-flows">Deposit Flows</a>
+<a class="toc-link level-3" href="#preconditions">Preconditions</a>
+<a class="toc-link level-3" href="#events">Events</a>
+<a class="toc-link level-3" href="#notes-on-decimals">Notes On Decimals</a>
+<a class="toc-link level-2" href="#internal-and-external-transfers">Internal And External Transfers</a>
+<a class="toc-link level-3" href="#internaltransfercollateral-user-amount"><code>internalTransfer(collateral, user, amount)</code></a>
+<a class="toc-link level-3" href="#externaltransfercollateral-user-amount-target"><code>externalTransfer(collateral, user, amount, target)</code></a>
+<a class="toc-link level-2" href="#withdrawal-flows">Withdrawal Flows</a>
+<a class="toc-link level-3" href="#initiatewithdraw-and-initiateexpresswithdraw"><code>initiateWithdraw</code> And <code>initiateExpressWithdraw</code></a>
+<a class="toc-link level-3" href="#completewithdraw"><code>completeWithdraw</code></a>
+<a class="toc-link level-3" href="#cancelwithdraw"><code>cancelWithdraw</code></a>
+<a class="toc-link level-3" href="#suspendwithdraw-and-restorewithdraw"><code>suspendWithdraw</code> And <code>restoreWithdraw</code></a>
+<a class="toc-link level-3" href="#express-withdrawals">Express Withdrawals</a>
+<a class="toc-link level-3" href="#syncbalances"><code>syncBalances</code></a>
+<a class="toc-link level-2" href="#allocation-and-deallocation">Allocation And Deallocation</a>
+<a class="toc-link level-3" href="#allocatecollateral-counterparty-amount"><code>allocate(collateral, counterParty, amount)</code></a>
+<a class="toc-link level-3" href="#deallocatecollateral-counterparty-amount-ispartyb-upnlsig"><code>deallocate(collateral, counterParty, amount, isPartyB, upnlSig)</code></a>
+<a class="toc-link level-3" href="#why-exactly-one-party-b-per-pair">Why &quot;Exactly One Party B&quot; Per Pair</a>
+<a class="toc-link level-2" href="#reserve-balance">Reserve Balance</a>
+<a class="toc-link level-2" href="#scheduled-release-model">Scheduled Release Model</a>
+<a class="toc-link level-3" href="#scheduledadd"><code>scheduledAdd</code></a>
+<a class="toc-link level-3" href="#sync"><code>_sync</code></a>
+<a class="toc-link level-3" href="#sync-vs-syncall"><code>sync</code> vs <code>syncAll</code></a>
+<a class="toc-link level-3" href="#manualsync"><code>manualSync</code></a>
+<a class="toc-link level-3" href="#behavior-during-counterparty-liquidation">Behavior During Counterparty Liquidation</a>
+<a class="toc-link level-3" href="#edge-cases">Edge Cases</a>
+<a class="toc-link level-2" href="#cross-margin-nonces">Cross-Margin Nonces</a>
+<a class="toc-link level-2" href="#errors-reference">Errors Reference</a>
+<a class="toc-link level-2" href="#related-code-map">Related Code Map</a>
+<a class="toc-link level-2" href="#worked-example">Worked Example</a>
+<a class="toc-link level-3" href="#step-1-deposit">Step 1: Deposit</a>
+<a class="toc-link level-3" href="#step-2-allocate">Step 2: Allocate</a>
+<a class="toc-link level-3" href="#step-3-trade-fill">Step 3: Trade Fill</a>
+<a class="toc-link level-3" href="#step-4-settlement">Step 4: Settlement</a>
+<a class="toc-link level-3" href="#step-5-deallocate">Step 5: Deallocate</a>
+<a class="toc-link level-3" href="#step-6-withdraw">Step 6: Withdraw</a>
+</div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1>Account And Balance Flows</h1><p class="hero-copy">Deposits, withdrawals, allocation, reserves, and transfers.</p></div></div></header>
+<article class="doc-article" id="full-document"><p><code>AccountFacet</code> is the only public surface for moving collateral into, around, and out of the Diamond. Every <code>(user, collateral)</code> pair is backed by a single <code>ScheduledReleaseBalance</code> slot in <code>AccountStorage.balances</code>. All numbers in storage are normalized to 18 decimals; only deposits and withdrawals translate between collateral-token decimals and the internal representation through <code>LibDecimals</code>.</p>
+<p>This document describes the public surface, the underlying state machine, and the invariants the protocol depends on. Source citations refer to file paths under <code>contracts/</code>.</p>
+<h2 id="overview-and-mental-model">Overview And Mental Model</h2>
+<p>The account layer answers four questions:</p>
+<ol>
+<li>How much can a user spend right now (<code>isolatedBalance - isolatedLockedBalance</code>)?</li>
+<li>How much is committed to a specific Party A↔Party B relationship (<code>crossBalance[counterParty]</code>)?</li>
+<li>How much is parked outside isolated/cross for the clearing house&#39;s benefit (<code>reserveBalance</code>)?</li>
+<li>How much will become available later, and against which counterparty (<code>counterPartySchedules[counterParty]</code>)?</li>
+</ol>
+<p>Two design choices shape every flow:</p>
+<ul>
+<li><strong>Isolated vs. Cross.</strong> Isolated funds belong to the user and are not bound to any counterparty. Cross funds live inside a bilateral <code>CrossEntry</code> keyed by counterparty, and they can be negative (a Party A short can produce a negative cross balance after PnL realization). Allocation and deallocation are the only direct conversions; the rest of the protocol mutates one side or the other.</li>
+<li><strong>Scheduled release.</strong> Premium and realized-PnL credits to isolated balance from a specific counterparty do <strong>not</strong> become spendable immediately. They enter a two-bucket pipeline (<code>scheduled</code> → <code>transitioning</code> → <code>isolatedBalance</code>) keyed by the counterparty and gated by <code>releaseInterval</code>. This protects the protocol from late-arriving PnL or fee corrections during the same window in which Party B might enter liquidation.</li>
+</ul>
+<p>The combination means every isolated credit is tagged with a counterparty (even when conceptually &quot;free&quot;), and every cross balance survives until explicitly deallocated with a fresh Muon uPnL signature.</p>
+<pre><code class="language-mermaid">flowchart LR
+    Token[ERC20 collateral] --&gt;|deposit| Iso[isolatedBalance]
+    Iso --&gt;|allocate| Cross[crossBalance counterParty]
+    Iso --&gt;|allocateToReserveBalance| Reserve[reserveBalance]
+    Cross --&gt;|deallocate uPnL| Iso
+    Reserve --&gt;|deallocateFromReserveBalance| Iso
+    Reserve --&gt;|allocateFromReserveToCross clearing house| Cross
+    Iso --&gt;|initiateWithdraw| Pending[pending Withdraw]
+    Pending --&gt;|completeWithdraw| Token
+    Iso --&gt;|internalTransfer| OtherIso[other user isolatedBalance]
+    Iso --&gt;|externalTransfer| ExtTarget[whitelisted target]
+    PartyBCredit[premium / PnL / fee] --&gt;|scheduledAdd| Schedule[counterPartySchedules]
+    Schedule --&gt;|sync| Iso
+</code></pre>
+<h2 id="balance-shape">Balance Shape</h2>
+<p><code>ScheduledReleaseBalance</code> is defined in <code>contracts/types/BalanceTypes.sol:46</code> and is mutated exclusively through <code>ScheduledReleaseBalanceOps</code> (<code>contracts/libraries/models/LibScheduledReleaseBalance.sol</code>).</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Units</th>
+<th>Default</th>
+<th>Writers</th>
+<th>Readers</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>collateral</code></td>
+<td><code>address</code></td>
+<td>n/a</td>
+<td><code>address(0)</code></td>
+<td><code>setup</code> on first credit</td>
+<td>All ops via <code>checkSetup</code></td>
+</tr>
+<tr>
+<td><code>user</code></td>
+<td><code>address</code></td>
+<td>n/a</td>
+<td><code>address(0)</code></td>
+<td><code>setup</code> on first credit</td>
+<td>All ops via <code>checkSetup</code></td>
+</tr>
+<tr>
+<td><code>isolatedBalance</code></td>
+<td><code>uint256</code></td>
+<td>18d</td>
+<td><code>0</code></td>
+<td><code>instantIsolatedAdd</code>, <code>isolatedSub</code>, <code>subForCounterParty</code>, <code>allocateBalance</code>, <code>deallocateBalance</code>, <code>_sync</code>, reserve ops</td>
+<td>Every facet that needs a free-balance check</td>
+</tr>
+<tr>
+<td><code>isolatedLockedBalance</code></td>
+<td><code>uint256</code></td>
+<td>18d</td>
+<td><code>0</code></td>
+<td><code>isolatedLock</code>, <code>isolatedUnlock</code></td>
+<td>Open/close intent fee/premium locks</td>
+</tr>
+<tr>
+<td><code>reserveBalance</code></td>
+<td><code>uint256</code></td>
+<td>18d</td>
+<td><code>0</code></td>
+<td><code>allocateToReserveBalance</code>, <code>deallocateFromReserveBalance</code>, <code>LibClearingHouse.allocateFromReserveToCross</code></td>
+<td>Solvency views, clearing-house consumption</td>
+</tr>
+<tr>
+<td><code>crossBalance[cp].balance</code></td>
+<td><code>int256</code></td>
+<td>18d</td>
+<td><code>0</code></td>
+<td><code>allocateBalance</code>, <code>deallocateBalance</code>, <code>subForCounterParty</code>, <code>scheduledAdd</code> (CROSS)</td>
+<td>All cross-margin solvency math</td>
+</tr>
+<tr>
+<td><code>crossBalance[cp].locked</code></td>
+<td><code>uint256</code></td>
+<td>18d</td>
+<td><code>0</code></td>
+<td><code>crossLock</code>, <code>crossUnlock</code></td>
+<td>Open intent margin locking</td>
+</tr>
+<tr>
+<td><code>crossBalance[cp].totalMM</code></td>
+<td><code>uint256</code></td>
+<td>18d</td>
+<td><code>0</code></td>
+<td><code>increaseMM</code>, <code>decreaseMM</code></td>
+<td>Maintenance-margin tracking for Party A short positions</td>
+</tr>
+<tr>
+<td><code>counterPartySchedules[cp].releaseInterval</code></td>
+<td><code>uint256</code></td>
+<td>seconds</td>
+<td><code>0</code></td>
+<td><code>addCounterParty</code>, <code>_sync</code> reinit</td>
+<td><code>_sync</code></td>
+</tr>
+<tr>
+<td><code>counterPartySchedules[cp].transitioning</code></td>
+<td><code>uint256</code></td>
+<td>18d</td>
+<td><code>0</code></td>
+<td><code>_sync</code>, <code>subForCounterParty</code></td>
+<td><code>inTransitionBalance</code>, <code>counterPartyBalance</code></td>
+</tr>
+<tr>
+<td><code>counterPartySchedules[cp].scheduled</code></td>
+<td><code>uint256</code></td>
+<td>18d</td>
+<td><code>0</code></td>
+<td><code>scheduledAdd</code>, <code>_sync</code>, <code>subForCounterParty</code></td>
+<td><code>inTransitionBalance</code>, <code>counterPartyBalance</code></td>
+</tr>
+<tr>
+<td><code>counterPartySchedules[cp].lastTransitionTimestamp</code></td>
+<td><code>uint256</code></td>
+<td>seconds</td>
+<td><code>0</code></td>
+<td><code>addCounterParty</code>, <code>_sync</code></td>
+<td><code>_sync</code></td>
+</tr>
+<tr>
+<td><code>counterPartyAddresses</code></td>
+<td><code>address[]</code></td>
+<td>n/a</td>
+<td>empty</td>
+<td><code>addCounterParty</code>, <code>tryRemoveCounterParty</code></td>
+<td><code>syncAll</code></td>
+</tr>
+<tr>
+<td><code>counterPartyIndexes[cp]</code></td>
+<td><code>uint256</code></td>
+<td>1-based</td>
+<td><code>0</code></td>
+<td><code>addCounterParty</code>, <code>tryRemoveCounterParty</code></td>
+<td><code>addCounterParty</code> membership check</td>
+</tr>
+</tbody></table>
+<p>Free isolated balance available to the user is always <code>isolatedBalance - isolatedLockedBalance</code> (not the raw value). The locked portion exists so that intent creation can reserve funds without removing them from the global accounting.</p>
+<p><code>IncreaseBalanceReason</code> and <code>DecreaseBalanceReason</code> enums (<code>contracts/types/BalanceTypes.sol:66</code> and <code>:80</code>) tag every event so off-chain indexers can replay margin state without storage reads.</p>
+<h2 id="deposit-flows">Deposit Flows</h2>
+<p>There are three entry points, all routed through <code>LibBalanceOperations._deposit</code> (<code>contracts/libraries/core/LibBalanceOperations.sol:40</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Caller</th>
+<th>Role</th>
+<th>Actually transfers ERC20?</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>deposit(collateral, amount)</code></td>
+<td>anyone</td>
+<td>none</td>
+<td>yes, from <code>msg.sender</code></td>
+</tr>
+<tr>
+<td><code>depositFor(collateral, user, amount)</code></td>
+<td>anyone</td>
+<td>none</td>
+<td>yes, from <code>msg.sender</code></td>
+</tr>
+<tr>
+<td><code>virtualDepositFor(collateral, user, amount)</code></td>
+<td>privileged</td>
+<td><code>VIRTUAL_DEPOSITOR_ROLE</code></td>
+<td>no</td>
+</tr>
+</tbody></table>
+<p><code>amount</code> is in <strong>collateral-token decimals</strong> at the public boundary; it is normalized to 18 decimals via <code>LibDecimals.normalizeAmount</code> before crediting <code>isolatedBalance</code>.</p>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant Caller
+    participant Facet as AccountFacet
+    participant Pause as Pausable / Accessibility
+    participant Lib as LibBalanceOperations
+    participant ERC20 as IERC20
+    participant Bal as ScheduledReleaseBalance
+
+    Caller-&gt;&gt;Facet: deposit / depositFor / virtualDepositFor
+    Facet-&gt;&gt;Pause: whenDepositingNotPaused, whenNotSuspended, whenPartyNotPaused
+    Facet-&gt;&gt;Lib: _deposit(collateral, user, amount, doTransfer)
+    Lib-&gt;&gt;Lib: whitelist + zero amount + zero address checks
+    Lib-&gt;&gt;Lib: requireSolvent(user, address(0), collateral, ISOLATED)
+    Lib-&gt;&gt;Lib: normalize amount to 18d
+    Lib-&gt;&gt;Lib: balance limit check (skipped for Party B)
+    alt doTransfer
+        Lib-&gt;&gt;ERC20: safeTransferFrom(msg.sender, Diamond, raw amount)
+    end
+    Lib-&gt;&gt;Bal: setup(user, collateral) if first time
+    Lib-&gt;&gt;Bal: instantIsolatedAdd(amount18, DEPOSIT)
+    Facet-&gt;&gt;Caller: emit Deposit (and VirtualDeposit if virtual)
+</code></pre>
+<h3 id="preconditions">Preconditions</h3>
+<ul>
+<li><code>whenDepositingNotPaused</code>: rejects with <code>SystemErrors.GlobalPaused</code> or <code>SystemErrors.DepositingPaused</code>.</li>
+<li><code>whenNotSuspended(msg.sender)</code> and, for <code>depositFor</code>, <code>whenNotSuspended(user)</code>: rejects with <code>SystemErrors.UserSuspended</code>. <code>virtualDepositFor</code> only checks the recipient.</li>
+<li><code>whenPartyNotPaused</code>: rejects with <code>SystemErrors.PartyAActionsPaused</code> / <code>SystemErrors.PartyBActionsPaused</code> based on <code>LibParty.isPartyB</code>.</li>
+<li><code>nonReentrant</code> on <code>deposit</code> and <code>depositFor</code> (the ERC20 transfer crosses a trust boundary). <code>virtualDepositFor</code> skips reentrancy because no external call is made.</li>
+<li>Inside <code>_deposit</code>:<ul>
+<li><code>ValidationErrors.CollateralNotWhitelisted</code> if <code>AppStorage.whiteListedCollateral[collateral]</code> is false.</li>
+<li><code>ValidationErrors.ZeroAmount</code> if <code>amount == 0</code>.</li>
+<li><code>ValidationErrors.ZeroAddress(&quot;user&quot;)</code> if <code>user == address(0)</code>.</li>
+<li><code>requireSolvent(user, address(0), collateral, ISOLATED)</code>: rejects with <code>BalanceErrors.NotSolvent</code> if a Party A is in isolated liquidation, or if a Party B has any active isolated liquidation (<code>LibParty.isSolvent</code>, <code>contracts/libraries/models/LibParty.sol:21</code>).</li>
+<li><code>BalanceErrors.BalanceLimitExceeded</code> for non-Party B users when the post-credit isolated balance would breach <code>appLayout.balanceLimitPerUser[collateral]</code>.</li>
+</ul>
+</li>
+</ul>
+<h3 id="events">Events</h3>
+<p><code>Deposit(sender, user, collateral, amount, newBalance)</code> from <code>IAccountEvents</code> (<code>contracts/facets/Account/IAccountEvents.sol:8</code>). For <code>virtualDepositFor</code>, both <code>Deposit</code> and <code>VirtualDeposit</code> are emitted so existing indexers continue to work without losing the &quot;no token movement&quot; signal.</p>
+<h3 id="notes-on-decimals">Notes On Decimals</h3>
+<ul>
+<li><code>amount</code> parameter is in collateral decimals (e.g. 6 for USDC).</li>
+<li><code>safeTransferFrom</code> uses the raw amount.</li>
+<li>Internal <code>isolatedBalance</code> is bumped by <code>amount * 1e18 / 10**decimals</code>. Tokens with fewer than 18 decimals lose precision on the way out; tokens with more than 18 decimals would underflow the credited amount (the protocol assumes ≤ 18-decimal collaterals).</li>
+</ul>
+<h2 id="internal-and-external-transfers">Internal And External Transfers</h2>
+<h3 id="internaltransfercollateral-user-amount"><code>internalTransfer(collateral, user, amount)</code></h3>
+<p><code>AccountFacet.internalTransfer</code> (<code>contracts/facets/Account/AccountFacet.sol:92</code>) moves available isolated balance to another in-protocol user. The flow lives in <code>LibBalanceOperations.internalTransfer</code> (<code>contracts/libraries/core/LibBalanceOperations.sol:64</code>).</p>
+<ul>
+<li><code>amount</code> is <strong>already 18d</strong> (no normalization).</li>
+<li>The sender&#39;s full counterparty list is synced via <code>syncAll()</code> so any matured scheduled releases are realized before the availability check.</li>
+<li>Availability is <code>isolatedBalance - isolatedLockedBalance</code>; any shortfall reverts <code>BalanceErrors.InsufficientBalance</code>.</li>
+<li>Recipient balance limit applies only when the recipient is not a Party B.</li>
+<li>Modifiers: <code>whenInternalTransferNotPaused</code>, <code>whenNotSuspended</code> (sender and recipient), <code>whenInstantModeIsNotActive(msg.sender)</code>, <code>whenPartyNotPaused</code> for both, and <code>onlyNotPartyB(msg.sender)</code>. Party B accounts cannot use internal transfer at all.</li>
+<li>No reentrancy guard: there is no external call.</li>
+<li>Emits <code>InternalTransfer(sender, receiver, collateral, amount, newReceiverBalance, newSenderBalance)</code>.</li>
+</ul>
+<h3 id="externaltransfercollateral-user-amount-target"><code>externalTransfer(collateral, user, amount, target)</code></h3>
+<p><code>AccountFacet.externalTransfer</code> (<code>contracts/facets/Account/AccountFacet.sol:125</code>) is a privileged ERC20 escape valve to a whitelisted target contract.</p>
+<ul>
+<li><code>amount</code> is internal 18d; the library calls <code>LibDecimals.denormalizeAmount</code> before invoking the ERC20.</li>
+<li>The target must be present in <code>accountLayout.externalTransferTargets[target][collateral]</code> (whitelisted via <code>ControlFacet.setExternalTransferTargetValidationStatus</code>, <code>contracts/facets/Control/ControlFacet.sol:917</code>). Otherwise <code>ValidationErrors.ExternalTransferTargetNotWhitelisted</code>.</li>
+<li>The library debits via <code>isolatedSub(amount, EXTERNAL_TRANSFER)</code>, so it does <strong>not</strong> consult <code>isolatedLockedBalance</code> separately — it only protects against over-spending the gross isolated total. (Callers must be aware that an external transfer can drain past locked intent margin if <code>isolatedBalance</code> was inflated by a recent credit.)</li>
+<li>After <code>safeTransfer</code>, the library calls <code>IExternalTransferTarget(target).onTransfer(collateral, sender, receiver, amount)</code> (<code>contracts/interfaces/IExternalTransferTarget.sol:15</code>). The target is expected to update its own books to credit <code>receiver</code>.</li>
+<li>Modifiers: <code>nonReentrant</code>, <code>whenNotExternalTransferPaused</code>, <code>whenNotSuspended(msg.sender)</code>, <code>whenInstantModeIsNotActive(msg.sender)</code>, <code>whenPartyNotPaused(msg.sender)</code>. Note: the <strong>recipient</strong> is not validated for suspension because it is the off-chain identity inside the target contract, not a Diamond user.</li>
+</ul>
+<h4 id="why-ontransfer-exists">Why <code>onTransfer</code> Exists</h4>
+<p>External transfers are how the Diamond hands off collateral to other settlement venues (other Symmio cores, partner protocols, vaults). The callback gives the target the same <code>(collateral, sender, receiver, amount)</code> tuple in 18-decimal form so it can mirror the credit without re-reading ERC20 balances. Because the call happens <strong>after</strong> the ERC20 transfer, a target with insufficient gas or a reverting <code>onTransfer</code> undoes everything via the natural revert cascade — but a trusted target can still front-run its own logic. Targets must therefore be vetted before whitelisting.</p>
+<h4 id="security-implications">Security Implications</h4>
+<ul>
+<li><code>nonReentrant</code> guards against the target re-entering <code>AccountFacet</code>, but the target receives funds <strong>before</strong> any cross-cutting reentrancy from other facets is reasonable; treat the whitelist as a privileged surface.</li>
+<li>The whitelist is per <code>(target, collateral)</code> so an attacker cannot extend an approval for one collateral to another.</li>
+<li>The 18-decimal <code>amount</code> handed to <code>onTransfer</code> matches what the Diamond debited; mismatches between the ERC20 amount actually transferred and the 18d <code>amount</code> are possible only when the collateral has more than 18 decimals.</li>
+</ul>
+<h2 id="withdrawal-flows">Withdrawal Flows</h2>
+<p>The withdrawal lifecycle is a small state machine over <code>Withdraw.status</code> (<code>contracts/types/WithdrawTypes.sol:32</code>):</p>
+<pre><code class="language-mermaid">stateDiagram-v2
+    [*] --&gt; INITIATED: initiateWithdraw / initiateExpressWithdraw
+    INITIATED --&gt; COMPLETED: completeWithdraw after cooldown
+    INITIATED --&gt; CANCELED: cancelWithdraw (non-express only)
+    INITIATED --&gt; SUSPENDED: suspendWithdraw (SUSPENDER_ROLE)
+    SUSPENDED --&gt; INITIATED: restoreWithdraw(validAmount) (DISPUTER_ROLE)
+    INITIATED --&gt; CANCELED: ClearingHouseFacet.confiscateWithdrawal (during liquidation)
+    COMPLETED --&gt; [*]
+    CANCELED --&gt; [*]
+</code></pre>
+<h3 id="initiatewithdraw-and-initiateexpresswithdraw"><code>initiateWithdraw</code> And <code>initiateExpressWithdraw</code></h3>
+<p>Both go through <code>LibBalanceOperations.initiateWithdraw</code> (<code>contracts/libraries/core/LibBalanceOperations.sol:104</code>).</p>
+<ul>
+<li><code>to == address(0)</code> reverts <code>ValidationErrors.ZeroAddress(&quot;to&quot;)</code>.</li>
+<li><code>amount == 0</code> reverts <code>ValidationErrors.ZeroAmount</code>.</li>
+<li><code>amount</code> is in <strong>18 decimals</strong> at the public boundary (it is later denormalized in <code>completeWithdraw</code>).</li>
+<li>If <code>accountLayout.manualSync[sender]</code> is false, the sender&#39;s full counterparty list is synced first.</li>
+<li>Availability check uses <code>isolatedBalance - isolatedLockedBalance</code>; shortfall reverts <code>BalanceErrors.InsufficientBalance</code>.</li>
+<li>Solvency: <code>requireSolvent(sender, address(0), collateral, ISOLATED)</code> — both Party A and Party B must be free of isolated liquidations.</li>
+<li>For express withdraws (<code>provider != address(0)</code>):<ul>
+<li><code>accountLayout.expressWithdrawProviderConfigs[provider][collateral].isActive</code> must be true, else <code>BalanceErrors.ExpressWithdrawProviderNotActive</code>.</li>
+<li><code>providerConfig.receiver != address(0)</code>, else <code>ValidationErrors.ZeroAddress(&quot;receiver&quot;)</code>.</li>
+<li>The provider&#39;s <code>IExpressWithdrawProvider.validateWithdraw(sender, collateral, amount, to, userData)</code> must return <code>(true, _)</code>. A failure reverts <code>BalanceErrors.ExpressWithdrawRejectedByProvider(provider, reason)</code>.</li>
+<li><code>isVirtual</code> on the request is taken from <code>providerConfig.isVirtual</code>. A virtual express withdraw never moves ERC20 on completion — it only flips state.</li>
+</ul>
+</li>
+<li>The library debits <code>isolatedSub(amount, WITHDRAW)</code>, increments <code>lastWithdrawId</code>, and stores a <code>Withdraw</code> struct keyed by id.</li>
+</ul>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant User
+    participant Facet as AccountFacet
+    participant Lib as LibBalanceOperations
+    participant Bal as ScheduledReleaseBalance
+    participant Provider as IExpressWithdrawProvider
+    participant ERC20
+
+    User-&gt;&gt;Facet: initiateWithdraw / initiateExpressWithdraw
+    Facet-&gt;&gt;Lib: initiateWithdraw(...)
+    Lib-&gt;&gt;Bal: syncAll() if !manualSync
+    Lib-&gt;&gt;Lib: availability + solvency checks
+    opt express
+        Lib-&gt;&gt;Provider: validateWithdraw(...)
+        Provider--&gt;&gt;Lib: (true, &quot;&quot;) or (false, reason)
+    end
+    Lib-&gt;&gt;Bal: isolatedSub(amount, WITHDRAW)
+    Lib-&gt;&gt;Lib: store Withdraw{INITIATED, isVirtual?}
+    Facet--&gt;&gt;User: emit InitiateWithdraw (+ InitiateExpressWithdraw)
+
+    Note over User,ERC20: time passes (cooldown)
+
+    User-&gt;&gt;Facet: completeWithdraw(id)
+    Facet-&gt;&gt;Lib: completeWithdraw(id)
+    Lib-&gt;&gt;Lib: requireStatus(INITIATED), cooldown check
+    Lib-&gt;&gt;Lib: status = COMPLETED
+    alt isVirtual
+        Note right of Lib: no ERC20 movement
+    else
+        Lib-&gt;&gt;ERC20: safeTransfer(receiver, denormalized amount)
+    end
+    Facet--&gt;&gt;User: emit CompleteWithdraw
+</code></pre>
+<h3 id="completewithdraw"><code>completeWithdraw</code></h3>
+<p><code>LibBalanceOperations.completeWithdraw</code> (<code>contracts/libraries/core/LibBalanceOperations.sol:184</code>).</p>
+<ul>
+<li><code>id &gt; lastWithdrawId</code> reverts <code>BalanceErrors.InvalidWithdrawalId</code>.</li>
+<li>Status must be <code>INITIATED</code> (<code>ValidationErrors.requireStatus</code>).</li>
+<li>Cooldown is <code>appLayout.partyADeallocateCooldown</code> for Party A and <code>appLayout.partyBDeallocateCooldown</code> for Party B (<code>contracts/facets/Control/ControlFacet.sol:163</code>). Calls before <code>withdrawal.timestamp + cooldown</code> revert <code>ValidationErrors.CooldownNotOver(&quot;withdraw&quot;, ...)</code>.</li>
+<li>The receiver is <code>withdrawal.to</code> for normal withdraws, or <code>accountLayout.expressWithdrawProviderConfigs[provider][collateral].receiver</code> for express withdraws.</li>
+<li>Virtual withdraws (<code>isVirtual == true</code>) skip the ERC20 transfer entirely — they exist purely to signal off-chain settlement.</li>
+<li>Modifiers on the facet: <code>nonReentrant</code>, <code>whenWithdrawingNotPaused</code>, <code>whenWithdrawalNotSuspended(id)</code>, <code>whenPartyNotPaused(msg.sender)</code>.</li>
+</ul>
+<h3 id="cancelwithdraw"><code>cancelWithdraw</code></h3>
+<p><code>LibBalanceOperations.cancelWithdraw</code> (<code>contracts/libraries/core/LibBalanceOperations.sol:216</code>).</p>
+<ul>
+<li>Express withdrawals cannot be cancelled by the user: <code>BalanceErrors.ExpressWithdrawCancellationNotAllowed</code>. They are economically already settled to the provider.</li>
+<li>Status must be <code>INITIATED</code>.</li>
+<li>Balance limit is re-checked for non-Party B users before re-credit.</li>
+<li>Solvency check <code>requireSolvent(user, address(0), collateral, ISOLATED)</code> ensures the cancellation does not paper over a now-active liquidation.</li>
+<li>The amount returns to <code>isolatedBalance</code> via <code>instantIsolatedAdd(amount, DEPOSIT)</code> — the original counterparty context is intentionally not preserved because withdrawals are pure isolated movements.</li>
+<li>Modifiers: <code>whenWithdrawingNotPaused</code>, <code>whenWithdrawalNotSuspended(id)</code>, <code>whenPartyNotPaused(msg.sender)</code>.</li>
+</ul>
+<h3 id="suspendwithdraw-and-restorewithdraw"><code>suspendWithdraw</code> And <code>restoreWithdraw</code></h3>
+<ul>
+<li><code>suspendWithdraw(id)</code> is gated on <code>SUSPENDER_ROLE</code> (<code>contracts/utils/Accessibility.sol:36</code>). It flips status to <code>SUSPENDED</code> and prevents <code>complete</code>/<code>cancel</code> until restored. It does <strong>not</strong> refund any balance.</li>
+<li><code>restoreWithdraw(id, validAmount)</code> is gated on <code>DISPUTER_ROLE</code>. Preconditions:<ul>
+<li>Status must be <code>SUSPENDED</code>.</li>
+<li><code>accountLayout.invalidWithdrawalsAmountsPool</code> must be set, else <code>ValidationErrors.ZeroAddress(&quot;invalidWithdrawalsAmountsPool&quot;)</code>.</li>
+<li><code>validAmount &lt;= withdrawal.amount</code>, else <code>BalanceErrors.ValidAmountExceedsOriginal</code>.</li>
+</ul>
+</li>
+<li>The difference <code>(withdrawal.amount - validAmount)</code> is normalized again (via <code>LibDecimals.normalizeAmount</code>) and credited to the configured pool&#39;s isolated balance with reason <code>INVALID_WITHDRAWAL</code>. <strong>Note:</strong> this re-normalizes an already-normalized value, which double-applies the decimal scaling. Operators must understand this when configuring the pool address.</li>
+<li>Status returns to <code>INITIATED</code> and <code>withdrawal.amount</code> is overwritten with <code>validAmount</code> so a subsequent <code>completeWithdraw</code> only releases the validated portion.</li>
+</ul>
+<h3 id="express-withdrawals">Express Withdrawals</h3>
+<p>Express withdrawals provide a cooldown-respecting fast-payout path managed by an external provider:</p>
+<ul>
+<li><code>setExpressWithdrawProviderConfig(provider, collateral, ExpressWithdrawProviderConfig{isActive, isVirtual, receiver})</code> is configured by <code>SETTER_ROLE</code> via <code>ControlFacet</code> (<code>contracts/facets/Control/ControlFacet.sol:887</code>).</li>
+<li><code>initiateExpressWithdraw</code> calls <code>provider.validateWithdraw(...)</code>. The provider is expected to front the user out of band; the Diamond compensates the provider when <code>completeWithdraw</code> runs after the cooldown.</li>
+<li><code>cancelWithdraw</code> is locked out for express withdraws because cancelling would unwind a settlement the provider has already made.</li>
+<li>Suspension/restoration still works on express withdraws.</li>
+<li>Virtual express withdrawals (<code>isVirtual = true</code>) are useful when both sides operate off-chain ledgers and only need on-chain accounting reconciliation; the ERC20 leg is skipped on completion.</li>
+</ul>
+<h3 id="syncbalances"><code>syncBalances</code></h3>
+<p><code>AccountFacet.syncBalances(collateral, partyA, partyBs)</code> (<code>contracts/facets/Account/AccountFacet.sol:252</code>) is permissionless and does not require <code>partyA == msg.sender</code>. It iterates the supplied Party B addresses and calls <code>sync(partyB)</code> on each. This is the explicit poke that <code>manualSync</code> users (typically Party Bs) need to advance their schedules.</p>
+<h2 id="allocation-and-deallocation">Allocation And Deallocation</h2>
+<p><code>allocate</code> and <code>deallocate</code> are the only direct conduits between isolated and cross balance. Both target a specific Party A↔Party B pair.</p>
+<h3 id="allocatecollateral-counterparty-amount"><code>allocate(collateral, counterParty, amount)</code></h3>
+<p><code>LibAllocationOperations.allocate</code> (<code>contracts/libraries/core/LibAllocationOperations.sol:23</code>).</p>
+<ul>
+<li>The pair <code>(msg.sender, counterParty)</code> must contain exactly one Party B. The check is <code>(!cp.isPartyB() &amp;&amp; !sender.isPartyB()) || (cp.isPartyB() &amp;&amp; sender.isPartyB())</code> ⇒ <code>BalanceErrors.InvalidCounterParty</code>.</li>
+<li>For Party A senders, the limit check uses the post-allocation cross balance: <code>crossBalance[cp].balance + amount &gt; balanceLimitPerUser[collateral]</code> ⇒ <code>BalanceErrors.BalanceLimitExceeded</code>.</li>
+<li>Solvency is enforced both in <code>ISOLATED</code> and <code>CROSS</code> modes for the pair.</li>
+<li><code>ScheduledReleaseBalanceOps.allocateBalance</code> (<code>contracts/libraries/models/LibScheduledReleaseBalance.sol:249</code>) checks <code>isolatedBalance - isolatedLockedBalance &gt;= amount</code> and moves the funds without emitting <code>IncreaseBalance</code>/<code>DecreaseBalance</code> (the <code>Allocate</code> event from the facet covers it).</li>
+<li>Facet modifiers: <code>whenNotSuspended(msg.sender)</code>, <code>whenInstantModeIsNotActive(msg.sender)</code>, <code>whenPartyNotPaused(msg.sender)</code>. There is no global allocation pause.</li>
+</ul>
+<h3 id="deallocatecollateral-counterparty-amount-ispartyb-upnlsig"><code>deallocate(collateral, counterParty, amount, isPartyB, upnlSig)</code></h3>
+<p><code>LibAllocationOperations.deallocate</code> (<code>contracts/libraries/core/LibAllocationOperations.sol:45</code>).</p>
+<ul>
+<li><code>isPartyB</code> is a self-declaration that must match <code>msg.sender</code>&#39;s actual side; the validator paths use it to choose which oracle id (<code>partyBConfigs[msg.sender|counterParty].oracleId</code>) to feed <code>LibMuon.verifyUpnlSig</code>.</li>
+<li><code>LibMuon.verifyUpnlSig</code> (<code>contracts/libraries/services/LibMuon.sol:59</code>) hashes <code>(reqId, diamond, &quot;verifyUpnlSig&quot;, party, counterParty, partyUpnl, counterPartyUpnl, collateral, collateralPrice, nonces[party][counterParty], timestamp, chainId)</code> and calls <code>IMuonOracle.verifyTSSAndGW</code>. Expired or replayed signatures revert via <code>ValidationErrors.ExpiredSignature</code> or the underlying oracle.</li>
+<li>Path split:<ul>
+<li><code>isPartyB = false</code> (Party A caller) → <code>deallocateForPartyAValidation</code>. Computes <code>partyAReadyToDeallocate = min(crossBalance, balance + uPnL_in_collateral - totalMM - locked)</code>. If Party B&#39;s available balance after uPnL is negative, Party A must &quot;cover the debt&quot; — the deallocation is rejected if <code>partyAReadyToDeallocate - amount &lt; -debt</code>. Loss coverage uses <code>partyBConfigs[counterParty].lossCoverage</code> when Party B&#39;s uPnL is negative. After validation, an isolated balance limit check applies for non-Party A→Party B pairs (it always applies because Party A is never Party B here).</li>
+<li><code>isPartyB = true</code> (Party B caller) → <code>deallocateForPartyBValidation</code>. Requires Party A to be solvent (<code>partyA cross balance + uPnL ≥ totalMM</code>). Then either bounds Party B by <code>min(balance, balance + uPnL)</code> when uPnL is non-negative, or by the loss-coverage requirement when uPnL is negative.</li>
+</ul>
+</li>
+<li>Both paths re-check <code>requireSolvent</code> for both <code>ISOLATED</code> and <code>CROSS</code> after validation.</li>
+<li><code>ScheduledReleaseBalanceOps.deallocateBalance</code> decrements <code>crossBalance[cp].balance</code> (note: this can drive <code>balance</code> below zero for Party A shorts paying realized PnL, but never as a direct effect of deallocation since deallocation requires positive headroom).</li>
+<li>Facet modifiers: same as <code>allocate</code>.</li>
+</ul>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant Caller
+    participant Facet as AccountFacet
+    participant Alloc as LibAllocationOperations
+    participant Muon as LibMuon
+    participant Oracle as IMuonOracle
+    participant Bal as ScheduledReleaseBalance
+
+    Caller-&gt;&gt;Facet: deallocate(collateral, cp, amount, isPartyB, upnlSig)
+    Facet-&gt;&gt;Alloc: deallocate(...)
+    Alloc-&gt;&gt;Muon: verifyUpnlSig(sig, oracleId, nonce[party][cp])
+    Muon-&gt;&gt;Oracle: verifyTSSAndGW(hash, reqId, sigs, gwSig)
+    alt isPartyB
+        Alloc-&gt;&gt;Alloc: deallocateForPartyBValidation
+    else
+        Alloc-&gt;&gt;Alloc: deallocateForPartyAValidation (debt cover)
+    end
+    Alloc-&gt;&gt;Bal: requireSolvent ISOLATED + CROSS
+    Alloc-&gt;&gt;Bal: deallocateBalance(cp, amount)
+    Facet--&gt;&gt;Caller: emit Deallocate
+</code></pre>
+<h3 id="why-exactly-one-party-b-per-pair">Why &quot;Exactly One Party B&quot; Per Pair</h3>
+<p>Cross-margin balances are defined as the bilateral state between one Party A (taker) and one Party B (maker). Allowing two Party As or two Party Bs in a <code>crossBalance</code> slot would break the solvency invariants encoded in <code>LibAllocationOperations</code> — those formulas hard-code which side carries <code>totalMM</code>, which side benefits from <code>lossCoverage</code>, and which uPnL belongs to whom.</p>
+<h2 id="reserve-balance">Reserve Balance</h2>
+<p>Reserve balance is a third pool that sits next to isolated and cross. It exists so a Party B (typically) can pre-fund headroom that the clearing house can pull into a cross slot during a liquidation cascade without requiring new signatures.</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Direction</th>
+<th>Caller</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>allocateToReserveBalance(collateral, amount)</code></td>
+<td>isolated → reserve</td>
+<td>the user</td>
+</tr>
+<tr>
+<td><code>deallocateFromReserveBalance(collateral, amount)</code></td>
+<td>reserve → isolated</td>
+<td>the user</td>
+</tr>
+<tr>
+<td><code>ClearingHouseFacet.allocateFromReserveToCross(party, counterParty, collateral, amount)</code></td>
+<td>reserve → cross (scheduled)</td>
+<td><code>CLEARING_HOUSE_ROLE</code></td>
+</tr>
+</tbody></table>
+<p><code>LibAllocationOperations.allocateToReserveBalance</code> (<code>contracts/libraries/core/LibAllocationOperations.sol:67</code>):</p>
+<ul>
+<li>For Party Bs, requires <code>isSolvent(self, address(0), collateral, ISOLATED)</code>.</li>
+<li>Available isolated must be <code>≥ amount</code> (<code>isolatedBalance - isolatedLockedBalance</code>).</li>
+<li>Non-Party B reserve balance is capped by <code>balanceLimitPerUser[collateral]</code>.</li>
+<li>Mutates <code>isolatedBalance -= amount; reserveBalance += amount</code> directly (no events from the model layer; the facet emits <code>AllocateToReserveBalance</code>).</li>
+</ul>
+<p><code>deallocateFromReserveBalance</code> (<code>contracts/libraries/core/LibAllocationOperations.sol:81</code>):</p>
+<ul>
+<li>Same Party B solvency check.</li>
+<li><code>reserveBalance &gt;= amount</code>, else <code>BalanceErrors.InsufficientBalance</code>.</li>
+<li>Non-Party B isolated balance limit re-checked.</li>
+</ul>
+<p><code>LibClearingHouse.allocateFromReserveToCross</code> (<code>contracts/libraries/core/LibClearingHouse.sol:249</code>) is callable only from <code>ClearingHouseFacet</code> (which holds <code>CLEARING_HOUSE_ROLE</code>). It debits <code>reserveBalance</code> and calls <code>scheduledAdd(counterParty, amount, CROSS, ALLOCATE_FROM_RESERVE)</code>. Because the margin type is CROSS, the credit lands instantly on <code>crossBalance[counterParty].balance</code> — there is no scheduled bucket for cross movements; the CROSS branch of <code>scheduledAdd</code> is an instant add.</p>
+<p>Reserve balance is not consulted by deposit limits, internal transfers, withdrawals, or normal allocation. It is dead weight from the user&#39;s perspective until either the user reclaims it or the clearing house pulls it.</p>
+<h2 id="scheduled-release-model">Scheduled Release Model</h2>
+<p><code>ScheduledReleaseEntry</code> (<code>contracts/types/BalanceTypes.sol:24</code>) implements a two-bucket &quot;two-bus&quot; pipeline per counterparty. A credit enters <code>scheduled</code>, advances to <code>transitioning</code> after one <code>releaseInterval</code>, then to <code>isolatedBalance</code> after another. The <code>transitioning</code> bucket is the second-bus position; the <code>scheduled</code> bucket is the first.</p>
+<pre><code class="language-mermaid">flowchart LR
+    Credit[scheduledAdd ISOLATED] --&gt; S[scheduled]
+    S --&gt;|tick 1: lastTransitionTimestamp + interval| T[transitioning]
+    T --&gt;|tick 2: lastTransitionTimestamp + 2*interval| Free[isolatedBalance]
+    S --&gt;|releaseInterval == 0| Free
+</code></pre>
+<h3 id="scheduledadd"><code>scheduledAdd</code></h3>
+<p><code>ScheduledReleaseBalanceOps.scheduledAdd</code> (<code>contracts/libraries/models/LibScheduledReleaseBalance.sol:91</code>):</p>
+<ul>
+<li><code>value == 0</code> is a no-op.</li>
+<li><code>MarginType.CROSS</code> ⇒ instantly mutates <code>crossBalance[counterParty].balance += value</code> and emits <code>IncreaseBalance(..., isInstant=true, CROSS)</code>. This is how every cross-margin credit (PnL settlement, fees to a cross collector, reserve→cross promotion) lands without delay.</li>
+<li><code>MarginType.ISOLATED</code>:<ol>
+<li>If <code>accountLayout.manualSync[self.user]</code> is false, ensure <code>counterParty</code> is tracked via <code>addCounterParty</code>. Adding fails if <code>counterPartyAddresses.length == maxConnectedCounterParties</code> and a <code>syncAll()</code> did not free a slot — <code>BalanceErrors.MaxCounterPartyConnectionsReached</code>.</li>
+<li>Run <code>_sync(counterParty)</code> first to realize anything mature.</li>
+<li>If <code>counterParty.getReleaseInterval() == 0</code>, fall back to <code>instantIsolatedAdd</code> (no scheduling at all).</li>
+<li>Otherwise increment <code>entry.scheduled += value</code>.</li>
+</ol>
+</li>
+</ul>
+<h3 id="sync"><code>_sync</code></h3>
+<p><code>_sync</code> (<code>contracts/libraries/models/LibScheduledReleaseBalance.sol:302</code>) is the heart of the pipeline:</p>
+<ol>
+<li>If <code>counterParty</code> is not solvent (via <code>isSolvent(counterParty, self.user, collateral, ISOLATED)</code>), the function returns early — <strong>scheduled funds stay frozen</strong> until the counterparty&#39;s liquidation clears. This is critical: it prevents Party A from harvesting premium before Party B&#39;s exposure to that Party A is settled.</li>
+<li>If the user-specific or default release interval has changed since <code>entry.releaseInterval</code> was last set, the function re-initializes:<ul>
+<li>Aligns <code>lastTransitionTimestamp</code> to the new interval boundary.</li>
+<li>If the new interval is zero, drains both buckets into <code>isolatedBalance</code> immediately.</li>
+<li>Otherwise merges <code>transitioning</code> into <code>scheduled</code> (because the two-bus geometry only makes sense relative to the active interval).</li>
+</ul>
+</li>
+<li>With <code>releaseInterval == 0</code> and no change, returns.</li>
+<li>Computes <code>intervals = (block.timestamp - lastTransitionTimestamp) / releaseInterval</code>. If zero, returns.</li>
+<li>Bus advancement:<ul>
+<li>If two buses have passed (<code>block.timestamp &gt;= thisTransitionTimestamp + interval</code>), both buckets flush to <code>isolatedBalance</code>.</li>
+<li>Else if one bus has passed, <code>transitioning</code> flushes and <code>scheduled</code> is promoted into <code>transitioning</code>.</li>
+</ul>
+</li>
+<li>Re-aligns <code>lastTransitionTimestamp</code> to the current interval start.</li>
+<li>Calls <code>tryRemoveCounterParty</code> to free the slot if both buckets are empty and there are no active trades for the pair (<code>TradeStorage.activeTradesOfPartyAWithPartyBCount</code>).</li>
+</ol>
+<h3 id="sync-vs-syncall"><code>sync</code> vs <code>syncAll</code></h3>
+<ul>
+<li><code>sync(counterParty)</code> is the targeted poke; <code>syncBalances</code> calls it for a list, the deposit/withdraw/internal-transfer paths invoke <code>syncAll</code> indirectly via <code>manualSync</code>.</li>
+<li><code>syncAll()</code> iterates <code>counterPartyAddresses</code> in reverse (so removals during the loop don&#39;t skip indices) and calls <code>_sync</code> per entry.</li>
+</ul>
+<h3 id="manualsync"><code>manualSync</code></h3>
+<p>When <code>accountLayout.manualSync[user]</code> is true (set automatically for Party B in <code>ControlFacet.setPartyBConfig</code>, <code>contracts/facets/Control/ControlFacet.sol:397</code>), the user is <strong>not</strong> auto-tracked as a counterparty when receiving scheduled credits, and the sync paths inside <code>internalTransfer</code> and <code>initiateWithdraw</code> skip the implicit <code>syncAll</code>. This dodges the <code>maxConnectedCounterParties</code> ceiling for solvers that face many takers, but obliges the user to call <code>syncBalances</code> (or <code>sync</code> indirectly) to realize matured funds before a withdraw or transfer.</p>
+<h3 id="behavior-during-counterparty-liquidation">Behavior During Counterparty Liquidation</h3>
+<p><code>_sync</code> short-circuits while the counterparty has an active liquidation id. As a consequence:</p>
+<ul>
+<li>Free isolated balance is unchanged for credits originating from that counterparty.</li>
+<li>A user can still spend their pre-existing <code>isolatedBalance</code> on withdraws/transfers (those have already passed <code>_sync</code> for unrelated counterparties).</li>
+<li>Once the liquidation is cleared, the next call into <code>_sync</code> (from any path) catches the user up.</li>
+</ul>
+<h3 id="edge-cases">Edge Cases</h3>
+<ul>
+<li><strong>Premium on isolated trades</strong> lands via <code>scheduledAdd(otherParty, amount, ISOLATED, PREMIUM)</code> — both Party A premium credits (<code>LibPartyBClose.sol:117</code>) and Party B premium credits (<code>LibPartyBOpen.sol:359</code>, <code>LibPartyBClose.sol:113</code>) flow through this pipeline.</li>
+<li><strong>Realized PnL</strong> uses <code>scheduledAdd(otherParty, amount, marginType, REALIZED_PNL)</code> for both isolated and cross margin (<code>LibTradeOperations.sol:180</code>, <code>:188</code>). For cross margin the credit is instant, for isolated it queues.</li>
+<li><strong>Solver fees</strong> for cross margin land via <code>scheduledAdd(partyA, ..., CROSS, SOLVER_FEE)</code> (<code>LibPartyBOpen.sol:332</code>, <code>LibPartyBClose.sol:151</code>) — instant on cross, but tagged with the Party A counterparty so the solver fee collector sees the relationship.</li>
+<li><strong>Liquidation distributions</strong> go through <code>scheduledAdd(partyB, amount, marginType, LIQUIDATION)</code> in <code>LibClearingHouse.sol:299</code> — for cross liquidations the credit is instant, for isolated it joins the queue.</li>
+<li><strong>Counterparty removal</strong> is gated on <code>activeTradesOfPartyAWithPartyBCount[user][collateral][counterParty] == 0</code> so a user with open trades against a counterparty is never removed from tracking even with empty buckets.</li>
+</ul>
+<h2 id="cross-margin-nonces">Cross-Margin Nonces</h2>
+<p><code>AccountStorage.nonces[partyA][partyB]</code> and <code>nonces[partyB][partyA]</code> are bilateral counters that protect off-chain Muon signatures from replay.</p>
+<ul>
+<li>The nonce for <code>(party, counterParty)</code> is mixed into <code>LibMuon.verifyUpnlSig</code> (<code>contracts/libraries/services/LibMuon.sol:85</code>) so a single <code>UpnlSig</code> is bound to the exact pair-state at signing time.</li>
+<li>Both directions are incremented after balance-affecting trade actions, ensuring signatures issued before the action become invalid for either side:<ul>
+<li>Open intent fill by Party B: <code>LibPartyBOpen.sol:365-366</code>.</li>
+<li>Close intent fill by Party B: <code>LibPartyBClose.sol:170-171</code>.</li>
+<li>Settlement execution: <code>LibTradeOperations.sol:233-234</code>.</li>
+</ul>
+</li>
+<li><code>ViewFacet</code> exposes <code>getNonce(party, counterParty)</code> (<code>contracts/facets/View/ViewFacet.sol:200</code>) so off-chain signers can fetch the value before requesting a Muon signature.</li>
+</ul>
+<p>Off-chain implications: any service producing a <code>UpnlSig</code> for a Party A↔Party B pair must read the on-chain nonce for <code>(party, counterParty)</code> and include it in the Muon request payload. Stale signatures cannot be reused for any subsequent action against the same pair.</p>
+<h2 id="errors-reference">Errors Reference</h2>
+<p>Every error this facet surface can throw, with cause:</p>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Source</th>
+<th>Cause</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>ValidationErrors.CollateralNotWhitelisted(collateral)</code></td>
+<td><code>LibBalanceOperations._deposit</code></td>
+<td>Collateral not in <code>AppStorage.whiteListedCollateral</code></td>
+</tr>
+<tr>
+<td><code>ValidationErrors.ZeroAmount()</code></td>
+<td>deposit, transfer, withdraw, initiate</td>
+<td><code>amount == 0</code></td>
+</tr>
+<tr>
+<td><code>ValidationErrors.ZeroAddress(prop)</code></td>
+<td>many</td>
+<td><code>user</code>, <code>to</code>, <code>target</code>, <code>counterParty</code>, <code>receiver</code>, <code>invalidWithdrawalsAmountsPool</code> is zero</td>
+</tr>
+<tr>
+<td><code>ValidationErrors.ExternalTransferTargetNotWhitelisted(target, collateral)</code></td>
+<td><code>externalTransfer</code></td>
+<td>Target not in <code>accountLayout.externalTransferTargets</code></td>
+</tr>
+<tr>
+<td><code>ValidationErrors.CooldownNotOver(&quot;withdraw&quot;, now, due)</code></td>
+<td><code>completeWithdraw</code></td>
+<td>Called before <code>partyA/BDeallocateCooldown</code> elapsed</td>
+</tr>
+<tr>
+<td><code>ValidationErrors.InvalidState(&quot;WithdrawStatus&quot;, current, [expected])</code></td>
+<td><code>completeWithdraw</code>, <code>cancelWithdraw</code>, <code>suspendWithdraw</code>, <code>restoreWithdraw</code></td>
+<td>Status not as required by <code>requireStatus</code></td>
+</tr>
+<tr>
+<td><code>ValidationErrors.ExpiredSignature(now, t, valid, expiry)</code></td>
+<td><code>LibMuon.verifyUpnlSig</code></td>
+<td>uPnL signature older than <code>appLayout.upnlSigValidTime</code></td>
+</tr>
+<tr>
+<td><code>ValidationErrors.MissingRole(sender, role)</code></td>
+<td><code>virtualDepositFor</code>, <code>suspendWithdraw</code>, <code>restoreWithdraw</code></td>
+<td>Caller lacks <code>VIRTUAL_DEPOSITOR_ROLE</code>, <code>SUSPENDER_ROLE</code>, or <code>DISPUTER_ROLE</code></td>
+</tr>
+<tr>
+<td><code>ValidationErrors.PartyBUser(user)</code></td>
+<td><code>internalTransfer</code></td>
+<td>Sender is a Party B (blocked by <code>onlyNotPartyB</code>)</td>
+</tr>
+<tr>
+<td><code>BalanceErrors.InsufficientBalance(user, token, requested, available)</code></td>
+<td><code>internalTransfer</code>, <code>initiateWithdraw</code>, <code>allocateBalance</code>, <code>subForCounterParty</code>, reserve ops, <code>isolatedSub</code></td>
+<td>Free isolated &lt; requested, or reserve &lt; requested</td>
+</tr>
+<tr>
+<td><code>BalanceErrors.InsufficientIntBalance(user, token, requested, available)</code></td>
+<td><code>deallocateForPartyAValidation</code>, <code>deallocateForPartyBValidation</code>, <code>confiscate</code></td>
+<td>Cross headroom (signed) less than requested</td>
+</tr>
+<tr>
+<td><code>BalanceErrors.InsufficientLockedBalance(token, requested, balance)</code></td>
+<td><code>isolatedUnlock</code>, <code>crossUnlock</code></td>
+<td>Unlock more than was locked</td>
+</tr>
+<tr>
+<td><code>BalanceErrors.InsufficientMMBalance(token, requested, balance)</code></td>
+<td><code>decreaseMM</code></td>
+<td>Decrement more MM than tracked</td>
+</tr>
+<tr>
+<td><code>BalanceErrors.BalanceLimitExceeded(balance, amount, limit)</code></td>
+<td>deposit, internal transfer, allocate, deallocate, reserve, cancel</td>
+<td>Non-Party B post-credit would exceed <code>balanceLimitPerUser</code></td>
+</tr>
+<tr>
+<td><code>BalanceErrors.MaxCounterPartyConnectionsReached(current, max)</code></td>
+<td><code>addCounterParty</code></td>
+<td>Tracked-counterparty count at cap and <code>syncAll</code> could not free a slot</td>
+</tr>
+<tr>
+<td><code>BalanceErrors.InvalidSyncTimestamp(now, last)</code></td>
+<td><code>_sync</code></td>
+<td>Clock skew (should be unreachable in production)</td>
+</tr>
+<tr>
+<td><code>BalanceErrors.BalanceSetupRequired()</code></td>
+<td>any op gated by <code>checkSetup</code></td>
+<td>Slot mutated before <code>setup</code> initialized <code>user</code>/<code>collateral</code></td>
+</tr>
+<tr>
+<td><code>BalanceErrors.InvalidCounterParty(party, counterParty)</code></td>
+<td><code>allocate</code></td>
+<td>Pair not exactly one Party B</td>
+</tr>
+<tr>
+<td><code>BalanceErrors.InsufficientDebtCoverage(party, cp, ready, amount, debt)</code></td>
+<td><code>deallocateForPartyAValidation</code></td>
+<td>Party A leaving would leave Party B insolvent post-loss-coverage</td>
+</tr>
+<tr>
+<td><code>BalanceErrors.NotSolvent(user, cp, collateral, marginType)</code></td>
+<td><code>requireSolvent</code>, <code>deallocateForPartyBValidation</code></td>
+<td>Active liquidation id present, or post-deallocation solvency fails</td>
+</tr>
+<tr>
+<td><code>BalanceErrors.InvalidWithdrawalId(id)</code></td>
+<td><code>completeWithdraw</code>, <code>cancelWithdraw</code></td>
+<td><code>id &gt; lastWithdrawId</code></td>
+</tr>
+<tr>
+<td><code>BalanceErrors.ExpressWithdrawCancellationNotAllowed(provider)</code></td>
+<td><code>cancelWithdraw</code></td>
+<td>Express withdraws are non-cancellable</td>
+</tr>
+<tr>
+<td><code>BalanceErrors.ExpressWithdrawProviderNotActive(provider)</code></td>
+<td><code>initiateExpressWithdraw</code></td>
+<td>Provider config inactive</td>
+</tr>
+<tr>
+<td><code>BalanceErrors.ExpressWithdrawProviderReceiverNotSet(provider)</code></td>
+<td>(declared, used by configuration paths)</td>
+<td>Receiver missing</td>
+</tr>
+<tr>
+<td><code>BalanceErrors.ExpressWithdrawRejectedByProvider(provider, reason)</code></td>
+<td><code>initiateExpressWithdraw</code></td>
+<td><code>validateWithdraw</code> returned false</td>
+</tr>
+<tr>
+<td><code>BalanceErrors.ValidAmountExceedsOriginal(given, original)</code></td>
+<td><code>restoreWithdraw</code></td>
+<td>Disputer attempted to restore more than the original amount</td>
+</tr>
+<tr>
+<td><code>SystemErrors.GlobalPaused / DepositingPaused / WithdrawingPaused / InternalTransferPaused / ExternalTransferPaused / ExpressWithdrawPaused / PartyAActionsPaused / PartyBActionsPaused</code></td>
+<td><code>Pausable</code> modifiers</td>
+<td>Global or scoped pause active</td>
+</tr>
+<tr>
+<td><code>SystemErrors.UserSuspended(user)</code></td>
+<td><code>whenNotSuspended</code>, <code>whenWithdrawalNotSuspended</code></td>
+<td>Sender, recipient, or withdrawal participant suspended</td>
+</tr>
+<tr>
+<td><code>SystemErrors.WithdrawalSuspended(id)</code></td>
+<td><code>whenWithdrawalNotSuspended</code></td>
+<td>Withdrawal flagged by <code>suspendWithdraw</code></td>
+</tr>
+<tr>
+<td><code>PartyRelationsErrors.InstantModeActive(sender)</code></td>
+<td><code>whenInstantModeIsNotActive</code></td>
+<td>Sender is in instant-action mode and call is not from <code>InstantLayer</code></td>
+</tr>
+</tbody></table>
+<h2 id="related-code-map">Related Code Map</h2>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>File</th>
+<th>Line range</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Public surface</td>
+<td><code>contracts/facets/Account/AccountFacet.sol</code></td>
+<td>36–328</td>
+</tr>
+<tr>
+<td>Interface and events</td>
+<td><code>contracts/facets/Account/IAccountFacet.sol</code>, <code>IAccountEvents.sol</code></td>
+<td>full</td>
+</tr>
+<tr>
+<td>Deposit/withdraw/transfer logic</td>
+<td><code>contracts/libraries/core/LibBalanceOperations.sol</code></td>
+<td>32–244</td>
+</tr>
+<tr>
+<td>Allocation/deallocation logic</td>
+<td><code>contracts/libraries/core/LibAllocationOperations.sol</code></td>
+<td>23–149</td>
+</tr>
+<tr>
+<td>Balance struct + ops</td>
+<td><code>contracts/libraries/models/LibScheduledReleaseBalance.sol</code></td>
+<td>25–462</td>
+</tr>
+<tr>
+<td>Account storage layout</td>
+<td><code>contracts/storages/AccountStorage.sol</code></td>
+<td>13–35</td>
+</tr>
+<tr>
+<td>Balance/withdraw types</td>
+<td><code>contracts/types/BalanceTypes.sol</code>, <code>contracts/types/WithdrawTypes.sol</code></td>
+<td>full</td>
+</tr>
+<tr>
+<td>Party helpers + solvency</td>
+<td><code>contracts/libraries/models/LibParty.sol</code></td>
+<td>17–43</td>
+</tr>
+<tr>
+<td>Decimal normalization</td>
+<td><code>contracts/libraries/utils/LibDecimals.sol</code></td>
+<td>13–21</td>
+</tr>
+<tr>
+<td>Pause and access modifiers</td>
+<td><code>contracts/utils/Pausable.sol</code>, <code>contracts/utils/Accessibility.sol</code></td>
+<td>full</td>
+</tr>
+<tr>
+<td>Express withdraw / external transfer interfaces</td>
+<td><code>contracts/interfaces/IExpressWithdrawProvider.sol</code>, <code>IExternalTransferTarget.sol</code></td>
+<td>full</td>
+</tr>
+<tr>
+<td>Muon uPnL verification</td>
+<td><code>contracts/libraries/services/LibMuon.sol</code></td>
+<td>59–92</td>
+</tr>
+<tr>
+<td>Reserve→cross promotion</td>
+<td><code>contracts/libraries/core/LibClearingHouse.sol</code></td>
+<td>249–254</td>
+</tr>
+<tr>
+<td>Cross-margin nonce increments</td>
+<td><code>LibPartyBOpen.sol:365</code>, <code>LibPartyBClose.sol:170</code>, <code>LibTradeOperations.sol:233</code></td>
+<td>n/a</td>
+</tr>
+<tr>
+<td>Withdraw cooldown configuration</td>
+<td><code>contracts/facets/Control/ControlFacet.sol</code></td>
+<td>152–188</td>
+</tr>
+<tr>
+<td>Release-interval / manual-sync setup</td>
+<td><code>contracts/facets/Control/ControlFacet.sol</code></td>
+<td>297–321, 397</td>
+</tr>
+<tr>
+<td>Express withdraw / external transfer config</td>
+<td><code>contracts/facets/Control/ControlFacet.sol</code></td>
+<td>887–917</td>
+</tr>
+</tbody></table>
+<h2 id="worked-example">Worked Example</h2>
+<p>Suppose <code>partyA = 0xA</code>, <code>partyB = 0xB</code> (active Party B), <code>USDC</code> collateral with 6 decimals, <code>defaultReleaseInterval = 1 hour</code>, <code>partyADeallocateCooldown = 30 minutes</code>, <code>lossCoverage = 1.1e18</code>, no per-user overrides.</p>
+<h3 id="step-1-deposit">Step 1: Deposit</h3>
+<p><code>partyA</code> calls <code>deposit(USDC, 1_000_000_000)</code> (1,000 USDC raw). The library:</p>
+<ul>
+<li>Whitelist + zero checks pass.</li>
+<li><code>requireSolvent(partyA, address(0), USDC, ISOLATED)</code> passes (no liquidations).</li>
+<li>Normalizes <code>1_000_000_000 * 1e18 / 1e6 = 1_000e18</code>.</li>
+<li>Balance limit: <code>0 + 1_000e18 ≤ balanceLimitPerUser[USDC]</code>.</li>
+<li><code>safeTransferFrom(partyA, Diamond, 1_000_000_000)</code>.</li>
+<li><code>setup(partyA, USDC)</code> initializes the slot.</li>
+<li><code>instantIsolatedAdd(1_000e18, DEPOSIT)</code> ⇒ <code>isolatedBalance = 1_000e18</code>.</li>
+</ul>
+<p>State of <code>balances[partyA][USDC]</code> after: <code>isolatedBalance = 1_000e18</code>, all other fields zero.</p>
+<h3 id="step-2-allocate">Step 2: Allocate</h3>
+<p><code>partyA</code> calls <code>allocate(USDC, partyB, 800e18)</code>.</p>
+<ul>
+<li>Pair check: <code>partyB.isPartyB() == true &amp;&amp; partyA.isPartyB() == false</code> ⇒ valid.</li>
+<li>Balance limit on cross side: <code>0 + 800e18 ≤ balanceLimitPerUser</code>.</li>
+<li>Solvency on isolated and cross modes passes.</li>
+<li><code>allocateBalance(partyB, 800e18)</code>: requires <code>1_000e18 - 0 ≥ 800e18</code> ⇒ ok.</li>
+<li>Mutates <code>isolatedBalance = 200e18</code>, <code>crossBalance[partyB].balance = +800e18</code>.</li>
+</ul>
+<h3 id="step-3-trade-fill">Step 3: Trade Fill</h3>
+<p>Off-protocol, <code>partyA</code> opens a CROSS open intent priced so that <code>partyB</code> locks margin and fills. During fill, <code>LibPartyBOpen</code> increments <code>crossBalance[partyA].locked</code> for Party B&#39;s side, deducts premium from Party A and credits Party B (cross premium ⇒ <code>scheduledAdd(partyA, premium, CROSS, PREMIUM)</code> ⇒ instant), and increments both nonces. After the fill:</p>
+<ul>
+<li><code>crossBalance[partyB].balance</code> for Party A: <code>+800e18 - premium - solverFee</code>.</li>
+<li><code>crossBalance[partyA].balance</code> for Party B: includes premium credit and locked margin.</li>
+<li><code>nonces[partyA][partyB] = nonces[partyB][partyA] = 1</code>.</li>
+</ul>
+<h3 id="step-4-settlement">Step 4: Settlement</h3>
+<p>A settlement at expiry runs through <code>LibTradeOperations.settle</code>. Realized PnL of, say, <code>+50e18</code> for Party A is credited as <code>scheduledAdd(partyB, 50e18, CROSS, REALIZED_PNL)</code> ⇒ instant credit to <code>crossBalance[partyB].balance</code> for Party A. Both nonces increment again.</p>
+<h3 id="step-5-deallocate">Step 5: Deallocate</h3>
+<p><code>partyA</code> requests a fresh Muon <code>UpnlSig</code> for <code>(partyA, partyB)</code> with <code>nonces[partyA][partyB] = 2</code>. Suppose <code>partyUpnl = 0</code>, <code>counterPartyUpnl = -10e18</code>, <code>collateralPrice = 1e18</code>. <code>partyA</code> calls <code>deallocate(USDC, partyB, 700e18, false, sig)</code>.</p>
+<ul>
+<li><code>verifyUpnlSig</code> passes (signature time within <code>upnlSigValidTime</code>, nonce matches).</li>
+<li><code>deallocateForPartyAValidation</code>:<ul>
+<li><code>partyACrossEntry.balance = ~800e18 - premium - solverFee + 50e18</code>. Assume net <code>+830e18</code>.</li>
+<li><code>partyAAvailableBalance = 830e18 + 0 - 0 - 0 = 830e18</code>.</li>
+<li><code>partyAReadyToDeallocate = min(830e18, 830e18) = 830e18</code>.</li>
+<li><code>partyBCrossEntry.balance = -50e18</code> (after PnL transfer to Party A).</li>
+<li><code>partyBAvailableBalance = -50e18 + (-10e18) = -60e18 &lt; 0</code>, <code>counterPartyUpnl &lt; 0</code> ⇒ <code>collateralMustHave = 10e18 * 1.1e18 / 1e18 = 11e18</code>. <code>debt = 11e18 - (-50e18) = 61e18</code>.</li>
+<li>Headroom check: <code>830e18 - 700e18 = 130e18</code>, must be <code>≥ -debt = -61e18</code> ⇒ passes.</li>
+</ul>
+</li>
+<li>Limit check on isolated: <code>200e18 + 700e18 ≤ balanceLimitPerUser</code> ⇒ passes.</li>
+<li><code>deallocateBalance(partyB, 700e18)</code>: <code>crossBalance[partyB].balance -= 700e18</code>, <code>isolatedBalance += 700e18</code>.</li>
+</ul>
+<p>After: <code>isolatedBalance = 900e18</code>, <code>crossBalance[partyB].balance = +130e18</code>.</p>
+<h3 id="step-6-withdraw">Step 6: Withdraw</h3>
+<p><code>partyA</code> calls <code>initiateWithdraw(USDC, 900e18, partyA)</code>.</p>
+<ul>
+<li><code>manualSync[partyA] = false</code> ⇒ <code>syncAll()</code> runs, no scheduled buckets to advance for <code>partyB</code> (cross PnL is instant).</li>
+<li>Availability <code>900e18 - 0 ≥ 900e18</code> passes.</li>
+<li>Solvency passes (no liquidation id).</li>
+<li><code>isolatedSub(900e18, WITHDRAW)</code> ⇒ <code>isolatedBalance = 0</code>.</li>
+<li><code>Withdraw{id, amount=900e18, status=INITIATED, isVirtual=false}</code> stored.</li>
+</ul>
+<p>After 30 minutes, <code>partyA</code> calls <code>completeWithdraw(id)</code>:</p>
+<ul>
+<li>Cooldown elapsed.</li>
+<li><code>isVirtual = false</code> ⇒ <code>safeTransfer(partyA, denormalize(900e18) = 900_000_000)</code>.</li>
+<li>Status flipped to <code>COMPLETED</code>.</li>
+</ul>
+<p>Final state: <code>isolatedBalance = 0</code>, <code>crossBalance[partyB].balance = +130e18</code> (still bound to the pair), <code>reserveBalance = 0</code>. The remaining cross balance can be deallocated later with a fresh signature, or absorbed by a future trade.</p>
+</article></main></div><footer class="site-footer"><span>Options Core documentation.</span></footer></body></html>

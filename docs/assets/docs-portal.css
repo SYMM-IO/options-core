@@ -1,0 +1,1756 @@
+/* Symmio Core documentation — application shell.
+   Extends the v0.8.6 tokens with the chrome every page shares: one sticky
+   header, one navigation rail, one chapter pager. Page-specific layout
+   (release catalogs, version portal, merged reference) follows below. */
+
+:root {
+	--header-h: 57px;
+	--rail-expanded: 304px;
+	--control-size: 36px;
+}
+
+/* Reader pages use the entire canvas left after the outline rail. The base
+   release stylesheet scales its gutter to 5vw, which becomes a second visual
+   container on wide or zoomed-out screens. Cap that gutter here so v0.8.5 and
+   v0.8.6 share one genuinely full-width reading surface. */
+body.doc-page {
+	--rail: var(--rail-expanded);
+	--gutter: clamp(20px, 3vw, 48px);
+}
+
+.visually-hidden {
+	position: absolute !important;
+	width: 1px !important;
+	height: 1px !important;
+	padding: 0 !important;
+	margin: -1px !important;
+	overflow: hidden !important;
+	clip-path: inset(50%) !important;
+	white-space: nowrap !important;
+	border: 0 !important;
+}
+
+/* --- Header -------------------------------------------------------------- */
+
+.docs-header {
+	position: sticky;
+	top: 0;
+	z-index: 40;
+	border-bottom: 1px solid var(--line);
+	background: color-mix(in srgb, var(--bg) 88%, transparent);
+	backdrop-filter: blur(14px);
+}
+
+.docs-header .doc-topbar {
+	width: 100%;
+	min-height: var(--header-h);
+	padding: 0 var(--gutter);
+	border-bottom: 0;
+}
+
+.reading-progress {
+	--reading-progress: 0;
+	position: absolute;
+	inset: auto 0 -1px;
+	height: 2px;
+	overflow: hidden;
+	pointer-events: none;
+}
+
+.reading-progress span {
+	display: block;
+	width: 100%;
+	height: 100%;
+	background: var(--accent);
+	transform: scaleX(var(--reading-progress));
+	transform-origin: left center;
+}
+
+[dir="rtl"] .reading-progress span {
+	transform-origin: right center;
+}
+
+/* Header trail. The wordmark is the home link on every page and the segments
+   after it name the level you are on, so "up" is labelled rather than implied by
+   a clickable logo. Each segment is a distinct destination — nothing duplicates. */
+.docs-trail {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	min-height: 28px;
+	min-width: 0;
+}
+
+.docs-trail .brand {
+	gap: 9px;
+	min-height: 28px;
+	padding-inline-end: 2px;
+}
+
+.docs-trail .brand-name {
+	display: inline-flex;
+	align-items: center;
+	min-height: 28px;
+	font-family: var(--display);
+	font-size: 13px;
+	font-weight: 640;
+	line-height: 1;
+	letter-spacing: -0.01em;
+	white-space: nowrap;
+}
+
+.docs-trail .brand:hover .brand-name {
+	text-decoration: underline;
+	text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+	text-underline-offset: 0.18em;
+}
+
+.trail-sep {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 14px;
+	height: 28px;
+	flex: 0 0 14px;
+	color: var(--faint);
+	font-size: 0;
+}
+
+.trail-sep::before,
+.trail-sep::after {
+	content: "";
+	position: absolute;
+	top: calc(50% - 0.5px);
+	inset-inline-start: 1px;
+	width: 6px;
+	height: 1px;
+	border-radius: 1px;
+	background: currentColor;
+	transform-origin: right center;
+	transform: rotate(45deg);
+}
+
+.trail-sep::after {
+	transform: rotate(-45deg);
+}
+
+.trail-link,
+.trail-current {
+	display: inline-flex;
+	align-items: center;
+	min-height: 28px;
+	font-family: var(--mono);
+	font-size: 11.5px;
+	line-height: 1;
+	letter-spacing: 0.03em;
+	white-space: nowrap;
+}
+
+.trail-link {
+	color: var(--muted);
+	text-decoration: none;
+}
+
+.trail-link:hover {
+	color: var(--accent);
+	text-decoration: underline;
+	text-underline-offset: 0.18em;
+}
+
+.trail-current {
+	color: var(--muted);
+}
+
+.trail-version {
+	display: inline-flex;
+	align-items: center;
+	min-height: 24px;
+	padding: 0 8px;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--surface-soft) 62%, transparent);
+	font-size: 10.5px;
+	letter-spacing: 0.04em;
+}
+
+.chapter-index-link {
+	display: inline-flex;
+	align-items: center;
+	min-height: 28px;
+	padding: 0 4px;
+	border-radius: var(--radius-sm);
+	color: var(--ink);
+	font-family: var(--sans);
+	font-size: 12.5px;
+	font-weight: 620;
+	letter-spacing: -0.005em;
+}
+
+.chapter-index-link:hover {
+	background: transparent;
+	color: var(--accent);
+	text-decoration: underline;
+	text-decoration-thickness: 1px;
+	text-underline-offset: 0.22em;
+}
+
+.docs-header .top-actions {
+	gap: 6px;
+}
+
+.docs-header .button {
+	min-height: var(--control-size);
+	padding: 0 10px;
+	font-size: 12px;
+}
+
+.rail-trigger {
+	display: none;
+}
+
+/* --- Navigation rail ----------------------------------------------------- */
+
+.chapter-rail {
+	position: sticky;
+	top: var(--header-h);
+	z-index: 20;
+	grid-column: 1;
+	grid-row: 1;
+	height: calc(100vh - var(--header-h));
+	border-right: 1px solid var(--line);
+	background: var(--bg-raised);
+	overflow: visible;
+	overscroll-behavior: contain;
+}
+
+.rail-resizer {
+	position: absolute;
+	inset-block: 0;
+	inset-inline-end: -12px;
+	z-index: 2;
+	width: 12px;
+	border: 0;
+	background: transparent;
+	cursor: col-resize;
+	touch-action: none;
+}
+
+.rail-resizer::after {
+	position: absolute;
+	inset-block: 0;
+	inset-inline-start: 0;
+	width: 2px;
+	background: var(--accent);
+	content: "";
+	opacity: 0;
+}
+
+.rail-resizer:hover::after,
+.rail-resizer:focus-visible::after,
+body.rail-is-resizing .rail-resizer::after {
+	opacity: 1;
+}
+
+.rail-resizer:focus-visible {
+	outline: 0;
+}
+
+body.rail-is-resizing {
+	cursor: col-resize;
+	user-select: none;
+}
+
+.rail-inner {
+	display: grid;
+	grid-template-rows: auto minmax(0, 1fr);
+	height: 100%;
+}
+
+.rail-tabs {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: 3px;
+	padding: 9px 9px;
+	border-bottom: 1px solid var(--line);
+}
+
+.rail-title {
+	display: flex;
+	align-items: center;
+	min-height: 30px;
+	margin: 0;
+	padding: 0 10px;
+	color: var(--faint);
+	font-family: var(--mono);
+	font-size: 10px;
+	font-weight: 500;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+}
+
+.rail-collapse {
+	display: inline-flex;
+	gap: 6px;
+	align-items: center;
+	justify-content: center;
+	min-height: 30px;
+	padding: 0 8px;
+	border: 1px solid transparent;
+	border-radius: var(--radius);
+	background: transparent;
+	color: var(--faint);
+	font-family: var(--mono);
+	font-size: 10px;
+	letter-spacing: 0.07em;
+	text-transform: uppercase;
+	white-space: nowrap;
+	transition:
+		color 140ms ease,
+		background 140ms ease,
+		border-color 140ms ease;
+}
+
+.rail-collapse:hover {
+	color: var(--ink);
+	background: var(--surface-soft);
+}
+
+.rail-collapse {
+	padding: 0 7px;
+}
+
+.rail-collapse .control-icon {
+	width: 14px;
+	height: 14px;
+}
+
+.rail-collapse span {
+	display: none;
+}
+
+.rail-panel {
+	padding: 12px 10px 30px;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	scrollbar-gutter: stable;
+}
+
+.rail-panel[hidden] {
+	display: none;
+}
+
+.rail-search {
+	width: calc(100% - 4px);
+	height: 34px;
+	margin: 2px 2px 12px;
+	padding: 6px 9px;
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	background: var(--surface);
+	color: var(--ink);
+	font-family: var(--sans);
+	font-size: 12.5px;
+}
+
+.rail-search::placeholder {
+	color: var(--faint);
+}
+
+.rail-search:focus {
+	border-color: var(--accent);
+	outline: 2px solid var(--accent-dim);
+	outline-offset: 0;
+}
+
+.rail-group {
+	display: grid;
+	gap: 2px;
+	margin-top: 18px;
+}
+
+.rail-group:first-child {
+	margin-top: 0;
+}
+
+.rail-group[hidden],
+.rail-link[hidden] {
+	display: none;
+}
+
+.rail-group-title {
+	margin: 0 10px 7px;
+	color: var(--faint);
+	font-family: var(--mono);
+	font-size: 9.5px;
+	font-weight: 500;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+}
+
+.rail-link {
+	display: grid;
+	grid-template-columns: 28px minmax(0, 1fr);
+	gap: 12px;
+	align-items: start;
+	padding: 9px 10px;
+	border-radius: var(--radius);
+	color: var(--muted);
+	font-size: 13px;
+	line-height: 1.38;
+	text-decoration: none;
+}
+
+.rail-link:hover {
+	background: var(--surface-soft);
+	color: var(--ink);
+	text-decoration: none;
+}
+
+.rail-link.is-active {
+	background: var(--surface-soft);
+	color: var(--ink);
+	font-weight: 600;
+}
+
+.rail-index {
+	color: var(--faint);
+	font-family: var(--mono);
+	font-size: 10.5px;
+	line-height: 1.72;
+	font-variant-numeric: tabular-nums;
+}
+
+.rail-link.is-active .rail-index {
+	color: var(--accent);
+}
+
+.rail-label {
+	min-width: 0;
+}
+
+/* Reference-style section menu: stable index column, generous active row,
+   and one shared spine for each run of nested subsections. */
+.rail-list[data-rail-list="sections"] {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: 2px;
+}
+
+.rail-list[data-rail-list="sections"] .toc-link.level-2 {
+	margin-top: 4px;
+	padding: 10px 12px;
+	border-radius: var(--radius);
+	font-size: 13.5px;
+	font-weight: 500;
+	line-height: 1.35;
+}
+
+.rail-list[data-rail-list="sections"] .toc-link.level-2.has-section-index {
+	display: grid;
+	grid-template-columns: 28px minmax(0, 1fr);
+	gap: 12px;
+	align-items: baseline;
+}
+
+.rail-list[data-rail-list="sections"] .toc-link.level-2 + .toc-link.level-2,
+.rail-list[data-rail-list="sections"] .toc-sublist + .toc-link.level-2 {
+	margin-top: 5px;
+}
+
+.rail-list[data-rail-list="sections"] .toc-link.level-2.is-active {
+	background: var(--surface-soft);
+	color: var(--ink);
+	font-weight: 650;
+}
+
+.toc-section-index {
+	color: var(--faint);
+	font-family: var(--mono);
+	font-size: 11.5px;
+	font-weight: 400;
+	font-variant-numeric: tabular-nums;
+}
+
+.toc-link.is-active .toc-section-index {
+	color: var(--accent);
+}
+
+.toc-section-label {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.toc-sublist {
+	position: relative;
+	display: grid;
+	min-width: 0;
+	margin: 3px 0 8px;
+	margin-inline-start: 20px;
+	padding-inline-start: 12px;
+}
+
+.toc-sublist::before {
+	position: absolute;
+	top: 1px;
+	bottom: 1px;
+	inset-inline-start: 0;
+	width: 1px;
+	background: var(--line);
+	content: "";
+}
+
+.toc-sublist .toc-link.level-3 {
+	min-width: 0;
+	margin: 0;
+	padding: 7px 10px;
+	border-left: 0;
+	border-radius: var(--radius-sm);
+	color: var(--muted);
+	font-size: 12.5px;
+	line-height: 1.35;
+	overflow-wrap: anywhere;
+	white-space: normal;
+}
+
+.toc-sublist .toc-link.level-3:hover,
+.toc-sublist .toc-link.level-3.is-active {
+	background: var(--surface-soft);
+	color: var(--ink);
+}
+
+/* Unnumbered rail groups (related links, standalone guides) drop the index gutter. */
+.rail-group-plain .rail-link {
+	grid-template-columns: minmax(0, 1fr);
+}
+
+.rail-empty {
+	margin: 6px 8px;
+	color: var(--faint);
+	font-size: 12px;
+	line-height: 1.5;
+}
+
+.rail-backdrop {
+	display: none;
+}
+
+body.doc-page.rail-is-collapsed {
+	--rail: 48px;
+}
+
+body.rail-is-collapsed .rail-resizer {
+	display: none;
+}
+
+body.rail-is-collapsed .rail-tabs {
+	grid-template-columns: minmax(0, 1fr);
+	padding: 9px 5px;
+}
+
+@media (max-width: 1180px) and (min-width: 981px) {
+	:root {
+		--rail-expanded: 280px;
+	}
+}
+
+body.rail-is-collapsed .rail-title,
+body.rail-is-collapsed .rail-panel {
+	display: none;
+}
+
+/* --- Reading map --------------------------------------------------------- */
+
+/* Long reference pages can offer a handful of intentional entry points before
+   the article starts. Keep each destination as a distinct control instead of
+   allowing the inline link contents to collapse into one sentence. */
+.reader-map {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 12px;
+	width: 100%;
+	max-width: 1160px;
+	margin: 0 0 40px;
+}
+
+.reader-map a {
+	display: grid;
+	grid-template-rows: auto auto 1fr;
+	gap: 7px;
+	min-width: 0;
+	padding: 17px 18px 18px;
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	background: var(--surface);
+	color: var(--ink);
+	text-decoration: none;
+	transition:
+		border-color 140ms ease,
+		background-color 140ms ease;
+}
+
+.reader-map a:hover {
+	text-decoration: none;
+}
+
+@media (hover: hover) {
+	.reader-map a:hover {
+		border-color: var(--line-strong);
+		background: var(--surface-soft);
+	}
+}
+
+.reader-map a:active {
+	background: var(--surface-tint);
+}
+
+.reader-map a:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 3px;
+}
+
+.reader-map span {
+	color: var(--faint);
+	font-family: var(--mono);
+	font-size: 10px;
+	font-weight: 600;
+	line-height: 1.3;
+	letter-spacing: 0.11em;
+	text-transform: uppercase;
+}
+
+.reader-map strong {
+	color: var(--ink);
+	font-family: var(--display);
+	font-size: 15px;
+	font-weight: 640;
+	line-height: 1.3;
+	letter-spacing: -0.01em;
+	text-wrap: balance;
+}
+
+.reader-map small {
+	max-width: 34ch;
+	color: var(--muted);
+	font-size: 13px;
+	line-height: 1.5;
+	overflow-wrap: break-word;
+	text-wrap: pretty;
+}
+
+@media (max-width: 1280px) {
+	.reader-map {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 640px) {
+	.reader-map {
+		grid-template-columns: minmax(0, 1fr);
+		margin-bottom: 32px;
+	}
+}
+
+@media (forced-colors: active) {
+	.reader-map a:focus-visible {
+		outline-color: Highlight;
+	}
+}
+
+/* --- Chapter pager ------------------------------------------------------- */
+
+.chapter-pager {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 12px;
+	margin-top: clamp(44px, 6vw, 68px);
+	padding-top: 20px;
+	border-top: 1px solid var(--line);
+}
+
+.reader-main > .chapter-pager {
+	width: 100%;
+	margin-inline: 0;
+}
+
+body.doc-page .reader-main > .reader-hero,
+body.doc-page .reader-main > .doc-article,
+body.doc-page .reader-main > .chapter-pager,
+body.doc-page .doc-article > :is(.code-frame, .table-wrap, .tool-panel, figure, table, pre) {
+	width: 100%;
+	max-width: none;
+}
+
+body.doc-page .reader-hero .hero-copy,
+body.doc-page .doc-article > :is(p, ul, ol, blockquote, .callout, h1, h2, h3, h4, h5, h6) {
+	width: 100%;
+	max-width: none;
+	text-align: start;
+}
+
+body.doc-page .doc-article p {
+	-webkit-hyphens: none;
+	hyphens: none;
+	text-wrap: wrap;
+}
+
+@media (min-width: 641px) {
+	body.doc-page .reader-main > .doc-article > p {
+		text-align: justify;
+		text-align-last: start;
+	}
+}
+
+.chapter-pager a {
+	display: grid;
+	gap: 5px;
+	min-width: 0;
+	padding: 13px 14px;
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	color: var(--ink);
+	text-decoration: none;
+	transition:
+		border-color 140ms ease,
+		background 140ms ease;
+}
+
+/* A lone Next keeps the right-hand column so it never reads as a Previous. */
+.chapter-pager a:only-child:last-child {
+	grid-column: 2;
+}
+
+.chapter-pager a:last-child:not(:only-child),
+.chapter-pager a:only-child:last-child {
+	text-align: right;
+}
+
+.chapter-pager a:hover {
+	border-color: var(--line-strong);
+	background: var(--surface-soft);
+	text-decoration: none;
+}
+
+.chapter-pager small {
+	color: var(--faint);
+	font-family: var(--mono);
+	font-size: 9px;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+}
+
+.chapter-pager span {
+	overflow: hidden;
+	font-family: var(--display);
+	font-size: 13.5px;
+	font-weight: 620;
+	letter-spacing: -0.012em;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* --- Back to top --------------------------------------------------------- */
+
+.back-to-top {
+	position: fixed;
+	right: 18px;
+	bottom: 18px;
+	z-index: 30;
+	display: grid;
+	place-items: center;
+	width: 40px;
+	height: 40px;
+	padding: 0;
+	border: 1px solid var(--line);
+	border-radius: 50%;
+	background: var(--bg-raised);
+	color: var(--muted);
+	opacity: 0;
+	pointer-events: none;
+	transform: translateY(8px);
+	transition:
+		opacity 150ms ease,
+		transform 150ms ease,
+		color 150ms ease;
+}
+
+.back-to-top.is-visible {
+	opacity: 1;
+	pointer-events: auto;
+	transform: translateY(0);
+}
+
+.back-to-top:hover {
+	color: var(--accent);
+	border-color: var(--line-strong);
+}
+
+.back-to-top .control-icon {
+	width: 15px;
+	height: 15px;
+}
+
+/* --- Version portal ------------------------------------------------------ */
+
+.version-index-page {
+	min-height: 100vh;
+	background: var(--bg);
+}
+
+.version-index-page .docs-header {
+	background: var(--bg);
+	backdrop-filter: none;
+}
+
+.version-index-page .docs-header .doc-topbar {
+	min-height: 72px;
+}
+
+.version-index-page [data-theme-toggle] {
+	width: 38px;
+	height: 38px;
+	padding: 0;
+}
+
+.version-index-page [data-theme-toggle] span {
+	display: none;
+}
+
+.version-index-page .portal-search {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 170px;
+	height: 38px;
+	padding: 0 10px;
+	border: 1px solid var(--line);
+	border-radius: 6px;
+	color: var(--faint);
+	background: var(--bg);
+	transition:
+		border-color 160ms ease,
+		color 160ms ease;
+}
+
+.version-index-page .portal-search:focus-within {
+	border-color: var(--line-strong);
+	color: var(--muted);
+}
+
+.version-index-page .portal-search .control-icon {
+	width: 16px;
+	height: 16px;
+	flex: 0 0 auto;
+}
+
+.version-index-page .portal-search input {
+	min-width: 0;
+	width: 100%;
+	border: 0;
+	outline: 0;
+	color: var(--ink);
+	background: transparent;
+	font: inherit;
+	font-size: 13px;
+}
+
+.version-index-page .portal-search input::placeholder {
+	color: var(--faint);
+}
+
+.version-index-page .portal-search kbd,
+.catalog-search-hint {
+	color: var(--faint);
+	font-family: var(--mono);
+	font-size: 10px;
+	white-space: nowrap;
+}
+
+/* The catalog field is the one readers actually use, so it advertises the same
+   shortcut the portal does. */
+.catalog-search-wrap {
+	position: relative;
+	display: flex;
+	align-items: center;
+}
+
+.catalog-search-hint {
+	position: absolute;
+	right: 12px;
+	pointer-events: none;
+}
+
+.catalog-search {
+	padding-right: 46px;
+}
+
+.version-index-page .site-hero {
+	position: relative;
+	min-height: auto;
+	border-bottom: 1px solid var(--line);
+	overflow: hidden;
+}
+
+.version-index-page .site-hero::before {
+	inset: 0;
+	background-image: linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+	background-size: 96px 96px;
+	mask-image: none;
+}
+
+.version-index-page .version-index-hero-content {
+	width: min(1280px, calc(100% - 112px));
+	margin: 0 auto;
+	padding: clamp(80px, 9vw, 132px) 0 clamp(54px, 6vw, 78px);
+}
+
+.version-index-page .hero-layout {
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: end;
+	gap: 48px;
+}
+
+.version-index-page .hero-intro {
+	max-width: 830px;
+}
+
+.version-index-page .hero-intro h1 {
+	max-width: none;
+	font-size: clamp(44px, 5vw, 68px);
+	letter-spacing: -0.055em;
+}
+
+.version-index-page .hero-copy {
+	max-width: 66ch;
+	margin-top: 16px;
+	color: var(--muted);
+	font-size: clamp(17px, 1.6vw, 23px);
+}
+
+.version-index-mark {
+	width: clamp(112px, 11vw, 158px);
+	aspect-ratio: 1.5;
+	margin-bottom: 6px;
+	color: var(--faint);
+	opacity: 0.42;
+}
+
+.version-index-mark svg {
+	display: block;
+	width: 100%;
+	height: 100%;
+	fill: currentColor;
+}
+
+.version-index-mark .version-index-mark-accent {
+	fill: var(--accent);
+	opacity: 0.4;
+}
+
+.version-index-shell {
+	width: min(1280px, calc(100% - 112px));
+	margin: 0 auto;
+	padding: 0 0 88px;
+}
+
+.version-index-heading {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	min-height: 102px;
+	padding: 0 clamp(16px, 3vw, 48px);
+	border-bottom: 1px solid var(--line);
+}
+
+.version-index-heading h2,
+.version-index-heading output,
+.version-status,
+.version-entry-action {
+	font-family: var(--mono);
+	font-size: 11px;
+	font-weight: 550;
+	letter-spacing: 0.2em;
+	text-transform: uppercase;
+}
+
+.version-index-heading h2 {
+	margin: 0;
+	color: var(--muted);
+}
+
+.version-index-heading output {
+	color: var(--faint);
+}
+
+.version-list {
+	display: grid;
+}
+
+/* Release-independent material sits below the releases rather than nowhere.
+   A guide is a normal entry at a calmer scale — it is not a version. */
+.portal-guides {
+	margin-top: 64px;
+}
+
+.version-entry.is-guide {
+	min-height: 0;
+	gap: 32px;
+	padding-block: 26px;
+}
+
+.guide-name {
+	display: block;
+	font-size: clamp(1.05rem, 2vw, 1.35rem);
+	font-weight: 600;
+	letter-spacing: -0.01em;
+}
+
+.guide-note {
+	display: block;
+	max-width: 62ch;
+	margin-top: 6px;
+	color: var(--muted);
+	font-size: 13.5px;
+	line-height: 1.55;
+}
+
+.version-entry {
+	position: relative;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: 48px;
+	align-items: center;
+	min-height: 214px;
+	padding: 34px clamp(16px, 3vw, 48px);
+	border-bottom: 1px solid var(--line);
+	color: var(--ink);
+	text-decoration: none;
+	overflow: hidden;
+}
+
+.version-entry::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 7%, transparent), transparent 60%);
+	opacity: 0;
+	transition: opacity 180ms ease;
+}
+
+.version-entry::after {
+	display: none;
+}
+
+.version-entry:hover {
+	color: var(--ink);
+	text-decoration: none;
+}
+
+.version-entry:hover::before {
+	opacity: 1;
+}
+
+.version-entry > * {
+	position: relative;
+}
+
+.version-entry-main {
+	display: flex;
+	align-items: baseline;
+	gap: clamp(24px, 4vw, 54px);
+}
+
+.version-number {
+	font-family: var(--display);
+	font-size: clamp(72px, 9vw, 112px);
+	font-weight: 520;
+	letter-spacing: -0.065em;
+	line-height: 0.9;
+}
+
+.version-entry:not(.is-current) .version-number {
+	color: var(--muted);
+}
+
+.version-status {
+	color: var(--faint);
+}
+
+.version-entry.is-current .version-status,
+.version-entry-action {
+	color: var(--accent);
+}
+
+.version-status i {
+	display: inline-block;
+	width: 7px;
+	height: 7px;
+	margin-right: 9px;
+	border-radius: 50%;
+	background: currentColor;
+}
+
+.version-entry-action {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	white-space: nowrap;
+	transition: transform 160ms ease;
+}
+
+.version-entry:hover .version-entry-action {
+	transform: translateX(5px);
+}
+
+.version-empty {
+	margin: 0;
+	padding: 64px 48px;
+	border-bottom: 1px solid var(--line);
+	color: var(--muted);
+	text-align: center;
+}
+
+/* --- Release catalogs ---------------------------------------------------- */
+
+.version-catalog-page .site-hero {
+	min-height: auto;
+}
+
+.version-catalog-page .index-hero-content {
+	padding-bottom: clamp(28px, 4vw, 44px);
+}
+
+.version-catalog-page .hero-layout {
+	grid-template-columns: minmax(0, 1fr);
+}
+
+.version-catalog-page .hero-intro {
+	width: 100%;
+	max-width: none;
+}
+
+.version-catalog-page .hero-intro h1 {
+	width: 100%;
+	max-width: none;
+}
+
+.version-catalog-page .hero-copy {
+	width: 100%;
+	max-width: none;
+}
+
+.version-catalog-shell {
+	padding-top: clamp(10px, 2vw, 22px);
+	padding-bottom: 88px;
+}
+
+.catalog-toolbar {
+	position: sticky;
+	top: var(--header-h);
+	z-index: 15;
+	display: grid;
+	grid-template-columns: minmax(220px, 400px) 1fr;
+	gap: 16px;
+	align-items: center;
+	margin-bottom: 48px;
+	padding: 16px 0;
+	border-bottom: 1px solid var(--line);
+	background: color-mix(in srgb, var(--bg) 94%, transparent);
+	backdrop-filter: blur(14px);
+}
+
+.catalog-search-wrap {
+	display: block;
+}
+
+.catalog-search {
+	width: 100%;
+	height: 38px;
+	padding: 8px 12px;
+	border: 1px solid var(--line-strong);
+	border-radius: var(--radius);
+	background: var(--surface);
+	color: var(--ink);
+	font: 13px var(--sans);
+}
+
+.catalog-search:focus {
+	border-color: var(--accent);
+	outline: 3px solid var(--accent-dim);
+}
+
+.catalog-search::placeholder {
+	color: var(--faint);
+}
+
+.catalog-count {
+	color: var(--faint);
+	font-family: var(--mono);
+	font-size: 11px;
+	letter-spacing: 0.04em;
+	font-variant-numeric: tabular-nums;
+}
+
+.version-catalog-group + .version-catalog-group {
+	margin-top: 56px;
+}
+
+[data-catalog-item][hidden],
+.version-catalog-group[hidden] {
+	display: none;
+}
+
+[data-catalog-group-count] {
+	font-variant-numeric: tabular-nums;
+}
+
+.catalog-empty {
+	display: grid;
+	justify-items: center;
+	gap: 8px;
+	padding: 56px 20px;
+	border-block: 1px solid var(--line);
+	color: var(--muted);
+	text-align: center;
+}
+
+.catalog-empty[hidden] {
+	display: none;
+}
+
+.catalog-empty strong {
+	color: var(--ink);
+	font-family: var(--display);
+	font-size: 18px;
+	font-weight: 640;
+	letter-spacing: -0.015em;
+}
+
+.catalog-empty span {
+	max-width: 42ch;
+	line-height: 1.5;
+}
+
+.catalog-empty .button {
+	margin-top: 8px;
+}
+
+.topic-kicker {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 9px 18px;
+	margin: 0 0 18px !important;
+	color: var(--faint) !important;
+	font-family: var(--mono);
+	font-size: 9.5px;
+	letter-spacing: 0.11em;
+	text-transform: uppercase;
+	font-variant-numeric: tabular-nums;
+}
+
+.topic-kicker [data-reading-time] {
+	color: var(--muted);
+}
+
+.heading-anchor {
+	width: 28px;
+	height: 28px;
+	margin-inline-start: 6px;
+	margin-left: 0;
+}
+
+.topic-kicker span:first-child {
+	color: var(--accent);
+} /* --- Compact ------------------------------------------------------------- */
+
+@media (max-width: 980px) {
+	.docs-header .doc-topbar {
+		padding-inline: 24px;
+	}
+
+	.version-index-page .version-index-hero-content,
+	.version-index-shell {
+		width: calc(100% - 56px);
+	}
+
+	.version-index-page .version-entry {
+		min-height: 190px;
+		padding-inline: 28px;
+	}
+	.rail-trigger {
+		display: inline-flex;
+	}
+
+	.docs-header .button {
+		min-height: 44px;
+	}
+
+	.rail-collapse {
+		min-width: 40px;
+		min-height: 40px;
+	}
+
+	.heading-anchor {
+		width: 36px;
+		height: 36px;
+	}
+
+	/* The rail becomes a drawer under the header, on every reading page. */
+	.chapter-rail {
+		position: fixed;
+		inset-block: var(--header-h) 0;
+		inset-inline-start: 0;
+		z-index: 35;
+		width: min(340px, calc(100vw - 42px));
+		height: auto;
+		border-inline-end: 1px solid var(--line);
+		box-shadow: 18px 0 50px rgb(0 0 0 / 0.34);
+		transform: translateX(-105%);
+		transition: transform 180ms cubic-bezier(0.3, 0.8, 0.3, 1);
+	}
+
+	.rail-resizer {
+		display: none;
+	}
+
+	body.rail-is-open {
+		position: fixed;
+		inset-inline: 0;
+		width: 100%;
+		overflow: hidden;
+	}
+
+	body.rail-is-open .docs-header {
+		position: fixed;
+		inset: 0 0 auto;
+		width: 100%;
+	}
+
+	body.rail-is-open .chapter-rail {
+		transform: translateX(0);
+	}
+
+	.rail-backdrop {
+		position: fixed;
+		inset: var(--header-h) 0 0;
+		z-index: 34;
+		display: block;
+		border: 0;
+		background: rgb(0 0 0 / 0.56);
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 180ms ease;
+	}
+
+	body.rail-is-open .rail-backdrop {
+		opacity: 1;
+		pointer-events: auto;
+	}
+
+	.rail-collapse .control-icon {
+		width: 16px;
+		height: 16px;
+	}
+}
+
+@media (max-width: 420px) {
+	.docs-header .docs-trail {
+		flex: 0 0 24px;
+		min-width: 24px;
+	}
+
+	.docs-header .docs-trail .brand {
+		width: 24px;
+		min-width: 24px;
+		padding: 0;
+	}
+
+	.docs-header .docs-trail .brand-name,
+	.docs-header .rail-trigger span {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		white-space: nowrap;
+		clip-path: inset(50%);
+		border: 0;
+	}
+
+	.docs-header .rail-trigger {
+		width: 40px;
+		padding-inline: 0;
+	}
+
+	.docs-header .top-actions {
+		margin-inline-start: auto;
+	}
+}
+
+@media (max-width: 640px) {
+	.version-index-shell,
+	.version-catalog-page .index-shell {
+		width: calc(100% - 32px);
+	}
+	.docs-header .doc-topbar {
+		width: 100%;
+		padding-inline: 16px;
+	}
+
+	.docs-header [data-theme-toggle] span,
+	.version-index-page .portal-search {
+		display: none;
+	}
+	.version-index-page .docs-header .doc-topbar {
+		min-height: 64px;
+	}
+
+	.version-index-page .top-actions {
+		gap: 4px;
+	}
+
+	.version-index-page .portal-search {
+		width: 116px;
+		height: 36px;
+		padding-inline: 8px;
+	}
+
+	.version-index-page .portal-search kbd {
+		display: none;
+	}
+
+	.version-index-page .version-index-hero-content {
+		width: calc(100% - 32px);
+		padding: 58px 0 44px;
+	}
+
+	.version-index-page .hero-layout {
+		grid-template-columns: minmax(0, 1fr) auto;
+		gap: 12px;
+	}
+
+	.version-index-page .hero-intro h1 {
+		font-size: 34px;
+	}
+
+	.version-index-page .hero-copy {
+		margin-top: 12px;
+		font-size: 16px;
+	}
+
+	.version-index-mark {
+		width: 68px;
+	}
+
+	.version-index-heading {
+		min-height: 80px;
+		padding-inline: 8px;
+	}
+
+	/* Keep the wordmark — it is the home link, and an unlabelled icon is exactly
+	   what was hard to find. The level segment goes instead; the page heading
+	   already says where you are. */
+	.docs-trail .trail-sep,
+	.docs-trail .trail-link,
+	.docs-trail .trail-current {
+		display: none;
+	}
+
+	.catalog-toolbar {
+		grid-template-columns: minmax(0, 1fr);
+		gap: 12px;
+		margin-bottom: 36px;
+		padding-block: 12px;
+	}
+
+	.catalog-search,
+	.rail-search {
+		height: 44px;
+	}
+
+	.version-catalog-group + .version-catalog-group {
+		margin-top: 42px;
+	}
+
+	.version-index-page .version-entry {
+		grid-template-columns: minmax(0, 1fr);
+		gap: 20px;
+		min-height: 160px;
+		padding: 32px 8px;
+	}
+
+	.version-index-page .version-number {
+		font-size: 58px;
+	}
+
+	.version-index-page .version-entry-main {
+		gap: 22px;
+	}
+
+	.version-index-page .version-entry-action {
+		justify-content: flex-start;
+	}
+	.chapter-pager {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.chapter-pager a:last-child,
+	.chapter-pager a:only-child:last-child {
+		grid-column: 1;
+		text-align: left;
+	}
+
+	.back-to-top {
+		width: 44px;
+		height: 44px;
+		inset-inline-end: 16px;
+		bottom: calc(16px + env(safe-area-inset-bottom));
+	}
+}
+
+@media print {
+	.docs-header,
+	.chapter-rail,
+	.rail-backdrop,
+	.rail-resizer,
+	.back-to-top,
+	.chapter-pager {
+		display: none !important;
+	}
+
+	.reading-progress {
+		display: none !important;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.chapter-rail,
+	.rail-backdrop,
+	.rail-collapse,
+	.chapter-pager a,
+	.version-entry::after,
+	.version-entry-arrow,
+	.back-to-top {
+		transition: none;
+	}
+}
+
+/* --- Operator guide ------------------------------------------------------ */
+
+/* Operator-guide components. These remain namespaced, but live with the shared design system instead of inside the page. */
+.dep-lede {
+	font-size: 1.05rem;
+	line-height: 1.7;
+	color: var(--ink-soft);
+	max-width: 62ch;
+}
+
+/* Command rail — a reference, not a sequence, so it is deliberately unnumbered. */
+.dep-rail {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: 10px;
+	margin: 26px 0 30px;
+}
+.dep-cmd {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 14px 16px;
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	background: var(--bg-raised);
+}
+.dep-cmd code {
+	font-family: var(--mono);
+	font-size: 0.86rem;
+	font-weight: 600;
+	color: var(--accent-strong);
+	background: none;
+	padding: 0;
+}
+.dep-cmd span {
+	font-size: 0.83rem;
+	line-height: 1.5;
+	color: var(--muted);
+}
+.dep-cmd b {
+	font-size: 0.68rem;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--faint);
+}
+.dep-cmd[data-writes="yes"] {
+	border-inline-start: 3px solid var(--accent);
+}
+.dep-cmd[data-writes="no"] {
+	border-inline-start: 3px solid var(--green);
+}
+
+/* Step spine — numbered because deployment genuinely is ordered. */
+.dep-steps {
+	list-style: none;
+	margin: 24px 0 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 28px;
+}
+.dep-steps > li {
+	position: relative;
+	padding-inline-start: 46px;
+}
+.dep-steps > li::before {
+	content: attr(data-step);
+	position: absolute;
+	inset-inline-start: 0;
+	top: 0;
+	width: 30px;
+	height: 30px;
+	display: grid;
+	place-items: center;
+	border-radius: 50%;
+	background: var(--accent);
+	color: #fff;
+	font-family: var(--mono);
+	font-size: 0.8rem;
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+}
+.dep-steps > li::after {
+	content: "";
+	position: absolute;
+	inset-inline-start: 15px;
+	top: 36px;
+	bottom: -28px;
+	width: 1px;
+	background: var(--line);
+}
+.dep-steps > li:last-child::after {
+	display: none;
+}
+.dep-steps h3 {
+	margin: 2px 0 8px;
+	font-size: 1.05rem;
+}
+
+/* Gotchas: things that silently cost hours. Severity is encoded in form, not just words. */
+.dep-gotchas {
+	display: grid;
+	gap: 12px;
+	margin: 22px 0;
+}
+.dep-gotcha {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: 14px;
+	align-items: start;
+	padding: 15px 17px;
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	background: var(--bg-raised);
+}
+.dep-gotcha kbd {
+	font-family: var(--mono);
+	font-size: 0.64rem;
+	font-weight: 700;
+	letter-spacing: 0.07em;
+	text-transform: uppercase;
+	padding: 4px 8px;
+	border-radius: 999px;
+	border: 0;
+	white-space: nowrap;
+	background: var(--surface-soft);
+	color: var(--muted);
+}
+.dep-gotcha[data-level="money"] kbd {
+	background: color-mix(in srgb, var(--rose) 15%, transparent);
+	color: var(--rose);
+}
+.dep-gotcha[data-level="blocks"] kbd {
+	background: color-mix(in srgb, var(--amber) 18%, transparent);
+	color: var(--amber);
+}
+.dep-gotcha[data-level="confuses"] kbd {
+	background: color-mix(in srgb, var(--blue) 15%, transparent);
+	color: var(--blue);
+}
+.dep-gotcha p {
+	margin: 0;
+	font-size: 0.9rem;
+	line-height: 1.6;
+}
+.dep-gotcha p + p {
+	margin-top: 6px;
+	color: var(--muted);
+}
+
+/* Exit codes: the single most misread signal in the whole workflow. */
+.dep-exits {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+	gap: 12px;
+	margin: 20px 0;
+}
+.dep-exit {
+	padding: 16px;
+	border-radius: var(--radius);
+	border: 1px solid var(--line);
+	background: var(--bg-raised);
+}
+.dep-exit strong {
+	display: block;
+	font-family: var(--mono);
+	font-size: 1.5rem;
+	font-variant-numeric: tabular-nums;
+	line-height: 1;
+	margin-bottom: 8px;
+}
+.dep-exit[data-code="0"] strong {
+	color: var(--green);
+}
+.dep-exit[data-code="2"] strong {
+	color: var(--amber);
+}
+.dep-exit[data-code="n"] strong {
+	color: var(--rose);
+}
+.dep-exit span {
+	font-size: 0.86rem;
+	line-height: 1.55;
+	color: var(--muted);
+}
+/* Direct child only: an inline <em> inside the description must stay inline. */
+.dep-exit > em {
+	display: block;
+	margin-top: 8px;
+	font-style: normal;
+	font-size: 0.8rem;
+	color: var(--faint);
+}
+
+.dep-field-note {
+	font-family: var(--mono);
+	font-size: 0.78rem;
+	color: var(--accent-strong);
+}
+
+@media (max-width: 640px) {
+	.dep-steps > li {
+		padding-inline-start: 38px;
+	}
+	.dep-steps > li::before {
+		width: 26px;
+		height: 26px;
+		font-size: 0.72rem;
+	}
+	.dep-steps > li::after {
+		inset-inline-start: 13px;
+	}
+	.dep-gotcha {
+		grid-template-columns: 1fr;
+		gap: 8px;
+	}
+}

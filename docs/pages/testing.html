@@ -1,0 +1,750 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Mocha behavior groups, fixtures, assertions, and coverage."><title>Testing | Options Core</title>
+<link rel="icon" type="image/svg+xml" href="../assets/symmio-mark.svg">
+<script>try { if (localStorage.getItem("options-docs-theme") === "light") document.documentElement.dataset.theme = "light"; } catch (_) {}</script>
+<link rel="stylesheet" href="../assets/reader.css"><link rel="stylesheet" href="../assets/docs-portal.css">
+<script src="../assets/chapters.js" defer></script><script src="../assets/reader.js" defer></script><script src="../assets/docs-portal.js" defer></script>
+</head>
+<body class="doc-page" data-version="current"><a class="skip-link" href="#full-document">Skip to document</a>
+<header class="docs-header"><div class="doc-topbar"><nav class="docs-trail" aria-label="Breadcrumb">
+<a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Options Core</span></a>
+<span class="trail-sep" aria-hidden="true">/</span><a class="trail-release" href="../index.html">Documentation</a>
+</nav><nav class="top-actions" aria-label="Page actions"><button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button></nav></div></header><div class="reader-shell"><div data-rail-sections hidden>
+<a class="toc-link level-2" href="#overview">Overview</a>
+<a class="toc-link level-2" href="#running-tests">Running Tests</a>
+<a class="toc-link level-2" href="#test-layout">Test Layout</a>
+<a class="toc-link level-2" href="#the-central-fixture">The Central Fixture</a>
+<a class="toc-link level-3" href="#fixture-roles-and-accounts">Fixture Roles And Accounts</a>
+<a class="toc-link level-3" href="#default-symbols">Default Symbols</a>
+<a class="toc-link level-2" href="#runcontext">RunContext</a>
+<a class="toc-link level-2" href="#test-modeenumts">test-mode.enum.ts</a>
+<a class="toc-link level-2" href="#testsmodels">tests/models/</a>
+<a class="toc-link level-2" href="#testsutils">tests/utils/</a>
+<a class="toc-link level-2" href="#testshelpers">tests/helpers/</a>
+<a class="toc-link level-2" href="#writing-a-new-behavior-test">Writing A New Behavior Test</a>
+<a class="toc-link level-2" href="#common-assertion-patterns">Common Assertion Patterns</a>
+<a class="toc-link level-2" href="#coverage">Coverage</a>
+<a class="toc-link level-2" href="#mocks">Mocks</a>
+<a class="toc-link level-2" href="#known-gaps">Known Gaps</a>
+<a class="toc-link level-2" href="#ci-considerations">CI Considerations</a>
+<a class="toc-link level-2" href="#code-map">Code Map</a>
+</div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1>Testing</h1><p class="hero-copy">Mocha behavior groups, fixtures, assertions, and coverage.</p></div></div></header>
+<article class="doc-article" id="full-document"><p>This guide describes the Hardhat test suite under <code>tests/</code>. It explains how the central fixture composes a Diamond + helper environment, what shapes the tests use, and how to add new behavior tests.</p>
+<h2 id="overview">Overview</h2>
+<p>The suite is organized as Mocha behavior groups (<code>shouldBehaveLike...</code>) registered from <code>tests/main.ts:17</code>. Each group:</p>
+<ul>
+<li>Loads the same fixture (<code>initializeTestFixture</code>) through <code>networkHelpers.loadFixture</code> (from <code>tests/connection.ts</code>), so each <code>it</code> starts from a deterministic snapshot.</li>
+<li>Builds typed <code>PartyA</code> / <code>PartyB</code> model wrappers around signers (<code>tests/models/partyA.model.ts</code>, <code>tests/models/partyB.model.ts</code>).</li>
+<li>Calls facets through the wrapper or directly, then asserts state using <code>ViewFacet</code> getters or <code>revertedWithCustomError</code> matchers.</li>
+<li>Composes inputs through <code>builder-pattern</code> builders under <code>tests/models/builders/</code>.</li>
+</ul>
+<p>There are no integration tests against live Muon/oracle infrastructure; signature checks are stubbed via the <code>FakeOracle</code> and the <code>update_sig_checks.py</code> toggle (see <code>utils/runTest.sh:1</code>).</p>
+<h2 id="running-tests">Running Tests</h2>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>What it runs</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>TEST_MODE=UNIT_TEST npx hardhat test mocha</code></td>
+<td>Full suite. Reads <code>TEST_MODE</code> from env; must equal <code>UNIT_TEST</code> (<code>tests/main.ts:18</code>).</td>
+</tr>
+<tr>
+<td><code>npm test -- --grep Facets_PartyBOpenFacet</code></td>
+<td>Party B open-intent behavior through the suite entry point.</td>
+</tr>
+<tr>
+<td><code>npm test -- tests/deferred-partyb-sell.behavior.ts</code></td>
+<td>Deferred Party B sell escrow behavior.</td>
+</tr>
+<tr>
+<td><code>TEST_MODE=UNIT_TEST npx hardhat test mocha --coverage</code></td>
+<td>Built-in Hardhat 3 coverage. Output: <code>coverage/lcov.info</code> and <code>coverage/html</code>.</td>
+</tr>
+<tr>
+<td><code>npm test</code></td>
+<td>Runs <code>hardhat test mocha</code> with <code>TEST_MODE=UNIT_TEST</code>.</td>
+</tr>
+<tr>
+<td><code>npm run coverage</code></td>
+<td>Same as <code>TEST_MODE=UNIT_TEST npx hardhat test mocha --coverage</code>.</td>
+</tr>
+<tr>
+<td><code>./utils/runTest.sh</code></td>
+<td>Toggles in-contract <code>// == SignatureCheck( ==</code> blocks off, runs <code>npm test</code>, restores them (<code>utils/runTest.sh:1</code>, <code>utils/update_sig_checks.py:5</code>).</td>
+</tr>
+</tbody></table>
+<p>Environment requirements:</p>
+<ul>
+<li><code>TEST_MODE=UNIT_TEST</code> — only mode currently defined in <code>common/test-mode.enum.ts:1</code>.</li>
+<li><code>PRIVATE_KEY</code> is read for non-local networks only; the default in-process network (<code>default</code>) does not need it.</li>
+<li>Mocha timeout is 100,000,000 ms (<code>hardhat.config.ts</code>) so long fixture chains do not time out.</li>
+</ul>
+<p><code>npm test</code> sets the test mode automatically. Direct <code>npx hardhat test mocha</code> commands need <code>TEST_MODE=UNIT_TEST</code> in the environment. TypeChain runs on compile.</p>
+<h2 id="test-layout">Test Layout</h2>
+<table>
+<thead>
+<tr>
+<th>Test file</th>
+<th>Protocol area</th>
+<th>Flow doc</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>tests/account-facet.behavior.ts</code></td>
+<td>Deposits, withdrawals, allocations, cross balances, suspension.</td>
+<td><code>flows/account-balances.md</code></td>
+</tr>
+<tr>
+<td><code>tests/partyA-open-facet.behavior.ts</code></td>
+<td><code>sendOpenIntent</code>, <code>cancelOpenIntent</code>, <code>expireOpenIntent</code>.</td>
+<td><code>flows/open-intents.md</code></td>
+</tr>
+<tr>
+<td><code>tests/partyB-open-facet.behavior.ts</code></td>
+<td><code>lockOpenIntent</code>, <code>unlockOpenIntent</code>, <code>fillOpenIntent</code>, <code>acceptCancelOpenIntent</code>.</td>
+<td><code>flows/open-intents.md</code></td>
+</tr>
+<tr>
+<td><code>tests/deferred-partyb-sell.behavior.ts</code></td>
+<td>Deferred Party B sell escrow: isolated lock, fill conversion to cross, partial fills with residual escrow, cancel/expire/force-cancel release, bound-Party-A rejection.</td>
+<td><code>flows/open-intents.md</code></td>
+</tr>
+<tr>
+<td><code>tests/partyA-close-facet.behavior.ts</code></td>
+<td><code>sendCloseIntent</code>, <code>cancelCloseIntent</code>, <code>expireCloseIntent</code>.</td>
+<td><code>flows/close-and-settlement.md</code></td>
+</tr>
+<tr>
+<td><code>tests/partyB-close-facet.behavior.ts</code></td>
+<td><code>fillCloseIntent</code>, <code>acceptCancelCloseIntent</code>.</td>
+<td><code>flows/close-and-settlement.md</code></td>
+</tr>
+<tr>
+<td><code>tests/lib-closeIntent.behavior.ts</code></td>
+<td><code>LibCloseIntent</code> storage operations through <code>CloseIntentOpsMock</code>.</td>
+<td><code>flows/close-and-settlement.md</code></td>
+</tr>
+<tr>
+<td><code>tests/trade-settlement.ts</code></td>
+<td><code>TradeFacet</code> settlement, exercise, expiry, NFT sync.</td>
+<td><code>flows/close-and-settlement.md</code></td>
+</tr>
+<tr>
+<td><code>tests/force-action.behavior.ts</code></td>
+<td><code>ForceActionsFacet.forceCancelOpenIntent</code> and timeouts.</td>
+<td><code>flows/liquidation-and-force-actions.md</code></td>
+</tr>
+<tr>
+<td><code>tests/clearing-house.ts</code></td>
+<td><code>ClearingHouseFacet</code> flagging, liquidation, confiscation.</td>
+<td><code>flows/liquidation-and-force-actions.md</code></td>
+</tr>
+<tr>
+<td><code>tests/bridge-facet.behavior.ts</code></td>
+<td>Bridge transfer windows, allowance checks.</td>
+<td><code>flows/account-balances.md</code></td>
+</tr>
+<tr>
+<td><code>tests/helpers/instant-layer.behavior.ts</code></td>
+<td><code>InstantLayer</code> template/batch execution, signed operations.</td>
+<td><code>flows/instant-actions.md</code></td>
+</tr>
+<tr>
+<td><code>tests/helpers/multi-account.behavior.ts</code></td>
+<td><code>MultiAccount</code> deploy/forward, ERC-1271, InstantLayer routing.</td>
+<td><code>flows/instant-actions.md</code></td>
+</tr>
+<tr>
+<td><code>tests/helpers/symmio-partyb.behavior.ts</code></td>
+<td><code>SymmioPartyB</code> selector restrictions, multicast, approvals.</td>
+<td><code>flows/instant-actions.md</code></td>
+</tr>
+</tbody></table>
+<p>Top-level <code>tests/main.ts</code> registers every group under the <code>UNIT_TEST</code> branch. There is no <code>describe.only</code>. <code>hardhat.config.ts</code> sets <code>test.mocha.forbidOnly</code> to <code>!!process.env.CI</code>, so when <code>CI</code> is set a stray <code>.only</code> fails the run.</p>
+<h2 id="the-central-fixture">The Central Fixture</h2>
+<p><code>initializeTestFixture</code> (<code>tests/initialize-test.fixture.ts:9</code>) is the single entry point used by every behavior file. It composes three stages:</p>
+<pre><code class="language-mermaid">flowchart TD
+    A[run deploy:diamond] --&gt; B[createRunContext]
+    B --&gt; C[grantingRoles]
+    C --&gt; D[diamondInitialize]
+    D --&gt; E[Add oracle, set price oracle]
+    E --&gt; F[setPartyBConfig partyB1, partyB2]
+    F --&gt; G[Add symbols BTC_PUT/CALL, USDT PUT/CALL]
+    G --&gt; H[Whitelist collateral and collateralNL]
+    H --&gt; I[Affiliate status, fees, platform fees]
+    I --&gt; J[Set signature verifier]
+    J --&gt; K[Return RunContext]
+</code></pre>
+<p>Stages and what they do:</p>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Source</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>run(&quot;deploy:diamond&quot;, true)</code></td>
+<td><code>tasks/deployment/diamond-deploy.task.ts</code></td>
+<td>Deploys <code>DiamondCutFacet</code>, <code>Diamond</code>, <code>DiamondInit</code>, all facets in <code>common/constants.ts:1</code>, and writes <code>deployed.json</code>.</td>
+</tr>
+<tr>
+<td><code>createRunContext(diamond)</code></td>
+<td><code>tests/run-context.ts:75</code></td>
+<td>Allocates signers, deploys mocks, oracle, signature verifier, two <code>FakeStablecoin</code> collaterals, hook handler. Deploys <code>InstantLayer</code>, <code>MultiAccount</code>, <code>SymmioPartyB</code>. Wires every facet to the diamond address.</td>
+</tr>
+<tr>
+<td><code>grantingRoles(context)</code></td>
+<td><code>tests/granting-roles.ts:6</code></td>
+<td><code>setAdmin(admin)</code> then grants admin: PAUSER, UNPAUSER, MANAGER, TRUSTED, SETTER, SUSPENDER, DISPUTER, WINDOW_UPDATER, PARTY_B_MANAGER, AFFILIATE_MANAGER, AFFILIATE_FEE_MANAGER, ORACLE_MANAGER, SYMBOL_MANAGER, INSTANT_LAYER, CLEARING_HOUSE. Also grants <code>CLEARING_HOUSE_ROLE</code> to <code>signers.clearingHouse</code>.</td>
+</tr>
+<tr>
+<td><code>diamondInitialize(context)</code></td>
+<td><code>tests/diamond-init.ts:4</code></td>
+<td><code>unpauseGlobal</code>, sets cooldowns (deactive instant 120, unbinding 120), <code>maxConnectedCounterParties=10</code>, <code>maxTradePerPartyA=10</code>, balance limits <code>e(1_000_000)</code> per collateral, default fee collector, <code>maxCloseOrdersLength=10</code>, affiliate fees collector, <code>defaultReleaseInterval=12</code>.</td>
+</tr>
+<tr>
+<td>Symbol/oracle/Party B config</td>
+<td><code>tests/initialize-test.fixture.ts:16-44</code></td>
+<td><code>addOracle(&quot;test oracle&quot;, oracle)</code>, <code>setPriceOracleAddress(oracle)</code>, two <code>setPartyBConfig</code> calls (<code>partyB1</code> lossCoverage <code>e(0)</code>, <code>partyB2</code> <code>e(1)</code>, both <code>oracleId=1</code>), four <code>addSymbol</code> calls (ids 1-4), two <code>setPartyBSupportedSymbolTypes</code> calls, two <code>whiteListCollateral</code> calls, affiliate1 status + fees, <code>setSymbolsPlatformFees</code> for ids 1-4.</td>
+</tr>
+<tr>
+<td>Verifier wiring</td>
+<td><code>tests/initialize-test.fixture.ts:54</code></td>
+<td><code>setSignatureVerifier(signatureVerifier)</code>.</td>
+</tr>
+</tbody></table>
+<p>The function signature is:</p>
+<pre><code class="language-ts">export async function initializeTestFixture(): Promise&lt;RunContext&gt;;
+</code></pre>
+<p>It is always entered through <code>loadFixture(initializeTestFixture)</code> so Hardhat snapshots the post-fixture state and reverts after each <code>it</code> (no manual snapshot/revert is used in any test).</p>
+<h3 id="fixture-roles-and-accounts">Fixture Roles And Accounts</h3>
+<p>Allocated in <code>tests/run-context.ts:79</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Index</th>
+<th>Role in tests</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>signers.admin</code></td>
+<td>0</td>
+<td>Owns all granted roles; default <code>msg.sender</code> for <code>controlFacet</code> calls.</td>
+</tr>
+<tr>
+<td><code>signers.partyA1</code></td>
+<td>1</td>
+<td>Primary trader.</td>
+</tr>
+<tr>
+<td><code>signers.partyA2</code></td>
+<td>2</td>
+<td>Secondary trader / counter-party in CROSS scenarios.</td>
+</tr>
+<tr>
+<td><code>signers.feeCollector</code></td>
+<td>3</td>
+<td>Default fee collector + affiliate1 collector.</td>
+</tr>
+<tr>
+<td><code>signers.partyB1</code></td>
+<td>4</td>
+<td>Active Party B, <code>lossCoverage=e(0)</code>, <code>oracleId=1</code>.</td>
+</tr>
+<tr>
+<td><code>signers.partyB2</code></td>
+<td>5</td>
+<td>Active Party B, <code>lossCoverage=e(1)</code>, <code>oracleId=1</code>.</td>
+</tr>
+<tr>
+<td><code>signers.oracle1</code></td>
+<td>6</td>
+<td>Reserved for oracle-signer scenarios.</td>
+</tr>
+<tr>
+<td><code>signers.affiliate1</code></td>
+<td>7</td>
+<td>Whitelisted affiliate (open <code>e(0.01)</code> / close <code>e(0.02)</code>).</td>
+</tr>
+<tr>
+<td><code>signers.bridge1/2</code></td>
+<td>8/9</td>
+<td>Bridge actors for <code>bridge-facet.behavior.ts</code>.</td>
+</tr>
+<tr>
+<td><code>signers.clearingHouse</code></td>
+<td>10</td>
+<td>Holds <code>CLEARING_HOUSE_ROLE</code>.</td>
+</tr>
+<tr>
+<td><code>signers.others[0..1]</code></td>
+<td>11/12</td>
+<td>Scratch signers (used for ad-hoc affiliates, third Party A in some tests).</td>
+</tr>
+</tbody></table>
+<h3 id="default-symbols">Default Symbols</h3>
+<table>
+<thead>
+<tr>
+<th>id</th>
+<th>name</th>
+<th>option</th>
+<th>collateral</th>
+<th>platformFee (after init)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td><code>BTC_PUT</code></td>
+<td>PUT</td>
+<td><code>collateral</code></td>
+<td>open <code>e(0.01)</code> / close <code>e(0.02)</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>BTC_CALL</code></td>
+<td>CALL</td>
+<td><code>collateral</code></td>
+<td>open <code>e(0.01)</code> / close <code>e(0.02)</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>USDT</code></td>
+<td>PUT</td>
+<td><code>collateralNL</code></td>
+<td>open <code>e(0.01)</code> / close <code>e(0.02)</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>USDT</code></td>
+<td>CALL</td>
+<td><code>collateralNL</code></td>
+<td>open <code>e(0.01)</code> / close <code>e(0.02)</code></td>
+</tr>
+</tbody></table>
+<p><code>collateral</code> is the whitelisted FUSD; <code>collateralNL</code> is a second whitelisted token usually passed as <code>feeToken</code> (its name &quot;NL&quot; is historical: it was originally the not-listed token, but the fixture whitelists it at <code>tests/initialize-test.fixture.ts:39</code>).</p>
+<h2 id="runcontext">RunContext</h2>
+<p>Defined in <code>tests/run-context.ts:29</code>. Tests destructure the fields they need; common patterns:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>controlFacet</code></td>
+<td>Pause/unpause, role grants, parameter setters (admin runs by default).</td>
+</tr>
+<tr>
+<td><code>accountFacet</code></td>
+<td><code>deposit</code>, <code>allocate</code>, <code>withdraw</code>. Wrap with <code>.connect(signer)</code> per call.</td>
+</tr>
+<tr>
+<td><code>partyAOpenFacet</code> / <code>partyBOpenFacet</code></td>
+<td>Direct facet calls for Party A/B open-intent flows.</td>
+</tr>
+<tr>
+<td><code>partyACloseFacet</code> / <code>partyBCloseFacet</code></td>
+<td>Close-intent flows.</td>
+</tr>
+<tr>
+<td><code>viewFacet</code></td>
+<td>Read-only assertions: <code>getIsolatedBalance</code>, <code>getOpenIntent</code>, <code>getTrade</code>, etc.</td>
+</tr>
+<tr>
+<td><code>tradeFacet</code>, <code>forceActionsFacet</code>, <code>clearingHouse</code>, <code>counterPartyRelation</code></td>
+<td>Specialty facets.</td>
+</tr>
+<tr>
+<td><code>instantLayer</code>, <code>multiAccount</code>, <code>symmioPartyB</code></td>
+<td>Helper-contract instances pre-deployed by the fixture.</td>
+</tr>
+<tr>
+<td><code>collateral</code>, <code>collateralNL</code></td>
+<td>Two <code>FakeStablecoin</code> instances; both whitelisted, both have <code>mint</code>.</td>
+</tr>
+<tr>
+<td><code>oracle</code></td>
+<td><code>FakeOracle</code>; <code>getPrice</code> returns <code>1e18</code>, <code>verifyTSSAndGW</code> is a no-op.</td>
+</tr>
+<tr>
+<td><code>mocks.libCloseIntentMock</code></td>
+<td><code>CloseIntentOpsMock</code> for direct library testing (<code>contracts/libraries/mocks/LibCloseIntentMock.sol</code>).</td>
+</tr>
+<tr>
+<td><code>signatureVerifier</code></td>
+<td><code>SignatureVerifier</code> registered with the diamond.</td>
+</tr>
+<tr>
+<td><code>common.chainId</code>, <code>common.diamondAddress</code></td>
+<td>Chain id and diamond address for the test environment.</td>
+</tr>
+</tbody></table>
+<h2 id="test-modeenumts">test-mode.enum.ts</h2>
+<p><code>common/test-mode.enum.ts:1</code> defines a single mode:</p>
+<pre><code class="language-ts">export enum TestModeEnum {
+	UNIT_TEST = &quot;UNIT_TEST&quot;,
+}
+</code></pre>
+<p><code>tests/main.ts:18</code> reads <code>process.env.TEST_MODE</code> and only registers behavior groups when it equals <code>UNIT_TEST</code>; any other value throws. The enum is a placeholder for future modes (e.g. integration / fuzz) — at present every test in the suite is a &quot;unit&quot; behavior test.</p>
+<h2 id="testsmodels">tests/models/</h2>
+<p>Higher-level wrappers for protocol actors and request-shape builders.</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>tests/models/partyEntitiy.ts:9</code></td>
+<td>Base class. <code>setBalances(collateral?, mintAmount?, depositAmount?)</code> mints + approves + deposits. <code>setNativeBalance</code>, <code>sign</code>.</td>
+</tr>
+<tr>
+<td><code>tests/models/partyA.model.ts:8</code></td>
+<td>Party A actions: <code>sendOpenIntent</code>, <code>sendCancelOpenIntent</code>, <code>expireOpenIntent</code>, <code>sendCloseIntent</code>, <code>sendCancelCloseIntent</code>, <code>expireCloseIntent</code>, binding (<code>bindToCounterParty</code>, <code>initiateUnbindingFromPartyB</code>, ...), <code>activateInstantActionMode</code>, <code>forceCancelOpenIntent</code>.</td>
+</tr>
+<tr>
+<td><code>tests/models/partyB.model.ts:7</code></td>
+<td>Party B actions: <code>lockOpenIntent</code>, <code>unlockOpenIntent</code>, <code>fillOpenIntent</code>, <code>acceptCancelOpenIntent</code>, <code>acceptCancelCloseIntent</code>, <code>fillCloseIntent</code>.</td>
+</tr>
+<tr>
+<td><code>tests/models/builders/send-open-intent.builder.ts:50</code></td>
+<td><code>openIntentRequestBuilder()</code> — default <code>OpenIntent</code> (symbolId 1, price <code>e(10)</code>, qty <code>e(1)</code>, <code>BUY</code>, <code>ISOLATED</code>, ZeroAddress affiliate/feeToken).</td>
+</tr>
+<tr>
+<td><code>tests/models/builders/close-intent.builder.ts:33</code></td>
+<td><code>closeIntentBuilder()</code> for <code>CloseIntentStruct</code> (storage shape).</td>
+</tr>
+<tr>
+<td><code>tests/models/builders/trade.builder.ts:51</code></td>
+<td><code>tradeBuilder()</code> for <code>TradeStruct</code> (used by <code>lib-closeIntent.behavior.ts</code>).</td>
+</tr>
+<tr>
+<td><code>tests/models/builders/settlement.builder.ts:20</code></td>
+<td><code>settlementSigBuilder()</code> for <code>SettlementPriceSigStruct</code>.</td>
+</tr>
+</tbody></table>
+<p>All builders use <code>builder-pattern</code>&#39;s <code>Builder(defaults)</code> so <code>.field(value).build()</code> chains return a fully typed struct.</p>
+<h2 id="testsutils">tests/utils/</h2>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Helpers</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>tests/utils/log.ts:1</code></td>
+<td><code>logger</code> — toggleable wrapper around <code>console.log</code> (<code>disable()</code> / <code>enable()</code>).</td>
+</tr>
+</tbody></table>
+<p>Top-level <code>utils/</code> (plus <code>tests/utils/time.ts</code>) is also used heavily from tests:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Helpers</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>utils/e.ts:3</code></td>
+<td><code>e(value)</code> → <code>ethers.parseEther(value)</code>. Universal &quot;to 18 decimals&quot; helper.</td>
+</tr>
+<tr>
+<td><code>tests/utils/time.ts</code></td>
+<td><code>getLatestBlockTime()</code>, <code>moveTime(seconds)</code> (uses <code>evm_setNextBlockTimestamp</code>).</td>
+</tr>
+<tr>
+<td><code>utils/tx.ts:1</code></td>
+<td><code>runTx(promise)</code> — awaits the tx and <code>.wait()</code>s; used by every <code>PartyA/PartyB</code> method.</td>
+</tr>
+<tr>
+<td><code>utils/runTest.sh:1</code></td>
+<td>Disables in-contract signature checks via <code>update_sig_checks.py 1</code>, runs tests, restores.</td>
+</tr>
+<tr>
+<td><code>utils/update_sig_checks.py:5</code></td>
+<td>Toggles <code>// == SignatureCheck( ==</code> … <code>// == ) ==</code> blocks in Solidity sources.</td>
+</tr>
+</tbody></table>
+<h2 id="testshelpers">tests/helpers/</h2>
+<p>Behavior tests for the off-Diamond helper contracts. They share the same fixture and <code>RunContext</code>.</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Coverage</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>tests/helpers/instant-layer.behavior.ts:28</code></td>
+<td><code>InstantLayer</code> template execution (<code>OperationStruct[]</code> + <code>SignedOperationStruct[]</code>), source-indices/insertion-points, replay protection, salts, deadlines.</td>
+</tr>
+<tr>
+<td><code>tests/helpers/multi-account.behavior.ts:18</code></td>
+<td><code>MultiAccount</code> account creation, owner-vs-InstantLayer forwarding, ERC-1271 signature validation, account routing of open/lock/fill calldata.</td>
+</tr>
+<tr>
+<td><code>tests/helpers/symmio-partyb.behavior.ts:27</code></td>
+<td><code>SymmioPartyB</code> selector allow-list, multicast, token approvals, pause behavior, ERC-1271.</td>
+</tr>
+</tbody></table>
+<h2 id="writing-a-new-behavior-test">Writing A New Behavior Test</h2>
+<ol>
+<li><p>Create <code>tests/&lt;area&gt;.behavior.ts</code> exporting <code>shouldBehaveLike&lt;Area&gt;(): void</code>.</p>
+</li>
+<li><p>Inside the function, declare context state and <code>beforeEach</code> that loads the fixture:</p>
+<pre><code class="language-ts">let context: RunContext, partyA1: PartyA, partyB1: PartyB;
+beforeEach(async () =&gt; {
+    context = await networkHelpers.loadFixture(initializeTestFixture);
+    partyA1 = new PartyA(context, context.signers.partyA1);
+    partyB1 = new PartyB(context, context.signers.partyB1);
+    await partyA1.setBalances(context.collateral, e(100000), e(50000));
+    await partyB1.setBalances(context.collateral, e(100000), e(50000));
+});
+</code></pre>
+</li>
+<li><p>Build inputs through a builder, override only what the case needs:</p>
+<pre><code class="language-ts">const blockTime = await getLatestBlockTime();
+const request = openIntentRequestBuilder()
+    .partyBsWhiteList([partyB1.address])
+    .affiliate(context.signers.affiliate1)
+    .feeToken(context.collateralNL)
+    .deadline(blockTime + 120)
+    .expirationTimestamp(blockTime + 120)
+    .build();
+</code></pre>
+</li>
+<li><p>Execute via the model wrapper or facet directly:</p>
+<pre><code class="language-ts">await partyA1.sendOpenIntent(request);
+await partyB1.lockOpenIntent(1);
+await partyB1.fillOpenIntent(1, request.quantity, request.price);
+</code></pre>
+</li>
+<li><p>Assert state through <code>viewFacet</code>, balance reads, or events:</p>
+<pre><code class="language-ts">const trade = await context.viewFacet.getTrade(1);
+expect(trade.status).to.equal(TradeStatus.OPENED);
+</code></pre>
+</li>
+<li><p>Register the group in <code>tests/main.ts</code> inside the <code>UNIT_TEST</code> branch.</p>
+</li>
+</ol>
+<p>Each <code>it</code> starts from the fixture snapshot — there is no manual <code>snapshot()</code>/<code>revert()</code> in the suite (<code>networkHelpers.loadFixture</code> handles it; <code>networkHelpers</code> comes from the shared connection in <code>tests/connection.ts</code>, created once with <code>network.getOrCreate()</code>).</p>
+<h2 id="common-assertion-patterns">Common Assertion Patterns</h2>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Custom-error revert</td>
+<td><code>await expect(tx).to.be.revertedWithCustomError(context.accountFacet, &quot;DepositingPaused&quot;)</code> (<code>tests/account-facet.behavior.ts:41</code>).</td>
+</tr>
+<tr>
+<td>Generic revert</td>
+<td><code>await expect(tx).not.to.revert(ethers)</code> (in chai-matchers 3, <code>.to.be.reverted</code> became <code>.to.revert(ethers)</code>).</td>
+</tr>
+<tr>
+<td>Balance delta</td>
+<td>Compare <code>viewFacet.getIsolatedBalance</code> before/after (<code>tests/account-facet.behavior.ts:91</code>).</td>
+</tr>
+<tr>
+<td>ERC20 balance delta</td>
+<td><code>await context.collateral.balanceOf(addr)</code> before/after.</td>
+</tr>
+<tr>
+<td>Status enum</td>
+<td>Compare against <code>IntentStatus.LOCKED</code>, <code>TradeStatus.OPENED</code>, <code>CloseIntentStatus.PENDING</code>, etc. from <code>tests/option-enums.ts:1</code>.</td>
+</tr>
+<tr>
+<td>Event emission</td>
+<td>Use chai-matchers <code>.to.emit(facet, &quot;EventName&quot;).withArgs(...)</code>. Note that <code>.to.be.reverted</code> is now <code>.to.revert(ethers)</code>.</td>
+</tr>
+<tr>
+<td>Time progression</td>
+<td><code>await network.provider.send(&quot;evm_setNextBlockTimestamp&quot;, [t])</code> or <code>moveTime(seconds)</code>.</td>
+</tr>
+</tbody></table>
+<h2 id="coverage">Coverage</h2>
+<p><code>TEST_MODE=UNIT_TEST npx hardhat test mocha --coverage</code> (or <code>npm run coverage</code>) runs the full suite under Hardhat 3&#39;s built-in coverage. Output:</p>
+<ul>
+<li><code>coverage/lcov.info</code> — lcov report.</li>
+<li><code>coverage/html</code> — HTML report.</li>
+</ul>
+<p>Gotchas:</p>
+<ul>
+<li><code>viaIR</code> is enabled (<code>hardhat.config.ts</code>) but coverage instrumentation falls back to its own pipeline; some inline-assembly branches may report as uncovered even when exercised.</li>
+<li>Coverage runs are slow — the Mocha timeout is already raised globally to 100,000,000 ms.</li>
+</ul>
+<h2 id="mocks">Mocks</h2>
+<p>Solidity mocks live in two places:</p>
+<table>
+<thead>
+<tr>
+<th>Mock</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>contracts/mocks/fake-stablecoin.sol:6</code></td>
+<td>Mintable ERC20 used as both <code>collateral</code> (FUSD) and <code>collateralNL</code> (NLUSD).</td>
+</tr>
+<tr>
+<td><code>contracts/mocks/fake-oracle.sol:6</code></td>
+<td>Returns <code>1e18</code> for <code>getPrice</code> and no-ops <code>verifyTSSAndGW</code>. Lets every Muon settlement signature pass without keys.</td>
+</tr>
+<tr>
+<td><code>contracts/mocks/mock-hook-handler.sol:4</code></td>
+<td>No-op hook for transfer-target tests.</td>
+</tr>
+<tr>
+<td><code>contracts/libraries/mocks/LibCloseIntentMock.sol:8</code></td>
+<td>Exposes <code>LibCloseIntentOps</code> internals (<code>register</code>, <code>expire</code>, <code>removeFromArray</code>) as external functions, plus <code>setTrade</code>/<code>setCloseIntent</code> to seed storage. Drives <code>tests/lib-closeIntent.behavior.ts:14</code>.</td>
+</tr>
+</tbody></table>
+<p>The fixture deploys all four through dedicated tasks (<code>deploy:stablecoin</code>, <code>deploy:oracle</code>, <code>deploy:hookHandler</code>, <code>deploy:mocks</code>).</p>
+<h2 id="known-gaps">Known Gaps</h2>
+<ul>
+<li><strong>No fuzz / property-based tests</strong> (no Foundry, no Echidna). Every test is example-based.</li>
+<li><strong>No integration with real Muon TSS/gateway</strong>. <code>FakeOracle.verifyTSSAndGW</code> is empty; <code>update_sig_checks.py</code> further disables in-contract signature checks during the standard run path. End-to-end signature validity is not exercised.</li>
+<li><strong>No TradeNFT integration in the fixture</strong>: <code>MultiAccount</code> is deployed with <code>tradenftaddress=ZeroAddress</code> (<code>tests/run-context.ts:147</code>); NFT-flow paths in <code>TradeFacet.transferTradeFromNFT</code> are not covered through the fixture.</li>
+<li><strong><code>partyA.initiateUnbindingFromPartyB</code> / <code>completeUnbindingFromPartyB</code> / <code>cancelUnbindingFromPartyB</code></strong> in <code>tests/models/partyA.model.ts:57</code> accept a <code>partyB</code> arg but call the facet without it — works because the facet is parameterless, but the API is misleading.</li>
+<li>No coverage for <code>BridgeFacet</code> paths beyond the basic transfer windows.</li>
+</ul>
+<h2 id="ci-considerations">CI Considerations</h2>
+<ul>
+<li><code>.husky/pre-commit</code> formats fully staged files and skips paths with unstaged changes. Staged Solidity triggers compilation and the release size check. Staged docs trigger <code>npm run docs:check</code>.</li>
+<li><code>.gitlab-ci.yml</code> runs formatting, compilation, lint, documentation checks, and the Mocha suite on Node 24. Secret detection uses GitLab&#39;s included template.</li>
+<li>Run <code>npm run check:release</code> for the combined local compile, lint, test, and documentation checks.</li>
+<li><code>utils/runTest.sh</code> is the only path that mutates Solidity sources before testing — do not invoke it from CI without ensuring the post-run <code>update_sig_checks.py 0</code> step runs even on failure.</li>
+</ul>
+<h2 id="code-map">Code Map</h2>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>tests/main.ts</code></td>
+<td>Mocha entry. Registers every behavior group under <code>TEST_MODE=UNIT_TEST</code>.</td>
+</tr>
+<tr>
+<td><code>tests/initialize-test.fixture.ts</code></td>
+<td>Composes diamond, helpers, roles, oracle, symbols, fees, verifier into a <code>RunContext</code>.</td>
+</tr>
+<tr>
+<td><code>tests/run-context.ts</code></td>
+<td><code>RunContext</code> class + <code>createRunContext</code> (signers, contract handles, helper deploys).</td>
+</tr>
+<tr>
+<td><code>tests/diamond-init.ts</code></td>
+<td>Post-deploy parameter setup (cooldowns, limits, fee collector, release interval).</td>
+</tr>
+<tr>
+<td><code>tests/granting-roles.ts</code></td>
+<td>Grants every operational role to admin + <code>CLEARING_HOUSE_ROLE</code> to clearing-house signer.</td>
+</tr>
+<tr>
+<td><code>tests/option-enums.ts</code></td>
+<td>TS mirrors of on-chain enums (<code>IntentStatus</code>, <code>TradeStatus</code>, <code>MarginType</code>, etc.).</td>
+</tr>
+<tr>
+<td><code>tests/account-facet.behavior.ts</code></td>
+<td><code>AccountFacet</code> deposit/withdraw/allocate behavior.</td>
+</tr>
+<tr>
+<td><code>tests/partyA-open-facet.behavior.ts</code></td>
+<td>Open-intent creation/cancellation by Party A.</td>
+</tr>
+<tr>
+<td><code>tests/partyB-open-facet.behavior.ts</code></td>
+<td>Lock/unlock/fill/cancel-accept by Party B.</td>
+</tr>
+<tr>
+<td><code>tests/partyA-close-facet.behavior.ts</code></td>
+<td>Close-intent creation/cancellation by Party A.</td>
+</tr>
+<tr>
+<td><code>tests/partyB-close-facet.behavior.ts</code></td>
+<td>Close-intent fills and accept-cancel by Party B.</td>
+</tr>
+<tr>
+<td><code>tests/lib-closeIntent.behavior.ts</code></td>
+<td>Direct <code>LibCloseIntent</code> storage operations through <code>CloseIntentOpsMock</code>.</td>
+</tr>
+<tr>
+<td><code>tests/trade-settlement.ts</code></td>
+<td><code>TradeFacet</code> settlement, exercise, expiry, NFT sync.</td>
+</tr>
+<tr>
+<td><code>tests/force-action.behavior.ts</code></td>
+<td><code>ForceActionsFacet</code> timeout-based forced cancellations.</td>
+</tr>
+<tr>
+<td><code>tests/clearing-house.ts</code></td>
+<td><code>ClearingHouseFacet</code> liquidation lifecycle.</td>
+</tr>
+<tr>
+<td><code>tests/bridge-facet.behavior.ts</code></td>
+<td>Bridge transfer windows.</td>
+</tr>
+<tr>
+<td><code>tests/helpers/instant-layer.behavior.ts</code></td>
+<td><code>InstantLayer</code> operation/template execution and signature handling.</td>
+</tr>
+<tr>
+<td><code>tests/helpers/multi-account.behavior.ts</code></td>
+<td><code>MultiAccount</code> account routing and ERC-1271.</td>
+</tr>
+<tr>
+<td><code>tests/helpers/symmio-partyb.behavior.ts</code></td>
+<td><code>SymmioPartyB</code> selector restrictions, multicast, ERC-1271.</td>
+</tr>
+<tr>
+<td><code>tests/models/partyEntitiy.ts</code></td>
+<td>Base wrapper: balances, signing.</td>
+</tr>
+<tr>
+<td><code>tests/models/partyA.model.ts</code></td>
+<td>Party A method shortcuts.</td>
+</tr>
+<tr>
+<td><code>tests/models/partyB.model.ts</code></td>
+<td>Party B method shortcuts.</td>
+</tr>
+<tr>
+<td><code>tests/models/builders/*.ts</code></td>
+<td><code>builder-pattern</code> defaults for every request/struct shape.</td>
+</tr>
+<tr>
+<td><code>tests/utils/log.ts</code></td>
+<td>Toggleable logger.</td>
+</tr>
+<tr>
+<td><code>utils/e.ts</code>, <code>tests/utils/time.ts</code>, <code>utils/tx.ts</code></td>
+<td>Shared math, timing, and tx-await helpers used by tests.</td>
+</tr>
+<tr>
+<td><code>utils/runTest.sh</code>, <code>utils/update_sig_checks.py</code></td>
+<td>Signature-check toggle wrapper for <code>npm run test</code>.</td>
+</tr>
+<tr>
+<td><code>contracts/mocks/*</code>, <code>contracts/libraries/mocks/*</code></td>
+<td>Solidity mocks consumed by the fixture.</td>
+</tr>
+</tbody></table>
+</article></main></div><footer class="site-footer"><span>Options Core documentation.</span></footer></body></html>

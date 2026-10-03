@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Deployment tasks, configuration, networks, and post-deploy setup."><title>Deployment And Operations | Options Core</title>
+<link rel="icon" type="image/svg+xml" href="../assets/symmio-mark.svg">
+<script>try { if (localStorage.getItem("options-docs-theme") === "light") document.documentElement.dataset.theme = "light"; } catch (_) {}</script>
+<link rel="stylesheet" href="../assets/reader.css"><link rel="stylesheet" href="../assets/docs-portal.css">
+<script src="../assets/chapters.js" defer></script><script src="../assets/reader.js" defer></script><script src="../assets/docs-portal.js" defer></script>
+</head>
+<body class="doc-page" data-version="current"><a class="skip-link" href="#full-document">Skip to document</a>
+<header class="docs-header"><div class="doc-topbar"><nav class="docs-trail" aria-label="Breadcrumb">
+<a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Options Core</span></a>
+<span class="trail-sep" aria-hidden="true">/</span><a class="trail-release" href="../index.html">Documentation</a>
+</nav><nav class="top-actions" aria-label="Page actions"><button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button></nav></div></header><div class="reader-shell"><div data-rail-sections hidden>
+<a class="toc-link level-2" href="#common-commands">Common Commands</a>
+<a class="toc-link level-2" href="#diamond-deployment">Diamond Deployment</a>
+<a class="toc-link level-2" href="#helper-deployments">Helper Deployments</a>
+<a class="toc-link level-2" href="#setup-configuration">Setup Configuration</a>
+<a class="toc-link level-2" href="#minimal-post-deploy-checklist">Minimal Post-Deploy Checklist</a>
+<a class="toc-link level-2" href="#helper-tasks-for-manual-flow-testing">Helper Tasks For Manual Flow Testing</a>
+<a class="toc-link level-2" href="#tests">Tests</a>
+<a class="toc-link level-2" href="#networks">Networks</a>
+</div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1>Deployment And Operations</h1><p class="hero-copy">Deployment tasks, configuration, networks, and post-deploy setup.</p></div></div></header>
+<article class="doc-article" id="full-document"><p>This repo is a Hardhat project using Solidity <code>0.8.25</code> (<code>evmVersion: cancun</code>), Hardhat 3, Node 24, OpenZeppelin 5.6.1, TypeChain for ethers v6 (generated on compile), and the OpenZeppelin upgrades plugin for helper contracts.</p>
+<h2 id="common-commands">Common Commands</h2>
+<pre><code class="language-bash">npm install
+npm run compile
+npm test
+npm run coverage
+</code></pre>
+<p><code>npm run compile</code> generates TypeChain types while compiling contracts, then checks deployed bytecode against the 23,552-byte release budget. A separate TypeChain command is unnecessary. <code>npm test</code> runs the Mocha suite with <code>TEST_MODE=UNIT_TEST</code>, and <code>npm run coverage</code> runs it with Hardhat 3 coverage.</p>
+<h2 id="diamond-deployment">Diamond Deployment</h2>
+<p>The main deployment task is registered in <code>tasks/deployment/diamond-deploy.task.ts</code>.</p>
+<pre><code class="language-bash">npx hardhat deploy:diamond
+</code></pre>
+<p>This runs on the in-process network and writes <code>tasks/data/deployed.json</code> by default; pass <code>--skip-log</code> to skip writing it.</p>
+<p>Deployment order:</p>
+<pre><code class="language-mermaid">flowchart TD
+    Cut[Deploy DiamondCutFacet] --&gt; Diamond[Deploy Diamond with owner and DiamondCutFacet]
+    Diamond --&gt; Init[Deploy DiamondInit]
+    Init --&gt; Facets[Deploy configured facets]
+    Facets --&gt; CutCall[diamondCut add selectors and call DiamondInit.init]
+    CutCall --&gt; Log[Write deployed.json if logData is true]
+</code></pre>
+<p>The task deploys facets listed in <code>common/constants.ts</code> and adds their selectors through <code>IDiamondCut.diamondCut</code>.</p>
+<p><code>deploy:deploy</code> runs:</p>
+<pre><code class="language-bash">npx hardhat deploy:deploy --network &lt;network&gt;
+</code></pre>
+<p>It calls <code>deploy:diamond</code> and then <code>verify:deployment</code>.</p>
+<h2 id="helper-deployments">Helper Deployments</h2>
+<p>Registered helper tasks:</p>
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>deploy:stablecoin</code></td>
+<td>Deploy fake stablecoin for local/dev use.</td>
+</tr>
+<tr>
+<td><code>deploy:oracle</code></td>
+<td>Deploy fake oracle for local/dev use.</td>
+</tr>
+<tr>
+<td><code>deploy:hookHandler</code></td>
+<td>Deploy mock hook handler.</td>
+</tr>
+<tr>
+<td><code>deploy:mocks</code></td>
+<td>Deploy library mocks.</td>
+</tr>
+<tr>
+<td><code>deploy:SignatureVerifier</code></td>
+<td>Deploy signature verifier helper.</td>
+</tr>
+<tr>
+<td><code>deploy:multiAccount</code></td>
+<td>Deploy upgradeable <code>MultiAccount</code>; requires Symmio, admin, and trade NFT addresses.</td>
+</tr>
+<tr>
+<td><code>deploy:InstantLayer</code></td>
+<td>Deploy <code>InstantLayer</code>; requires Symmio and admin addresses.</td>
+</tr>
+<tr>
+<td><code>deploy:symmioPartyB</code></td>
+<td>Deploy upgradeable <code>SymmioPartyB</code>; requires Symmio and admin addresses.</td>
+</tr>
+</tbody></table>
+<p>Examples:</p>
+<pre><code class="language-bash">npx hardhat deploy:multiAccount --symmioaddress &lt;diamond&gt; --admin &lt;admin&gt; --tradenftaddress &lt;tradeNFT&gt;
+npx hardhat deploy:InstantLayer --symmioaddress &lt;diamond&gt; --admin &lt;admin&gt;
+npx hardhat deploy:symmioPartyB --symmioaddress &lt;diamond&gt; --admin &lt;admin&gt;
+</code></pre>
+<h2 id="setup-configuration">Setup Configuration</h2>
+<p>There are two setup config shapes in the repo:</p>
+<ul>
+<li><code>tasks/config/_sample.config.json</code> and <code>tasks/config/config.interface.ts</code> describe a task-oriented config structure.</li>
+<li><code>scripts/config/setup.example.json</code> is consumed by <code>scripts/symmSetup.ts</code>, which expects <code>scripts/config/setup.json</code> and reads the Diamond address from <code>output/addresses.json</code>.</li>
+</ul>
+<p>The setup script configures items such as:</p>
+<ul>
+<li>Admin and role grants/revokes.</li>
+<li>Whitelisted collateral.</li>
+<li>Max close orders, max trades per Party A, and balance limits.</li>
+<li>Timing parameters.</li>
+<li>Party B release interval and default release interval.</li>
+<li>Default fee collector.</li>
+<li>Oracles, price oracle address, and symbols.</li>
+<li>Party B config and supported symbol types.</li>
+<li>Affiliates and affiliate fees.</li>
+<li>Signature verifier.</li>
+<li>Express withdraw provider config.</li>
+<li>Invalid withdrawal amount pool.</li>
+<li>External transfer target validation.</li>
+</ul>
+<h2 id="minimal-post-deploy-checklist">Minimal Post-Deploy Checklist</h2>
+<pre><code class="language-mermaid">flowchart TD
+    Deploy[Deploy Diamond and facets] --&gt; Roles[Grant operational roles]
+    Roles --&gt; Collateral[Whitelist collateral and set balance limits]
+    Collateral --&gt; Oracles[Add oracle and set price oracle]
+    Oracles --&gt; Symbols[Add valid symbols]
+    Symbols --&gt; Fees[Set default and affiliate fee collectors]
+    Fees --&gt; PartyB[Configure active Party B and supported symbol types]
+    PartyB --&gt; Timing[Set timing, release intervals, and force cancel windows]
+    Timing --&gt; Helpers[Deploy/register MultiAccount, PartyB, InstantLayer, TradeNFT]
+    Helpers --&gt; Smoke[Run smoke flow: deposit, open, lock, fill, close or settle]
+</code></pre>
+<h2 id="helper-tasks-for-manual-flow-testing">Helper Tasks For Manual Flow Testing</h2>
+<p>The <code>tasks/helper</code> folder registers manual tasks:</p>
+<ul>
+<li><code>send-open-intent</code></li>
+<li><code>lock-open-intent</code></li>
+<li><code>fill-open-intent</code></li>
+<li><code>send-close-intent</code></li>
+<li><code>fill-close-intent</code></li>
+</ul>
+<p>These are useful for testing a deployed Diamond from the command line. Check each file in <code>tasks/helper</code> for exact parameters before running.</p>
+<h2 id="tests">Tests</h2>
+<p>The behavior tests are split by protocol area:</p>
+<ul>
+<li><code>tests/account-facet.behavior.ts</code></li>
+<li><code>tests/partyA-open-facet.behavior.ts</code></li>
+<li><code>tests/partyB-open-facet.behavior.ts</code></li>
+<li><code>tests/partyA-close-facet.behavior.ts</code></li>
+<li><code>tests/partyB-close-facet.behavior.ts</code></li>
+<li><code>tests/trade-settlement.ts</code></li>
+<li><code>tests/force-action.behavior.ts</code></li>
+<li><code>tests/clearing-house.ts</code></li>
+<li><code>tests/helpers/instant-layer.behavior.ts</code></li>
+<li><code>tests/helpers/multi-account.behavior.ts</code></li>
+<li><code>tests/helpers/symmio-partyb.behavior.ts</code></li>
+</ul>
+<p>Run the whole suite with:</p>
+<pre><code class="language-bash">npm test
+</code></pre>
+<p>For a focused behavior group, filter through the suite entry point:</p>
+<pre><code class="language-bash">npm test -- --grep Facets_PartyBOpenFacet
+</code></pre>
+<h2 id="networks">Networks</h2>
+<p><code>hardhat.config.ts</code> defines:</p>
+<ul>
+<li><code>default</code>: in-process local network (<code>edr-simulated</code>). It is used when <code>--network</code> is omitted.</li>
+<li><code>polygon</code>: <code>https://polygon-rpc.com</code>.</li>
+<li><code>base</code>: <code>https://mainnet.base.org</code>.</li>
+</ul>
+<p><code>PRIVATE_KEY</code> and <code>ETHERSCAN_API_KEY</code> are Hardhat config variables, read only when a network or verify command needs them. Set them in the environment, an ignored <code>.env</code>, or with <code>npx hardhat keystore set</code>.</p>
+<p>The Base proxies deployed with OpenZeppelin 4 are abandoned: MultiAccount <code>0x798101d0C3B4A0D863AdC67DA77BAA6fCd9610C2</code> and SymmioPartyB <code>0x676F287Eb5dF6E0B6B913C26f64660493F98Cc4A</code>. The old OpenZeppelin 4 upgrades manifest is kept locally, not in git. The next MultiAccount and SymmioPartyB deployment is a fresh OpenZeppelin 5 deployment, not an upgrade.</p>
+</article></main></div><footer class="site-footer"><span>Options Core documentation.</span></footer></body></html>

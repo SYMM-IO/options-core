@@ -6,7 +6,6 @@ pragma solidity >=0.8.19;
 
 import { OpenIntentStorage } from "../../storages/OpenIntentStorage.sol";
 
-import { MarginType } from "../../types/BaseTypes.sol";
 import { OpenIntent, OpenIntentStatus } from "../../types/IntentTypes.sol";
 
 import { Pausable } from "../../utils/Pausable.sol";

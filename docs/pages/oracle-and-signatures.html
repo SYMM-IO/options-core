@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Muon verification, gateway signatures, ERC-1271, and EIP-712."><title>Oracle and Signatures | Options Core</title>
+<link rel="icon" type="image/svg+xml" href="../assets/symmio-mark.svg">
+<script>try { if (localStorage.getItem("options-docs-theme") === "light") document.documentElement.dataset.theme = "light"; } catch (_) {}</script>
+<link rel="stylesheet" href="../assets/reader.css"><link rel="stylesheet" href="../assets/docs-portal.css">
+<script src="../assets/chapters.js" defer></script><script src="../assets/reader.js" defer></script><script src="../assets/docs-portal.js" defer></script>
+</head>
+<body class="doc-page" data-version="current"><a class="skip-link" href="#full-document">Skip to document</a>
+<header class="docs-header"><div class="doc-topbar"><nav class="docs-trail" aria-label="Breadcrumb">
+<a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Options Core</span></a>
+<span class="trail-sep" aria-hidden="true">/</span><a class="trail-release" href="../index.html">Documentation</a>
+</nav><nav class="top-actions" aria-label="Page actions"><button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button></nav></div></header><div class="reader-shell"><div data-rail-sections hidden>
+<a class="toc-link level-2" href="#1-overview">1. Overview</a>
+<a class="toc-link level-2" href="#2-muon-tss--schnorr-deep-dive">2. Muon TSS / Schnorr deep-dive</a>
+<a class="toc-link level-3" href="#21-what-muon-is">2.1 What Muon is</a>
+<a class="toc-link level-3" href="#22-schnorr-verification-high-level">2.2 Schnorr verification (high level)</a>
+<a class="toc-link level-3" href="#23-per-symbol-oracleid-model">2.3 Per-symbol oracleId model</a>
+<a class="toc-link level-3" href="#24-gateway-signature--what-it-adds-beyond-schnorr">2.4 Gateway signature — what it adds beyond Schnorr</a>
+<a class="toc-link level-3" href="#25-settlementpricesig-field-by-field--libmuon-validation-flow">2.5 SettlementPriceSig field-by-field + LibMuon validation flow</a>
+<a class="toc-link level-3" href="#26-upnl-signature">2.6 uPnL signature</a>
+<a class="toc-link level-3" href="#27-muonoracle-storage--rotation-oraclemanagerrole">2.7 MuonOracle storage + rotation (ORACLE_MANAGER_ROLE)</a>
+<a class="toc-link level-2" href="#3-ecdsa--erc-1271-signatureverifier">3. ECDSA + ERC-1271 (SignatureVerifier)</a>
+<a class="toc-link level-3" href="#31-when-used">3.1 When used</a>
+<a class="toc-link level-3" href="#32-isvalidsignature-flow">3.2 <code>_isValidSignature</code> flow</a>
+<a class="toc-link level-3" href="#33-magic-value-0x1626ba7e">3.3 Magic value 0x1626ba7e</a>
+<a class="toc-link level-2" href="#4-eip-712-instantlayer">4. EIP-712 (InstantLayer)</a>
+<a class="toc-link level-2" href="#5-ipriceoracle-collateral--fee-token-quote">5. IPriceOracle (collateral / fee-token quote)</a>
+<a class="toc-link level-2" href="#6-trust-assumptions">6. Trust assumptions</a>
+<a class="toc-link level-2" href="#7-failure--rotation-playbook">7. Failure &amp; rotation playbook</a>
+<a class="toc-link level-2" href="#8-settlement-sequence">8. Settlement sequence</a>
+<a class="toc-link level-2" href="#9-code-map">9. Code map</a>
+</div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1>Oracle and Signatures</h1><p class="hero-copy">Muon verification, gateway signatures, ERC-1271, and EIP-712.</p></div></div></header>
+<article class="doc-article" id="full-document"><p>SYMM Options Core relies on three distinct signing schemes, each with different trust assumptions, replay-protection models, and verification paths. This document covers the off-chain oracle (Muon TSS + Schnorr) and the on-chain account-signature path (ECDSA / ERC-1271) in depth, and points to <code>docs/flows/instant-actions.md</code> for EIP-712 batch authorization.</p>
+<h2 id="1-overview">1. Overview</h2>
+<table>
+<thead>
+<tr>
+<th>Scheme</th>
+<th>Used for</th>
+<th>Where verified</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Muon TSS + Schnorr (+ gateway ECDSA)</td>
+<td>Settlement prices, uPnL on deallocate / liquidate, any data the operator must not be trusted to provide unilaterally</td>
+<td><code>LibMuon.verifySettlementPriceSig</code>, <code>LibMuon.verifyUpnlSig</code>, ultimately <code>MuonOracle.verifyTSSAndGW</code></td>
+</tr>
+<tr>
+<td>ECDSA / ERC-1271 (single signer)</td>
+<td>Off-chain authorization of intents on behalf of a Party A or Party B account (EOA or smart contract account)</td>
+<td><code>LibSignature.verifySignature</code> -&gt; <code>SignatureVerifier.verifySignature</code> -&gt; <code>LibSignatureChecker</code></td>
+</tr>
+<tr>
+<td>EIP-712 batches (InstantLayer)</td>
+<td>Operator-pushed batches of pre-authorized actions submitted in a single transaction</td>
+<td>InstantLayer facets — see <code>docs/flows/instant-actions.md</code></td>
+</tr>
+<tr>
+<td><code>IPriceOracle</code> (collateral / fee-token quote)</td>
+<td>Spot quote for collateral and fee tokens at intent creation time</td>
+<td>Direct view-call from facets to a configured oracle adapter</td>
+</tr>
+</tbody></table>
+<p>Settlement (<code>executeTrades</code>, exercise, expiration) and any path that converts uPnL into a balance change (<code>deallocate</code>, <code>liquidate</code>) require Muon. Intent creation and amendment authenticated by the account owner use ECDSA / ERC-1271. Batched off-chain authorizations submitted by the operator use EIP-712 (InstantLayer). The collateral / fee quote during intent creation uses <code>IPriceOracle</code> and is independent of Muon.</p>
+<h2 id="2-muon-tss--schnorr-deep-dive">2. Muon TSS / Schnorr deep-dive</h2>
+<h3 id="21-what-muon-is">2.1 What Muon is</h3>
+<p>Muon is an off-chain decentralized oracle network where a quorum of nodes runs a deterministic computation (e.g. &quot;fetch the settlement price for symbol X at timestamp T&quot;) and produces a single threshold signature over the result. SYMM Options Core treats the resulting Schnorr signature as a single signature from a known group public key — the on-chain contract neither knows nor cares how the quorum was reached. The network is identified on-chain by <code>muonAppId</code> and its public key is stored as <code>(x, parity)</code> in <code>MuonConfig</code>.</p>
+<h3 id="22-schnorr-verification-high-level">2.2 Schnorr verification (high level)</h3>
+<p><code>SchnorrSECP256K1Verifier.verifySignature</code> (<code>contracts/helpers/SchnorrSECP256K1Verifier.sol:98</code>) implements Schnorr verification over secp256k1 by abusing <code>ecrecover</code> as a scalar-multiplication primitive — the well-known &quot;ecrecover trick&quot;. Inputs:</p>
+<ul>
+<li><code>signingPubKeyX</code> — x ordinate of the group public key (must be <code>&lt; HALF_Q</code>).</li>
+<li><code>pubKeyYParity</code> — 0 or 1, encoding the parity of the y ordinate.</li>
+<li><code>signature</code> — the scalar <code>s</code> (must be <code>&lt; Q</code>).</li>
+<li><code>msgHash</code> — the keccak256 of the message.</li>
+<li><code>nonceTimesGeneratorAddress</code> — the Ethereum address derived from <code>k*G</code> (the per-signature public nonce).</li>
+</ul>
+<p>The verifier computes the challenge <code>e = keccak256(PKx ‖ PKyp ‖ msgHash ‖ nonceAddr)</code> and checks the Schnorr equation <code>e*PK + s*G == k*G</code> by recovering <code>k*G</code>&#39;s address via <code>ecrecover</code>. Trivial inputs (<code>0</code>) are explicitly rejected to avoid <code>ecrecover</code> returning <code>address(0)</code> and producing forgeable signatures. The <code>signingPubKeyX &lt; HALF_Q</code> constraint is inherited from <code>ecrecover</code>&#39;s <code>s</code>-malleability defense, even though Schnorr itself is not malleable.</p>
+<h3 id="23-per-symbol-oracleid-model">2.3 Per-symbol oracleId model</h3>
+<p>There is no single &quot;the Muon oracle&quot; for the diamond. Each <code>Symbol</code> references an <code>oracleId</code>, and <code>SymbolStorage.oracles[oracleId]</code> resolves to an <code>Oracle</code> struct whose <code>contractAddress</code> points at a deployed <code>MuonOracle</code>. <code>LibMuon</code> always reads <code>Oracle storage oracle = symbolLayout.oracles[symbol.oracleId]</code> before calling <code>IMuonOracle(oracle.contractAddress).verifyTSSAndGW(...)</code> (<code>contracts/libraries/services/LibMuon.sol:40-56</code>).</p>
+<p>Implications:</p>
+<ul>
+<li>Different symbols can be priced by different Muon apps (different <code>muonAppId</code> and group key).</li>
+<li>A single Muon app compromise contains the blast radius to its own <code>oracleId</code>.</li>
+<li>The <code>verifyUpnlSig</code> path takes <code>oracleId</code> as a parameter from the caller, so the facet decides which oracle is canonical for the uPnL (typically the collateral&#39;s oracle or a designated risk oracle).</li>
+</ul>
+<h3 id="24-gateway-signature--what-it-adds-beyond-schnorr">2.4 Gateway signature — what it adds beyond Schnorr</h3>
+<p><code>MuonOracle.verifyTSSAndGW</code> (<code>contracts/helpers/MuonOracle.sol:34</code>) checks the Schnorr TSS signature <em>and</em> an additional ECDSA signature from <code>config.validGateway</code> over the same hash (in <code>toEthSignedMessageHash</code> form):</p>
+<pre><code class="language-solidity">bytes32 hash = keccak256(abi.encodePacked(config.muonAppId, _reqId, _data));
+if (!verifySignature(...)) revert InvalidSignature();
+hash = hash.toEthSignedMessageHash();
+address gatewaySignatureSigner = hash.recover(_gatewaySignature);
+if (gatewaySignatureSigner != config.validGateway) revert InvalidGatewaySignature(...);
+</code></pre>
+<p>The gateway signature is <em>not</em> a second oracle. It is a single ECDSA key controlled by Symmetry (or a delegated party) that acts as a <strong>rate-limiting / sanity gate</strong>:</p>
+<ul>
+<li>It prevents a malicious or buggy Muon node from publishing a price unilaterally even if the quorum protocol were degraded.</li>
+<li>It allows fast off-chain blocking of obviously bad payloads (e.g. wildly stale, wrong chain) before they hit the contract.</li>
+<li>It does not weaken the TSS guarantee — both signatures are required, so an attacker must compromise both the Muon quorum <em>and</em> the gateway key.</li>
+</ul>
+<p>The gateway is centralized by design and is a known trust assumption; see Section 6.</p>
+<h3 id="25-settlementpricesig-field-by-field--libmuon-validation-flow">2.5 SettlementPriceSig field-by-field + LibMuon validation flow</h3>
+<pre><code class="language-solidity">struct SettlementPriceSig {
+	bytes reqId;
+	uint256 timestamp;
+	uint256 symbolId;
+	uint256 settlementPrice;
+	uint256 settlementTimestamp;
+	uint256 collateralPrice;
+	bytes gatewaySignature;
+	SchnorrSign sigs;
+}
+</code></pre>
+<p>(<code>contracts/types/TradeTypes.sol:42-51</code>)</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>reqId</code></td>
+<td>Muon request identifier. Bound into the hash so the same <code>(price, timestamp)</code> cannot be reused under a different request.</td>
+</tr>
+<tr>
+<td><code>timestamp</code></td>
+<td>Time at which Muon signed. Used by <code>LibMuon</code> to enforce <code>appLayout.settlementPriceSigValidTime</code> freshness.</td>
+</tr>
+<tr>
+<td><code>symbolId</code></td>
+<td>The symbol the signature is bound to. Lookup of <code>symbol.oracleId</code> happens <em>after</em> the struct is received, but the <code>symbolId</code> is hashed in, so a signature for symbol A cannot be used for symbol B even if both share an oracle.</td>
+</tr>
+<tr>
+<td><code>settlementPrice</code></td>
+<td>The settlement / mark price for the symbol.</td>
+</tr>
+<tr>
+<td><code>settlementTimestamp</code></td>
+<td>The time the price was observed off-chain. May lag <code>timestamp</code>.</td>
+</tr>
+<tr>
+<td><code>collateralPrice</code></td>
+<td>Price of the collateral token, signed in the same payload so settlement and collateral conversion share a consistent snapshot.</td>
+</tr>
+<tr>
+<td><code>gatewaySignature</code></td>
+<td>ECDSA signature from <code>validGateway</code> over the same hash.</td>
+</tr>
+<tr>
+<td><code>sigs</code></td>
+<td>The Schnorr signature (<code>SchnorrSign { signature, owner, nonce }</code>); <code>nonce</code> is the <code>nonceTimesGeneratorAddress</code> (the address of <code>k*G</code>).</td>
+</tr>
+</tbody></table>
+<p><code>LibMuon.verifySettlementPriceSig</code> (<code>contracts/libraries/services/LibMuon.sol:26</code>) flow:</p>
+<ol>
+<li>Check <code>block.timestamp &lt;= sig.timestamp + settlementPriceSigValidTime</code>, else <code>ExpiredSignature</code>.</li>
+<li>Resolve <code>oracle = symbolLayout.oracles[symbolLayout.symbols[sig.symbolId].oracleId]</code>.</li>
+<li>Compute <code>hash = keccak256(abi.encodePacked(sig.reqId, address(this), sig.timestamp, sig.symbolId, sig.settlementPrice, sig.settlementTimestamp, sig.collateralPrice, getChainId()))</code>.</li>
+<li>Call <code>IMuonOracle(oracle.contractAddress).verifyTSSAndGW(hash, sig.reqId, sig.sigs, sig.gatewaySignature)</code>.</li>
+<li>The <code>MuonOracle</code> re-hashes with <code>muonAppId</code> and <code>reqId</code> (<code>hash&#39; = keccak256(muonAppId ‖ reqId ‖ hash)</code>), Schnorr-verifies, then ECDSA-verifies the gateway over <code>hash&#39;.toEthSignedMessageHash()</code>.</li>
+</ol>
+<p>The hash binds: requesting app, request id, the diamond&#39;s own address (<code>address(this)</code> — pins the signature to one deployment), the chain id (<code>getChainId()</code> — pins it to one chain), the symbol, the price, both timestamps, and the collateral price. There is no per-symbol nonce, because the timestamp + freshness window is the replay defense. Two settlements at the same <code>(symbolId, timestamp)</code> with the same price are functionally identical, so accepting both is safe.</p>
+<h3 id="26-upnl-signature">2.6 uPnL signature</h3>
+<p><code>LibMuon.verifyUpnlSig</code> (<code>contracts/libraries/services/LibMuon.sol:59</code>) is the analogous path used on <code>deallocate</code> and <code>liquidate</code>. The signed <code>UpnlSig</code> (defined in <code>contracts/types/WithdrawTypes.sol</code>) carries <code>partyUpnl</code>, <code>counterPartyUpnl</code>, <code>collateralPrice</code>, plus <code>reqId</code>, <code>timestamp</code>, and Schnorr + gateway signatures. The hash includes:</p>
+<ul>
+<li><code>address(this)</code> and <code>getChainId()</code> (deployment + chain pin).</li>
+<li>The literal string <code>&quot;verifyUpnlSig&quot;</code> (domain separator preventing cross-protocol reuse).</li>
+<li><code>party</code> and <code>counterParty</code> (so a uPnL signed for pair A/B cannot be reused for A/C).</li>
+<li><code>accountLayout.nonces[party][counterParty]</code> — a <strong>per-pair nonce</strong> which is incremented on use, providing strict replay protection.</li>
+<li><code>sig.timestamp</code>, gated against <code>appLayout.upnlSigValidTime</code>.</li>
+</ul>
+<p>This is stricter than the settlement-price path because uPnL directly authorizes withdrawal of value, whereas a settlement price is &quot;merely&quot; reused arithmetic.</p>
+<h3 id="27-muonoracle-storage--rotation-oraclemanagerrole">2.7 MuonOracle storage + rotation (ORACLE_MANAGER_ROLE)</h3>
+<p><code>MuonOracle</code> is <code>AccessControlEnumerable</code> with:</p>
+<ul>
+<li><code>DEFAULT_ADMIN_ROLE</code> — granted to <code>admin</code> at construction. Manages role assignments.</li>
+<li><code>SETTER_ROLE</code> — granted to <code>admin</code> at construction. Holds the right to call <code>setConfig(MuonConfig)</code> (<code>contracts/helpers/MuonOracle.sol:46</code>).</li>
+</ul>
+<p><code>setConfig</code> validates the new <code>muonPublicKey.x</code> against <code>HALF_Q</code> and overwrites <code>muonAppId</code>, <code>muonPublicKey</code>, and <code>validGateway</code> atomically, emitting <code>ConfigUpdated</code>.</p>
+<blockquote>
+<p><strong>Naming note.</strong> The PRD calls this role <code>ORACLE_MANAGER_ROLE</code> from the operator&#39;s perspective. In the helper contract the role is named <code>SETTER_ROLE</code>. Operationally these are the same actor — the multisig that can rotate Muon keys.</p>
+</blockquote>
+<p>Rotation properties:</p>
+<ul>
+<li>Rotation is atomic (no half-state where one signature scheme is verified against the new key and the other against the old).</li>
+<li>Rotation does <strong>not</strong> invalidate in-flight signatures retroactively — any already-signed <code>SettlementPriceSig</code> becomes unverifiable the moment the key changes, which is the desired behavior under compromise.</li>
+<li>The <code>Oracle</code> registration in <code>SymbolStorage</code> is a separate record; rotating the deployed <code>MuonOracle</code> for a symbol requires updating <code>oracles[oracleId].contractAddress</code> via the symbol-management facet, not <code>setConfig</code>.</li>
+</ul>
+<p><code>checkGatewaySignature</code> is declared but the live <code>verifyTSSAndGW</code> always enforces the gateway check. The flag and the corresponding <code>CheckGatewaySignatureUpdated</code> event exist for future migration to optional gateway checks; today, the gateway is mandatory.</p>
+<h2 id="3-ecdsa--erc-1271-signatureverifier">3. ECDSA + ERC-1271 (SignatureVerifier)</h2>
+<h3 id="31-when-used">3.1 When used</h3>
+<p>The diamond authenticates <em>off-chain authorizations from accounts</em> (Party A or Party B) through a single <code>SignatureVerifier</code> deployed alongside the diamond. This is used wherever an account other than <code>msg.sender</code> must consent to an action — e.g. an operator submitting an intent on behalf of a Party A. The diamond addresses the verifier through its facade <code>appLayout.signatureVerifier</code>.</p>
+<h3 id="32-isvalidsignature-flow">3.2 <code>_isValidSignature</code> flow</h3>
+<p><code>LibSignature.verifySignature</code> (<code>contracts/libraries/services/LibSignature.sol:13</code>) is the sole entry point:</p>
+<pre><code class="language-solidity">function verifySignature(bytes32 hashValue, bytes calldata signature, address signer) internal {
+	AppStorage.Layout storage appLayout = AppStorage.layout();
+	if (!ISignatureVerifier(appLayout.signatureVerifier).verifySignature(signer, hashValue, signature))
+		revert ValidationErrors.InvalidSignature(signer, hashValue);
+	if (appLayout.isSigUsed[hashValue]) revert ValidationErrors.SignatureAlreadyUsed(hashValue);
+	appLayout.isSigUsed[hashValue] = true;
+}
+</code></pre>
+<p>Two guarantees:</p>
+<ol>
+<li>The signature is valid for <code>signer</code> over <code>hashValue</code>, where validity follows <code>LibSignatureChecker.isValidSignatureNow</code> (<code>contracts/libraries/utils/LibSignatureChecker.sol</code>) — i.e. it succeeds if either the signature is a valid ECDSA signature by <code>signer</code> (tried first via <code>ECDSA.tryRecover</code>, so this also covers an EIP-7702-delegated EOA signing with its key) or <code>signer</code> is a contract that returns the ERC-1271 magic value. ERC-6492 wrapped signatures are not supported. These are OpenZeppelin 4 semantics, kept deliberately instead of OpenZeppelin 5&#39;s <code>SignatureChecker</code>, which routes on <code>signer.code.length</code>.</li>
+<li>The hash has not been used before. <code>isSigUsed[hashValue]</code> is the global replay-protection map; the hash is therefore the canonical &quot;intent fingerprint&quot; — it must include all binding fields (signer, deadline, nonce, parameters) so distinct authorizations produce distinct hashes.</li>
+</ol>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant Caller as Facet (e.g. SendIntentFacet)
+    participant LibSig as LibSignature
+    participant App as AppStorage
+    participant SV as SignatureVerifier
+    participant SC as LibSignatureChecker
+    participant Acct as signer (EOA or 1271 wallet)
+
+    Caller-&gt;&gt;LibSig: verifySignature(hash, sig, signer)
+    LibSig-&gt;&gt;App: read signatureVerifier address
+    LibSig-&gt;&gt;SV: verifySignature(signer, hash, sig)
+    SV-&gt;&gt;SC: isValidSignatureNow(signer, hash, sig)
+    alt ECDSA recovers signer (EOA key, incl. EIP-7702-delegated EOA)
+        SC-&gt;&gt;SC: ECDSA.tryRecover(hash, sig) == signer
+    else otherwise, ERC-1271
+        SC-&gt;&gt;Acct: isValidSignature(hash, sig)
+        Acct--&gt;&gt;SC: 0x1626ba7e | 0xffffffff
+    end
+    SC--&gt;&gt;SV: bool
+    SV--&gt;&gt;LibSig: bool
+    LibSig-&gt;&gt;App: require !isSigUsed[hash]
+    LibSig-&gt;&gt;App: isSigUsed[hash] = true
+    LibSig--&gt;&gt;Caller: ok (or revert)
+</code></pre>
+<h3 id="33-magic-value-0x1626ba7e">3.3 Magic value 0x1626ba7e</h3>
+<p><code>SignatureVerifier.isValidSignatureEIP1271</code> (<code>contracts/helpers/SignatureVerifier.sol:23</code>) is the public ERC-1271 facade — it wraps <code>verifySignature</code> and returns <code>0x1626ba7e</code> on success, <code>0xffffffff</code> otherwise. <code>0x1626ba7e</code> is <code>bytes4(keccak256(&quot;isValidSignature(bytes32,bytes)&quot;))</code> per EIP-1271; smart-contract wallets that implement that interface return this value to assert the signature is valid for them. The diamond itself does not implement ERC-1271; the facade exists so that <em>external</em> protocols integrating SYMM accounts can verify signatures the same way the diamond does.</p>
+<h2 id="4-eip-712-instantlayer">4. EIP-712 (InstantLayer)</h2>
+<p>InstantLayer uses EIP-712 typed-data signatures to authorize a <em>batch</em> of actions in a single operator-submitted transaction. Domain separator, type hashes, per-action nonces, and the operator-vs-account replay model are detailed in <code>docs/flows/instant-actions.md</code>. From an oracle perspective, instant batches still consume Muon signatures and ECDSA / ERC-1271 signatures using the verification paths above — EIP-712 only governs how the <em>batch container</em> itself is authorized.</p>
+<h2 id="5-ipriceoracle-collateral--fee-token-quote">5. IPriceOracle (collateral / fee-token quote)</h2>
+<p>Distinct from Muon, the diamond holds a configured <code>IPriceOracle</code> adapter for spot-quoting the collateral and the fee token at intent-creation time. This is used to size collateral requirements and fee charges against a dollar-denominated risk model, <em>not</em> to settle PnL. The interface is intentionally minimal and is satisfied by Chainlink-style adapters or a custom feed.</p>
+<p>Key differences vs. Muon:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Muon (<code>SettlementPriceSig</code>)</th>
+<th><code>IPriceOracle</code></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>When</td>
+<td>Settlement, exercise, expiration, deallocate, liquidate</td>
+<td>Intent creation / amendment</td>
+</tr>
+<tr>
+<td>Trust model</td>
+<td>Threshold quorum + gateway, signature-bound to chain + diamond</td>
+<td>Whatever the configured adapter trusts (typically one or more aggregators)</td>
+</tr>
+<tr>
+<td>Replay</td>
+<td><code>timestamp + validTime</code>, plus per-pair nonce on uPnL</td>
+<td>None — view call returns current quote</td>
+</tr>
+<tr>
+<td>Failure mode</td>
+<td>Stale signature reverts; intent retried</td>
+<td>Stale feed returns last value; mitigated by adapter-level staleness checks</td>
+</tr>
+</tbody></table>
+<p>Because <code>IPriceOracle</code> only gates <em>intent creation</em>, a stale or wrong quote does not directly mis-settle a trade — it can mis-size collateral. Final value transfer at settlement always goes through Muon.</p>
+<h2 id="6-trust-assumptions">6. Trust assumptions</h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Assumption</th>
+<th>Failure surface</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Muon TSS quorum</td>
+<td>Honest threshold of Muon nodes for each <code>muonAppId</code>; quorum cannot be coerced into signing a malicious price</td>
+<td>If broken: attacker can sign arbitrary settlement prices for symbols using that <code>oracleId</code>. Bound is per-app, per-oracle.</td>
+</tr>
+<tr>
+<td>Gateway ECDSA key</td>
+<td><code>validGateway</code> private key is held securely by Symmetry / delegated operator</td>
+<td>If broken: must also break Muon TSS to mint a usable signature; alone, a stolen gateway key cannot forge settlement.</td>
+</tr>
+<tr>
+<td>Both broken simultaneously</td>
+<td>Catastrophic for symbols on the affected <code>oracleId</code></td>
+<td>Mitigated by per-symbol <code>oracleId</code> partitioning and <code>ORACLE_MANAGER_ROLE</code> rotation.</td>
+</tr>
+<tr>
+<td><code>IPriceOracle</code> adapter</td>
+<td>Returns a reasonable quote at intent-creation time</td>
+<td>If broken: collateral mis-sizing, but settlement remains Muon-bound.</td>
+</tr>
+<tr>
+<td><code>SignatureVerifier</code> upgrade safety</td>
+<td><code>appLayout.signatureVerifier</code> is set by governance and not user-controlled</td>
+<td>If replaced with a malicious verifier: any account signature can be forged for the diamond. Therefore <code>signatureVerifier</code> rotation is a high-privilege operation guarded by the diamond admin role.</td>
+</tr>
+<tr>
+<td>Smart-account ERC-1271 implementations</td>
+<td>Wallets that implement <code>isValidSignature</code> correctly per EIP-1271</td>
+<td>A buggy wallet that returns <code>0x1626ba7e</code> for arbitrary hashes can authorize arbitrary intents from that account. This is a wallet-side property, not a diamond bug.</td>
+</tr>
+<tr>
+<td><code>isSigUsed</code> storage</td>
+<td>Global single-use guarantee for ECDSA / 1271 signatures</td>
+<td>The hash must include all binding fields (signer, deadline, nonce, parameters). A hash collision across distinct intents would allow one to consume the other&#39;s slot.</td>
+</tr>
+</tbody></table>
+<h2 id="7-failure--rotation-playbook">7. Failure &amp; rotation playbook</h2>
+<p><strong>Compromised Muon key (TSS suspected forged):</strong></p>
+<ol>
+<li>Pause affected facets via the pauser role (settlement / deallocate / liquidate).</li>
+<li><code>MuonOracle.setConfig</code> with new <code>muonAppId</code> and <code>muonPublicKey</code> (called by <code>SETTER_ROLE</code> / ORACLE_MANAGER_ROLE multisig).</li>
+<li>If the deployed <code>MuonOracle</code> itself is suspect (not just the key), update <code>SymbolStorage.oracles[oracleId].contractAddress</code> to a freshly deployed <code>MuonOracle</code>.</li>
+<li>Unpause.</li>
+</ol>
+<p><strong>Compromised gateway key:</strong></p>
+<ol>
+<li><code>setConfig</code> with the same Muon app + key but a new <code>validGateway</code> address.</li>
+<li>No facet pause is strictly required because the TSS check still guards settlement, but pausing is recommended until rotation completes.</li>
+</ol>
+<p><strong>Stale settlement price (Muon offline):</strong></p>
+<ul>
+<li><code>LibMuon.verifySettlementPriceSig</code> reverts with <code>ExpiredSignature</code> once <code>block.timestamp &gt; sig.timestamp + settlementPriceSigValidTime</code>. Operator must re-request a fresh signature; nothing on-chain is needed. Increasing <code>settlementPriceSigValidTime</code> is a parameter change via the muon parameters facet and trades safety for resilience.</li>
+</ul>
+<p><strong>Suspected double-signing (Muon producing inconsistent prices for the same <code>(symbolId, timestamp)</code>):</strong></p>
+<ul>
+<li>This is a slashable off-chain offense at the Muon layer. On-chain, both signatures verify and the contract has no way to detect contradiction. Mitigation is rotation (treat as compromised key).</li>
+</ul>
+<p><strong>ECDSA / 1271 signature replay attempt:</strong></p>
+<ul>
+<li>Cannot succeed: <code>LibSignature.verifySignature</code> reverts <code>SignatureAlreadyUsed</code> after the first consumption. If a hash collision were ever observed, that constitutes a hash-construction bug in the calling facet (missing nonce / deadline / parameter binding) and requires a facet upgrade.</li>
+</ul>
+<p><strong><code>SignatureVerifier</code> itself buggy:</strong></p>
+<ul>
+<li>Hot-swap <code>appLayout.signatureVerifier</code> to a fixed deployment. Because <code>LibSignature</code> re-reads <code>appLayout.signatureVerifier</code> on every call, the swap takes effect immediately for all subsequent intents. In-flight intents that have already passed <code>LibSignature.verifySignature</code> are not retroactively rechecked.</li>
+</ul>
+<h2 id="8-settlement-sequence">8. Settlement sequence</h2>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant Op as Operator (off-chain)
+    participant Muon as Muon network
+    participant GW as Gateway
+    participant Diamond
+    participant Facet as TradeFacet
+    participant LibMuon
+    participant MO as MuonOracle (per oracleId)
+    participant Schnorr as SchnorrSECP256K1Verifier
+
+    Op-&gt;&gt;Muon: request settlement price for (symbolId, ts)
+    Muon--&gt;&gt;Op: SchnorrSign + reqId + payload
+    Op-&gt;&gt;GW: request gateway co-sign
+    GW--&gt;&gt;Op: ECDSA(gatewaySignature)
+    Op-&gt;&gt;Diamond: executeTrades(..., SettlementPriceSig)
+    Diamond-&gt;&gt;Facet: dispatch
+    Facet-&gt;&gt;LibMuon: verifySettlementPriceSig(sig)
+    LibMuon-&gt;&gt;LibMuon: check timestamp freshness
+    LibMuon-&gt;&gt;LibMuon: resolve oracleId -&gt; MuonOracle addr
+    LibMuon-&gt;&gt;LibMuon: hash = keccak(reqId, this, ts, symbolId, price, settlementTs, collPrice, chainId)
+    LibMuon-&gt;&gt;MO: verifyTSSAndGW(hash, reqId, sigs, gatewaySignature)
+    MO-&gt;&gt;MO: hash&#39; = keccak(muonAppId, reqId, hash)
+    MO-&gt;&gt;Schnorr: verifySignature(PKx, parity, s, hash&#39;, nonceAddr)
+    Schnorr--&gt;&gt;MO: true
+    MO-&gt;&gt;MO: ECDSA.recover(hash&#39;.ethSigned, gatewaySignature) == validGateway
+    MO--&gt;&gt;LibMuon: ok (no revert)
+    LibMuon--&gt;&gt;Facet: ok
+    Facet-&gt;&gt;Facet: apply settlement (PnL, fees, balance updates)
+    Facet--&gt;&gt;Diamond: success
+</code></pre>
+<h2 id="9-code-map">9. Code map</h2>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>File</th>
+<th>Key symbols</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Schnorr primitive</td>
+<td><code>contracts/helpers/SchnorrSECP256K1Verifier.sol</code></td>
+<td><code>verifySignature</code>, <code>validatePubKey</code>, <code>Q</code>, <code>HALF_Q</code></td>
+</tr>
+<tr>
+<td>Per-oracle Muon entry point</td>
+<td><code>contracts/helpers/MuonOracle.sol</code></td>
+<td><code>verifyTSSAndGW</code>, <code>setConfig</code>, <code>SETTER_ROLE</code>, <code>config</code>, <code>checkGatewaySignature</code></td>
+</tr>
+<tr>
+<td>Muon interface</td>
+<td><code>contracts/interfaces/IMuonOracle.sol</code></td>
+<td><code>verifyTSSAndGW</code>, <code>setConfig</code>, <code>ConfigUpdated</code></td>
+</tr>
+<tr>
+<td>Muon types</td>
+<td><code>contracts/types/MuonTypes.sol</code></td>
+<td><code>PublicKey</code>, <code>MuonConfig</code>, <code>SchnorrSign</code></td>
+</tr>
+<tr>
+<td>Diamond-side Muon validation</td>
+<td><code>contracts/libraries/services/LibMuon.sol</code></td>
+<td><code>verifySettlementPriceSig</code>, <code>verifyUpnlSig</code>, <code>getChainId</code></td>
+</tr>
+<tr>
+<td>Settlement payload</td>
+<td><code>contracts/types/TradeTypes.sol</code></td>
+<td><code>SettlementPriceSig</code></td>
+</tr>
+<tr>
+<td>uPnL payload</td>
+<td><code>contracts/types/WithdrawTypes.sol</code></td>
+<td><code>UpnlSig</code></td>
+</tr>
+<tr>
+<td>Account-signature verifier</td>
+<td><code>contracts/helpers/SignatureVerifier.sol</code></td>
+<td><code>verifySignature</code>, <code>isValidSignatureEIP1271</code></td>
+</tr>
+<tr>
+<td>Diamond-side account-sig validation + replay map</td>
+<td><code>contracts/libraries/services/LibSignature.sol</code></td>
+<td><code>verifySignature</code>, <code>AppStorage.isSigUsed</code></td>
+</tr>
+<tr>
+<td>Per-symbol oracle registration</td>
+<td><code>contracts/storages/SymbolStorage.sol</code></td>
+<td><code>Symbol.oracleId</code>, <code>oracles[oracleId].contractAddress</code></td>
+</tr>
+<tr>
+<td>Freshness windows</td>
+<td><code>contracts/storages/AppStorage.sol</code></td>
+<td><code>settlementPriceSigValidTime</code>, <code>upnlSigValidTime</code>, <code>signatureVerifier</code></td>
+</tr>
+<tr>
+<td>InstantLayer (EIP-712)</td>
+<td>see <code>docs/flows/instant-actions.md</code></td>
+<td>—</td>
+</tr>
+</tbody></table>
+</article></main></div><footer class="site-footer"><span>Options Core documentation.</span></footer></body></html>

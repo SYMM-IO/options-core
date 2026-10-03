@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Protocol terms, actors, quantities, and units."><title>Glossary | Options Core</title>
+<link rel="icon" type="image/svg+xml" href="../assets/symmio-mark.svg">
+<script>try { if (localStorage.getItem("options-docs-theme") === "light") document.documentElement.dataset.theme = "light"; } catch (_) {}</script>
+<link rel="stylesheet" href="../assets/reader.css"><link rel="stylesheet" href="../assets/docs-portal.css">
+<script src="../assets/chapters.js" defer></script><script src="../assets/reader.js" defer></script><script src="../assets/docs-portal.js" defer></script>
+</head>
+<body class="doc-page" data-version="current"><a class="skip-link" href="#full-document">Skip to document</a>
+<header class="docs-header"><div class="doc-topbar"><nav class="docs-trail" aria-label="Breadcrumb">
+<a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Options Core</span></a>
+<span class="trail-sep" aria-hidden="true">/</span><a class="trail-release" href="../index.html">Documentation</a>
+</nav><nav class="top-actions" aria-label="Page actions"><button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button></nav></div></header><div class="reader-shell"><div data-rail-sections hidden>
+<a class="toc-link level-2" href="#contents">Contents</a>
+<a class="toc-link level-2" href="#actors">Actors</a>
+<a class="toc-link level-2" href="#trading-and-lifecycle">Trading And Lifecycle</a>
+<a class="toc-link level-2" href="#money-and-margin">Money And Margin</a>
+<a class="toc-link level-2" href="#pricing-and-pnl">Pricing And PnL</a>
+<a class="toc-link level-2" href="#helpers-and-off-chain">Helpers And Off-chain</a>
+<a class="toc-link level-2" href="#risk-and-liquidation">Risk And Liquidation</a>
+<a class="toc-link level-2" href="#system-concepts">System Concepts</a>
+</div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1>Glossary</h1><p class="hero-copy">Protocol terms, actors, quantities, and units.</p></div></div></header>
+<article class="doc-article" id="full-document"><p>A definitive A–Z dictionary of every domain term used in Options Core. Each entry gives a one-sentence definition, an optional clarification with a link to the deeper doc, and the primary code reference where applicable. Sections are grouped by concern; entries inside a section are alphabetical.</p>
+<h2 id="contents">Contents</h2>
+<ul>
+<li><a href="#actors">Actors</a></li>
+<li><a href="#trading-and-lifecycle">Trading And Lifecycle</a></li>
+<li><a href="#money-and-margin">Money And Margin</a></li>
+<li><a href="#pricing-and-pnl">Pricing And PnL</a></li>
+<li><a href="#helpers-and-off-chain">Helpers And Off-chain</a></li>
+<li><a href="#risk-and-liquidation">Risk And Liquidation</a></li>
+<li><a href="#system-concepts">System Concepts</a></li>
+</ul>
+<h2 id="actors">Actors</h2>
+<ul>
+<li><strong>Affiliate</strong> — Address that earns the affiliate fee stream on intents tagged with it; must be active or zero (<code>contracts/storages/FeeManagementStorage.sol:13</code>, <code>contracts/libraries/core/LibPartyAOpen.sol:68</code>). Routing rules are in <a href="open-intents.html">open-intents</a>.</li>
+<li><strong>Bound Party A</strong> — A Party A that has called <code>bindToPartyB(partyB)</code>; while bound, every open-intent whitelist must equal <code>[boundPartyB]</code> and deferred Party B sells are rejected (<code>contracts/libraries/core/LibPartyAOpen.sol:70-75</code>). See <a href="instant-actions.html">instant-actions</a>.</li>
+<li><strong>Clearing house</strong> — Address holding <code>CLEARING_HOUSE_ROLE</code> that runs the liquidation and confiscation/distribution pipeline (<code>contracts/facets/ClearingHouse/ClearingHouseFacet.sol</code>). Detailed in <a href="liquidation-and-force-actions.html">liquidation-and-force-actions</a>.</li>
+<li><strong>Default fee collector</strong> — Address that receives platform fees and any affiliate fee with no configured collector (<code>contracts/storages/FeeManagementStorage.sol:11</code>, <code>contracts/facets/Control/ControlFacet.sol:333</code>).</li>
+<li><strong>Disputer</strong> — Holder of <code>DISPUTER_ROLE</code> that may restore a suspended withdrawal at a possibly reduced amount (<code>contracts/utils/Accessibility.sol</code>, <code>contracts/facets/Account/AccountFacet.sol:211</code>).</li>
+<li><strong>Party A</strong> — The trader account that owns open intents, close intents, and trades (<code>contracts/libraries/models/LibParty.sol:32-34</code>); may be an EOA or a <code>SymmioPartyA</code> instance.</li>
+<li><strong>Party B</strong> — A market maker / solver address activated through <code>ControlFacet.setPartyBConfig</code>; identified by <code>partyBConfigs[addr].isActive == true</code> (<code>contracts/storages/AppStorage.sol:7-11</code>, <code>contracts/libraries/models/LibParty.sol:32</code>).</li>
+<li><strong>Solver</strong> — Synonym for Party B in fee/event terminology; the <code>solverFee</code> stream is paid to <code>intent.partyB</code> (<code>contracts/types/BaseTypes.sol:34-40</code>, <code>contracts/libraries/core/LibPartyBOpen.sol:326-333</code>).</li>
+</ul>
+<h2 id="trading-and-lifecycle">Trading And Lifecycle</h2>
+<ul>
+<li><strong>CALL</strong> — Option type whose intrinsic value is <code>max(settlementPrice − strikePrice, 0)</code> (<code>contracts/types/SymbolTypes.sol:9</code>, <code>contracts/libraries/models/LibTrade.sol:36-44</code>).</li>
+<li><strong>Close intent</strong> — Party A&#39;s signed RFQ to close part of a trade at a threshold price (<code>contracts/types/IntentTypes.sol:44-55</code>); lifecycle in <a href="close-and-settlement.html">close-and-settlement</a>.</li>
+<li><strong>Deferred Party B sell</strong> — An unbound <code>SELL + CROSS</code> open intent with an empty Party B whitelist; Party A&#39;s seller MM and estimated open fees are held in <code>OpenIntentEscrow</code> until a Party B locks and fills. Detailed in <a href="open-intents.html">open-intents</a>.</li>
+<li><strong>Force action timeout</strong> — Either <code>forceCancelOpenIntentTimeout</code> or <code>forceCancelCloseIntentTimeout</code>; the cooldown after which anyone may force-cancel a <code>CANCEL_PENDING</code> intent (<code>contracts/storages/AppStorage.sol:34-35</code>, <code>contracts/libraries/core/LibForceActions.sol:23-58</code>).</li>
+<li><strong>Force cancel</strong> — Permissionless transition of a stuck <code>CANCEL_PENDING</code> intent to <code>CANCELED</code> once the matching timeout elapses (<code>contracts/facets/ForceActions/ForceActionsFacet.sol:25,36</code>).</li>
+<li><strong>Open intent</strong> — Party A&#39;s signed offer to open a position; carries trade agreements, fees, and a Party B whitelist (<code>contracts/types/IntentTypes.sol:26-42</code>). Detailed in <a href="open-intents.html">open-intents</a>.</li>
+<li><strong>OptionType</strong> — Enum <code>{ PUT, CALL }</code> configured per symbol (<code>contracts/types/SymbolTypes.sol:9</code>).</li>
+<li><strong>PUT</strong> — Option type whose intrinsic value is <code>max(strikePrice − settlementPrice, 0)</code> (<code>contracts/libraries/models/LibTrade.sol:36-44</code>).</li>
+<li><strong>Symbol</strong> — Configuration record <code>{ symbolId, oracleId, symbolType, platformFee, collateral, optionType, isValid, name }</code> (<code>contracts/types/SymbolTypes.sol:20</code>).</li>
+<li><strong>Symbol id</strong> — Monotonic identifier into <code>SymbolStorage.symbols</code>; used in every trade and intent (<code>contracts/storages/SymbolStorage.sol</code>, <code>contracts/types/BaseTypes.sol:42</code>).</li>
+<li><strong>Symbol type</strong> — Free-form integer category that Party B opts into via <code>partyBSupportedSymbolTypes[partyB][symbolType]</code> (<code>contracts/storages/AppStorage.sol:50</code>, <code>contracts/libraries/core/LibPartyBOpen.sol:92</code>).</li>
+<li><strong>Trade</strong> — On-chain position created when Party B fills an open intent; tracks open/close quantity, premium, MM, and settlement state (<code>contracts/types/TradeTypes.sol:18-35</code>).</li>
+<li><strong>Trade agreements</strong> — Embedded <code>TradeAgreements</code> struct snapshotting symbol, quantity, strike, expiry, mm, side, and margin type for an intent or trade (<code>contracts/types/BaseTypes.sol:42-51</code>).</li>
+<li><strong>TradeNFT</strong> — ERC-721 representation of an isolated trade; transfers route back through <code>TradeFacet.transferTradeFromNFT</code> (<code>contracts/helpers/TradeNFT.sol</code>, <code>contracts/facets/Trade/TradeFacet.sol:45</code>).</li>
+</ul>
+<h2 id="money-and-margin">Money And Margin</h2>
+<ul>
+<li><strong>Cross balance</strong> — Bilateral signed balance between one Party A and one Party B for a given collateral, stored in <code>crossBalance[counterParty]</code> (<code>contracts/types/BalanceTypes.sol:31-39</code>). See <a href="margin-modes.html">margin-modes</a>.</li>
+<li><strong>Cross margin</strong> — Margin mode in which collateral is pooled per <code>(partyA, partyB, collateral)</code> rather than per trade (<code>contracts/types/BaseTypes.sol:12-16</code>).</li>
+<li><strong>Isolated balance</strong> — <code>ScheduledReleaseBalance.isolatedBalance</code>, the user&#39;s free isolated funds before locks (<code>contracts/types/BalanceTypes.sol:46</code>).</li>
+<li><strong>Isolated margin</strong> — Margin mode in which each trade&#39;s collateral is reserved via <code>isolatedLockedBalance</code> and is not pooled across counterparties.</li>
+<li><strong>Locked balance</strong> — Either <code>isolatedLockedBalance</code> or <code>crossBalance[cp].locked</code>; funds reserved by an active intent or trade (<code>contracts/libraries/models/LibScheduledReleaseBalance.sol:427-462</code>).</li>
+<li><strong>Maintenance margin (MM)</strong> — Per-trade SELL-side collateral the seller posts; tracked at the trade level via <code>tradeAgreements.mm</code> (<code>contracts/types/BaseTypes.sol:42-51</code>).</li>
+<li><strong>manualSync user</strong> — A user (typically Party B) for whom <code>accountLayout.manualSync[user]</code> is true; the protocol skips auto-sync and counterparty tracking, requiring explicit <code>syncBalances</code> calls (<code>contracts/storages/AccountStorage.sol:23</code>, <code>contracts/facets/Control/ControlFacet.sol:397</code>).</li>
+<li><strong>Open intent escrow</strong> — <code>OpenIntentEscrow</code>, a temporary isolated lock record for deferred Party B sells, storing Party A, collateral, fee token, seller MM, estimated open-fee lock, and existence/consumption guards (<code>contracts/types/IntentTypes.sol:44-52</code>).</li>
+<li><strong>Reserve balance</strong> — Third pool sitting next to isolated and cross; pre-funded by the user and pull-able by the clearing house (<code>contracts/types/BalanceTypes.sol:46</code>, <code>contracts/libraries/core/LibClearingHouse.sol:249-254</code>).</li>
+<li><strong>Scheduled release</strong> — Two-bus pipeline (<code>scheduled</code> → <code>transitioning</code> → <code>isolatedBalance</code>) gated by <code>releaseInterval</code> (<code>contracts/types/BalanceTypes.sol:24</code>, <code>contracts/libraries/models/LibScheduledReleaseBalance.sol:302</code>). Background in <a href="account-balances.html">account-balances</a>.</li>
+<li><strong>Sync / syncAll</strong> — <code>_sync(counterParty)</code> advances one schedule; <code>syncAll()</code> walks every tracked counterparty (<code>contracts/libraries/models/LibScheduledReleaseBalance.sol:302</code>). The public entry point is <code>AccountFacet.syncBalances</code> (<code>contracts/facets/Account/AccountFacet.sol:252</code>).</li>
+<li><strong>Total MM (totalMM)</strong> — Aggregated maintenance margin a Party A has locked against a single Party B; lives in <code>crossBalance[cp].totalMM</code> (<code>contracts/types/BalanceTypes.sol:31-39</code>).</li>
+<li><strong>Tuple (partyA, partyB, collateral)</strong> — The triple keying every cross-margin slot, liquidation, and active-trade counter (<code>contracts/storages/LiquidationStorage.sol:13</code>, <code>contracts/storages/TradeStorage.sol</code>).</li>
+</ul>
+<h2 id="pricing-and-pnl">Pricing And PnL</h2>
+<ul>
+<li><strong>Affiliate fee</strong> — <code>feeStructure.affiliateFee.openFee</code> / <code>closeFee</code> charged to Party A and credited to the affiliate fee collector (<code>contracts/types/BaseTypes.sol:34-40</code>, <code>contracts/libraries/core/LibPartyBOpen.sol:316-324</code>).</li>
+<li><strong>Close fee</strong> — Party-A-paid fee on close-intent fills and at settlement; covers platform, affiliate, and solver streams (<code>contracts/libraries/core/LibPartyBClose.sol:124-153</code>, <code>contracts/libraries/core/LibTradeOperations.sol:191-225</code>).</li>
+<li><strong>Collateral price</strong> — <code>collateralPrice</code> field in Muon-signed payloads; converts symbol-quote PnL to collateral units (<code>contracts/types/TradeTypes.sol:42-50</code>, <code>contracts/libraries/core/LibTradeOperations.sol:168-169</code>).</li>
+<li><strong>Collateral whitelist</strong> — <code>AppStorage.whiteListedCollateral</code>; a token must be present here to back a deposit or symbol (<code>contracts/storages/AppStorage.sol:21</code>, <code>contracts/facets/Control/ControlFacet.sol:99</code>).</li>
+<li><strong>Exercise fee</strong> — Per-trade fee charged at settlement; the lesser of <code>cap * pnl / 1e18</code> and <code>rate * settlementPrice * openAmount / 1e36</code> (<code>contracts/types/BaseTypes.sol:17-20</code>, <code>contracts/libraries/models/LibTrade.sol:58-62</code>).</li>
+<li><strong>In-the-money (ITM)</strong> — Trade has positive intrinsic value at <code>settlementPrice</code>; settlement marks it <code>EXERCISED</code> (<code>contracts/libraries/core/LibTradeOperations.sol:118-134</code>).</li>
+<li><strong>Limit price</strong> — <code>OpenIntent.price</code> for opens and <code>CloseIntent.price</code> for closes; acts as a cap for BUY and a floor for SELL (<code>contracts/libraries/core/LibPartyBOpen.sol:213-216</code>, <code>contracts/libraries/core/LibPartyBClose.sol:79-90</code>).</li>
+<li><strong>Open fee</strong> — Party-A-paid fee on <code>fillOpenIntent</code>; split into platform / affiliate / solver components (<code>contracts/libraries/core/LibPartyBOpen.sol:306-334</code>).</li>
+<li><strong>Out-of-the-money (OTM)</strong> — Trade has zero intrinsic value at expiry; settlement marks it <code>EXPIRED</code> (<code>contracts/libraries/core/LibTradeOperations.sol:118-134</code>).</li>
+<li><strong>Premium</strong> — Per-unit price the buyer pays the seller at fill (<code>Trade.openedPrice</code>); proportional pieces move on close and at settlement (<code>contracts/types/TradeTypes.sol:18-35</code>, <code>contracts/libraries/models/LibTrade.sol:46-48</code>).</li>
+<li><strong>Realized PnL</strong> — Settled gain/loss moved between balances at <code>executeTrades</code> time, tagged with <code>REALIZED_PNL</code> (<code>contracts/types/BalanceTypes.sol:66</code>, <code>contracts/libraries/core/LibTradeOperations.sol:177-188</code>).</li>
+<li><strong>Settled price</strong> — <code>Trade.settledPrice</code>; the on-chain record of the price used at exercise/expiry (<code>contracts/types/TradeTypes.sol:18-35</code>, <code>contracts/libraries/core/LibTradeOperations.sol:122,131</code>).</li>
+<li><strong>Settlement price</strong> — <code>SettlementPriceSig.settlementPrice</code>; the off-chain oracle value carried into <code>executeTrades</code> (<code>contracts/types/TradeTypes.sol:42-50</code>).</li>
+<li><strong>Solver fee</strong> — Per-trade fee paid to Party B on opens and closes; routes through <code>scheduledAdd(...CROSS,...)</code> for cross trades and <code>instantIsolatedAdd</code> for isolated trades (<code>contracts/libraries/core/LibPartyBOpen.sol:326-333</code>, <code>contracts/libraries/core/LibPartyBClose.sol:144-151</code>).</li>
+<li><strong>Strike price</strong> — <code>tradeAgreements.strikePrice</code>; the option&#39;s reference price (<code>contracts/types/BaseTypes.sol:42-51</code>).</li>
+<li><strong>uPnL</strong> — Unrealized PnL signed off-chain via <code>UpnlSig</code>; consumed by <code>deallocate</code> and the liquidation flow (<code>contracts/types/WithdrawTypes.sol:22</code>, <code>contracts/libraries/services/LibMuon.sol:59</code>).</li>
+</ul>
+<h2 id="helpers-and-off-chain">Helpers And Off-chain</h2>
+<ul>
+<li><strong>EIP-712</strong> — Typed-data signature standard used by <code>InstantLayer</code> to authorize signed operations (<code>contracts/helpers/InstantLayer.sol</code>).</li>
+<li><strong>ERC-1271</strong> — Smart-contract signature interface implemented by <code>MultiAccount</code> and <code>SymmioPartyB</code> so on-chain accounts can sign for InstantLayer (<code>contracts/helpers/MultiAccount.sol</code>, <code>contracts/helpers/SymmioPartyB.sol</code>).</li>
+<li><strong>ERC-2535</strong> — The Diamond standard governing facet routing and storage isolation (<code>contracts/Diamond.sol</code>, <code>contracts/libraries/LibDiamond.sol</code>).</li>
+<li><strong>Gateway signature</strong> — ECDSA signature from Muon&#39;s <code>validGateway</code> accompanying the TSS aggregate (<code>contracts/types/MuonTypes.sol:12-16</code>, <code>contracts/libraries/services/LibMuon.sol</code>).</li>
+<li><strong>Instant action mode</strong> — Party A flag enabling <code>InstantLayer</code> to drive its account; gates user-callable Party A entry points via <code>whenInstantModeIsNotActive</code> (<code>contracts/storages/CounterPartyRelationsStorage.sol</code>, <code>contracts/utils/Accessibility.sol</code>). See <a href="instant-actions.html">instant-actions</a>.</li>
+<li><strong>InstantLayer</strong> — Off-chain-driven contract that verifies EIP-712 signed operations and forwards them through <code>MultiAccount</code> (Party A) or <code>SymmioPartyB</code> (Party B) (<code>contracts/helpers/InstantLayer.sol</code>).</li>
+<li><strong>MultiAccount</strong> — Factory and forwarder for <code>SymmioPartyA</code> accounts; mediates owner and InstantLayer calls (<code>contracts/helpers/MultiAccount.sol</code>).</li>
+<li><strong>Muon</strong> — The off-chain TSS oracle network whose signatures back uPnL and settlement payloads (<code>contracts/libraries/services/LibMuon.sol</code>, <code>contracts/helpers/MuonOracle.sol</code>).</li>
+<li><strong>Schnorr</strong> — Signature scheme used by Muon&#39;s threshold signers; encoded as <code>SchnorrSign</code> (<code>contracts/types/MuonTypes.sol:18</code>).</li>
+<li><strong>SymmioPartyA</strong> — Per-Party-A account contract managed by <code>MultiAccount</code>; can hold and forward trade NFTs (<code>contracts/helpers/SymmioPartyA.sol</code>).</li>
+<li><strong>SymmioPartyB</strong> — Upgradeable Party B executor with selector restrictions, multicall, and ERC-1271 (<code>contracts/helpers/SymmioPartyB.sol</code>).</li>
+<li><strong>TSS</strong> — Threshold Signature Scheme used by Muon to produce a single Schnorr signature from a quorum of signers.</li>
+</ul>
+<h2 id="risk-and-liquidation">Risk And Liquidation</h2>
+<ul>
+<li><strong>Confiscation</strong> — Clearing house removing collateral from a liquidated party (or a pending withdrawal) into the liquidation pool (<code>contracts/libraries/core/LibClearingHouse.sol:256-273</code>).</li>
+<li><strong>Distribution</strong> — Clearing house releasing pooled liquidation collateral back to a list of Party As (<code>contracts/libraries/core/LibClearingHouse.sol:280-301</code>).</li>
+<li><strong>Flagged</strong> — <code>LiquidationStatus.FLAGGED</code>; the clearing house has marked a tuple but has not yet executed (<code>contracts/types/LiquidationTypes.sol:7</code>).</li>
+<li><strong>In progress</strong> — <code>LiquidationStatus.IN_PROGRESS</code>; the executable phase during which <code>closeTrades</code>, <code>confiscate</code>, and <code>distributeCollateral</code> run (<code>contracts/types/LiquidationTypes.sol:7</code>).</li>
+<li><strong>Liquidation</strong> — End-to-end pipeline gated by <code>CLEARING_HOUSE_ROLE</code> that flags, snapshots uPnL, closes trades, confiscates, and distributes collateral (<code>contracts/libraries/core/LibClearingHouse.sol</code>). Detailed in <a href="liquidation-and-force-actions.html">liquidation-and-force-actions</a>.</li>
+<li><strong>Loss coverage</strong> — Per-Party-B multiplier <code>partyBConfigs[partyB].lossCoverage</code> used in deallocation/liquidation math (<code>contracts/storages/AppStorage.sol:7-11</code>, <code>contracts/libraries/core/LibAllocationOperations.sol</code>).</li>
+<li><strong>requireSolvent</strong> — <code>LibParty.requireSolvent(self, counterParty, collateral, marginType)</code>: passes iff no active liquidation id exists for the relevant tuple — it does NOT compute uPnL (<code>contracts/libraries/models/LibParty.sol:17-30</code>).</li>
+</ul>
+<h2 id="system-concepts">System Concepts</h2>
+<ul>
+<li><strong>Bilateral nonce</strong> — <code>AccountStorage.nonces[party][counterParty]</code>; incremented after balance-affecting cross-margin actions to invalidate older Muon signatures (<code>contracts/storages/AccountStorage.sol</code>, <code>contracts/libraries/core/LibPartyBOpen.sol:364-367</code>, <code>contracts/libraries/core/LibPartyBClose.sol:170-171</code>, <code>contracts/libraries/core/LibTradeOperations.sol:232-235</code>).</li>
+<li><strong>Diamond</strong> — The EIP-2535 proxy in <code>contracts/Diamond.sol</code> that delegates each selector to a registered facet via <code>LibDiamond</code>.</li>
+<li><strong>Disputer</strong> — See <a href="#actors">Actors</a>.</li>
+<li><strong>Express withdraw</strong> — Provider-fronted withdrawal path that pays the user immediately and reimburses the provider on <code>completeWithdraw</code> (<code>contracts/libraries/core/LibBalanceOperations.sol:104</code>, <code>contracts/interfaces/IExpressWithdrawProvider.sol</code>).</li>
+<li><strong>External transfer target</strong> — Whitelisted contract that can receive an <code>externalTransfer</code>; receives an <code>onTransfer</code> callback (<code>contracts/storages/AccountStorage.sol</code>, <code>contracts/interfaces/IExternalTransferTarget.sol</code>).</li>
+<li><strong>Facet</strong> — Contract whose selectors are mounted onto the Diamond via <code>diamondCut</code> (<code>contracts/facets/...</code>). API in <a href="facets.html">facets</a>.</li>
+<li><strong>Pause flags</strong> — Per-domain booleans in <code>StateControlStorage</code> that gate the <code>whenXxxNotPaused</code> modifiers (<code>contracts/storages/StateControlStorage.sol</code>, <code>contracts/utils/Pausable.sol</code>).</li>
+<li><strong>Party B emergency mode</strong> — Per-Party-B and global flags that halt Party B intent locks and fills (<code>contracts/storages/StateControlStorage.sol</code>, <code>contracts/libraries/core/LibPartyBOpen.sol:51-52</code>).</li>
+<li><strong>Replay protection</strong> — Combination of <code>AppStorage.isSigUsed[hash]</code> for Muon payloads and <code>InstantLayer.usedOperationHashes</code>/<code>nonces</code> for signed operations (<code>contracts/storages/AppStorage.sol</code>, <code>contracts/helpers/InstantLayer.sol</code>).</li>
+<li><strong>Storage slot</strong> — A <code>bytes32</code> constant such as <code>keccak256(&quot;diamond.standard.storage.&lt;name&gt;&quot;)</code> from which a storage library&#39;s <code>Layout</code> is read (<code>contracts/storages/AppStorage.sol:14</code>, see <a href="types-and-storage.html">types-and-storage</a>).</li>
+<li><strong>Suspended (address/withdrawal)</strong> — <code>StateControlStorage.suspendedAddresses[user]</code> blocks user-side actions; <code>suspendedWithdrawal[id]</code> blocks <code>complete</code>/<code>cancel</code> until restored (<code>contracts/storages/StateControlStorage.sol</code>, <code>contracts/utils/Accessibility.sol</code>).</li>
+<li><strong>Virtual deposit</strong> — <code>virtualDepositFor</code> credit by <code>VIRTUAL_DEPOSITOR_ROLE</code> without ERC-20 movement (<code>contracts/facets/Account/AccountFacet.sol:51</code>, <code>contracts/libraries/core/LibBalanceOperations.sol:40</code>).</li>
+<li><strong>Virtual withdraw</strong> — Withdrawal whose <code>isVirtual = true</code> (set by the express provider config); <code>completeWithdraw</code> skips the ERC-20 transfer (<code>contracts/types/WithdrawTypes.sol:9</code>, <code>contracts/libraries/core/LibBalanceOperations.sol:184</code>).</li>
+<li><strong>Whitelist</strong> — Generic term for <code>OpenIntent.partyBsWhiteList</code>, <code>whiteListedCollateral</code>, <code>externalTransferTargets</code>, and <code>expressWithdrawProviderConfigs</code>; semantics differ per surface. For open intents, empty whitelist means any active Party B for isolated intents and deferred Party B sells, but not for normal cross intents.</li>
+</ul>
+</article></main></div><footer class="site-footer"><span>Options Core documentation.</span></footer></body></html>

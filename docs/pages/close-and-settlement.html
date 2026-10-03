@@ -1,0 +1,963 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Close intents, settlement, exercise, trade transfers, and NFTs."><title>Close And Settlement Flows | Options Core</title>
+<link rel="icon" type="image/svg+xml" href="../assets/symmio-mark.svg">
+<script>try { if (localStorage.getItem("options-docs-theme") === "light") document.documentElement.dataset.theme = "light"; } catch (_) {}</script>
+<link rel="stylesheet" href="../assets/reader.css"><link rel="stylesheet" href="../assets/docs-portal.css">
+<script src="../assets/chapters.js" defer></script><script src="../assets/reader.js" defer></script><script src="../assets/docs-portal.js" defer></script>
+</head>
+<body class="doc-page" data-version="current"><a class="skip-link" href="#full-document">Skip to document</a>
+<header class="docs-header"><div class="doc-topbar"><nav class="docs-trail" aria-label="Breadcrumb">
+<a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Options Core</span></a>
+<span class="trail-sep" aria-hidden="true">/</span><a class="trail-release" href="../index.html">Documentation</a>
+</nav><nav class="top-actions" aria-label="Page actions"><button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button></nav></div></header><div class="reader-shell"><div data-rail-sections hidden>
+<a class="toc-link level-2" href="#overview">Overview</a>
+<a class="toc-link level-2" href="#close-intent-state-machine">Close Intent State Machine</a>
+<a class="toc-link level-2" href="#anatomy-of-a-closeintent">Anatomy Of A CloseIntent</a>
+<a class="toc-link level-3" href="#relationship-to-the-parent-trade">Relationship To The Parent Trade</a>
+<a class="toc-link level-3" href="#indexes">Indexes</a>
+<a class="toc-link level-2" href="#sendcloseintent">sendCloseIntent</a>
+<a class="toc-link level-2" href="#fillcloseintent">fillCloseIntent</a>
+<a class="toc-link level-3" href="#caller-and-state-restrictions">Caller And State Restrictions</a>
+<a class="toc-link level-3" href="#price-favorability--worked-examples">Price Favorability — Worked Examples</a>
+<a class="toc-link level-3" href="#accounting">Accounting</a>
+<a class="toc-link level-3" href="#fee-distribution">Fee Distribution</a>
+<a class="toc-link level-3" href="#trade-counter-updates">Trade Counter Updates</a>
+<a class="toc-link level-3" href="#nonce-increments-cross-only">Nonce Increments (CROSS only)</a>
+<a class="toc-link level-2" href="#partial-fills-and-trade-transitions">Partial Fills And Trade Transitions</a>
+<a class="toc-link level-2" href="#cancellation-and-expiry-paths">Cancellation And Expiry Paths</a>
+<a class="toc-link level-3" href="#party-a-initiated-cancel">Party A Initiated Cancel</a>
+<a class="toc-link level-3" href="#party-b-accept-cancel">Party B Accept Cancel</a>
+<a class="toc-link level-3" href="#force-cancel-after-timeout">Force Cancel After Timeout</a>
+<a class="toc-link level-3" href="#expire">Expire</a>
+<a class="toc-link level-3" href="#combined-flow">Combined Flow</a>
+<a class="toc-link level-2" href="#settlement-execution">Settlement Execution</a>
+<a class="toc-link level-3" href="#settlementpricesig">SettlementPriceSig</a>
+<a class="toc-link level-3" href="#per-trade-loop">Per-Trade Loop</a>
+<a class="toc-link level-3" href="#already-settled-skip">Already-Settled Skip</a>
+<a class="toc-link level-3" href="#in-the-money-rules">In-The-Money Rules</a>
+<a class="toc-link level-3" href="#pre-pnl-lock-releases">Pre-PnL Lock Releases</a>
+<a class="toc-link level-3" href="#exclusive-party-b-window">Exclusive Party B Window</a>
+<a class="toc-link level-3" href="#pnl-transfer-and-collateral-conversion">PnL Transfer And Collateral Conversion</a>
+<a class="toc-link level-3" href="#exercise-fee-math">Exercise Fee Math</a>
+<a class="toc-link level-3" href="#exercise-fee-distribution">Exercise Fee Distribution</a>
+<a class="toc-link level-3" href="#active-close-intent-cancellation">Active Close Intent Cancellation</a>
+<a class="toc-link level-3" href="#result">Result</a>
+<a class="toc-link level-2" href="#nfts-and-trade-transfer">NFTs And Trade Transfer</a>
+<a class="toc-link level-3" href="#transfertrade">transferTrade</a>
+<a class="toc-link level-3" href="#mintnftfortrade">mintNFTForTrade</a>
+<a class="toc-link level-3" href="#transfertradefromnft">transferTradeFromNFT</a>
+<a class="toc-link level-2" href="#errors-reference">Errors Reference</a>
+<a class="toc-link level-2" href="#worked-numeric-example">Worked Numeric Example</a>
+<a class="toc-link level-3" href="#step-1--partial-close-at-250">Step 1 — Partial Close At $250</a>
+<a class="toc-link level-3" href="#step-2--settlement-at-3200-call-itm">Step 2 — Settlement At $3200 (CALL ITM)</a>
+<a class="toc-link level-2" href="#related-code-map">Related Code Map</a>
+</div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1>Close And Settlement Flows</h1><p class="hero-copy">Close intents, settlement, exercise, trade transfers, and NFTs.</p></div></div></header>
+<article class="doc-article" id="full-document"><p>This document covers everything that happens to a <code>Trade</code> after it is opened: pre-expiration close intents (Party A initiated, Party B filled), the full settlement of expired trades through <code>TradeFacet.executeTrades</code>, and the auxiliary trade-ownership operations (<code>transferTrade</code>, <code>mintNFTForTrade</code>, <code>transferTradeFromNFT</code>).</p>
+<h2 id="overview">Overview</h2>
+<p>A trade can leave its <code>OPENED</code> state via three distinct mechanisms:</p>
+<table>
+<thead>
+<tr>
+<th>Mechanism</th>
+<th>Initiator</th>
+<th>Pre/Post expiration</th>
+<th>Resulting <code>TradeStatus</code></th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Close intent fill</td>
+<td>Party A creates intent, Party B fills</td>
+<td>Pre-expiration</td>
+<td><code>OPENED</code> then <code>CLOSED</code></td>
+<td><code>LibPartyAClose.sendCloseIntent</code>, <code>LibPartyBClose.fillCloseIntent</code></td>
+</tr>
+<tr>
+<td>Settlement execution</td>
+<td>Anyone after <code>partyBExclusiveWindow</code> lapses</td>
+<td>Post-expiration</td>
+<td><code>EXERCISED</code> or <code>EXPIRED</code></td>
+<td><code>LibTradeOperations.executeTrades</code></td>
+</tr>
+<tr>
+<td>Liquidation closure</td>
+<td>Clearing house</td>
+<td>Either</td>
+<td><code>LIQUIDATED</code></td>
+<td><code>LibClearingHouse</code> (covered in <a href="liquidation-and-force-actions.html">liquidation-and-force-actions</a>)</td>
+</tr>
+</tbody></table>
+<p>&quot;Close&quot; and &quot;settlement&quot; are independent paths:</p>
+<ul>
+<li>A close intent is an off-market RFQ where Party A sets a price they will accept; Party B fills at a price favorable to Party A. It moves units of the trade out of the open quantity before option expiration.</li>
+<li>Settlement is a single Muon-signed event after <code>expirationTimestamp</code> that prices the remaining open amount and either pays Party A&#39;s intrinsic option value (<code>EXERCISED</code>) or releases the locked premium/MM back to Party B (<code>EXPIRED</code>).</li>
+</ul>
+<p>A trade with a partial early close still gets settled at expiration for the remaining <code>getOpenAmount()</code>, and any active close intents at settlement time are cancelled as a side effect of <code>Trade.close()</code> (see <code>LibTradeOps.close</code> at <code>contracts/libraries/models/LibTrade.sol:112</code>).</p>
+<h2 id="close-intent-state-machine">Close Intent State Machine</h2>
+<pre><code class="language-mermaid">stateDiagram-v2
+    [*] --&gt; PENDING: PartyACloseFacet.sendCloseIntent
+    PENDING --&gt; CANCEL_PENDING: PartyACloseFacet.cancelCloseIntent (before deadline)
+    PENDING --&gt; EXPIRED: PartyACloseFacet.cancelCloseIntent (after deadline)
+    PENDING --&gt; EXPIRED: PartyACloseFacet.expireCloseIntent (after deadline)
+    CANCEL_PENDING --&gt; EXPIRED: PartyACloseFacet.expireCloseIntent (after deadline)
+    PENDING --&gt; FILLED: PartyBCloseFacet.fillCloseIntent (filledAmount == quantity)
+    CANCEL_PENDING --&gt; FILLED: PartyBCloseFacet.fillCloseIntent (filledAmount == quantity)
+    CANCEL_PENDING --&gt; CANCELED: PartyBCloseFacet.acceptCancelCloseIntent
+    CANCEL_PENDING --&gt; CANCELED: ForceActionsFacet.forceCancelCloseIntent (after timeout)
+    CANCEL_PENDING --&gt; CANCELED: PartyBCloseFacet.fillCloseIntent (partial, residue cancelled)
+    PENDING --&gt; CANCELED: TradeFacet.executeTrades / liquidation (Trade.close cancels actives)
+    CANCEL_PENDING --&gt; CANCELED: TradeFacet.executeTrades / liquidation (Trade.close cancels actives)
+    FILLED --&gt; [*]
+    CANCELED --&gt; [*]
+    EXPIRED --&gt; [*]
+</code></pre>
+<p>The enum values are defined in <code>contracts/types/IntentTypes.sol:18-24</code>:</p>
+<pre><code>PENDING = 0, CANCEL_PENDING = 1, CANCELED = 2, FILLED = 3, EXPIRED = 4
+</code></pre>
+<p>Status transitions are guarded by <code>ValidationErrors.requireStatus</code> and the explicit two-state <code>InvalidState</code> check in <code>LibPartyBClose.fillCloseIntent</code> (<code>contracts/libraries/core/LibPartyBClose.sol:79-84</code>). All transitions also stamp <code>intent.statusModifyTimestamp = block.timestamp</code>, which the timeout-based force cancel relies on.</p>
+<h2 id="anatomy-of-a-closeintent">Anatomy Of A CloseIntent</h2>
+<p><code>CloseIntent</code> (<code>contracts/types/IntentTypes.sol:44-55</code>) is a flat struct keyed by an auto-incrementing id from <code>CloseIntentStorage.lastCloseIntentId</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Source</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>id</code></td>
+<td><code>uint256</code></td>
+<td><code>++CloseIntentStorage.lastCloseIntentId</code></td>
+<td>Primary key in <code>closeIntents</code> mapping.</td>
+</tr>
+<tr>
+<td><code>tradeId</code></td>
+<td><code>uint256</code></td>
+<td>Caller argument</td>
+<td>Back-reference to the parent <code>Trade</code>.</td>
+</tr>
+<tr>
+<td><code>price</code></td>
+<td><code>uint256</code> (1e18)</td>
+<td>Caller argument</td>
+<td>Party A&#39;s threshold close price. For BUY trades, fills must be <code>&gt;=</code>; for SELL, fills must be <code>&lt;=</code>.</td>
+</tr>
+<tr>
+<td><code>quantity</code></td>
+<td><code>uint256</code> (1e18)</td>
+<td>Caller argument</td>
+<td>Total amount Party A is offering to close on this intent.</td>
+</tr>
+<tr>
+<td><code>filledAmount</code></td>
+<td><code>uint256</code> (1e18)</td>
+<td>Updated by <code>fillCloseIntent</code></td>
+<td>Cumulative filled amount across multiple fills.</td>
+</tr>
+<tr>
+<td><code>createTimestamp</code></td>
+<td><code>uint256</code></td>
+<td><code>block.timestamp</code> at creation</td>
+<td>Audit/UI metadata.</td>
+</tr>
+<tr>
+<td><code>statusModifyTimestamp</code></td>
+<td><code>uint256</code></td>
+<td>Updated on every transition</td>
+<td>Drives <code>forceCancelCloseIntentTimeout</code>.</td>
+</tr>
+<tr>
+<td><code>deadline</code></td>
+<td><code>uint256</code></td>
+<td>Caller argument</td>
+<td>Hard expiry of the intent itself. Independent of <code>trade.expirationTimestamp</code>.</td>
+</tr>
+<tr>
+<td><code>feeStructure</code></td>
+<td><code>FeeStructure</code></td>
+<td>Snapshot of <code>trade.feeStructure</code> (<code>LibPartyAClose.sol:55</code>)</td>
+<td>Locks fee token, fee token price, and platform/affiliate/solver close fee rates as of intent creation.</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>CloseIntentStatus</code></td>
+<td>State machine</td>
+<td>One of <code>PENDING</code>, <code>CANCEL_PENDING</code>, <code>CANCELED</code>, <code>FILLED</code>, <code>EXPIRED</code>.</td>
+</tr>
+</tbody></table>
+<h3 id="relationship-to-the-parent-trade">Relationship To The Parent Trade</h3>
+<p><code>Trade</code> (<code>contracts/types/TradeTypes.sol:18-35</code>) stores three quantity counters that close intents mutate:</p>
+<ul>
+<li><code>tradeAgreements.quantity</code>: total opened size of the trade. Immutable post-open.</li>
+<li><code>closedAmountBeforeExpiration</code>: cumulative filled close-intent quantity. Increased on every <code>fillCloseIntent</code>.</li>
+<li><code>closePendingAmount</code>: sum of the <code>quantity</code> field of every active (non-finalized) close intent. Increased on <code>register</code>, decreased on <code>unregister</code> (<code>LibCloseIntentOps.register</code> / <code>unregister</code>, <code>contracts/libraries/models/LibCloseIntent.sol:53-66</code>).</li>
+</ul>
+<p>The available amount Party A may put on a new close intent is enforced by <code>LibTradeOps.getAvailableAmountToClose</code> (<code>contracts/libraries/models/LibTrade.sol:32-34</code>):</p>
+<pre><code>available = trade.tradeAgreements.quantity − trade.closedAmountBeforeExpiration − trade.closePendingAmount
+</code></pre>
+<p>The currently exercisable size at settlement is <code>LibTradeOps.getOpenAmount</code>:</p>
+<pre><code>open = trade.tradeAgreements.quantity − trade.closedAmountBeforeExpiration
+</code></pre>
+<p>Note that <code>getOpenAmount</code> ignores <code>closePendingAmount</code>: pending close intents do not shrink the settlement quantity, only filled closes do. They are released by <code>Trade.close</code> if settlement runs first.</p>
+<h3 id="indexes">Indexes</h3>
+<p><code>CloseIntentStorage</code> (<code>contracts/storages/CloseIntentStorage.sol</code>):</p>
+<ul>
+<li><code>closeIntents[id] → CloseIntent</code>.</li>
+<li><code>closeIntentIdsOf[tradeId] → uint256[]</code>: append-only history of every intent ever created against a trade. Never removed. Used by view/UI flows.</li>
+<li><code>lastCloseIntentId</code>: monotonic id counter.</li>
+</ul>
+<p><code>TradeStorage.trades[tradeId].activeCloseIntentIds</code>: only intents that are <code>PENDING</code> or <code>CANCEL_PENDING</code>. Mutated by <code>register</code>/<code>unregister</code> and by <code>Trade.close</code>.</p>
+<h2 id="sendcloseintent">sendCloseIntent</h2>
+<p>Selector: <code>PartyACloseFacet.sendCloseIntent(uint256 tradeId, uint256 quantity, uint256 price, uint256 deadline)</code> at <code>contracts/facets/PartyAClose/PartyACloseFacet.sol:38</code>. Returns <code>intentId</code>.</p>
+<p>The facet applies these modifiers before calling <code>LibPartyAClose.sendCloseIntent</code>:</p>
+<ul>
+<li><code>whenPartyNotPaused(msg.sender)</code></li>
+<li><code>onlyPartyAOfTrade(tradeId)</code>: equivalent to checking <code>trade.partyA == msg.sender</code> and that the address is not configured as Party B.</li>
+<li><code>whenInstantModeIsNotActive(msg.sender)</code>: instant mode must be off (close intents flow through <code>InstantLayer</code> instead — see <a href="instant-actions.html">instant-actions</a>).</li>
+</ul>
+<p><code>LibPartyAClose.sendCloseIntent</code> (<code>contracts/libraries/core/LibPartyAClose.sol:29-59</code>) validates:</p>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Error</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>sender == trade.partyA</code></td>
+<td><code>ValidationErrors.UnauthorizedSender</code></td>
+</tr>
+<tr>
+<td><code>trade.status == OPENED</code></td>
+<td><code>ValidationErrors.InvalidState(&quot;TradeStatus&quot;)</code></td>
+</tr>
+<tr>
+<td><code>deadline &gt;= block.timestamp</code></td>
+<td><code>ValidationErrors.LowDeadline</code></td>
+</tr>
+<tr>
+<td><code>quantity &lt;= trade.getAvailableAmountToClose()</code></td>
+<td><code>IntentErrors.InvalidQuantity</code></td>
+</tr>
+<tr>
+<td><code>trade.activeCloseIntentIds.length &lt; AppStorage.maxCloseOrdersLength</code></td>
+<td><code>IntentErrors.TooManyCloseOrders</code></td>
+</tr>
+</tbody></table>
+<p>There is no validation on <code>price</code> itself (it can be zero or above the strike). Favorability is only enforced on the fill side.</p>
+<p>State effects on success:</p>
+<ol>
+<li><code>intentId = ++CloseIntentStorage.lastCloseIntentId</code>.</li>
+<li><code>CloseIntent</code> is constructed with <code>status = PENDING</code>, <code>filledAmount = 0</code>, <code>feeStructure = trade.feeStructure</code>, and timestamps set to <code>block.timestamp</code>.</li>
+<li><code>LibCloseIntentOps.register</code> writes <code>closeIntents[id]</code>, appends to <code>closeIntentIdsOf[tradeId]</code>, appends to <code>trade.activeCloseIntentIds</code>, and increases <code>trade.closePendingAmount += quantity</code>.</li>
+<li>Emits <code>SendCloseIntent(tradeId, intentId, price, quantity, deadline)</code>.</li>
+</ol>
+<p>No balance movement happens at this point. Premium and MM are still locked from the open intent flow; close fees are debited only when a fill happens.</p>
+<h2 id="fillcloseintent">fillCloseIntent</h2>
+<p>Selector: <code>PartyBCloseFacet.fillCloseIntent(uint256 intentId, uint256 quantity, uint256 price)</code> at <code>contracts/facets/PartyBClose/PartyBCloseFacet.sol:38</code>. The facet wraps <code>LibPartyBClose.fillCloseIntent</code> and emits <code>FillCloseIntent(intentId, quantity, price)</code>.</p>
+<h3 id="caller-and-state-restrictions">Caller And State Restrictions</h3>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Error</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>msg.sender == trade.partyB</code></td>
+<td><code>ValidationErrors.UnauthorizedSender</code></td>
+</tr>
+<tr>
+<td>Solvent counterparty (CROSS only requires Party A solvency vs Party B)</td>
+<td><code>LibParty.requireSolvent</code> reverts with <code>ActiveLiquidation</code></td>
+</tr>
+<tr>
+<td><code>0 &lt; quantity &lt;= intent.quantity − intent.filledAmount</code></td>
+<td><code>IntentErrors.InvalidFillAmount</code></td>
+</tr>
+<tr>
+<td><code>intent.status ∈ {PENDING, CANCEL_PENDING}</code></td>
+<td><code>ValidationErrors.InvalidState(&quot;CloseIntentStatus&quot;)</code></td>
+</tr>
+<tr>
+<td><code>trade.status == OPENED</code></td>
+<td><code>ValidationErrors.InvalidState(&quot;TradeStatus&quot;)</code></td>
+</tr>
+<tr>
+<td><code>block.timestamp &lt;= intent.deadline</code></td>
+<td><code>IntentErrors.IntentExpired</code></td>
+</tr>
+<tr>
+<td><code>block.timestamp &lt; trade.tradeAgreements.expirationTimestamp</code></td>
+<td><code>TradeErrors.TradeExpired</code></td>
+</tr>
+<tr>
+<td>BUY: <code>price &gt;= intent.price</code>. SELL: <code>price &lt;= intent.price</code></td>
+<td><code>IntentErrors.InvalidClosePrice</code></td>
+</tr>
+</tbody></table>
+<h3 id="price-favorability--worked-examples">Price Favorability — Worked Examples</h3>
+<p>Party A holds a BUY CALL on 5 ETH strike $3000, originally opened at premium price $200/unit, with an active close intent at <code>price = 250e18</code>:</p>
+<ul>
+<li>Party B fills at $260: passes (<code>260 &gt;= 250</code>). <code>closePremium = (1 ETH * 260) / 1e18 = 260</code> per unit closed.</li>
+<li>Party B fills at $245: reverts with <code>InvalidClosePrice(245, 250)</code>.</li>
+</ul>
+<p>Party A holds a SELL PUT with intent <code>price = 100e18</code>:</p>
+<ul>
+<li>Party B fills at $90: passes (<code>90 &lt;= 100</code>).</li>
+<li>Party B fills at $110: reverts with <code>InvalidClosePrice(110, 100)</code>.</li>
+</ul>
+<p>The protocol does not validate that the close price has any relationship to the live oracle price; favorability is purely vs Party A&#39;s stated threshold.</p>
+<h3 id="accounting">Accounting</h3>
+<p>All numbers are 18-decimal. Let <code>q = quantity</code>, <code>p = price</code>, and:</p>
+<pre><code>closePremium       = q * p / 1e18
+openPremiumPro     = (trade.openedPrice * q) / 1e18    // LibTradeOps.calculateProportionalPremium
+mmPro              = (trade.tradeAgreements.mm * q) / trade.tradeAgreements.quantity
+</code></pre>
+<h4 id="party-a-buy-tradesidebuy">Party A BUY (<code>TradeSide.BUY</code>)</h4>
+<p>The original premium for this <code>q</code> is unlocked back to Party B (it was locked from Party B at open). Party B then pays <code>closePremium</code> to Party A, both via the relevant balance ops:</p>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>Source line</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>ISOLATED: <code>partyBBalance.instantIsolatedAdd(openPremiumPro, PREMIUM)</code></td>
+<td><code>LibPartyBClose.sol:111</code></td>
+</tr>
+<tr>
+<td>CROSS: <code>partyBBalance.scheduledAdd(partyA, openPremiumPro, CROSS, PREMIUM)</code></td>
+<td><code>LibPartyBClose.sol:113</code></td>
+</tr>
+<tr>
+<td><code>partyBBalance.subForCounterParty(partyA, closePremium, marginType, PREMIUM)</code></td>
+<td><code>LibPartyBClose.sol:116</code></td>
+</tr>
+<tr>
+<td><code>partyABalance.scheduledAdd(partyB, closePremium, marginType, PREMIUM)</code></td>
+<td><code>LibPartyBClose.sol:117</code></td>
+</tr>
+</tbody></table>
+<p>Net for Party A: <code>+closePremium</code>. Net for Party B: <code>+openPremiumPro − closePremium</code>. Party B&#39;s gain matches the on-market move: if <code>p &lt; trade.openedPrice</code> Party B profits.</p>
+<h4 id="party-a-sell-tradesidesell">Party A SELL (<code>TradeSide.SELL</code>)</h4>
+<p>Party A originally locked maintenance margin (MM) and received premium. The proportional MM is released back to Party A&#39;s free balance, and Party A pays <code>closePremium</code> to Party B:</p>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>Source line</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>partyABalance.decreaseMM(partyB, mmPro)</code></td>
+<td><code>LibPartyBClose.sol:119</code></td>
+</tr>
+<tr>
+<td><code>partyABalance.subForCounterParty(partyB, closePremium, marginType, PREMIUM)</code></td>
+<td><code>LibPartyBClose.sol:120</code></td>
+</tr>
+<tr>
+<td><code>partyBBalance.scheduledAdd(partyA, closePremium, marginType, PREMIUM)</code></td>
+<td><code>LibPartyBClose.sol:121</code></td>
+</tr>
+</tbody></table>
+<p>Net for Party A: <code>+mmPro − closePremium − closeFees</code>. Net for Party B: <code>+closePremium</code>.</p>
+<h3 id="fee-distribution">Fee Distribution</h3>
+<p>All close fees are paid by Party A in <code>intent.feeStructure.feeToken</code> (snapshot from the trade) — see <code>LibCloseIntentOps.getFeesFromUser</code> at <code>contracts/libraries/models/LibCloseIntent.sol:83-102</code>.</p>
+<p>For each fee category <code>r ∈ {platformFee.closeFee, affiliateFee.closeFee, solverFee.closeFee}</code> the amount is:</p>
+<pre><code>fee = (q * p * r) / (feeStructure.tokenPriceInCollateral * 1e18)
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Recipient</th>
+<th>Account</th>
+<th>Balance op</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Default fee collector</td>
+<td><code>FeeManagementStorage.defaultFeeCollector</code></td>
+<td><code>instantIsolatedAdd(fees[0], PLATFORM_FEE)</code></td>
+</tr>
+<tr>
+<td>Affiliate fee collector</td>
+<td><code>affiliateFeeCollector[trade.affiliate]</code> if non-zero else <code>defaultFeeCollector</code></td>
+<td><code>instantIsolatedAdd(fees[1], AFFILIATE_FEE)</code></td>
+</tr>
+<tr>
+<td>Solver (Party B)</td>
+<td><code>trade.partyB</code></td>
+<td>ISOLATED: <code>instantIsolatedAdd(fees[2], SOLVER_FEE)</code>. CROSS: <code>scheduledAdd(partyA, fees[2], CROSS, SOLVER_FEE)</code>.</td>
+</tr>
+</tbody></table>
+<p>Each recipient balance is initialized via <code>setup(recipient, feeToken)</code> first to ensure the <code>ScheduledReleaseBalance</code> slot is bound to the correct user/token (see <code>LibPartyBClose.sol:137</code>, <code>:142</code>, <code>:147</code>).</p>
+<h3 id="trade-counter-updates">Trade Counter Updates</h3>
+<p>After balance moves (<code>LibPartyBClose.sol:158-164</code>):</p>
+<pre><code>trade.avgClosedPriceBeforeExpiration =
+    (trade.avgClosedPriceBeforeExpiration * trade.closedAmountBeforeExpiration + q * p)
+    / (trade.closedAmountBeforeExpiration + q);
+trade.closedAmountBeforeExpiration += q;
+intent.filledAmount += q;
+</code></pre>
+<h3 id="nonce-increments-cross-only">Nonce Increments (CROSS only)</h3>
+<pre><code>accountLayout.nonces[partyA][partyB] += 1;
+accountLayout.nonces[partyB][partyA] += 1;
+</code></pre>
+<p>This invalidates any in-flight off-chain uPnL signatures bound to the previous nonce (<code>LibMuon.verifyUpnlSig</code> mixes the nonce into the hash, <code>LibMuon.sol:85</code>).</p>
+<h2 id="partial-fills-and-trade-transitions">Partial Fills And Trade Transitions</h2>
+<p><code>LibPartyBClose.fillCloseIntent</code> post-processing (<code>contracts/libraries/core/LibPartyBClose.sol:174-194</code>):</p>
+<pre><code class="language-mermaid">flowchart TD
+    Fill[fillCloseIntent succeeds] --&gt; FullCheck{filledAmount == quantity?}
+    FullCheck --&gt;|No| Pending[Intent stays PENDING or CANCEL_PENDING]
+    Pending --&gt; CancelPartial{status == CANCEL_PENDING?}
+    CancelPartial --&gt;|Yes| ResidueCanceled[status = CANCELED, unregister]
+    CancelPartial --&gt;|No| Stay[Stay PENDING for next fill]
+    FullCheck --&gt;|Yes| FilledStatus[status = FILLED, unregister]
+    FilledStatus --&gt; TradeCheck{closedAmountBeforeExpiration == trade.quantity?}
+    TradeCheck --&gt;|Yes| TradeClosed[trade.status = CLOSED, trade.unregister]
+    TradeCheck --&gt;|No| TradeStaysOpen[Trade stays OPENED]
+</code></pre>
+<p>Notes on the <code>CANCEL_PENDING</code> partial-fill branch (<code>LibPartyBClose.sol:188-193</code>): Party B may choose to fill less than the remaining <code>intent.quantity − intent.filledAmount</code>. If the intent was already in <code>CANCEL_PENDING</code>, the residue does not stay open — it is forced to <code>CANCELED</code> and the intent is unregistered, releasing <code>closePendingAmount</code> for the unfilled remainder. This mirrors the &quot;Party B partially fills, then accepts cancel&quot; semantics in a single call.</p>
+<p>A full trade close (<code>TradeStatus.CLOSED</code>) happens only via the close-intent path. Settlement uses <code>EXERCISED</code>/<code>EXPIRED</code>. Liquidation uses <code>LIQUIDATED</code>.</p>
+<h2 id="cancellation-and-expiry-paths">Cancellation And Expiry Paths</h2>
+<h3 id="party-a-initiated-cancel">Party A Initiated Cancel</h3>
+<p><code>PartyACloseFacet.cancelCloseIntent(uint256[] intentIds)</code> accepts a batch and applies <code>LibPartyAClose.cancelCloseIntent</code> per id (<code>contracts/libraries/core/LibPartyAClose.sol:61-77</code>):</p>
+<ul>
+<li>Requires <code>sender == trade.partyA</code> and <code>intent.status == PENDING</code>.</li>
+<li>If <code>block.timestamp &gt; intent.deadline</code>: calls <code>intent.expire()</code> → <code>EXPIRED</code> (emits <code>ExpireCloseIntent</code>).</li>
+<li>Otherwise: sets <code>status = CANCEL_PENDING</code>, stamps <code>statusModifyTimestamp</code> (emits <code>CancelCloseIntent</code>).</li>
+</ul>
+<h3 id="party-b-accept-cancel">Party B Accept Cancel</h3>
+<p><code>PartyBCloseFacet.acceptCancelCloseIntent(uint256 intentId)</code> calls <code>LibPartyBClose.acceptCancelCloseIntent</code> (<code>contracts/libraries/core/LibPartyBClose.sol:33-51</code>):</p>
+<ul>
+<li>Requires <code>sender == trade.partyB</code>, <code>intent.status == CANCEL_PENDING</code>.</li>
+<li>Sets <code>status = CANCELED</code>, calls <code>unregister</code> (releases <code>closePendingAmount</code>).</li>
+<li>Emits <code>AcceptCancelCloseIntent(intentId)</code>.</li>
+</ul>
+<h3 id="force-cancel-after-timeout">Force Cancel After Timeout</h3>
+<p><code>ForceActionsFacet.forceCancelCloseIntent(uint256 intentId)</code> is callable by anyone and uses <code>LibForceActions.forceCancelCloseIntent</code> (<code>contracts/libraries/core/LibForceActions.sol:43-58</code>):</p>
+<ul>
+<li>Requires <code>intent.status == CANCEL_PENDING</code>.</li>
+<li>Requires <code>block.timestamp &gt; intent.statusModifyTimestamp + AppStorage.forceCancelCloseIntentTimeout</code> (else <code>CooldownNotOver</code>).</li>
+<li>Sets <code>status = CANCELED</code>, calls <code>unregister</code>.</li>
+<li>Emits <code>ForceCancelCloseIntent(intentId)</code>.</li>
+</ul>
+<h3 id="expire">Expire</h3>
+<p><code>PartyACloseFacet.expireCloseIntent(uint256[] expiredIntentIds)</code> is permissionless and calls <code>LibCloseIntentOps.expire</code> (<code>contracts/libraries/models/LibCloseIntent.sol:68-81</code>):</p>
+<ul>
+<li>Requires <code>block.timestamp &gt; intent.deadline</code> (<code>IntentNotExpired</code> if not).</li>
+<li>Requires <code>intent.status ∈ {PENDING, CANCEL_PENDING}</code>.</li>
+<li>Sets <code>status = EXPIRED</code>, calls <code>unregister</code>.</li>
+<li>Emits <code>ExpireCloseIntent(intentId)</code>.</li>
+</ul>
+<h3 id="combined-flow">Combined Flow</h3>
+<pre><code class="language-mermaid">flowchart TD
+    A[Intent PENDING] --&gt; B{Party A cancelCloseIntent}
+    B --&gt;|deadline passed| C[EXPIRED, unregister]
+    B --&gt;|not expired| D[CANCEL_PENDING, stamp timestamp]
+    D --&gt; E{Party B acceptCancelCloseIntent}
+    E --&gt;|yes| F[CANCELED, unregister]
+    D --&gt; G{anyone forceCancelCloseIntent after timeout}
+    G --&gt;|cooldown over| F
+    D --&gt; H{Party A or anyone expireCloseIntent}
+    A --&gt; H
+    H --&gt;|deadline passed| I[EXPIRED, unregister]
+    D --&gt; J{Party B fillCloseIntent partial}
+    J --&gt;|residue cancelled| F
+    A --&gt; K{Party B fillCloseIntent full}
+    D --&gt; K
+    K --&gt; L[FILLED, unregister]
+</code></pre>
+<p>Note: a <code>PENDING</code> intent past its deadline can only be transitioned by <code>expireCloseIntent</code> (anyone) or <code>cancelCloseIntent</code> from Party A (which routes to <code>EXPIRED</code> because of the deadline check). It cannot be filled — <code>fillCloseIntent</code> reverts on the <code>IntentExpired</code> check before any state changes.</p>
+<h2 id="settlement-execution">Settlement Execution</h2>
+<p><code>TradeFacet.executeTrades(uint256[] tradeIds, SettlementPriceSig sig)</code> at <code>contracts/facets/Trade/TradeFacet.sol:61</code> is the single entry-point for post-expiration trade resolution. It is gated only by <code>whenNotThirdPartyActionsPaused</code> (third-party caller is allowed; <code>partyBExclusiveWindow</code> is enforced inside the loop on a per-exercise basis).</p>
+<h3 id="settlementpricesig">SettlementPriceSig</h3>
+<p>Defined at <code>contracts/types/TradeTypes.sol:42-50</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>reqId</code></td>
+<td>Muon request id used in the gateway signature.</td>
+</tr>
+<tr>
+<td><code>timestamp</code></td>
+<td>Signing timestamp; signature expires after <code>AppStorage.settlementPriceSigValidTime</code>.</td>
+</tr>
+<tr>
+<td><code>symbolId</code></td>
+<td>Symbol covered by the signature; must match every trade in the batch.</td>
+</tr>
+<tr>
+<td><code>settlementPrice</code></td>
+<td>Oracle settlement price for the underlying at expiration (1e18).</td>
+</tr>
+<tr>
+<td><code>settlementTimestamp</code></td>
+<td>Oracle-reported settlement reference time.</td>
+</tr>
+<tr>
+<td><code>collateralPrice</code></td>
+<td>Price of <code>symbol.collateral</code> in the units used for <code>pnl</code> (used to convert PnL to collateral units, 1e18).</td>
+</tr>
+<tr>
+<td><code>gatewaySignature</code></td>
+<td>Muon gateway ECDSA signature.</td>
+</tr>
+<tr>
+<td><code>sigs</code></td>
+<td>Schnorr TSS signature.</td>
+</tr>
+</tbody></table>
+<p><code>LibMuon.verifySettlementPriceSig</code> (<code>contracts/libraries/services/LibMuon.sol:26-57</code>):</p>
+<ol>
+<li>Reverts with <code>ExpiredSignature</code> if <code>block.timestamp &gt; sig.timestamp + appLayout.settlementPriceSigValidTime</code>.</li>
+<li>Computes <code>keccak256(abi.encodePacked(reqId, address(this), timestamp, symbolId, settlementPrice, settlementTimestamp, collateralPrice, chainId))</code>.</li>
+<li>Calls <code>IMuonOracle(oracle.contractAddress).verifyTSSAndGW(hash, reqId, sigs, gatewaySignature)</code> where the oracle is resolved via <code>symbol.oracleId</code>.</li>
+</ol>
+<p>The signature is symbol-bound but not trade-bound: a single signature covers all trades on the same symbol. Reusing it is permitted within <code>settlementPriceSigValidTime</code>.</p>
+<h3 id="per-trade-loop">Per-Trade Loop</h3>
+<pre><code class="language-mermaid">flowchart TD
+    Start[executeTrades] --&gt; Verify[LibMuon.verifySettlementPriceSig]
+    Verify --&gt; Loop[For each tradeId]
+    Loop --&gt; AlreadyDone{status in EXERCISED or EXPIRED?}
+    AlreadyDone --&gt;|Yes| Skip[continue, leave flags false]
+    AlreadyDone --&gt;|No| Solvent[requireSolvent partyA and partyB]
+    Solvent --&gt; SymbolMatch{sig.symbolId == trade.symbolId?}
+    SymbolMatch --&gt;|No| RevertSym[revert MismatchedSymbolId]
+    SymbolMatch --&gt;|Yes| StatusOpen{trade.status == OPENED?}
+    StatusOpen --&gt;|No| RevertStatus[revert InvalidState]
+    StatusOpen --&gt;|Yes| Expired{block.timestamp &gt; expirationTimestamp?}
+    Expired --&gt;|No| RevertNotExp[revert TradeNotYetExpired]
+    Expired --&gt;|Yes| ITM{In the money?}
+    ITM --&gt;|No| Expire[settledPrice = sig.settlementPrice and trade.close EXPIRED, CANCELED]
+    Expire --&gt; ReleaseLocks[Release proportional premium back to PartyB if BUY, decreaseMM if SELL]
+    ITM --&gt;|Yes| ReleaseLocks2[Release proportional premium or MM]
+    ReleaseLocks --&gt; Nonce
+    ReleaseLocks2 --&gt; Window{caller == partyB OR exclusive window over?}
+    Window --&gt;|No| RevertWin[revert PartyBExclusiveWindowNotOver]
+    Window --&gt;|Yes| PnL[Compute PnL and exerciseFee]
+    PnL --&gt; TransferPnL[Move pnl - exerciseFee from loser to winner via collateralPrice]
+    TransferPnL --&gt; CollectFees[Debit Party A fee balance, credit platform and affiliate]
+    CollectFees --&gt; CloseExercised[trade.close EXERCISED, CANCELED]
+    CloseExercised --&gt; Nonce[Bump CROSS bilateral nonce]
+    Nonce --&gt; Loop
+</code></pre>
+<h3 id="already-settled-skip">Already-Settled Skip</h3>
+<p>If <code>trade.status</code> is <code>EXERCISED</code> or <code>EXPIRED</code> when the loop reaches it, both <code>exercised[i]</code> and <code>expired[i]</code> are left false and the loop continues without revert (<code>LibTradeOperations.sol:97-102</code>). This is what makes batched calls safe across racing executors.</p>
+<h3 id="in-the-money-rules">In-The-Money Rules</h3>
+<p>From <code>LibTradeOperations.sol:118-134</code>:</p>
+<ul>
+<li><strong>PUT</strong>: exercised if <code>sig.settlementPrice &lt; trade.tradeAgreements.strikePrice</code>. Otherwise expired.</li>
+<li><strong>CALL</strong>: exercised if <code>sig.settlementPrice &gt; trade.tradeAgreements.strikePrice</code>. Otherwise expired.</li>
+<li>Equality (<code>settlement == strike</code>) is treated as expired (no intrinsic value).</li>
+</ul>
+<p><code>LibTradeOps.calculatePnl</code> (<code>contracts/libraries/models/LibTrade.sol:36-44</code>) computes the absolute intrinsic value for the remaining open amount; it returns 0 if not in the money:</p>
+<pre><code>CALL: pnl = (settlementPrice − strikePrice) * openAmount / 1e18    (if settlement &gt; strike)
+PUT:  pnl = (strikePrice − settlementPrice) * openAmount / 1e18    (if settlement &lt; strike)
+</code></pre>
+<p><code>openAmount</code> here is <code>trade.getOpenAmount() = trade.quantity − trade.closedAmountBeforeExpiration</code> and is computed before <code>trade.close</code> runs.</p>
+<h3 id="pre-pnl-lock-releases">Pre-PnL Lock Releases</h3>
+<p>Both the EXPIRED and EXERCISED branches release the locks attached to the remaining open amount (<code>LibTradeOperations.sol:141-154</code>):</p>
+<ul>
+<li>BUY trades: the proportional premium that Party B paid at open is added back to Party B&#39;s balance (<code>scheduledAdd</code> in CROSS, <code>instantIsolatedAdd</code> in ISOLATED).</li>
+<li>SELL trades: the proportional MM Party A had locked vs Party B is released via <code>decreaseMM</code>.</li>
+</ul>
+<p>For an EXPIRED option these releases plus the fact that <code>pnl == 0</code> mean the trade winds down with only the original premium having moved (the BUY pays premium and gets nothing in return; SELL collects premium and frees its margin).</p>
+<h3 id="exclusive-party-b-window">Exclusive Party B Window</h3>
+<p>If <code>exercised[i]</code> is true and <code>msg.sender != trade.partyB</code>:</p>
+<pre><code>require(block.timestamp &gt; trade.tradeAgreements.expirationTimestamp + appLayout.partyBExclusiveWindow);
+</code></pre>
+<p>else <code>TradeErrors.PartyBExclusiveWindowNotOver</code>. Within the window, only Party B can finalize the exercise. After the window, anyone (including a keeper or Party A) can settle. The window does not apply to expired (out-of-money) trades — anyone may execute them as soon as the trade has expired.</p>
+<h3 id="pnl-transfer-and-collateral-conversion">PnL Transfer And Collateral Conversion</h3>
+<p>PnL is denominated in the symbol&#39;s quote unit (matching <code>settlementPrice</code> and <code>strikePrice</code> units). It is converted to collateral units before being moved between balances (<code>LibTradeOperations.sol:168-169</code>):</p>
+<pre><code>amountToTransfer = (pnl − exerciseFee) * 1e18 / sig.collateralPrice
+</code></pre>
+<p>For a BUY (Party A long the option), the loser is Party B:</p>
+<pre><code>partyBBalance.subForCounterParty(partyA, amountToTransfer, marginType, REALIZED_PNL)
+partyABalance.scheduledAdd(partyB, amountToTransfer, marginType, REALIZED_PNL)
+</code></pre>
+<p>For a SELL (Party A short), the loser is Party A:</p>
+<pre><code>partyABalance.subForCounterParty(partyB, amountToTransfer, marginType, REALIZED_PNL)
+partyBBalance.scheduledAdd(partyA, amountToTransfer, marginType, REALIZED_PNL)
+</code></pre>
+<p><code>trade.settledPrice = sig.settlementPrice</code> is persisted in both branches.</p>
+<h3 id="exercise-fee-math">Exercise Fee Math</h3>
+<p>From <code>LibTradeOps.calculateExerciseFee</code> (<code>contracts/libraries/models/LibTrade.sol:58-62</code>) using <code>trade.tradeAgreements.exerciseFee.{cap, rate}</code>:</p>
+<pre><code>cap   = exerciseFee.cap * pnl / 1e18                        // share of PnL, 1e18 = 100%
+fee   = exerciseFee.rate * settlementPrice * openAmount / 1e36  // notional rate
+exerciseFee = min(cap, fee)
+</code></pre>
+<p>Interpretation: the exercise fee is the lesser of (a) a percentage of the realized PnL (<code>cap</code>) and (b) a per-notional rate applied to <code>settlementPrice * openAmount</code> (<code>fee</code>). The two <code>1e18</code> factors in the second formula come from the 1e18 scaling of both <code>rate</code> and <code>settlementPrice * openAmount / 1e18</code>.</p>
+<h3 id="exercise-fee-distribution">Exercise Fee Distribution</h3>
+<p>The platform and affiliate exercise fees are charged to Party A&#39;s fee-token balance (<code>LibTradeOperations.sol:191-225</code>):</p>
+<pre><code>pnlInCollateral = pnl * 1e18 / sig.collateralPrice
+fees[0] = pnlInCollateral * platformFee.closeFee / tokenPriceInCollateral
+fees[1] = pnlInCollateral * affiliateFee.closeFee / tokenPriceInCollateral
+</code></pre>
+<p>Both come from <code>trade.partyA.balanceOf(feeStructure.feeToken)</code> via <code>subForCounterParty(partyB, ...)</code> and are credited to the default and affiliate fee collectors respectively. There is no solver-fee component on settlement (only on close intent fills).</p>
+<p>Note: in this branch the <code>closeFee</code> rate from <code>feeStructure</code> is reused for the settlement-time fee, even though it is paid in the symbol&#39;s <code>feeToken</code> and the size formula differs (PnL-based, not premium-based). The exerciseFee from <code>tradeAgreements</code> is a separate notional/cap-share fee debited via the PnL transfer (it stays inside the balance flow because <code>amountToTransfer</code> is computed as <code>pnl − exerciseFee</code>, so the loser keeps <code>exerciseFee</code> worth of PnL — this is the pool from which exercise fees are economically funded).</p>
+<h3 id="active-close-intent-cancellation">Active Close Intent Cancellation</h3>
+<p>Both branches end with <code>trade.close(targetStatus, CloseIntentStatus.CANCELED)</code> (<code>LibTradeOps.close</code> at <code>contracts/libraries/models/LibTrade.sol:112-123</code>). For every id remaining in <code>activeCloseIntentIds</code>:</p>
+<ul>
+<li>Stamps <code>statusModifyTimestamp = block.timestamp</code>.</li>
+<li>Sets <code>status = CANCELED</code>.</li>
+<li>Calls <code>unregister</code> (mutates <code>activeCloseIntentIds</code> and <code>closePendingAmount</code>).</li>
+</ul>
+<p>Then the trade itself is unregistered from <code>activeTradesOfPartyA</code> and <code>activeTradesOfPartyB[collateral]</code> and its status is set.</p>
+<h3 id="result">Result</h3>
+<table>
+<thead>
+<tr>
+<th>Outcome</th>
+<th><code>trade.status</code></th>
+<th><code>trade.settledPrice</code></th>
+<th>Active close intents</th>
+<th><code>exercised[i]</code></th>
+<th><code>expired[i]</code></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>In the money</td>
+<td><code>EXERCISED</code></td>
+<td><code>sig.settlementPrice</code></td>
+<td>All set to <code>CANCELED</code></td>
+<td><code>true</code></td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td>Out of money</td>
+<td><code>EXPIRED</code></td>
+<td><code>sig.settlementPrice</code></td>
+<td>All set to <code>CANCELED</code></td>
+<td><code>false</code></td>
+<td><code>true</code></td>
+</tr>
+<tr>
+<td>Already done</td>
+<td>unchanged</td>
+<td>unchanged</td>
+<td>unchanged</td>
+<td><code>false</code></td>
+<td><code>false</code></td>
+</tr>
+</tbody></table>
+<p>Emits <code>ExecuteTrades(operator, tradeIds, exercised, expired, settlementPrice, collateralPrice)</code>.</p>
+<h2 id="nfts-and-trade-transfer">NFTs And Trade Transfer</h2>
+<p>Trade ownership is the <code>trade.partyA</code> field. It can be moved while a trade is <code>OPENED</code> and only for ISOLATED trades.</p>
+<h3 id="transfertrade">transferTrade</h3>
+<p><code>TradeFacet.transferTrade(address receiver, uint256 tradeId)</code> at <code>contracts/facets/Trade/TradeFacet.sol:29</code> is non-reentrant, gated by <code>whenPartyNotPaused(msg.sender)</code>, <code>onlyPartyAOfTrade(tradeId)</code>, and <code>whenNotSuspended</code> for both sender and receiver.</p>
+<p><code>LibTradeOperations.transferTrade</code> calls the shared <code>validateAndTransferTrade</code> (<code>contracts/libraries/core/LibTradeOperations.sol:37-66</code>) which checks:</p>
+<ul>
+<li><code>trade.partyA == sender</code>.</li>
+<li><code>receiver != address(0)</code> (<code>ZeroAddress</code>).</li>
+<li><code>receiver</code> is not configured as a Party B (<code>ReceiverIsPartyB</code>).</li>
+<li><code>trade.status == OPENED</code>.</li>
+<li><code>trade.tradeAgreements.marginType == ISOLATED</code> (else <code>CrossTradeTransferNotAllowed</code>).</li>
+<li>Party B is solvent for ISOLATED.</li>
+</ul>
+<p>On success it <code>unregister</code>s from the seller&#39;s index, sets <code>trade.partyA = receiver</code>, and <code>register</code>s under the new owner. If <code>AppStorage.tradeNftAddress != 0</code>, it also calls <code>ITradeNFT(tradeNftAddress).transferTradeNFT(sender, receiver, tradeId)</code> so the NFT follows the trade.</p>
+<h3 id="mintnftfortrade">mintNFTForTrade</h3>
+<p><code>TradeFacet.mintNFTForTrade(uint256 tradeId)</code> (<code>contracts/facets/Trade/TradeFacet.sol:71</code>) is <code>nonReentrant onlyPartyAOfTrade(tradeId)</code>. <code>LibTradeOperations.mintNFTForTrade</code> rejects CROSS trades (<code>NFTMintingNotAllowedForCrossMarginTrade</code>) and otherwise calls <code>ITradeNFT(tradeNftAddress).mintNFTForTrade(trade.partyA, tradeId)</code>.</p>
+<h3 id="transfertradefromnft">transferTradeFromNFT</h3>
+<p><code>TradeFacet.transferTradeFromNFT(address sender, address receiver, uint256 tradeId)</code> is the reverse direction — called by <code>TradeNFT._beforeTokenTransfer</code> when an NFT changes hands outside the protocol.</p>
+<p><code>LibTradeOperations.transferTradeFromNFT</code> (<code>contracts/libraries/core/LibTradeOperations.sol:74-78</code>):</p>
+<ul>
+<li>Requires <code>msg.sender == AppStorage.tradeNftAddress</code> (else <code>UnauthorizedSender</code>).</li>
+<li>Calls the same <code>validateAndTransferTrade(sender, receiver, tradeId)</code> body, so all the ownership/state/cross-margin invariants are enforced before sync.</li>
+</ul>
+<p>Re-entrancy between the two sides is prevented in <code>TradeNFT.transferTradeNFT</code> by the <code>transferInitiatedInSymmio</code> flag (<code>contracts/helpers/TradeNFT.sol:116-121</code>) — when the diamond initiates the move, the <code>_beforeTokenTransfer</code> hook is short-circuited.</p>
+<h2 id="errors-reference">Errors Reference</h2>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Source</th>
+<th>Raised by</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>UnauthorizedSender(sender, requiredSender)</code></td>
+<td><code>errors/ValidationErrors.sol:16</code></td>
+<td><code>sendCloseIntent</code>, <code>cancelCloseIntent</code>, <code>acceptCancelCloseIntent</code>, <code>fillCloseIntent</code>, <code>transferTrade</code>, <code>transferTradeFromNFT</code></td>
+</tr>
+<tr>
+<td><code>InvalidState(property, current, requiredStatus[])</code></td>
+<td><code>errors/ValidationErrors.sol:15</code></td>
+<td>All status guards on <code>TradeStatus</code>/<code>CloseIntentStatus</code></td>
+</tr>
+<tr>
+<td><code>LowDeadline(deadline, current)</code></td>
+<td><code>errors/ValidationErrors.sol:13</code></td>
+<td><code>sendCloseIntent</code></td>
+</tr>
+<tr>
+<td><code>ZeroAddress(property)</code></td>
+<td><code>errors/ValidationErrors.sol:9</code></td>
+<td><code>validateAndTransferTrade</code></td>
+</tr>
+<tr>
+<td><code>ExpiredSignature(currentTime, sigTimestamp, validTime, expiryTime)</code></td>
+<td><code>errors/ValidationErrors.sol:30</code></td>
+<td><code>verifySettlementPriceSig</code></td>
+</tr>
+<tr>
+<td><code>CooldownNotOver(&quot;forceCancelCloseIntentTimeout&quot;, current, required)</code></td>
+<td><code>errors/ValidationErrors.sol:14</code></td>
+<td><code>forceCancelCloseIntent</code></td>
+</tr>
+<tr>
+<td><code>InvalidQuantity(requested, available)</code></td>
+<td><code>errors/IntentErrors.sol:30</code></td>
+<td><code>sendCloseIntent</code></td>
+</tr>
+<tr>
+<td><code>TooManyCloseOrders(current, maximum)</code></td>
+<td><code>errors/IntentErrors.sol:31</code></td>
+<td><code>sendCloseIntent</code></td>
+</tr>
+<tr>
+<td><code>InvalidClosePrice(providedPrice, thresholdPrice)</code></td>
+<td><code>errors/IntentErrors.sol:32</code></td>
+<td><code>fillCloseIntent</code> price favorability</td>
+</tr>
+<tr>
+<td><code>InvalidFillAmount(quantity, availableAmount)</code></td>
+<td><code>errors/IntentErrors.sol:35</code></td>
+<td><code>fillCloseIntent</code></td>
+</tr>
+<tr>
+<td><code>IntentExpired(intentId, currentTime, deadline)</code></td>
+<td><code>errors/IntentErrors.sol:9</code></td>
+<td><code>fillCloseIntent</code> deadline check</td>
+</tr>
+<tr>
+<td><code>IntentNotExpired(intentId, currentTime, deadline)</code></td>
+<td><code>errors/IntentErrors.sol:10</code></td>
+<td><code>expireCloseIntent</code></td>
+</tr>
+<tr>
+<td><code>TradeExpired(tradeId, currentTime, expirationTimestamp)</code></td>
+<td><code>errors/TradeErrors.sol:12</code></td>
+<td><code>fillCloseIntent</code> expiration check</td>
+</tr>
+<tr>
+<td><code>TradeNotYetExpired(tradeId, currentTime, expirationTimestamp)</code></td>
+<td><code>errors/TradeErrors.sol:21</code></td>
+<td><code>executeTrades</code></td>
+</tr>
+<tr>
+<td><code>MismatchedSymbolId(providedSymbolId, tradeSymbolId)</code></td>
+<td><code>errors/TradeErrors.sol:20</code></td>
+<td><code>executeTrades</code> per-trade symbol check</td>
+</tr>
+<tr>
+<td><code>PartyBExclusiveWindowNotOver(currentTime, requiredTime)</code></td>
+<td><code>errors/TradeErrors.sol:22</code></td>
+<td><code>executeTrades</code> exercise window</td>
+</tr>
+<tr>
+<td><code>ReceiverIsPartyB(receiver, partyB)</code></td>
+<td><code>errors/TradeErrors.sol:15</code></td>
+<td><code>validateAndTransferTrade</code></td>
+</tr>
+<tr>
+<td><code>CrossTradeTransferNotAllowed(tradeId)</code></td>
+<td><code>errors/TradeErrors.sol:16</code></td>
+<td><code>validateAndTransferTrade</code></td>
+</tr>
+<tr>
+<td><code>NFTMintingNotAllowedForCrossMarginTrade(tradeId)</code></td>
+<td><code>errors/TradeErrors.sol:17</code></td>
+<td><code>mintNFTForTrade</code></td>
+</tr>
+</tbody></table>
+<h2 id="worked-numeric-example">Worked Numeric Example</h2>
+<p>Trade: Party A BUY CALL on <code>quantity = 5e18</code> ETH, <code>strikePrice = 3000e18</code>, <code>openedPrice = 200e18</code> (premium per unit), <code>marginType = ISOLATED</code>. <code>feeStructure.feeToken = USDC</code>, <code>tokenPriceInCollateral = 1e18</code>, <code>platformFee.closeFee = 0.001e18</code> (0.1%), <code>affiliateFee.closeFee = 0</code>, <code>solverFee.closeFee = 0</code>, <code>exerciseFee = {rate: 0.001e18, cap: 0.05e18}</code>.</p>
+<p>State at open (collateral = USDC):</p>
+<ul>
+<li>Party A locked: open premium <code>5 * 200 = 1000</code> USDC paid to Party B at fill (already moved).</li>
+<li>Party B locked: nothing for ISOLATED BUY beyond having received the 1000 USDC premium.</li>
+</ul>
+<h3 id="step-1--partial-close-at-250">Step 1 — Partial Close At $250</h3>
+<p>Party A <code>sendCloseIntent(tradeId, quantity=2e18, price=250e18, deadline=...)</code>:</p>
+<ul>
+<li><code>available = 5 − 0 − 0 = 5</code>, <code>2 ≤ 5</code> ok. Intent registered, <code>closePendingAmount = 2</code>.</li>
+</ul>
+<p>Party B <code>fillCloseIntent(intentId, quantity=2e18, price=260e18)</code> at $260 (favorable: <code>260 ≥ 250</code>):</p>
+<ul>
+<li><code>closePremium = 2 * 260 / 1 = 520</code> USDC.</li>
+<li><code>openPremiumPro = 200 * 2 / 1 = 400</code> USDC.</li>
+<li>ISOLATED BUY accounting:<ul>
+<li>Party B balance <code>+= 400</code> USDC (premium return).</li>
+<li>Party B balance <code>-= 520</code> USDC (close premium paid).</li>
+<li>Party A balance <code>+= 520</code> USDC.</li>
+</ul>
+</li>
+<li>Close fees from Party A (USDC): <code>(2 * 260 * 0.001) / (1 * 1) = 0.52</code> USDC paid to default fee collector. Affiliate and solver fees are zero by configuration.</li>
+<li><code>trade.closedAmountBeforeExpiration = 2</code>, <code>avgClosedPriceBeforeExpiration = 260</code>, <code>intent.filledAmount = 2</code>, intent → <code>FILLED</code>, unregistered.</li>
+<li>Trade still <code>OPENED</code> (<code>closedAmountBeforeExpiration != quantity</code>).</li>
+</ul>
+<p>Net flows after step 1:</p>
+<ul>
+<li>Party A: <code>+520 − 0.52 = +519.48</code> USDC.</li>
+<li>Party B: <code>+400 − 520 = −120</code> USDC.</li>
+<li>Default fee collector: <code>+0.52</code> USDC.</li>
+</ul>
+<h3 id="step-2--settlement-at-3200-call-itm">Step 2 — Settlement At $3200 (CALL ITM)</h3>
+<p>After <code>expirationTimestamp</code>, anyone (within Party B exclusive window only Party B) calls <code>executeTrades([tradeId], sig)</code> with <code>sig.settlementPrice = 3200e18</code>, <code>sig.collateralPrice = 1e18</code>.</p>
+<ul>
+<li>Symbol verified, trade <code>OPENED</code>, expired. CALL with <code>3200 &gt; 3000</code> → <code>exercised</code>.</li>
+<li><code>openAmount = 5 − 2 = 3</code>.</li>
+<li>Pre-PnL release: ISOLATED BUY → Party B <code>+= calculateProportionalPremium(3) = 200 * 3 = 600</code> USDC.</li>
+<li><code>pnl = (3200 − 3000) * 3 / 1 = 600</code> USDC-equivalent (in symbol quote units, here equal to USDC).</li>
+<li>Exercise fee: <code>cap = 0.05 * 600 / 1 = 30</code>; <code>fee = 0.001 * 3200 * 3 / 1e18 = 9.6</code> (after the <code>1e36</code> scaling in code). <code>exerciseFee = min(30, 9.6) = 9.6</code>.</li>
+<li><code>amountToTransfer = (600 − 9.6) * 1 / 1 = 590.4</code> USDC.</li>
+<li>Party B <code>−= 590.4</code> USDC, Party A <code>+= 590.4</code> USDC.</li>
+<li>Platform exercise fee from Party A&#39;s USDC fee balance: <code>pnlInCollateral = 600</code>; <code>fees[0] = 600 * 0.001 / 1 = 0.6</code> USDC to default fee collector. Affiliate fee zero.</li>
+<li><code>trade.settledPrice = 3200</code>. <code>trade.close(EXERCISED, CANCELED)</code> runs (no active close intents to cancel).</li>
+</ul>
+<p>Cumulative net (deltas relative to a hypothetical pre-trade state where Party B had received the 1000 premium at open):</p>
+<ul>
+<li><p>Party A: <code>−1000 (open premium) + 519.48 (close step) + 590.4 (exercise) − 0.6 (platform exercise fee) = +109.28</code> USDC.</p>
+</li>
+<li><p>Party B: <code>+1000 (open premium) − 120 (close step) + 600 (lock release) − 590.4 (exercise) = +889.6</code> USDC.</p>
+<p>  Note that the lock release of 600 is offsetting the 600 paid out as <code>pnl + exerciseFee_kept</code>, so Party B effectively lost only <code>120 + 590.4 − 600 = +110.4</code> net relative to having held the premium.</p>
+</li>
+<li><p>Default fee collector: <code>0.52 + 0.6 = 1.12</code> USDC.</p>
+</li>
+</ul>
+<p>(Numbers shown without 1e18 scaling for readability; on-chain values are 1e18-scaled.)</p>
+<h2 id="related-code-map">Related Code Map</h2>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>contracts/facets/PartyAClose/PartyACloseFacet.sol</code></td>
+<td>Party A entry points: <code>sendCloseIntent</code>, <code>cancelCloseIntent</code>, <code>expireCloseIntent</code>.</td>
+</tr>
+<tr>
+<td><code>contracts/facets/PartyAClose/IPartyACloseFacet.sol</code></td>
+<td>Selectors and <code>IPartyACloseEvents</code>.</td>
+</tr>
+<tr>
+<td><code>contracts/facets/PartyAClose/IPartyACloseEvents.sol</code></td>
+<td><code>SendCloseIntent</code>, <code>CancelCloseIntent</code> events.</td>
+</tr>
+<tr>
+<td><code>contracts/facets/PartyBClose/PartyBCloseFacet.sol</code></td>
+<td>Party B entry points: <code>fillCloseIntent</code>, <code>acceptCancelCloseIntent</code>.</td>
+</tr>
+<tr>
+<td><code>contracts/facets/PartyBClose/IPartyBCloseEvents.sol</code></td>
+<td><code>FillCloseIntent</code>, <code>AcceptCancelCloseIntent</code> events.</td>
+</tr>
+<tr>
+<td><code>contracts/facets/Trade/TradeFacet.sol</code></td>
+<td><code>transferTrade</code>, <code>transferTradeFromNFT</code>, <code>executeTrades</code>, <code>mintNFTForTrade</code>.</td>
+</tr>
+<tr>
+<td><code>contracts/facets/Trade/ITradeEvents.sol</code></td>
+<td><code>TransferTradeByPartyA</code>, <code>ExecuteTrades</code>.</td>
+</tr>
+<tr>
+<td><code>contracts/facets/ForceActions/ForceActionsFacet.sol</code></td>
+<td><code>forceCancelCloseIntent</code> and <code>forceCancelOpenIntent</code>.</td>
+</tr>
+<tr>
+<td><code>contracts/libraries/core/LibPartyAClose.sol</code></td>
+<td>Send/cancel logic.</td>
+</tr>
+<tr>
+<td><code>contracts/libraries/core/LibPartyBClose.sol</code></td>
+<td>Fill/accept-cancel logic, fee distribution, nonce bumping.</td>
+</tr>
+<tr>
+<td><code>contracts/libraries/core/LibTradeOperations.sol</code></td>
+<td><code>executeTrades</code>, transfer validation, NFT mint glue.</td>
+</tr>
+<tr>
+<td><code>contracts/libraries/core/LibForceActions.sol</code></td>
+<td>Cooldown-gated CANCELED transitions.</td>
+</tr>
+<tr>
+<td><code>contracts/libraries/models/LibCloseIntent.sol</code></td>
+<td><code>register</code>/<code>unregister</code>/<code>expire</code>/<code>getFeesFromUser</code>/<code>calculateFee</code>.</td>
+</tr>
+<tr>
+<td><code>contracts/libraries/models/LibTrade.sol</code></td>
+<td><code>getOpenAmount</code>, <code>getAvailableAmountToClose</code>, <code>calculatePnl</code>, <code>calculateProportionalPremium</code>/<code>MM</code>, <code>calculateExerciseFee</code>, <code>register</code>/<code>unregister</code>/<code>close</code>.</td>
+</tr>
+<tr>
+<td><code>contracts/libraries/services/LibMuon.sol</code></td>
+<td><code>verifySettlementPriceSig</code>, <code>verifyUpnlSig</code>.</td>
+</tr>
+<tr>
+<td><code>contracts/storages/CloseIntentStorage.sol</code></td>
+<td><code>closeIntents</code>, <code>closeIntentIdsOf</code>, <code>lastCloseIntentId</code>.</td>
+</tr>
+<tr>
+<td><code>contracts/storages/TradeStorage.sol</code></td>
+<td><code>trades</code>, active trade indexes per Party A/B, <code>lastTradeId</code>.</td>
+</tr>
+<tr>
+<td><code>contracts/storages/AppStorage.sol</code></td>
+<td><code>maxCloseOrdersLength</code>, <code>forceCancelCloseIntentTimeout</code>, <code>partyBExclusiveWindow</code>, <code>settlementPriceSigValidTime</code>, <code>tradeNftAddress</code>.</td>
+</tr>
+<tr>
+<td><code>contracts/types/IntentTypes.sol</code></td>
+<td><code>CloseIntent</code>, <code>CloseIntentStatus</code>.</td>
+</tr>
+<tr>
+<td><code>contracts/types/TradeTypes.sol</code></td>
+<td><code>Trade</code>, <code>TradeStatus</code>, <code>SettlementState</code>, <code>SettlementPriceSig</code>.</td>
+</tr>
+<tr>
+<td><code>contracts/types/SymbolTypes.sol</code></td>
+<td><code>Symbol</code>, <code>OptionType</code> (<code>PUT</code>, <code>CALL</code>).</td>
+</tr>
+<tr>
+<td><code>contracts/types/BaseTypes.sol</code></td>
+<td><code>TradeAgreements</code>, <code>FeeStructure</code>, <code>ExerciseFee</code>, <code>TradeSide</code>, <code>MarginType</code>.</td>
+</tr>
+<tr>
+<td><code>contracts/errors/IntentErrors.sol</code></td>
+<td>Close intent errors.</td>
+</tr>
+<tr>
+<td><code>contracts/errors/TradeErrors.sol</code></td>
+<td>Trade lifecycle and settlement errors.</td>
+</tr>
+<tr>
+<td><code>contracts/helpers/TradeNFT.sol</code></td>
+<td>ERC-721 trade NFT, <code>transferTradeNFT</code>, <code>mintNFTForTrade</code>, <code>_beforeTokenTransfer</code> sync hook.</td>
+</tr>
+<tr>
+<td><code>tests/partyA-close-facet.behavior.ts</code></td>
+<td>Party A side coverage (send, cancel, expire, deadlines, instant-mode interactions).</td>
+</tr>
+<tr>
+<td><code>tests/partyB-close-facet.behavior.ts</code></td>
+<td>Party B side coverage (fill, partial fill, accept-cancel, fee distribution, nonce bumps).</td>
+</tr>
+<tr>
+<td><code>tests/trade-settlement.ts</code></td>
+<td>Settlement coverage: ITM/OTM CALL and PUT, ISOLATED and CROSS, BUY and SELL, transfer trade.</td>
+</tr>
+</tbody></table>
+</article></main></div><footer class="site-footer"><span>Options Core documentation.</span></footer></body></html>

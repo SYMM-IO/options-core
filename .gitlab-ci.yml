@@ -21,8 +21,6 @@ cache:
     paths:
         - node_modules/
 
-# TODO ::: Linter
-
 compile:
     stage: compile
     image: node:24
@@ -34,7 +32,8 @@ compile:
         - npm run clean
         - npm run format:check # prettier
         - npm run compile
-        - npm run typecheck
+        - npm run lint
+        - npm run docs:check
 
 secret_detection:
     stage: secret_detection

@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Forced cancellations, liquidation, confiscation, and distribution."><title>Liquidation And Force Actions | Options Core</title>
+<link rel="icon" type="image/svg+xml" href="../assets/symmio-mark.svg">
+<script>try { if (localStorage.getItem("options-docs-theme") === "light") document.documentElement.dataset.theme = "light"; } catch (_) {}</script>
+<link rel="stylesheet" href="../assets/reader.css"><link rel="stylesheet" href="../assets/docs-portal.css">
+<script src="../assets/chapters.js" defer></script><script src="../assets/reader.js" defer></script><script src="../assets/docs-portal.js" defer></script>
+</head>
+<body class="doc-page" data-version="current"><a class="skip-link" href="#full-document">Skip to document</a>
+<header class="docs-header"><div class="doc-topbar"><nav class="docs-trail" aria-label="Breadcrumb">
+<a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Options Core</span></a>
+<span class="trail-sep" aria-hidden="true">/</span><a class="trail-release" href="../index.html">Documentation</a>
+</nav><nav class="top-actions" aria-label="Page actions"><button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button></nav></div></header><div class="reader-shell"><div data-rail-sections hidden>
+<a class="toc-link level-2" href="#overview">Overview</a>
+<a class="toc-link level-2" href="#force-action-flows">Force Action Flows</a>
+<a class="toc-link level-3" href="#timeouts">Timeouts</a>
+<a class="toc-link level-3" href="#forcecancelopenintent">forceCancelOpenIntent</a>
+<a class="toc-link level-3" href="#forcecancelcloseintent">forceCancelCloseIntent</a>
+<a class="toc-link level-2" href="#liquidation-status-machine">Liquidation Status Machine</a>
+<a class="toc-link level-2" href="#liquidationdetail-anatomy">LiquidationDetail Anatomy</a>
+<a class="toc-link level-2" href="#liquidation-flavors">Liquidation Flavors</a>
+<a class="toc-link level-3" href="#party-b-isolated">Party B Isolated</a>
+<a class="toc-link level-3" href="#party-b-cross">Party B Cross</a>
+<a class="toc-link level-3" href="#party-a-cross">Party A Cross</a>
+<a class="toc-link level-2" href="#upnl-signature">uPnL Signature</a>
+<a class="toc-link level-2" href="#closetrades-during-liquidation">closeTrades During Liquidation</a>
+<a class="toc-link level-2" href="#confiscation-and-distribution">Confiscation And Distribution</a>
+<a class="toc-link level-3" href="#confiscate">confiscate</a>
+<a class="toc-link level-3" href="#confiscatewithdrawal">confiscateWithdrawal</a>
+<a class="toc-link level-3" href="#distributecollateral">distributeCollateral</a>
+<a class="toc-link level-2" href="#allocatefromreservetocross">allocateFromReserveToCross</a>
+<a class="toc-link level-2" href="#cancelopenintents--cancelcloseintents">cancelOpenIntents / cancelCloseIntents</a>
+<a class="toc-link level-3" href="#cancelopenintents">cancelOpenIntents</a>
+<a class="toc-link level-3" href="#cancelcloseintents">cancelCloseIntents</a>
+<a class="toc-link level-2" href="#solvency-vs-liquidation-distinction">Solvency vs Liquidation Distinction</a>
+<a class="toc-link level-2" href="#loss-coverage-parameter">Loss Coverage Parameter</a>
+<a class="toc-link level-2" href="#errors-reference">Errors Reference</a>
+<a class="toc-link level-2" href="#end-to-end-scenario-insolvent-cross-party-b-with-two-party-as">End-To-End Scenario: Insolvent Cross Party B With Two Party As</a>
+<a class="toc-link level-2" href="#related-code-map">Related Code Map</a>
+</div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1>Liquidation And Force Actions</h1><p class="hero-copy">Forced cancellations, liquidation, confiscation, and distribution.</p></div></div></header>
+<article class="doc-article" id="full-document"><p>This document covers the two emergency surfaces of Options Core: timeout-based <strong>force actions</strong> that anyone can call, and <strong>liquidation</strong> flows reserved for the clearing house. Both protect the protocol when one side of a trade stops responding or becomes economically insolvent.</p>
+<h2 id="overview">Overview</h2>
+<p>There are two distinct surfaces with very different trust assumptions:</p>
+<table>
+<thead>
+<tr>
+<th>Surface</th>
+<th>Caller</th>
+<th>Pause flag</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Force actions (<code>ForceActionsFacet</code>)</td>
+<td>Anyone (subject to <code>whenPartyNotPaused</code>)</td>
+<td><code>partyAActionsPaused</code> / <code>partyBActionsPaused</code> (per caller)</td>
+<td>Cancel a <code>CANCEL_PENDING</code> open or close intent that has been ignored beyond the configured timeout.</td>
+</tr>
+<tr>
+<td>Liquidation (<code>ClearingHouseFacet</code>)</td>
+<td><code>CLEARING_HOUSE_ROLE</code> only</td>
+<td><code>liquidatingPaused</code></td>
+<td>Flag a party-pair as insolvent, freeze cross balance, close trades, and confiscate/distribute collateral.</td>
+</tr>
+</tbody></table>
+<p>Liquidation entries are keyed by the triple <strong><code>(partyA, partyB, collateral)</code></strong>. The key is stored in <code>LiquidationStorage.inProgressLiquidationIds</code> (<code>storages/LiquidationStorage.sol:13</code>). Whenever a key resolves to a non-zero <code>liquidationId</code>, the corresponding party-pair-collateral slice is considered &quot;in liquidation&quot; and most balance-affecting calls revert.</p>
+<p>For <strong>isolated Party B liquidation</strong> the <code>partyA</code> slot is <code>address(0)</code> because the isolated balance is not associated with any specific Party A (<code>libraries/core/LibClearingHouse.sol:103</code>). Cross liquidation always uses real <code>partyA</code> and <code>partyB</code> addresses.</p>
+<p><code>LibParty.requireSolvent</code> (<code>libraries/models/LibParty.sol:17-30</code>) only checks that <strong>no active liquidation id exists</strong> for the relevant tuple — it does <strong>not</strong> evaluate uPnL or balance arithmetic. Economic insolvency is evaluated inside the <code>liquidate...</code> calls themselves. See <a href="#solvency-vs-liquidation-distinction">Solvency vs liquidation distinction</a>.</p>
+<h2 id="force-action-flows">Force Action Flows</h2>
+<p><code>ForceActionsFacet</code> (<code>facets/ForceActions/ForceActionsFacet.sol</code>) exposes two functions that release locked funds when a counterparty has gone silent on a <code>CANCEL_PENDING</code> intent. Both are gated only by the caller-side party pause modifier <code>whenPartyNotPaused(msg.sender)</code>; there is no role check.</p>
+<h3 id="timeouts">Timeouts</h3>
+<p>Both timeouts live in <code>AppStorage</code> and are set by <code>SETTER_ROLE</code> through <code>ControlFacet</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Storage path</th>
+<th>Setter</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>forceCancelOpenIntentTimeout</code></td>
+<td><code>AppStorage.layout().forceCancelOpenIntentTimeout</code> (<code>storages/AppStorage.sol:34</code>)</td>
+<td><code>setForceCancelOpenIntentTimeout(uint256)</code> (<code>facets/Control/ControlFacet.sol:222</code>) or batched via <code>setTimingParameters</code> (<code>facets/Control/ControlFacet.sol:162</code>)</td>
+</tr>
+<tr>
+<td><code>forceCancelCloseIntentTimeout</code></td>
+<td><code>AppStorage.layout().forceCancelCloseIntentTimeout</code> (<code>storages/AppStorage.sol:35</code>)</td>
+<td><code>setForceCancelCloseIntentTimeout(uint256)</code> (<code>facets/Control/ControlFacet.sol:231</code>) or <code>setTimingParameters</code></td>
+</tr>
+</tbody></table>
+<p>The countdown starts at the intent&#39;s <code>statusModifyTimestamp</code> — the moment Party A flipped the intent into <code>CANCEL_PENDING</code>.</p>
+<h3 id="forcecancelopenintent">forceCancelOpenIntent</h3>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant Caller as Anyone
+    participant Facet as ForceActionsFacet
+    participant Lib as LibForceActions
+    participant Intent as OpenIntent storage
+
+    Caller-&gt;&gt;Facet: forceCancelOpenIntent(intentId)
+    Facet-&gt;&gt;Lib: forceCancelOpenIntent(intentId)
+    Lib-&gt;&gt;Intent: requireStatus(CANCEL_PENDING)
+    Lib-&gt;&gt;Lib: require block.timestamp &gt; statusModifyTimestamp + forceCancelOpenIntentTimeout
+    Lib-&gt;&gt;Intent: status = CANCELED
+    Lib-&gt;&gt;Intent: unlockFees / unlockPremiumIfBuy / unlockMMIfSell
+    Lib-&gt;&gt;Intent: unregister(false)
+    Facet--&gt;&gt;Caller: emit ForceCancelOpenIntent(intentId)
+</code></pre>
+<p>Source: <code>LibForceActions.forceCancelOpenIntent</code> (<code>libraries/core/LibForceActions.sol:23-41</code>).</p>
+<p>Preconditions:</p>
+<ul>
+<li>Open intent status must be <code>CANCEL_PENDING</code> (else <code>ValidationErrors.InvalidState</code>).</li>
+<li><code>block.timestamp &gt; statusModifyTimestamp + forceCancelOpenIntentTimeout</code> (else <code>ValidationErrors.CooldownNotOver</code>).</li>
+</ul>
+<p>State effects:</p>
+<ul>
+<li><code>status</code> becomes <code>CANCELED</code>.</li>
+<li><code>statusModifyTimestamp = block.timestamp</code>.</li>
+<li>Fees previously locked at intent creation are released through <code>unlockFees</code> (<code>libraries/models/LibOpenIntent.sol:189</code>).</li>
+<li>BUY-side premium is released to Party A through <code>unlockPremiumIfBuy</code> (<code>libraries/models/LibOpenIntent.sol:121</code>).</li>
+<li>SELL-side maintenance margin is released through <code>unlockMMIfSell</code> (<code>libraries/models/LibOpenIntent.sol:130</code>).</li>
+<li>The intent is removed from active indexes via <code>unregister(false)</code> (<code>libraries/models/LibOpenIntent.sol:55</code>).</li>
+</ul>
+<p>Event: <code>ForceCancelOpenIntent(intentId)</code> (<code>facets/ForceActions/ForceActionsFacetEvents.sol:8</code>).</p>
+<h3 id="forcecancelcloseintent">forceCancelCloseIntent</h3>
+<pre><code class="language-mermaid">flowchart TD
+    A[Party A creates close intent] --&gt; B[Party A requests cancel]
+    B --&gt; C[CANCEL_PENDING + statusModifyTimestamp]
+    C --&gt; D{block.timestamp &gt; statusModifyTimestamp + forceCancelCloseIntentTimeout?}
+    D -- no --&gt; E[revert CooldownNotOver]
+    D -- yes --&gt; F[status = CANCELED, intent.unregister from trade]
+</code></pre>
+<p>Source: <code>LibForceActions.forceCancelCloseIntent</code> (<code>libraries/core/LibForceActions.sol:43-58</code>).</p>
+<p>Preconditions:</p>
+<ul>
+<li>Close intent status must be <code>CANCEL_PENDING</code>.</li>
+<li><code>block.timestamp &gt; statusModifyTimestamp + forceCancelCloseIntentTimeout</code>.</li>
+</ul>
+<p>State effects:</p>
+<ul>
+<li><code>status</code> becomes <code>CANCELED</code>, <code>statusModifyTimestamp = block.timestamp</code>.</li>
+<li>The intent is removed from the parent trade&#39;s <code>activeCloseIntentIds</code> via <code>unregister</code> (<code>libraries/models/LibCloseIntent.sol:62</code>). No balances move; close intents do not lock funds.</li>
+</ul>
+<p>Event: <code>ForceCancelCloseIntent(intentId)</code>.</p>
+<h2 id="liquidation-status-machine">Liquidation Status Machine</h2>
+<pre><code class="language-mermaid">stateDiagram-v2
+    [*] --&gt; FLAGGED: flag*Liquidation
+    FLAGGED --&gt; CANCELLED: unflag*Liquidation
+    FLAGGED --&gt; IN_PROGRESS: liquidate* (uPnL check passes)
+    IN_PROGRESS --&gt; IN_PROGRESS: closeTrades / confiscate / confiscateWithdrawal\ndistributeCollateral / cancelOpenIntents / cancelCloseIntents\nallocateFromReserveToCross
+    CANCELLED --&gt; [*]
+    IN_PROGRESS --&gt; [*]: clearing house finishes processing
+</code></pre>
+<p>The enum is defined in <code>types/LiquidationTypes.sol:7-11</code>:</p>
+<pre><code>enum LiquidationStatus { FLAGGED, IN_PROGRESS, CANCELLED }
+</code></pre>
+<p>Transitions are controlled inside <code>LibClearingHouse</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Transition</th>
+<th>Function</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>_flag(...)</code> creates <code>FLAGGED</code> and sets <code>inProgressLiquidationIds</code> (<code>LibClearingHouse.sol:46-59</code>).</td>
+<td><code>flagIsolatedPartyBLiquidation</code> / <code>flagCrossPartyBLiquidation</code> / <code>flagPartyALiquidation</code></td>
+</tr>
+<tr>
+<td><code>_unflag(...)</code> requires <code>FLAGGED</code>, clears the lookup, sets <code>CANCELLED</code> (<code>LibClearingHouse.sol:64-70</code>).</td>
+<td><code>unflag*</code> family</td>
+</tr>
+<tr>
+<td><code>_beginLiquidation(...)</code> requires <code>FLAGGED</code>, sets <code>IN_PROGRESS</code> and stores <code>collateralPrice</code> (<code>LibClearingHouse.sol:90-93</code>).</td>
+<td><code>liquidate*</code> family</td>
+</tr>
+</tbody></table>
+<p>Note that the <code>inProgressLiquidationIds[partyA][partyB][collateral]</code> lookup is <strong>set during both <code>FLAGGED</code> and <code>IN_PROGRESS</code></strong>. It is only cleared on <code>unflag</code> (transition to <code>CANCELLED</code>). After <code>IN_PROGRESS</code>, the lookup is intentionally left in place so the clearing house can keep operating on the same <code>liquidationId</code>. Cleanup of the mapping after settlement is the clearing-house operator&#39;s responsibility.</p>
+<p>There is no automatic <code>IN_PROGRESS → CANCELLED</code> transition; once <code>liquidate*</code> succeeds, the only remaining work is trade closure, confiscation, distribution, and intent cancellation.</p>
+<h2 id="liquidationdetail-anatomy">LiquidationDetail Anatomy</h2>
+<p>Defined in <code>types/LiquidationTypes.sol:18-31</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Set by</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>upnl</code></td>
+<td><code>int256</code></td>
+<td>(declared but never written by current <code>LibClearingHouse</code>; reserved for future bookkeeping)</td>
+<td>Snapshot of uPnL at liquidation moment, in 18-decimal collateral units.</td>
+</tr>
+<tr>
+<td><code>flagTimestamp</code></td>
+<td><code>uint256</code></td>
+<td><code>_flag</code> (<code>LibClearingHouse.sol:52</code>)</td>
+<td><code>block.timestamp</code> when the flag was raised.</td>
+</tr>
+<tr>
+<td><code>liquidationTimestamp</code></td>
+<td><code>uint256</code></td>
+<td>(declared, not currently written)</td>
+<td>Reserved for the moment liquidation begins.</td>
+</tr>
+<tr>
+<td><code>collateralPrice</code></td>
+<td><code>uint256</code></td>
+<td><code>_beginLiquidation</code> (<code>LibClearingHouse.sol:92</code>)</td>
+<td>Price of the collateral asset against the protocol&#39;s reference, scaled to 1e18.</td>
+</tr>
+<tr>
+<td><code>confiscatedAmount</code></td>
+<td><code>uint256</code></td>
+<td><code>confiscate</code> (<code>LibClearingHouse.sol:271</code>)</td>
+<td>Cumulative collateral pulled from the liquidating party into the clearing house&#39;s accounting domain.</td>
+</tr>
+<tr>
+<td><code>distributedAmount</code></td>
+<td><code>uint256</code></td>
+<td><code>distributeCollateral</code> (<code>LibClearingHouse.sol:302</code>)</td>
+<td>Cumulative collateral pushed back out to Party As. Constraint: <code>distributedAmount &lt;= confiscatedAmount</code> (<code>LibClearingHouse.sol:305</code>).</td>
+</tr>
+<tr>
+<td><code>flagger</code></td>
+<td><code>address</code></td>
+<td><code>_flag</code></td>
+<td>The clearing-house operator that called <code>flag*</code>.</td>
+</tr>
+<tr>
+<td><code>collateral</code></td>
+<td><code>address</code></td>
+<td><code>_flag</code></td>
+<td>The collateral asset of the liquidation.</td>
+</tr>
+<tr>
+<td><code>partyA</code></td>
+<td><code>address</code></td>
+<td><code>_flag</code></td>
+<td>Party A address; <code>address(0)</code> for isolated Party B liquidation.</td>
+</tr>
+<tr>
+<td><code>partyB</code></td>
+<td><code>address</code></td>
+<td><code>_flag</code></td>
+<td>Party B address.</td>
+</tr>
+<tr>
+<td><code>side</code></td>
+<td><code>LiquidationSide</code></td>
+<td><code>_flag</code></td>
+<td><code>PARTY_A</code> or <code>PARTY_B</code> — which side is being liquidated.</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>LiquidationStatus</code></td>
+<td><code>_flag</code> / <code>_unflag</code> / <code>_beginLiquidation</code></td>
+<td>Current lifecycle state.</td>
+</tr>
+</tbody></table>
+<p><code>LiquidationSide</code> enum (<code>types/LiquidationTypes.sol:13-16</code>): <code>PARTY_A</code> or <code>PARTY_B</code>.</p>
+<p>All amounts are 18-decimal protocol units. <code>collateralPrice</code> is the reference price used so that uPnL (denominated in collateral) can be reconciled with balances (denominated in collateral); the formulas below divide uPnL by <code>collateralPrice / 1e18</code>.</p>
+<h2 id="liquidation-flavors">Liquidation Flavors</h2>
+<p>There are three distinct flavors. Each has its own <code>flag</code> / <code>unflag</code> / <code>liquidate</code> triplet.</p>
+<h3 id="party-b-isolated">Party B Isolated</h3>
+<p>Used when Party B&#39;s <strong>isolated</strong> balance for a collateral is insolvent. Party A is not involved because isolated margin is not bilaterally allocated; therefore the storage key uses <code>address(0)</code> as the Party A slot.</p>
+<p>Functions on <code>IClearingHouseFacet</code>:</p>
+<ul>
+<li><code>flagIsolatedPartyBLiquidation(partyB, collateral)</code> — <code>ClearingHouseFacet.sol:26</code></li>
+<li><code>unflagIsolatedPartyBLiquidation(partyB, collateral)</code> — <code>ClearingHouseFacet.sol:39</code></li>
+<li><code>liquidateIsolatedPartyB(partyB, collateral, upnl, collateralPrice)</code> — <code>ClearingHouseFacet.sol:54</code></li>
+</ul>
+<p>Flag preconditions (<code>LibClearingHouse.sol:99-104</code>):</p>
+<ul>
+<li><code>partyBConfigs[partyB].lossCoverage</code> must be non-zero, else <code>ZeroLossCoverage(partyB)</code>.</li>
+<li><code>partyB.requireSolvent(address(0), collateral, ISOLATED)</code> must hold (no existing active id), else <code>BalanceErrors.NotSolvent</code>.</li>
+</ul>
+<p>Liquidate insolvency check (<code>LibClearingHouse.sol:110-122</code>):</p>
+<pre><code>isolatedBalance = partyB.balanceOf(collateral).isolatedBalance
+effectiveUpnl   = upnl &gt; 0 ? upnl : (upnl * lossCoverage) / 1e18
+require int256(isolatedBalance) + (effectiveUpnl * 1e18) / int256(collateralPrice) &lt; 0
+        else revert PartyBSolvent(...)
+</code></pre>
+<p>Loss coverage only scales <strong>negative</strong> uPnL — it makes the loss look bigger, biasing toward declaring insolvency. Positive uPnL is passed through unmodified.</p>
+<p>State effects on liquidate: status flips to <code>IN_PROGRESS</code> and <code>collateralPrice</code> is recorded. The isolated balance itself is <strong>not</strong> zeroed at this stage — it is later drained via <code>confiscate(... ISOLATED)</code>.</p>
+<h3 id="party-b-cross">Party B Cross</h3>
+<p>Used when Party B&#39;s <strong>cross</strong> balance against a specific Party A is insolvent.</p>
+<p>Functions:</p>
+<ul>
+<li><code>flagCrossPartyBLiquidation(partyB, partyA, collateral)</code> — <code>ClearingHouseFacet.sol:92</code></li>
+<li><code>unflagCrossPartyBLiquidation(partyB, partyA, collateral)</code> — <code>ClearingHouseFacet.sol:101</code></li>
+<li><code>liquidateCrossPartyB(partyB, partyA, collateral, upnl, collateralPrice)</code> — <code>ClearingHouseFacet.sol:110</code></li>
+</ul>
+<p>Flag preconditions (<code>LibClearingHouse.sol:128-133</code>):</p>
+<ul>
+<li>Non-zero <code>partyBConfigs[partyB].lossCoverage</code>.</li>
+<li><code>partyB.requireSolvent(partyA, collateral, CROSS)</code> — no existing active id for the tuple.</li>
+</ul>
+<p>Liquidate insolvency check (<code>LibClearingHouse.sol:139-149</code>) operates on the <code>CrossEntry</code> for <code>partyA</code>:</p>
+<pre><code>crossBalance = partyB.crossBalance[partyA]
+effectiveUpnl = upnl &gt; 0 ? upnl : (upnl * lossCoverage) / 1e18
+require crossBalance.balance + (effectiveUpnl * 1e18) / int256(collateralPrice) &lt; 0
+        else revert PartyBSolvent
+</code></pre>
+<p>State effects on liquidate (<code>LibClearingHouse.sol:151-160</code>):</p>
+<ul>
+<li>If <code>crossBalance.balance &gt; 0</code>, the <strong>positive</strong> balance is transferred to Party A using <code>subForCounterParty(partyA, balance, CROSS, LIQUIDATION)</code> on Party B and <code>scheduledAdd(partyB, balance, CROSS, LIQUIDATION)</code> on Party A. Party A receives this through the standard scheduled-release model so it cannot front-run the rest of the liquidation.</li>
+<li><code>crossBalance.balance</code>, <code>.locked</code>, and <code>.totalMM</code> are all set to zero, regardless of sign.</li>
+<li><code>_beginLiquidation</code> flips status to <code>IN_PROGRESS</code> and stores <code>collateralPrice</code>.</li>
+</ul>
+<p>The transfer-positive-balance-to-counterparty mechanic ensures Party A is not penalized by Party B&#39;s liquidation: any free cross collateral Party B held against Party A goes back to Party A before the position is wound down.</p>
+<h3 id="party-a-cross">Party A Cross</h3>
+<p>Used when Party A&#39;s cross balance against a specific Party B is insolvent.</p>
+<p>Functions:</p>
+<ul>
+<li><code>flagPartyALiquidation(partyA, partyB, collateral)</code> — <code>ClearingHouseFacet.sol:121</code></li>
+<li><code>unflagPartyALiquidation(partyA, partyB, collateral)</code> — <code>ClearingHouseFacet.sol:130</code></li>
+<li><code>liquidateCrossPartyA(liquidationId, partyA, partyB, collateral, upnl, collateralPrice)</code> — <code>ClearingHouseFacet.sol:139</code></li>
+</ul>
+<p>Flag preconditions (<code>LibClearingHouse.sol:167-170</code>):</p>
+<ul>
+<li><code>partyA.requireSolvent(partyB, collateral, CROSS)</code> — no existing active id. Notably, <strong>no <code>lossCoverage</code> check</strong> applies because <code>lossCoverage</code> is a Party B parameter.</li>
+</ul>
+<p>Liquidate insolvency check (<code>LibClearingHouse.sol:176-185</code>). The Party A path is asymmetric: it subtracts maintenance margin and uses the <strong>raw</strong> uPnL (no loss-coverage scaling):</p>
+<pre><code>crossBalance = partyA.crossBalance[partyB]
+require (crossBalance.balance - int256(crossBalance.totalMM))
+        + (upnl * 1e18) / int256(collateralPrice) &lt; 0
+        else revert PartyASolvent
+</code></pre>
+<p>State effects on liquidate (<code>LibClearingHouse.sol:187-198</code>) mirror the Party B cross path but in reverse direction:</p>
+<ul>
+<li>If <code>crossBalance.balance &gt; 0</code>, transfer it to Party B via <code>subForCounterParty</code> / <code>scheduledAdd</code> with <code>LIQUIDATION</code> reasons.</li>
+<li>Zero out <code>balance</code>, <code>locked</code>, and <code>totalMM</code>.</li>
+<li>Status → <code>IN_PROGRESS</code>, <code>collateralPrice</code> stored.</li>
+</ul>
+<p>Notice that the facet entry takes <code>(liquidationId, partyA, partyB, collateral, ...)</code> but the library only consumes <code>liquidationId</code> (<code>LibClearingHouse.sol:147</code>); the additional parameters are emitted in the event but not validated against the stored detail. The liquidation id authoritatively identifies the entry.</p>
+<h2 id="upnl-signature">uPnL Signature</h2>
+<p>The <code>upnl</code> and <code>collateralPrice</code> arguments to every <code>liquidate*</code> are off-chain values produced by the Muon TSS. Although <code>LibClearingHouse</code> does not call <code>LibMuon.verifyUpnlSig</code> directly inside the liquidate functions in this version, the <code>UpnlSig</code> struct (<code>types/WithdrawTypes.sol:22-30</code>) is the canonical container and <code>LibMuon.verifyUpnlSig</code> (<code>libraries/services/LibMuon.sol:59-92</code>) is the verification path used elsewhere in the protocol for the same <code>(party, counterParty, partyUpnl, counterPartyUpnl, collateral, collateralPrice, nonce, timestamp)</code> payload. The clearing house operator is expected to source these values from the same Muon flow.</p>
+<p><code>upnlSigValidTime</code> (<code>AppStorage.sol:38</code>) caps the freshness of any signed uPnL.</p>
+<h2 id="closetrades-during-liquidation">closeTrades During Liquidation</h2>
+<p><code>closeTrades(liquidationId, tradeIds, prices)</code> (<code>ClearingHouseFacet.sol:151</code>, <code>LibClearingHouse.sol:204-247</code>) closes open trades that belong to the party-pair under liquidation.</p>
+<p>Preconditions:</p>
+<ul>
+<li><code>tradeIds.length == prices.length</code>, else <code>MismatchedArrayLengths</code>.</li>
+<li>The liquidation entry must be <code>IN_PROGRESS</code>.</li>
+<li>For each trade:<ul>
+<li><code>trade.status == OPENED</code> (else <code>ValidationErrors.InvalidState</code>).</li>
+<li>The trade must belong to the tuple. Specifically: if <code>detail.partyA != address(0)</code>, then <code>trade.partyA == detail.partyA</code> is required; if <code>detail.partyB != address(0)</code>, then <code>trade.partyB == detail.partyB</code> is required. Otherwise reverts with <code>TradeNotInLiquidation(liquidationId, tradeId)</code>. The <code>address(0)</code> slack accommodates the isolated Party B case where <code>detail.partyA</code> is zero.</li>
+</ul>
+</li>
+</ul>
+<p>Per-trade effects (<code>LibClearingHouse.sol:223-246</code>):</p>
+<ul>
+<li>For Party A <code>BUY</code> trades: the proportional remaining premium for the open amount is credited to Party B. Isolated trades use <code>instantIsolatedAdd(..., PREMIUM)</code>; cross trades use <code>scheduledAdd(partyA, ..., PREMIUM)</code>.</li>
+<li>For Party A <code>SELL</code> trades: the proportional remaining maintenance margin is released from Party A&#39;s cross slot using <code>decreaseMM(partyB, ...)</code> (<code>libraries/models/LibScheduledReleaseBalance.sol:458</code>).</li>
+<li><code>trade.settledPrice = price</code>.</li>
+<li><code>trade.close(TradeStatus.LIQUIDATED, CloseIntentStatus.CANCELED)</code> (<code>libraries/models/LibTrade.sol:112-123</code>) cancels every active close intent on the trade and unregisters the trade from active indexes.</li>
+</ul>
+<p>Event: <code>CloseTradesForLiquidation(operator, liquidationId, tradeIds, prices)</code>.</p>
+<h2 id="confiscation-and-distribution">Confiscation And Distribution</h2>
+<p>Three functions cooperate to drain the liquidating party and pay out the counterparties.</p>
+<h3 id="confiscate">confiscate</h3>
+<p><code>confiscate(liquidationId, amount, party, counterParty, marginType)</code> (<code>LibClearingHouse.sol:256-272</code>) debits collateral from <code>party</code> and increments <code>LiquidationDetail.confiscatedAmount</code> by <code>amount</code>.</p>
+<p>Preconditions:</p>
+<ul>
+<li><code>party</code> must be <code>detail.partyA</code> or <code>detail.partyB</code>, else <code>PartyNotInLiquidation(party, partyA, partyB, collateral)</code>.</li>
+<li>The party&#39;s <code>counterPartyBalance(counterParty, marginType)</code> must be ≥ <code>amount</code>, else <code>BalanceErrors.InsufficientIntBalance</code>.</li>
+<li>The liquidation must be <code>IN_PROGRESS</code>.</li>
+</ul>
+<p>State effect: <code>subForCounterParty(counterParty, amount, marginType, CONFISCATE)</code> removes the funds from accounting, and <code>detail.confiscatedAmount += amount</code> records the running total. Funds leave the user&#39;s balance into the protocol&#39;s confiscated pool — they are not yet attributable to any beneficiary.</p>
+<p>Event: <code>Confiscate(operator, party, counterParty, liquidationId, amount, marginType)</code>.</p>
+<h3 id="confiscatewithdrawal">confiscateWithdrawal</h3>
+<p><code>confiscateWithdrawal(withdrawId)</code> (<code>LibClearingHouse.sol:274-279</code>) handles the case where a user has an <code>INITIATED</code> withdrawal in flight that should be reclaimed into the in-protocol balance.</p>
+<p>Preconditions:</p>
+<ul>
+<li><code>withdrawal.status == INITIATED</code> (else <code>ValidationErrors.InvalidState</code>).</li>
+</ul>
+<p>State effect: status flips to <code>CANCELED</code> and the amount is added back to the user&#39;s isolated balance via <code>instantIsolatedAdd(amount, DEPOSIT)</code>. The clearing house can then <code>confiscate</code> it like any other balance. Note the function does not consult <code>LiquidationDetail</code> — it is callable by the clearing house at any time on any <code>INITIATED</code> withdrawal.</p>
+<p>Event: <code>ConfiscateWithdrawal(operator, withdrawId)</code>.</p>
+<h3 id="distributecollateral">distributeCollateral</h3>
+<p><code>distributeCollateral(liquidationId, partyB, collateral, marginType, partyAs, amounts)</code> (<code>LibClearingHouse.sol:281-306</code>) credits scheduled collateral to a list of Party As as the counter-side of the liquidation.</p>
+<p>Preconditions:</p>
+<ul>
+<li><code>partyAs.length == amounts.length</code>, else <code>MismatchedArrayLengths</code>.</li>
+<li>Liquidation must be <code>IN_PROGRESS</code>.</li>
+</ul>
+<p>State effects per row: <code>partyA.balanceOf(collateral).scheduledAdd(partyB, amount, marginType, LIQUIDATION)</code> plus <code>detail.distributedAmount += amount</code>. After the loop, <strong><code>distributedAmount &gt; confiscatedAmount</code> reverts with <code>DistributedAmountExceedsConfiscatedAmount(liquidationId)</code></strong> — this is the conservation invariant that prevents the clearing house from minting collateral.</p>
+<p>The invariant is <code>confiscatedAmount &gt;= distributedAmount</code> at all times. Any surplus stays accounted for under the liquidation detail and can be distributed in subsequent calls.</p>
+<p>Event: <code>DistributeCollateral(operator, partyB, collateral, liquidationId, partyAs, amounts)</code>.</p>
+<h2 id="allocatefromreservetocross">allocateFromReserveToCross</h2>
+<p><code>allocateFromReserveToCross(party, counterParty, collateral, amount)</code> (<code>LibClearingHouse.sol:249-254</code>) lets the clearing house move a party&#39;s reserve balance into a cross slot during liquidation. This is used when Party B&#39;s cross balance against a specific Party A is too thin to cover an obligation but Party B still has reserve collateral that should back the position.</p>
+<p>Preconditions:</p>
+<ul>
+<li><code>party.balanceOf(collateral).reserveBalance &gt;= amount</code>, else <code>BalanceErrors.InsufficientBalance</code>.</li>
+</ul>
+<p>State effects:</p>
+<ul>
+<li><code>reserveBalance -= amount</code>.</li>
+<li><code>scheduledAdd(counterParty, amount, CROSS, ALLOCATE_FROM_RESERVE)</code> on the same party.</li>
+</ul>
+<p>The headroom is paid by the party itself out of their own reserve — the clearing house simply has the authority to forcibly route reserve to cross. Event: <code>AllocateFromReserveToCross(operator, party, counterParty, collateral, amount)</code>.</p>
+<h2 id="cancelopenintents--cancelcloseintents">cancelOpenIntents / cancelCloseIntents</h2>
+<p>These two functions sweep out pending intents for parties whose tuple is in liquidation. Either side being insolvent (i.e. having an active liquidation id) is enough.</p>
+<h3 id="cancelopenintents">cancelOpenIntents</h3>
+<p><code>cancelOpenIntents(intentIds)</code> (<code>LibClearingHouse.sol:308-340</code>):</p>
+<ul>
+<li>For each <code>intentId</code>:<ul>
+<li>Status must be <code>PENDING</code> or <code>LOCKED</code>, else <code>ValidationErrors.InvalidState</code>.</li>
+<li>At least one of <code>partyA.isSolvent(...)</code> or <code>partyB.isSolvent(...)</code> must be <strong>false</strong>, else <code>PartiesNotInLiquidation(partyA, partyB, collateral)</code>.</li>
+<li>If <code>block.timestamp &gt; intent.deadline</code>: the intent is <code>expire()</code>d (<code>libraries/models/LibOpenIntent.sol:78</code>).</li>
+<li>Otherwise: status → <code>CANCELED</code>, then release normal locks (<code>unlockFees</code> + <code>unlockPremiumIfBuy</code> + <code>unlockMMIfSell</code>) or deferred Party B sell escrow via <code>unlockForCancelOrExpire</code>, then <code>unregister(false)</code>.</li>
+<li><code>statusModifyTimestamp = block.timestamp</code>.</li>
+</ul>
+</li>
+</ul>
+<p>For deferred Party B sells, this means liquidation cancel first returns the isolated escrow to Party A&#39;s account. The clearing house can then use the normal liquidation/confiscation functions against Party A&#39;s available balance if that amount should be seized. The cancel path itself does not silently transfer escrow into a liquidation pool.</p>
+<h3 id="cancelcloseintents">cancelCloseIntents</h3>
+<p><code>cancelCloseIntents(intentIds)</code> (<code>LibClearingHouse.sol:342-367</code>):</p>
+<ul>
+<li>Status must be <code>PENDING</code>, else <code>ValidationErrors.InvalidState</code>.</li>
+<li>At least one of <code>partyA.isSolvent(...)</code> or <code>partyB.isSolvent(...)</code> must be false for the trade&#39;s tuple.</li>
+<li>If past deadline: <code>intent.expire()</code> (<code>libraries/models/LibCloseIntent.sol:68</code>).</li>
+<li>Otherwise: status → <code>CANCELED</code>, <code>statusModifyTimestamp = block.timestamp</code>, <code>unregister()</code> from the trade.</li>
+</ul>
+<p>Both functions emit <code>CancelOpenIntentsForLiquidation</code> / <code>CancelCloseIntentsForLiquidation</code>.</p>
+<h2 id="solvency-vs-liquidation-distinction">Solvency vs Liquidation Distinction</h2>
+<p>This protocol uses the word &quot;solvent&quot; in a deliberately narrow sense in <code>LibParty</code>:</p>
+<pre><code class="language-solidity">function isSolvent(self, counterParty, collateral, marginType) -&gt; bool {
+    if (isPartyB(self)) {
+        return inProgressLiquidationIds[isolated ? 0 : counterParty][self][collateral] == 0;
+    } else {
+        return marginType == ISOLATED || inProgressLiquidationIds[self][counterParty][collateral] == 0;
+    }
+}
+</code></pre>
+<p>(<code>libraries/models/LibParty.sol:21-30</code>)</p>
+<p>In other words, <strong><code>isSolvent</code> only looks at whether the party is currently flagged or being liquidated</strong>. It does not look at any balance, uPnL, MM, or oracle data. This is the check you see in:</p>
+<ul>
+<li><code>flag*Liquidation</code> — to refuse re-flagging an already-flagged or in-progress tuple.</li>
+<li><code>cancelOpenIntents</code> / <code>cancelCloseIntents</code> — to require that one side is in liquidation for the tuple before sweeping.</li>
+<li>All non-liquidation flows that gate on <code>requireSolvent(...)</code> to refuse touching balances mid-liquidation.</li>
+</ul>
+<p>The <strong>economic</strong> insolvency check (<code>balance + uPnL_adjusted &lt; 0</code>) lives only inside <code>liquidateIsolatedPartyB</code>, <code>liquidateCrossPartyB</code>, and <code>liquidateCrossPartyA</code>. A party can be economically underwater for hours before anyone calls <code>flag*</code>; conversely, a flagged party that has since recovered will revert from <code>liquidate*</code> with <code>PartyASolvent</code> / <code>PartyBSolvent</code>, allowing the operator to <code>unflag*</code>.</p>
+<p>For Party A in <strong>isolated</strong> mode, <code>isSolvent</code> always returns <code>true</code>. Isolated Party A balance is not eligible for liquidation in this codebase — only isolated Party B and cross positions are.</p>
+<h2 id="loss-coverage-parameter">Loss Coverage Parameter</h2>
+<p><code>PartyBConfig.lossCoverage</code> (<code>storages/AppStorage.sol:7-11</code>) is a per-Party-B 18-decimal multiplier applied to <strong>negative</strong> uPnL during the Party B insolvency check:</p>
+<pre><code>effectiveUpnl = upnl &gt; 0 ? upnl : (upnl * lossCoverage) / 1e18
+</code></pre>
+<p>Because <code>upnl &lt; 0</code>, multiplying by a <code>lossCoverage &gt; 1e18</code> makes the loss appear larger and triggers liquidation sooner; a value below <code>1e18</code> makes the threshold more lenient. A value of <code>0</code> disables Party B liquidation: <code>flagCrossPartyBLiquidation</code> and <code>flagIsolatedPartyBLiquidation</code> revert with <code>ZeroLossCoverage(partyB)</code> (<code>LibClearingHouse.sol:100, 129</code>). Party A liquidation does not consult <code>lossCoverage</code>.</p>
+<p>Configured by <code>PARTY_B_MANAGER_ROLE</code> via <code>ControlFacet.setPartyBConfig(partyB, config)</code> (<code>facets/Control/ControlFacet.sol:392</code>), which writes the entire <code>PartyBConfig</code> struct (<code>isActive</code>, <code>lossCoverage</code>, <code>oracleId</code>).</p>
+<h2 id="errors-reference">Errors Reference</h2>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Where</th>
+<th>Cause</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>ZeroLossCoverage(partyB)</code></td>
+<td><code>flagIsolatedPartyBLiquidation</code>, <code>flagCrossPartyBLiquidation</code></td>
+<td>Party B has <code>lossCoverage == 0</code>.</td>
+</tr>
+<tr>
+<td><code>MismatchedArrayLengths(a, b)</code></td>
+<td><code>closeTrades</code>, <code>distributeCollateral</code></td>
+<td>Input arrays have different lengths.</td>
+</tr>
+<tr>
+<td><code>PartyASolvent(partyA, partyB, token)</code></td>
+<td><code>liquidateCrossPartyA</code></td>
+<td>Economic check still passes (<code>balance - totalMM + adjustedUpnl &gt;= 0</code>).</td>
+</tr>
+<tr>
+<td><code>PartyBSolvent(partyA, partyB, token)</code></td>
+<td><code>liquidateIsolatedPartyB</code>, <code>liquidateCrossPartyB</code></td>
+<td>Economic check still passes.</td>
+</tr>
+<tr>
+<td><code>TradeNotInLiquidation(liquidationId, tradeId)</code></td>
+<td><code>closeTrades</code></td>
+<td>Trade does not belong to the party tuple stored in <code>LiquidationDetail</code>.</td>
+</tr>
+<tr>
+<td><code>PartiesNotInLiquidation(partyA, partyB, collateral)</code></td>
+<td><code>cancelOpenIntents</code>, <code>cancelCloseIntents</code></td>
+<td>Both sides report as solvent for the relevant tuple.</td>
+</tr>
+<tr>
+<td><code>PartyNotInLiquidation(party, partyA, partyB, collateral)</code></td>
+<td><code>confiscate</code></td>
+<td>The <code>party</code> argument is neither <code>detail.partyA</code> nor <code>detail.partyB</code>.</td>
+</tr>
+<tr>
+<td><code>DistributedAmountExceedsConfiscatedAmount(liquidationId)</code></td>
+<td><code>distributeCollateral</code></td>
+<td>Sum of distributed amounts would exceed cumulative confiscated amount.</td>
+</tr>
+<tr>
+<td><code>BalanceErrors.NotSolvent(...)</code></td>
+<td><code>requireSolvent</code></td>
+<td>The tuple already has an active liquidation id (during flag).</td>
+</tr>
+<tr>
+<td><code>BalanceErrors.InsufficientIntBalance(...)</code></td>
+<td><code>confiscate</code></td>
+<td>Counter-party balance under requested confiscation amount.</td>
+</tr>
+<tr>
+<td><code>BalanceErrors.InsufficientBalance(...)</code></td>
+<td><code>allocateFromReserveToCross</code></td>
+<td>Reserve balance under requested allocation amount.</td>
+</tr>
+<tr>
+<td><code>ValidationErrors.InvalidState(&quot;LiquidationStatus&quot;, ...)</code></td>
+<td>All <code>_requireStatus</code> calls</td>
+<td>Status mismatch (e.g. flag on already-flagged, liquidate on non-flagged, confiscate on non-in-progress).</td>
+</tr>
+<tr>
+<td><code>ValidationErrors.InvalidState(&quot;OpenIntentStatus&quot;, ...)</code></td>
+<td><code>cancelOpenIntents</code></td>
+<td>Open intent not <code>PENDING</code> or <code>LOCKED</code>.</td>
+</tr>
+<tr>
+<td><code>ValidationErrors.InvalidState(&quot;CloseIntentStatus&quot;, ...)</code></td>
+<td><code>cancelCloseIntents</code></td>
+<td>Close intent not <code>PENDING</code>.</td>
+</tr>
+<tr>
+<td><code>ValidationErrors.InvalidState(&quot;WithdrawStatus&quot;, ...)</code></td>
+<td><code>confiscateWithdrawal</code></td>
+<td>Withdrawal not <code>INITIATED</code>.</td>
+</tr>
+<tr>
+<td><code>ValidationErrors.CooldownNotOver(...)</code></td>
+<td><code>forceCancelOpenIntent</code>, <code>forceCancelCloseIntent</code></td>
+<td>Force-cancel timeout has not elapsed.</td>
+</tr>
+<tr>
+<td><code>ValidationErrors.InvalidState(&quot;OpenIntentStatus&quot;, ...)</code></td>
+<td><code>forceCancelOpenIntent</code></td>
+<td>Open intent not in <code>CANCEL_PENDING</code>.</td>
+</tr>
+<tr>
+<td><code>ValidationErrors.InvalidState(&quot;CloseIntentStatus&quot;, ...)</code></td>
+<td><code>forceCancelCloseIntent</code></td>
+<td>Close intent not in <code>CANCEL_PENDING</code>.</td>
+</tr>
+</tbody></table>
+<p>Source files: <code>errors/LiquidationErrors.sol</code>, <code>errors/BalanceErrors.sol</code>, <code>errors/ValidationErrors.sol</code>.</p>
+<h2 id="end-to-end-scenario-insolvent-cross-party-b-with-two-party-as">End-To-End Scenario: Insolvent Cross Party B With Two Party As</h2>
+<p>Setup:</p>
+<ul>
+<li>Party B <code>B</code> is configured with <code>lossCoverage = 1.2e18</code> and <code>isActive = true</code>.</li>
+<li><code>B</code> holds cross positions against Party A <code>A1</code> and Party A <code>A2</code> in collateral <code>USDC</code>.</li>
+<li><code>B</code>&#39;s position against <code>A1</code> has balance <code>+1000</code>, locked <code>200</code>, totalMM <code>0</code>. The position is deeply underwater on its open trades.</li>
+<li><code>B</code>&#39;s position against <code>A2</code> is healthy.</li>
+<li><code>B</code> also has <code>300</code> of <code>reserveBalance</code> for <code>USDC</code>.</li>
+</ul>
+<p>Step-by-step:</p>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant CH as Clearing House
+    participant Lib as LibClearingHouse
+    participant B as Party B balance
+    participant A1 as Party A1 balance
+    participant Trades as TradeStorage
+
+    CH-&gt;&gt;Lib: flagCrossPartyBLiquidation(B, A1, USDC)
+    Lib-&gt;&gt;Lib: requireSolvent(B, A1, USDC, CROSS)
+    Lib-&gt;&gt;Lib: store id=42, status=FLAGGED
+    CH-&gt;&gt;Lib: liquidateCrossPartyB(B, A1, USDC, upnl=-2000e18, price=1e18)
+    Lib-&gt;&gt;Lib: effectiveUpnl = -2000 * 1.2 = -2400
+    Lib-&gt;&gt;Lib: 1000 + (-2400) = -1400 &lt; 0 -&gt; proceed
+    Lib-&gt;&gt;B: subForCounterParty(A1, 1000, CROSS, LIQUIDATION)
+    Lib-&gt;&gt;A1: scheduledAdd(B, 1000, CROSS, LIQUIDATION)
+    Lib-&gt;&gt;B: zero balance/locked/totalMM for A1
+    Lib-&gt;&gt;Lib: status=IN_PROGRESS, collateralPrice=1e18
+
+    CH-&gt;&gt;Lib: closeTrades(42, [t1, t2], [px1, px2])
+    Lib-&gt;&gt;Trades: each trade.status=LIQUIDATED, release premium/MM, cancel close intents
+
+    CH-&gt;&gt;Lib: allocateFromReserveToCross(B, A1, USDC, 300)
+    Lib-&gt;&gt;B: reserveBalance -= 300
+    Lib-&gt;&gt;B: scheduledAdd(A1, 300, CROSS, ALLOCATE_FROM_RESERVE)
+
+    CH-&gt;&gt;Lib: confiscate(42, 300, B, A1, CROSS)
+    Lib-&gt;&gt;B: subForCounterParty(A1, 300, CROSS, CONFISCATE)
+    Lib-&gt;&gt;Lib: detail.confiscatedAmount = 300
+
+    CH-&gt;&gt;Lib: distributeCollateral(42, B, USDC, CROSS, [A1, A2], [200, 100])
+    Lib-&gt;&gt;A1: scheduledAdd(B, 200, CROSS, LIQUIDATION)
+    Lib-&gt;&gt;A2: scheduledAdd(B, 100, CROSS, LIQUIDATION)
+    Lib-&gt;&gt;Lib: detail.distributedAmount = 300, invariant holds
+</code></pre>
+<p>Throughout the scenario, <code>inProgressLiquidationIds[A1][B][USDC] = 42</code> is active. Calls from <code>B</code> against <code>A1</code> for <code>USDC</code> (open intents, close intents, allocations, deallocations, withdrawals if isolated) all revert with <code>NotSolvent</code>. The <code>B</code>/<code>A2</code> slice is unaffected and continues to operate normally.</p>
+<p>After the operator finishes accounting, they leave <code>status = IN_PROGRESS</code>. There is no on-chain &quot;DONE&quot; transition; off-chain bookkeeping resumes independently.</p>
+<h2 id="related-code-map">Related Code Map</h2>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>File</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Force action entry points</td>
+<td><code>contracts/facets/ForceActions/ForceActionsFacet.sol</code></td>
+</tr>
+<tr>
+<td>Force action interface and events</td>
+<td><code>contracts/facets/ForceActions/IForceActionsFacet.sol</code>, <code>ForceActionsFacetEvents.sol</code></td>
+</tr>
+<tr>
+<td>Force action logic</td>
+<td><code>contracts/libraries/core/LibForceActions.sol</code></td>
+</tr>
+<tr>
+<td>Liquidation entry points</td>
+<td><code>contracts/facets/ClearingHouse/ClearingHouseFacet.sol</code></td>
+</tr>
+<tr>
+<td>Liquidation interface and events</td>
+<td><code>contracts/facets/ClearingHouse/IClearingHouseFacet.sol</code>, <code>IClearingHouseEvents.sol</code></td>
+</tr>
+<tr>
+<td>Liquidation logic</td>
+<td><code>contracts/libraries/core/LibClearingHouse.sol</code></td>
+</tr>
+<tr>
+<td>Solvency check</td>
+<td><code>contracts/libraries/models/LibParty.sol</code></td>
+</tr>
+<tr>
+<td>Liquidation storage</td>
+<td><code>contracts/storages/LiquidationStorage.sol</code></td>
+</tr>
+<tr>
+<td>Liquidation types</td>
+<td><code>contracts/types/LiquidationTypes.sol</code></td>
+</tr>
+<tr>
+<td>Liquidation errors</td>
+<td><code>contracts/errors/LiquidationErrors.sol</code></td>
+</tr>
+<tr>
+<td><code>lossCoverage</code> and timeouts</td>
+<td><code>contracts/storages/AppStorage.sol</code>, <code>contracts/facets/Control/ControlFacet.sol</code></td>
+</tr>
+<tr>
+<td>uPnL signature</td>
+<td><code>contracts/libraries/services/LibMuon.sol</code>, <code>contracts/types/WithdrawTypes.sol</code> (<code>UpnlSig</code>)</td>
+</tr>
+<tr>
+<td>Trade closure semantics during liquidation</td>
+<td><code>contracts/libraries/models/LibTrade.sol</code> (<code>close</code>, <code>unregister</code>)</td>
+</tr>
+<tr>
+<td>Balance mutations used by liquidation</td>
+<td><code>contracts/libraries/models/LibScheduledReleaseBalance.sol</code> (<code>subForCounterParty</code>, <code>scheduledAdd</code>, <code>decreaseMM</code>, <code>counterPartyBalance</code>, <code>instantIsolatedAdd</code>)</td>
+</tr>
+<tr>
+<td>Tests</td>
+<td><code>tests/clearing-house.ts</code>, <code>tests/force-action.behavior.ts</code></td>
+</tr>
+</tbody></table>
+</article></main></div><footer class="site-footer"><span>Options Core documentation.</span></footer></body></html>

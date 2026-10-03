@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Delayed isolated releases, synchronization, and liquidation."><title>Scheduled Release | Options Core</title>
+<link rel="icon" type="image/svg+xml" href="../assets/symmio-mark.svg">
+<script>try { if (localStorage.getItem("options-docs-theme") === "light") document.documentElement.dataset.theme = "light"; } catch (_) {}</script>
+<link rel="stylesheet" href="../assets/reader.css"><link rel="stylesheet" href="../assets/docs-portal.css">
+<script src="../assets/chapters.js" defer></script><script src="../assets/reader.js" defer></script><script src="../assets/docs-portal.js" defer></script>
+</head>
+<body class="doc-page" data-version="current"><a class="skip-link" href="#full-document">Skip to document</a>
+<header class="docs-header"><div class="doc-topbar"><nav class="docs-trail" aria-label="Breadcrumb">
+<a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Options Core</span></a>
+<span class="trail-sep" aria-hidden="true">/</span><a class="trail-release" href="../index.html">Documentation</a>
+</nav><nav class="top-actions" aria-label="Page actions"><button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button></nav></div></header><div class="reader-shell"><div data-rail-sections hidden>
+<a class="toc-link level-2" href="#1-overview">1. Overview</a>
+<a class="toc-link level-2" href="#2-two-step-release-machine">2. Two-Step Release Machine</a>
+<a class="toc-link level-2" href="#3-balance-fields-involved">3. Balance Fields Involved</a>
+<a class="toc-link level-2" href="#4-when-credits-enter-the-schedule-vs-free-isolated">4. When Credits Enter The Schedule vs. Free Isolated</a>
+<a class="toc-link level-2" href="#5-sync-mechanics">5. Sync Mechanics</a>
+<a class="toc-link level-2" href="#6-per-counterparty-interval-vs-default">6. Per-Counterparty Interval vs. Default</a>
+<a class="toc-link level-2" href="#7-manualsync-users">7. <code>manualSync</code> Users</a>
+<a class="toc-link level-2" href="#8-liquidation-interaction">8. Liquidation Interaction</a>
+<a class="toc-link level-2" href="#9-edge-cases">9. Edge Cases</a>
+<a class="toc-link level-3" href="#cancel-withdraw-of-an-amount-that-came-from-scheduled-release">Cancel Withdraw Of An Amount That Came From Scheduled Release</a>
+<a class="toc-link level-3" href="#internal-transfer-recipient">Internal Transfer Recipient</a>
+<a class="toc-link level-3" href="#allocate--deallocate-during-pending-releases">Allocate / Deallocate During Pending Releases</a>
+<a class="toc-link level-3" href="#suspended-user">Suspended User</a>
+<a class="toc-link level-3" href="#counterparty-removal-with-open-trades">Counterparty Removal With Open Trades</a>
+<a class="toc-link level-3" href="#release-interval-changes">Release Interval Changes</a>
+<a class="toc-link level-2" href="#10-numeric-timeline-example">10. Numeric Timeline Example</a>
+<a class="toc-link level-2" href="#11-code-map">11. Code Map</a>
+</div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1>Scheduled Release</h1><p class="hero-copy">Delayed isolated releases, synchronization, and liquidation.</p></div></div></header>
+<article class="doc-article" id="full-document"><p>The scheduled release model is a per-counterparty delay applied to isolated balance credits that originate from a counterparty (premium, realized PnL, fees, liquidation distributions, reserve→cross promotions on the isolated path). Funds wait two <code>releaseInterval</code> boundaries before they are spendable. Cross-margin credits are exempt: they land instantly.</p>
+<p>This document covers the <strong>why</strong> and the <strong>edge cases</strong>. The end-to-end account flow is documented in <code>docs/flows/account-balances.md</code>; refer to that for storage shape, deposit/withdraw lifecycle, and event surface.</p>
+<h2 id="1-overview">1. Overview</h2>
+<p>Every isolated credit from a counterparty B to user A reflects a settlement event whose correctness depends on B&#39;s solvency at the moment of recording. If A could withdraw such a credit immediately, then a late-arriving correction (a contested oracle, a missed liquidation trigger, a malicious counterparty unwind) would have nothing to claw back from. The scheduled release model gives the protocol a bounded window in which:</p>
+<ul>
+<li>B can be liquidated and the still-pending credit can be re-tagged or rolled back through <code>_sync</code>&#39;s solvency short-circuit.</li>
+<li>A keeps custody of the funds (they are inside <code>counterPartySchedules[B]</code>) but cannot move them.</li>
+<li>An off-chain disputer / liquidator can react before the credit becomes free.</li>
+</ul>
+<p>It is not a generic vesting schedule and not a withdrawal cooldown — withdrawals have a separate cooldown (<code>partyA/BDeallocateCooldown</code>). It is purely an unlock delay applied at the moment of credit, scoped to the counterparty that issued the credit.</p>
+<p>Cross balances are deliberately not delayed: they remain bilateral and cannot be exfiltrated without a fresh Muon uPnL signature plus the deallocation flow, which already enforces solvency on both sides.</p>
+<h2 id="2-two-step-release-machine">2. Two-Step Release Machine</h2>
+<p>A credit moves through three positions over time:</p>
+<table>
+<thead>
+<tr>
+<th>Bucket</th>
+<th>Stored in</th>
+<th>Spendable?</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Scheduled</td>
+<td><code>counterPartySchedules[cp].scheduled</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td>Transitioning</td>
+<td><code>counterPartySchedules[cp].transitioning</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td>Free</td>
+<td><code>isolatedBalance</code></td>
+<td>Yes (minus <code>isolatedLockedBalance</code>)</td>
+</tr>
+</tbody></table>
+<p>Each <code>_sync</code> call (<code>contracts/libraries/models/LibScheduledReleaseBalance.sol:302</code>) computes how many <code>releaseInterval</code> boundaries have crossed <code>entry.lastTransitionTimestamp</code> and advances the buckets accordingly:</p>
+<pre><code class="language-mermaid">flowchart LR
+    Credit[scheduledAdd ISOLATED] --&gt; S[scheduled]
+    S --&gt;|first boundary crossed| T[transitioning]
+    T --&gt;|second boundary crossed| F[isolatedBalance]
+    S -.-&gt;|releaseInterval == 0 at credit time| F
+    S -.-&gt;|releaseInterval changed to 0| F
+    T -.-&gt;|releaseInterval changed to 0| F
+</code></pre>
+<p>Timestamps and intervals:</p>
+<ul>
+<li><code>releaseInterval</code> is in <strong>seconds</strong>, copied at <code>addCounterParty</code> time from <code>counterParty.getReleaseInterval()</code> (per-user override or default).</li>
+<li><code>lastTransitionTimestamp</code> is <strong>always aligned</strong> to the start of the current interval: <code>(block.timestamp / releaseInterval) * releaseInterval</code>. Adding new credits never moves it.</li>
+<li>Sync logic, <code>LibScheduledReleaseBalance.sol:339</code>:<ul>
+<li><code>intervals = (block.timestamp - lastTransitionTimestamp) / releaseInterval</code>. Zero ⇒ no-op.</li>
+<li><code>intervals == 1</code> (one boundary crossed): drain <code>transitioning</code> to free, promote <code>scheduled</code> to <code>transitioning</code>. The credit added during this interval starts in <code>scheduled</code>.</li>
+<li><code>intervals &gt;= 2</code> (two or more boundaries crossed): drain both buckets to free.</li>
+</ul>
+</li>
+<li>After advancement, <code>lastTransitionTimestamp</code> is re-aligned to the current interval start so subsequent adds queue correctly.</li>
+</ul>
+<p>Worst-case wait for a brand-new credit is <code>~2 * releaseInterval</code>; best case is just over <code>releaseInterval</code> (credit lands one block before the boundary). Average is <code>~1.5 * releaseInterval</code>.</p>
+<p>The &quot;two-bus&quot; name in the source comments mirrors this geometry: the scheduled bucket is the &quot;next bus that has not yet arrived&quot;; the transitioning bucket is the &quot;current bus, doors open at the next boundary&quot;.</p>
+<h2 id="3-balance-fields-involved">3. Balance Fields Involved</h2>
+<p>Subset of <code>ScheduledReleaseBalance</code> (<code>contracts/types/BalanceTypes.sol:46</code>) relevant to the scheduled release model. See <code>docs/flows/account-balances.md</code> for the complete table.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Units</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>isolatedBalance</code></td>
+<td><code>uint256</code></td>
+<td>18d</td>
+<td>Free isolated funds. Sink for matured scheduled releases.</td>
+</tr>
+<tr>
+<td><code>counterPartySchedules[cp].releaseInterval</code></td>
+<td><code>uint256</code></td>
+<td>seconds</td>
+<td>Active interval used for bucket advancement.</td>
+</tr>
+<tr>
+<td><code>counterPartySchedules[cp].transitioning</code></td>
+<td><code>uint256</code></td>
+<td>18d</td>
+<td>Funds maturing on the next boundary.</td>
+</tr>
+<tr>
+<td><code>counterPartySchedules[cp].scheduled</code></td>
+<td><code>uint256</code></td>
+<td>18d</td>
+<td>Funds maturing on the boundary after next.</td>
+</tr>
+<tr>
+<td><code>counterPartySchedules[cp].lastTransitionTimestamp</code></td>
+<td><code>uint256</code></td>
+<td>seconds (aligned)</td>
+<td>Anchor for interval math.</td>
+</tr>
+<tr>
+<td><code>counterPartyAddresses</code></td>
+<td><code>address[]</code></td>
+<td>n/a</td>
+<td>Iteration list for <code>syncAll</code>.</td>
+</tr>
+<tr>
+<td><code>counterPartyIndexes[cp]</code></td>
+<td><code>uint256</code></td>
+<td>1-based</td>
+<td>O(1) presence check (0 ⇒ not present).</td>
+</tr>
+</tbody></table>
+<p><code>crossBalance[cp]</code> is <strong>not</strong> affected by the scheduled release model; cross credits move directly via <code>crossBalance[cp].balance += int256(value)</code>.</p>
+<h2 id="4-when-credits-enter-the-schedule-vs-free-isolated">4. When Credits Enter The Schedule vs. Free Isolated</h2>
+<p><code>scheduledAdd</code> (<code>contracts/libraries/models/LibScheduledReleaseBalance.sol:91</code>) is the single entry point for counterparty-tagged credits. The branching, in order:</p>
+<ol>
+<li><strong>Cross credits.</strong> <code>marginType == MarginType.CROSS</code> ⇒ <code>crossBalance[cp].balance += value</code> and emit <code>IncreaseBalance(..., isInstant=true, CROSS)</code>. No queueing, no interval. This is the path used by cross premium, cross PnL, solver fees, and <code>LibClearingHouse.allocateFromReserveToCross</code>.</li>
+<li><strong>Isolated credits with non-zero counterparty release interval.</strong> Auto-track the counterparty (<code>addCounterParty</code> if <code>!manualSync[user]</code>), run <code>_sync(cp)</code>, then <code>entry.scheduled += value</code>. Emits <code>IncreaseBalance(..., isInstant=false, ISOLATED)</code>.</li>
+<li><strong>Isolated credits with zero release interval.</strong> If <code>counterParty.getReleaseInterval() == 0</code>, fall through to <code>instantIsolatedAdd</code>. The credit lands directly on <code>isolatedBalance</code> and emits <code>IncreaseBalance(..., isInstant=true, ISOLATED)</code>. <code>address(0)</code> is used as the counterparty in the event (the credit is no longer counterparty-tagged after the fall-through).</li>
+</ol>
+<p><code>instantIsolatedAdd</code> is also called directly (not via <code>scheduledAdd</code>) for credits that have no counterparty context — <code>DEPOSIT</code>, <code>INTERNAL_TRANSFER</code> recipient credit, cancelled withdraw refund, and <code>INVALID_WITHDRAWAL</code> pool deposits. None of these are subject to the schedule.</p>
+<p>A consequence: the scheduling decision is taken <strong>at credit time</strong> based on the counterparty&#39;s then-current <code>getReleaseInterval()</code>. Subsequent governance changes to the interval are absorbed by <code>_sync</code>&#39;s reinitialization branch (see Edge Cases).</p>
+<h2 id="5-sync-mechanics">5. Sync Mechanics</h2>
+<p><code>sync(counterParty)</code> is a thin wrapper around <code>_sync</code> (<code>contracts/libraries/models/LibScheduledReleaseBalance.sol:280</code>). <code>syncAll()</code> iterates <code>counterPartyAddresses</code> in <strong>reverse order</strong> (<code>:291</code>) so that <code>tryRemoveCounterParty</code> swap-pop removals during the loop don&#39;t skip indices.</p>
+<p>Implicit calls:</p>
+<ul>
+<li><code>LibBalanceOperations.internalTransfer</code> calls <code>sourceBalance.syncAll()</code> unconditionally (<code>contracts/libraries/core/LibBalanceOperations.sol:73</code>).</li>
+<li><code>LibBalanceOperations.initiateWithdraw</code> calls <code>balance.syncAll()</code> only when <code>!accountLayout.manualSync[sender]</code> (<code>:119</code>).</li>
+<li><code>subForCounterParty</code> and <code>scheduledAdd</code> (isolated path) call <code>_sync(cp)</code> for the relevant counterparty before mutating buckets (<code>:113</code>, <code>:172</code>).</li>
+</ul>
+<p>Explicit calls:</p>
+<ul>
+<li><code>AccountFacet.syncBalances(collateral, partyA, partyBs)</code> is permissionless and does not require <code>partyA == msg.sender</code> (<code>contracts/facets/Account/AccountFacet.sol:252</code>). It loops over the supplied addresses and calls <code>sync(cp)</code> per entry. This is the public poke for <code>manualSync</code> users.</li>
+</ul>
+<p>Iteration cost:</p>
+<ul>
+<li><code>syncAll</code> is O(N) over <code>counterPartyAddresses.length</code>. N is bounded by <code>accountLayout.maxConnectedCounterParties</code> for non-<code>manualSync</code> users.</li>
+<li>Each <code>_sync</code> is O(1) storage reads + at most one bucket flush.</li>
+<li><code>addCounterParty</code> triggers a <code>syncAll</code> when the user&#39;s tracking list is at <code>maxConnectedCounterParties</code> capacity, in an attempt to free a slot via <code>tryRemoveCounterParty</code> calls (<code>:380</code>). If still full afterward, it reverts <code>BalanceErrors.MaxCounterPartyConnectionsReached</code>.</li>
+</ul>
+<p><code>maxConnectedCounterParties</code> exists to bound the per-user <code>syncAll</code> gas envelope. Solver Party Bs face many takers and cannot operate under this bound, hence the <code>manualSync</code> escape hatch.</p>
+<h2 id="6-per-counterparty-interval-vs-default">6. Per-Counterparty Interval vs. Default</h2>
+<p><code>getReleaseInterval()</code> on an address consults two sources from <code>AccountStorage</code> (<code>contracts/storages/AccountStorage.sol:13</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Storage</th>
+<th>Set by</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>releaseIntervals[user]</code></td>
+<td>per-user override</td>
+<td>Used when <code>hasConfiguredInterval[user] == true</code></td>
+</tr>
+<tr>
+<td><code>defaultReleaseInterval</code></td>
+<td>global</td>
+<td>Fallback when no override</td>
+</tr>
+</tbody></table>
+<p>The override takes precedence over the default. The interval read inside <code>scheduledAdd</code> and <code>_sync</code> is always the counterparty&#39;s interval (the user issuing the credit), not the recipient&#39;s. A Party A receiving a credit from Party B uses Party B&#39;s release interval.</p>
+<p>Both setters live on <code>ControlFacet</code> and are gated by roles documented in <code>docs/concepts/roles-and-pauses.md</code>. <code>manualSync[user]</code> is also configured there and is automatically set to <code>true</code> when a Party B is registered (<code>contracts/facets/Control/ControlFacet.sol:397</code>).</p>
+<p>A change in either storage affects only <strong>future</strong> sync operations for the affected counterparty. In-flight buckets are reconciled on the next <code>_sync</code> call via the reinitialization branch (<code>LibScheduledReleaseBalance.sol:314</code>).</p>
+<h2 id="7-manualsync-users">7. <code>manualSync</code> Users</h2>
+<p><code>accountLayout.manualSync[user]</code> (<code>contracts/storages/AccountStorage.sol:19</code>) is a per-user flag with two coupled behaviors:</p>
+<ul>
+<li><code>scheduledAdd</code> does <strong>not</strong> auto-track the counterparty when <code>manualSync</code> is on (<code>LibScheduledReleaseBalance.sol:110</code>). The counterparty is still credited via <code>entry.scheduled</code>, but <code>counterPartyAddresses</code> is not extended. A consequence: <code>syncAll</code> will not visit this counterparty, even if balances have matured.</li>
+<li><code>initiateWithdraw</code> does <strong>not</strong> call <code>syncAll</code> for <code>manualSync</code> users (<code>LibBalanceOperations.sol:119</code>). The user must have already called <code>syncBalances</code> for any counterparty whose matured funds they wish to withdraw.</li>
+</ul>
+<p>Why it exists: a Party B solver typically faces hundreds of Party A takers. The <code>maxConnectedCounterParties</code> cap (which is a <code>syncAll</code> gas bound) would trip on every credit. <code>manualSync</code> lifts the cap by removing the auto-tracking, at the cost of pushing sync responsibility off-chain to the solver&#39;s keeper.</p>
+<p>Operationally, a <code>manualSync</code> user must:</p>
+<ol>
+<li>Track its set of counterparties off-chain.</li>
+<li>Periodically call <code>syncBalances(collateral, self, [cp1, cp2, ...])</code> to mature funds.</li>
+<li>Call <code>syncBalances</code> before any <code>initiateWithdraw</code> if it expects matured-but-unsynced funds to count toward availability.</li>
+</ol>
+<p><code>internalTransfer</code> is unaffected by <code>manualSync</code> (the unconditional <code>syncAll</code> runs anyway, <code>LibBalanceOperations.sol:73</code>) — but Party Bs are blocked from <code>internalTransfer</code> entirely by the <code>onlyNotPartyB</code> modifier on the facet, so this is moot for the typical <code>manualSync</code> user.</p>
+<h2 id="8-liquidation-interaction">8. Liquidation Interaction</h2>
+<p><code>_sync</code> opens with a solvency check on the <strong>counterparty</strong> (<code>LibScheduledReleaseBalance.sol:304</code>):</p>
+<pre><code class="language-solidity">if (!counterParty.isSolvent(self.user, self.collateral, MarginType.ISOLATED)) {
+    return;
+}
+</code></pre>
+<p>Effect: while the counterparty has an active isolated liquidation id, no scheduled or transitioning bucket from that counterparty advances. The user&#39;s free <code>isolatedBalance</code> is unaffected for credits from <strong>other</strong> counterparties (each is synced independently). Once the liquidation id is cleared, the next call to <code>_sync</code> (from any path) catches the buckets up.</p>
+<p>Locked-by-liquidation funds therefore do not require a separate code path — they are simply funds whose <code>_sync</code> short-circuits. The clearing house can confiscate or redistribute them via the normal isolated-balance code paths because the buckets are still in <code>counterPartySchedules[cp]</code> and reachable via <code>subForCounterParty(cp, value, ...)</code>, which drains scheduled → transitioning → free in that order (<code>LibScheduledReleaseBalance.sol:151</code>).</p>
+<h2 id="9-edge-cases">9. Edge Cases</h2>
+<h3 id="cancel-withdraw-of-an-amount-that-came-from-scheduled-release">Cancel Withdraw Of An Amount That Came From Scheduled Release</h3>
+<p>When <code>cancelWithdraw</code> runs (<code>contracts/libraries/core/LibBalanceOperations.sol:216</code>), the refund is credited via <code>instantIsolatedAdd(amount, DEPOSIT)</code>. The original counterparty context is intentionally lost — the funds were already promoted to <code>isolatedBalance</code> at the time of <code>initiateWithdraw</code> (the schedule was synced first, the debit took from free balance), so the cancellation re-credits them as a free deposit, not a re-queue. This means a user cannot use the withdraw → cancel sequence to escape the schedule (the first withdraw would have failed the availability check), and cannot accidentally re-queue free balance on cancel.</p>
+<h3 id="internal-transfer-recipient">Internal Transfer Recipient</h3>
+<p><code>internalTransfer</code> (<code>contracts/libraries/core/LibBalanceOperations.sol:64</code>) debits the sender via <code>isolatedSub</code> (free balance only) and credits the recipient via <code>targetBalance.instantIsolatedAdd(amount, INTERNAL_TRANSFER)</code>. The recipient gets free isolated balance; there is no scheduled queueing for transferred funds. The sender is a fully-synced position, so any matured buckets count toward availability before the transfer.</p>
+<h3 id="allocate--deallocate-during-pending-releases">Allocate / Deallocate During Pending Releases</h3>
+<p><code>allocateBalance</code> and <code>deallocateBalance</code> (<code>LibScheduledReleaseBalance.sol:249</code>, <code>:264</code>) operate on <code>isolatedBalance</code> and <code>crossBalance[cp].balance</code> directly. They do <strong>not</strong> touch <code>counterPartySchedules</code>. As a result:</p>
+<ul>
+<li>A user with <code>scheduled = 100</code>, <code>transitioning = 50</code>, <code>isolatedBalance = 30</code>, <code>isolatedLockedBalance = 0</code> can <code>allocate(cp, 30)</code> (but not <code>allocate(cp, 31)</code>) — pending releases are not borrowable.</li>
+<li>Deallocating from a cross balance lands the funds in free <code>isolatedBalance</code> immediately. This is consistent: cross balances never went through the schedule, so unwinding them does not need to.</li>
+</ul>
+<h3 id="suspended-user">Suspended User</h3>
+<p>Sync paths called from facet entry points are gated by the facet&#39;s pause/suspension modifiers — a suspended user cannot trigger <code>syncAll</code> via <code>initiateWithdraw</code>/<code>internalTransfer</code>. However, <code>syncBalances</code> on the facet is <strong>not</strong> gated by <code>whenNotSuspended</code> (<code>contracts/facets/Account/AccountFacet.sol:252</code>), and is permissionless — anyone can sync a suspended user&#39;s counterparties. The credits become free <code>isolatedBalance</code> but the suspension still prevents the user from spending them. This is the intended design: pending releases continue to mature on-chain even while the user account is otherwise frozen.</p>
+<h3 id="counterparty-removal-with-open-trades">Counterparty Removal With Open Trades</h3>
+<p><code>tryRemoveCounterParty</code> (<code>LibScheduledReleaseBalance.sol:400</code>) only frees the slot if <strong>both</strong> the buckets are empty and <code>TradeStorage.activeTradesOfPartyAWithPartyBCount[user][collateral][cp] == 0</code>. A user with open trades against a counterparty stays tracked even with empty buckets, ensuring future credits queue without re-paying the <code>addCounterParty</code> cost.</p>
+<h3 id="release-interval-changes">Release Interval Changes</h3>
+<p>If the counterparty&#39;s interval changes between syncs (governance setter), <code>_sync</code> (<code>:314</code>) detects the mismatch and reinitializes:</p>
+<ul>
+<li>New interval <code>0</code>: drains both buckets to <code>isolatedBalance</code>. All in-flight funds become free immediately.</li>
+<li>New interval non-zero: merges <code>transitioning</code> into <code>scheduled</code> and aligns <code>lastTransitionTimestamp</code> to the new interval. The two-bucket geometry is reset; pending funds wait the full new cycle.</li>
+</ul>
+<p>This is a behavioural side-effect operators must understand: shortening an interval can release funds early; lengthening one extends the wait for in-flight credits.</p>
+<h2 id="10-numeric-timeline-example">10. Numeric Timeline Example</h2>
+<p>Setup: <code>releaseInterval = I = 1 hour</code>, <code>block.timestamp</code> at credit <code>t0</code> is exactly aligned to an interval boundary (<code>t0 = k * I</code> for some <code>k</code>). <code>cp</code> is a previously-untracked counterparty for user A.</p>
+<p>Events:</p>
+<ul>
+<li><code>t0</code>: <code>scheduledAdd(cp, 100, ISOLATED, PREMIUM)</code>.</li>
+<li><code>t0 + I</code>: <code>sync(cp)</code> called (e.g. by a keeper).</li>
+<li><code>t0 + 2I</code>: <code>sync(cp)</code> called again.</li>
+</ul>
+<p>State trace:</p>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th><code>lastTransitionTimestamp</code></th>
+<th><code>scheduled</code></th>
+<th><code>transitioning</code></th>
+<th><code>isolatedBalance</code></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Initial</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr>
+<td><code>addCounterParty</code> at <code>t0</code></td>
+<td><code>t0</code></td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr>
+<td><code>_sync</code> at <code>t0</code> (intervals=0)</td>
+<td><code>t0</code></td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr>
+<td><code>entry.scheduled += 100</code></td>
+<td><code>t0</code></td>
+<td>100</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr>
+<td><code>sync(cp)</code> at <code>t0 + I</code> (intervals=1)</td>
+<td><code>t0 + I</code></td>
+<td>0</td>
+<td>100</td>
+<td>0</td>
+</tr>
+<tr>
+<td><code>sync(cp)</code> at <code>t0 + 2I</code> (intervals=1 since last)</td>
+<td><code>t0 + 2I</code></td>
+<td>0</td>
+<td>0</td>
+<td>100</td>
+</tr>
+</tbody></table>
+<p>If the keeper had skipped the <code>t0 + I</code> call and synced once at <code>t0 + 2I</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th><code>lastTransitionTimestamp</code></th>
+<th><code>scheduled</code></th>
+<th><code>transitioning</code></th>
+<th><code>isolatedBalance</code></th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>entry.scheduled += 100</code> at <code>t0</code></td>
+<td><code>t0</code></td>
+<td>100</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr>
+<td><code>sync(cp)</code> at <code>t0 + 2I</code> (intervals=2)</td>
+<td><code>t0 + 2I</code></td>
+<td>0</td>
+<td>0</td>
+<td>100</td>
+</tr>
+</tbody></table>
+<p>Same end state — the schedule is idempotent under sync frequency once the boundaries have passed. The keeper schedule only affects the timestamp of free-balance availability <strong>within</strong> the interval after the second boundary.</p>
+<p>If a second credit lands at <code>t0 + 0.5I</code> and a single sync happens at <code>t0 + 2.5I</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th><code>lastTransitionTimestamp</code></th>
+<th><code>scheduled</code></th>
+<th><code>transitioning</code></th>
+<th><code>isolatedBalance</code></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Credit 100 at <code>t0</code></td>
+<td><code>t0</code></td>
+<td>100</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr>
+<td><code>scheduledAdd</code> 50 at <code>t0 + 0.5I</code> (auto-<code>_sync</code>, intervals=0)</td>
+<td><code>t0</code></td>
+<td>150</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr>
+<td><code>sync(cp)</code> at <code>t0 + 2.5I</code> (intervals=2)</td>
+<td><code>t0 + 2I</code></td>
+<td>0</td>
+<td>0</td>
+<td>150</td>
+</tr>
+</tbody></table>
+<p>Both credits matured together because both sat in <code>scheduled</code> when the two-boundary advancement collapsed the pipeline. A credit added at <code>t0 + 1.5I</code> instead would only have crossed one boundary by <code>t0 + 2.5I</code> and would land in <code>transitioning</code>, not free.</p>
+<h2 id="11-code-map">11. Code Map</h2>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>File</th>
+<th>Line</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Two-bucket entry struct</td>
+<td><code>contracts/types/BalanceTypes.sol</code></td>
+<td>24</td>
+</tr>
+<tr>
+<td>Balance container</td>
+<td><code>contracts/types/BalanceTypes.sol</code></td>
+<td>46</td>
+</tr>
+<tr>
+<td><code>scheduledAdd</code> (entry/branching)</td>
+<td><code>contracts/libraries/models/LibScheduledReleaseBalance.sol</code></td>
+<td>91</td>
+</tr>
+<tr>
+<td><code>instantIsolatedAdd</code></td>
+<td><code>contracts/libraries/models/LibScheduledReleaseBalance.sol</code></td>
+<td>128</td>
+</tr>
+<tr>
+<td><code>subForCounterParty</code> (drain order)</td>
+<td><code>contracts/libraries/models/LibScheduledReleaseBalance.sol</code></td>
+<td>151</td>
+</tr>
+<tr>
+<td><code>_sync</code> (core logic)</td>
+<td><code>contracts/libraries/models/LibScheduledReleaseBalance.sol</code></td>
+<td>302</td>
+</tr>
+<tr>
+<td><code>syncAll</code> (reverse iteration)</td>
+<td><code>contracts/libraries/models/LibScheduledReleaseBalance.sol</code></td>
+<td>287</td>
+</tr>
+<tr>
+<td><code>addCounterParty</code> (cap + reinit)</td>
+<td><code>contracts/libraries/models/LibScheduledReleaseBalance.sol</code></td>
+<td>375</td>
+</tr>
+<tr>
+<td><code>tryRemoveCounterParty</code> (open-trade gate)</td>
+<td><code>contracts/libraries/models/LibScheduledReleaseBalance.sol</code></td>
+<td>400</td>
+</tr>
+<tr>
+<td><code>manualSync</code> storage</td>
+<td><code>contracts/storages/AccountStorage.sol</code></td>
+<td>19</td>
+</tr>
+<tr>
+<td><code>releaseIntervals</code> / <code>defaultReleaseInterval</code></td>
+<td><code>contracts/storages/AccountStorage.sol</code></td>
+<td>16-17</td>
+</tr>
+<tr>
+<td><code>maxConnectedCounterParties</code></td>
+<td><code>contracts/storages/AccountStorage.sol</code></td>
+<td>18</td>
+</tr>
+<tr>
+<td><code>syncAll</code> from <code>internalTransfer</code></td>
+<td><code>contracts/libraries/core/LibBalanceOperations.sol</code></td>
+<td>73</td>
+</tr>
+<tr>
+<td><code>syncAll</code> from <code>initiateWithdraw</code> (gated by <code>manualSync</code>)</td>
+<td><code>contracts/libraries/core/LibBalanceOperations.sol</code></td>
+<td>119</td>
+</tr>
+<tr>
+<td><code>cancelWithdraw</code> re-credits as <code>DEPOSIT</code></td>
+<td><code>contracts/libraries/core/LibBalanceOperations.sol</code></td>
+<td>239</td>
+</tr>
+<tr>
+<td><code>syncBalances</code> public surface</td>
+<td><code>contracts/facets/Account/AccountFacet.sol</code></td>
+<td>252</td>
+</tr>
+<tr>
+<td><code>allocateBalance</code> (free balance only)</td>
+<td><code>contracts/libraries/models/LibScheduledReleaseBalance.sol</code></td>
+<td>249</td>
+</tr>
+<tr>
+<td><code>deallocateBalance</code> (cross → free)</td>
+<td><code>contracts/libraries/models/LibScheduledReleaseBalance.sol</code></td>
+<td>264</td>
+</tr>
+<tr>
+<td>Party B <code>manualSync</code> auto-set</td>
+<td><code>contracts/facets/Control/ControlFacet.sol</code></td>
+<td>397</td>
+</tr>
+<tr>
+<td>Counterparty solvency helper</td>
+<td><code>contracts/libraries/models/LibParty.sol</code></td>
+<td>n/a</td>
+</tr>
+</tbody></table>
+</article></main></div><footer class="site-footer"><span>Options Core documentation.</span></footer></body></html>

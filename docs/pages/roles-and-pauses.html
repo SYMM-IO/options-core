@@ -1,0 +1,737 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Roles, pause flags, gated operations, and operational consequences."><title>Roles, Permissions, and Pause Flags | Options Core</title>
+<link rel="icon" type="image/svg+xml" href="../assets/symmio-mark.svg">
+<script>try { if (localStorage.getItem("options-docs-theme") === "light") document.documentElement.dataset.theme = "light"; } catch (_) {}</script>
+<link rel="stylesheet" href="../assets/reader.css"><link rel="stylesheet" href="../assets/docs-portal.css">
+<script src="../assets/chapters.js" defer></script><script src="../assets/reader.js" defer></script><script src="../assets/docs-portal.js" defer></script>
+</head>
+<body class="doc-page" data-version="current"><a class="skip-link" href="#full-document">Skip to document</a>
+<header class="docs-header"><div class="doc-topbar"><nav class="docs-trail" aria-label="Breadcrumb">
+<a class="brand" href="../index.html"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Options Core</span></a>
+<span class="trail-sep" aria-hidden="true">/</span><a class="trail-release" href="../index.html">Documentation</a>
+</nav><nav class="top-actions" aria-label="Page actions"><button class="button ghost" type="button" data-theme-toggle aria-label="Toggle color theme">Theme</button></nav></div></header><div class="reader-shell"><div data-rail-sections hidden>
+<a class="toc-link level-2" href="#table-of-contents">Table of Contents</a>
+<a class="toc-link level-2" href="#part-1--roles">Part 1 — Roles</a>
+<a class="toc-link level-3" href="#diamond-roles">Diamond Roles</a>
+<a class="toc-link level-3" href="#functions-guarded-per-role-diamond">Functions guarded per role (Diamond)</a>
+<a class="toc-link level-3" href="#instantlayer-roles">InstantLayer Roles</a>
+<a class="toc-link level-2" href="#part-2--pause-flags">Part 2 — Pause Flags</a>
+<a class="toc-link level-2" href="#part-3--modifiers-reference">Part 3 — Modifiers Reference</a>
+<a class="toc-link level-3" href="#contractsutilsaccessibilitysol"><code>contracts/utils/Accessibility.sol</code></a>
+<a class="toc-link level-3" href="#contractsutilspausablesol"><code>contracts/utils/Pausable.sol</code></a>
+<a class="toc-link level-3" href="#contractsutilsownablesol"><code>contracts/utils/Ownable.sol</code></a>
+<a class="toc-link level-3" href="#contractsutilsreentrancyguardsol"><code>contracts/utils/ReentrancyGuard.sol</code></a>
+<a class="toc-link level-2" href="#part-4--suspension-and-emergency">Part 4 — Suspension and Emergency</a>
+<a class="toc-link level-3" href="#address-suspension">Address suspension</a>
+<a class="toc-link level-3" href="#withdrawal-suspension">Withdrawal suspension</a>
+<a class="toc-link level-3" href="#party-b-emergency-mode">Party B emergency mode</a>
+<a class="toc-link level-3" href="#read-access">Read access</a>
+<a class="toc-link level-2" href="#part-5--role-hierarchy">Part 5 — Role Hierarchy</a>
+</div><main class="reader-main"><header class="reader-hero"><div class="reader-title-row"><div><h1>Roles, Permissions, and Pause Flags</h1><p class="hero-copy">Roles, pause flags, gated operations, and operational consequences.</p></div></div></header>
+<article class="doc-article" id="full-document"><h2 id="table-of-contents">Table of Contents</h2>
+<ul>
+<li><a href="#part-1--roles">Part 1 — Roles</a></li>
+<li><a href="#part-2--pause-flags">Part 2 — Pause Flags</a></li>
+<li><a href="#part-3--modifiers-reference">Part 3 — Modifiers Reference</a></li>
+<li><a href="#part-4--suspension-and-emergency">Part 4 — Suspension and Emergency</a></li>
+<li><a href="#part-5--role-hierarchy">Part 5 — Role Hierarchy</a></li>
+</ul>
+<p>All role identifiers are <code>keccak256</code> hashes declared in <code>contracts/libraries/core/LibAccessibility.sol</code>. Storage of role memberships lives in <code>contracts/storages/AccessControlStorage.sol:12-16</code>. The on-chain check is <code>LibAccessibility.hasRole(user, role)</code> at <code>contracts/libraries/core/LibAccessibility.sol:33-35</code>, surfaced through the <code>onlyRole</code> modifier in <code>contracts/utils/Accessibility.sol:36-39</code>.</p>
+<p>The Diamond owner (set via <code>LibDiamond</code>) is distinct from <code>DEFAULT_ADMIN_ROLE</code>. Only the Diamond owner can call <code>ControlFacet.setAdmin</code> (<code>contracts/facets/Control/ControlFacet.sol:53-57</code>); only <code>DEFAULT_ADMIN_ROLE</code> can call <code>grantRole</code> / <code>revokeRole</code> (<code>contracts/facets/Control/ControlFacet.sol:65-89</code>).</p>
+<h2 id="part-1--roles">Part 1 — Roles</h2>
+<h3 id="diamond-roles">Diamond Roles</h3>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Hash source</th>
+<th>Granted by</th>
+<th>Held by (operationally)</th>
+<th>Risk if compromised</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>DEFAULT_ADMIN_ROLE</code></td>
+<td><code>LibAccessibility.sol:10</code></td>
+<td>Diamond owner via <code>setAdmin</code></td>
+<td>Protocol governance multisig</td>
+<td>Full control: can grant/revoke every other role and reconfigure access.</td>
+</tr>
+<tr>
+<td><code>SETTER_ROLE</code></td>
+<td><code>LibAccessibility.sol:13</code></td>
+<td><code>DEFAULT_ADMIN_ROLE</code></td>
+<td>Ops admin / governance</td>
+<td>Can re-tune cooldowns, signature lifetimes, balance limits, fee collectors, signature verifier — economic and safety parameters.</td>
+</tr>
+<tr>
+<td><code>SYMBOL_MANAGER_ROLE</code></td>
+<td><code>LibAccessibility.sol:11</code></td>
+<td><code>DEFAULT_ADMIN_ROLE</code></td>
+<td>Listings team</td>
+<td>Can list malicious symbols, flip validity, mutate platform fees on existing symbols.</td>
+</tr>
+<tr>
+<td><code>ORACLE_MANAGER_ROLE</code></td>
+<td><code>LibAccessibility.sol:12</code></td>
+<td><code>DEFAULT_ADMIN_ROLE</code></td>
+<td>Listings / oracle ops</td>
+<td>Can swap oracle contract addresses or repoint the global price oracle, breaking pricing.</td>
+</tr>
+<tr>
+<td><code>PARTY_B_MANAGER_ROLE</code></td>
+<td><code>LibAccessibility.sol:16</code></td>
+<td><code>DEFAULT_ADMIN_ROLE</code></td>
+<td>Counterparty onboarding</td>
+<td>Can activate/deactivate Party Bs and toggle supported symbol types.</td>
+</tr>
+<tr>
+<td><code>AFFILIATE_MANAGER_ROLE</code></td>
+<td><code>LibAccessibility.sol:17</code></td>
+<td><code>DEFAULT_ADMIN_ROLE</code></td>
+<td>Affiliate ops</td>
+<td>Can whitelist arbitrary affiliates and redirect their fee collectors.</td>
+</tr>
+<tr>
+<td><code>AFFILIATE_FEE_MANAGER_ROLE</code></td>
+<td><code>LibAccessibility.sol:18</code></td>
+<td><code>DEFAULT_ADMIN_ROLE</code></td>
+<td>Affiliate ops</td>
+<td>Can set affiliate fees on behalf of any affiliate (bypassing the self-sender check in <code>setAffiliateFees</code>).</td>
+</tr>
+<tr>
+<td><code>EXTERNAL_TRANSFER_TARGET_MANAGER_ROLE</code></td>
+<td><code>LibAccessibility.sol:19</code></td>
+<td><code>DEFAULT_ADMIN_ROLE</code></td>
+<td>Integration ops</td>
+<td>Can whitelist arbitrary external transfer targets and exfiltrate balances via <code>externalTransfer</code>.</td>
+</tr>
+<tr>
+<td><code>PAUSER_ROLE</code></td>
+<td><code>LibAccessibility.sol:14</code></td>
+<td><code>DEFAULT_ADMIN_ROLE</code></td>
+<td>Incident-response bot / multisig</td>
+<td>Can halt every user-facing flow and put Party Bs into emergency mode.</td>
+</tr>
+<tr>
+<td><code>UNPAUSER_ROLE</code></td>
+<td><code>LibAccessibility.sol:15</code></td>
+<td><code>DEFAULT_ADMIN_ROLE</code></td>
+<td>Governance multisig</td>
+<td>Can prematurely lift pauses or emergency mode, resuming a degraded protocol.</td>
+</tr>
+<tr>
+<td><code>SUSPENDER_ROLE</code></td>
+<td><code>LibAccessibility.sol:20</code></td>
+<td><code>DEFAULT_ADMIN_ROLE</code></td>
+<td>Compliance / risk ops</td>
+<td>Can freeze any address and withhold any pending withdrawal.</td>
+</tr>
+<tr>
+<td><code>DISPUTER_ROLE</code></td>
+<td><code>LibAccessibility.sol:22</code></td>
+<td><code>DEFAULT_ADMIN_ROLE</code></td>
+<td>Disputes adjudicator</td>
+<td>Can rewrite the valid amount on a suspended withdrawal via <code>restoreWithdraw</code>.</td>
+</tr>
+<tr>
+<td><code>CLEARING_HOUSE_ROLE</code></td>
+<td><code>LibAccessibility.sol:21</code></td>
+<td><code>DEFAULT_ADMIN_ROLE</code></td>
+<td>ClearingHouse bot</td>
+<td>Can flag/unflag liquidation, execute liquidations, confiscate funds, and force-close trades.</td>
+</tr>
+<tr>
+<td><code>VIRTUAL_DEPOSITOR_ROLE</code></td>
+<td><code>LibAccessibility.sol:23</code></td>
+<td><code>DEFAULT_ADMIN_ROLE</code></td>
+<td>Approved bridges / accounting</td>
+<td>Can credit isolated balance to any user without an actual ERC-20 transfer.</td>
+</tr>
+<tr>
+<td><code>WINDOW_UPDATER_ROLE</code></td>
+<td><code>LibAccessibility.sol:24</code></td>
+<td><code>DEFAULT_ADMIN_ROLE</code></td>
+<td>Reserved</td>
+<td>No on-chain modifier currently consumes this role; reserved for future use.</td>
+</tr>
+<tr>
+<td><code>INSTANT_LAYER_ROLE</code></td>
+<td><code>LibAccessibility.sol:25</code></td>
+<td><code>DEFAULT_ADMIN_ROLE</code></td>
+<td>Deployed <code>InstantLayer</code> contract</td>
+<td>Can flip the <code>callFromInstantLayer</code> flag, bypassing <code>whenInstantModeIsNotActive</code> guards.</td>
+</tr>
+</tbody></table>
+<h3 id="functions-guarded-per-role-diamond">Functions guarded per role (Diamond)</h3>
+<p><code>DEFAULT_ADMIN_ROLE</code> — administers role membership only:</p>
+<ul>
+<li><code>ControlFacet.grantRole</code> — <code>contracts/facets/Control/ControlFacet.sol:65</code></li>
+<li><code>ControlFacet.revokeRole</code> — <code>contracts/facets/Control/ControlFacet.sol:81</code></li>
+</ul>
+<p><code>SETTER_ROLE</code> — system parameters and integrations:</p>
+<ul>
+<li><code>whiteListCollateral</code> / <code>removeCollateralFromWhitelist</code> — <code>ControlFacet.sol:99</code>, <code>:109</code></li>
+<li><code>setMaxCloseOrdersLength</code>, <code>setMaxTradePerPartyA</code>, <code>setBalanceLimitPerUser</code> — <code>ControlFacet.sol:122</code>, <code>:132</code>, <code>:143</code></li>
+<li><code>setTimingParameters</code> — <code>ControlFacet.sol:172</code></li>
+<li><code>setPartyADeallocateCooldown</code>, <code>setPartyBDeallocateCooldown</code> — <code>ControlFacet.sol:204</code>, <code>:213</code></li>
+<li><code>setForceCancelOpenIntentTimeout</code>, <code>setForceCancelCloseIntentTimeout</code> — <code>ControlFacet.sol:222</code>, <code>:231</code></li>
+<li><code>setSettlementPriceSigValidTime</code>, <code>setUpnlSigValidTime</code> — <code>ControlFacet.sol:240</code>, <code>:249</code></li>
+<li><code>setPartyBExclusiveWindow</code>, <code>setUnbindingCooldown</code>, <code>setDeactiveInstantActionModeCooldown</code> — <code>ControlFacet.sol:258</code>, <code>:267</code>, <code>:276</code></li>
+<li><code>setTradeNftAddress</code> — <code>ControlFacet.sol:285</code></li>
+<li><code>setPartyBReleaseInterval</code>, <code>setDefaultReleaseInterval</code>, <code>setMaxConnectedCounterParties</code> — <code>ControlFacet.sol:299</code>, <code>:310</code>, <code>:319</code></li>
+<li><code>setDefaultFeeCollector</code>, <code>setAffiliateFees</code> — <code>ControlFacet.sol:333</code>, <code>:370</code></li>
+<li><code>setSignatureVerifier</code> — <code>ControlFacet.sol:871</code></li>
+<li><code>setExpressWithdrawProviderConfig</code>, <code>setInvalidWithdrawalsAmountsPool</code> — <code>ControlFacet.sol:891</code>, <code>:901</code></li>
+</ul>
+<p><code>SYMBOL_MANAGER_ROLE</code>:</p>
+<ul>
+<li><code>addSymbol</code>, <code>addSymbols</code> — <code>ControlFacet.sol:762</code>, <code>:787</code></li>
+<li><code>setSymbolsPlatformFees</code> — <code>ControlFacet.sol:799</code></li>
+<li><code>setSymbolsValidationState</code> — <code>ControlFacet.sol:819</code></li>
+<li><code>setSymbolsNames</code>, <code>setSymbolsTypes</code> — <code>ControlFacet.sol:835</code>, <code>:852</code></li>
+</ul>
+<p><code>ORACLE_MANAGER_ROLE</code>:</p>
+<ul>
+<li><code>addOracle</code> — <code>ControlFacet.sol:706</code></li>
+<li><code>updateOracle</code> — <code>ControlFacet.sol:721</code></li>
+<li><code>setPriceOracleAddress</code> — <code>ControlFacet.sol:736</code></li>
+</ul>
+<p><code>PARTY_B_MANAGER_ROLE</code>:</p>
+<ul>
+<li><code>setPartyBConfig</code> — <code>ControlFacet.sol:392</code></li>
+<li><code>setPartyBSupportedSymbolTypes</code> — <code>ControlFacet.sol:411</code></li>
+</ul>
+<p><code>AFFILIATE_MANAGER_ROLE</code>:</p>
+<ul>
+<li><code>setAffiliateStatus</code> — <code>ControlFacet.sol:344</code></li>
+<li><code>setAffiliateFeesCollector</code> — <code>ControlFacet.sol:354</code></li>
+</ul>
+<p><code>AFFILIATE_FEE_MANAGER_ROLE</code>:</p>
+<ul>
+<li><code>setAffiliateFees</code> (when caller is not the affiliate themself) — <code>ControlFacet.sol:370-372</code></li>
+</ul>
+<p><code>EXTERNAL_TRANSFER_TARGET_MANAGER_ROLE</code>:</p>
+<ul>
+<li><code>setExternalTransferTargetValidationStatus</code> — <code>ControlFacet.sol:921</code></li>
+</ul>
+<p><code>PAUSER_ROLE</code>:</p>
+<ul>
+<li><code>pauseGlobal</code>, <code>pauseDeposit</code>, <code>pauseWithdraw</code>, <code>pauseExpressWithdraw</code> — <code>ControlFacet.sol:430</code>, <code>:438</code>, <code>:446</code>, <code>:454</code></li>
+<li><code>pauseInternalTransfer</code>, <code>pauseExternalTransfer</code> — <code>ControlFacet.sol:462</code>, <code>:470</code></li>
+<li><code>pausePartyBActions</code>, <code>pausePartyAActions</code> — <code>ControlFacet.sol:478</code>, <code>:486</code></li>
+<li><code>pauseLiquidating</code>, <code>pauseThirdPartyActions</code> — <code>ControlFacet.sol:494</code>, <code>:502</code></li>
+<li><code>pauseInstantLayer</code> — <code>ControlFacet.sol:510</code></li>
+<li><code>activePartyBsEmergencyMode</code>, <code>activePartyBEmergencyMode</code> — <code>ControlFacet.sol:612</code>, <code>:629</code></li>
+</ul>
+<p><code>UNPAUSER_ROLE</code>:</p>
+<ul>
+<li><code>unpauseGlobal</code>, <code>unpauseDeposit</code>, <code>unpauseWithdraw</code> — <code>ControlFacet.sol:520</code>, <code>:528</code>, <code>:536</code></li>
+<li><code>unpauseInternalTransfer</code>, <code>unpauseExternalTransfer</code>, <code>unpauseExpressWithdraw</code> — <code>ControlFacet.sol:544</code>, <code>:552</code>, <code>:560</code></li>
+<li><code>unpausePartyBActions</code>, <code>unpausePartyAActions</code> — <code>ControlFacet.sol:568</code>, <code>:576</code></li>
+<li><code>unpauseLiquidating</code>, <code>unpauseThirdPartyActions</code> — <code>ControlFacet.sol:584</code>, <code>:592</code></li>
+<li><code>unpauseInstantLayer</code> — <code>ControlFacet.sol:600</code></li>
+<li><code>deactivePartyBsEmergencyMode</code>, <code>deactivePartyBEmergencyMode</code> — <code>ControlFacet.sol:620</code>, <code>:639</code></li>
+</ul>
+<p><code>SUSPENDER_ROLE</code>:</p>
+<ul>
+<li><code>suspendAddress</code>, <code>suspendAddresses</code> — <code>ControlFacet.sol:654</code>, <code>:676</code></li>
+<li><code>suspendWithdrawal</code> — <code>ControlFacet.sol:665</code></li>
+<li><code>AccountFacet.suspendWithdraw</code> — <code>contracts/facets/Account/AccountFacet.sol:200</code></li>
+</ul>
+<p><code>DISPUTER_ROLE</code>:</p>
+<ul>
+<li><code>AccountFacet.restoreWithdraw</code> — <code>contracts/facets/Account/AccountFacet.sol:211</code></li>
+</ul>
+<p><code>CLEARING_HOUSE_ROLE</code> (all guarded by both <code>whenNotLiquidationPaused</code> and <code>onlyRole</code>):</p>
+<ul>
+<li><code>flagIsolatedPartyBLiquidation</code> — <code>contracts/facets/ClearingHouse/ClearingHouseFacet.sol:26</code></li>
+<li><code>unflagIsolatedPartyBLiquidation</code> — <code>ClearingHouseFacet.sol:39</code></li>
+<li><code>liquidateIsolatedPartyB</code> — <code>ClearingHouseFacet.sol:54</code></li>
+<li><code>confiscate</code>, <code>confiscateWithdrawal</code> — <code>ClearingHouseFacet.sol:64</code>, <code>:75</code></li>
+<li><code>distributeCollateral</code> — <code>ClearingHouseFacet.sol:80</code></li>
+<li><code>flagCrossPartyBLiquidation</code>, <code>unflagCrossPartyBLiquidation</code>, <code>liquidateCrossPartyB</code> — <code>ClearingHouseFacet.sol:92</code>, <code>:101</code>, <code>:110</code></li>
+<li><code>flagPartyALiquidation</code>, <code>unflagPartyALiquidation</code>, <code>liquidateCrossPartyA</code> — <code>ClearingHouseFacet.sol:121</code>, <code>:130</code>, <code>:139</code></li>
+<li><code>closeTrades</code> — <code>ClearingHouseFacet.sol:151</code></li>
+<li><code>allocateFromReserveToCross</code> — <code>ClearingHouseFacet.sol:160</code></li>
+<li><code>cancelOpenIntents</code>, <code>cancelCloseIntents</code> — <code>ClearingHouseFacet.sol:170</code>, <code>:175</code></li>
+</ul>
+<p><code>VIRTUAL_DEPOSITOR_ROLE</code>:</p>
+<ul>
+<li><code>AccountFacet.virtualDepositFor</code> — <code>contracts/facets/Account/AccountFacet.sol:51-55</code></li>
+</ul>
+<p><code>INSTANT_LAYER_ROLE</code>:</p>
+<ul>
+<li><code>ControlFacet.setCallFromInstantLayer</code> — <code>contracts/facets/Control/ControlFacet.sol:937</code></li>
+</ul>
+<p><code>WINDOW_UPDATER_ROLE</code>:</p>
+<ul>
+<li>Defined at <code>LibAccessibility.sol:24</code> but no facet currently calls <code>onlyRole(WINDOW_UPDATER_ROLE)</code>. Reserved.</li>
+</ul>
+<h3 id="instantlayer-roles">InstantLayer Roles</h3>
+<p>The <code>InstantLayer</code> helper at <code>contracts/helpers/InstantLayer.sol</code> uses OpenZeppelin <code>AccessControlEnumerable</code> — these roles are isolated from the Diamond&#39;s <code>LibAccessibility</code> and live in the helper&#39;s own storage.</p>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Hash source</th>
+<th>Granted by</th>
+<th>Held by</th>
+<th>Functions guarded</th>
+<th>Risk if compromised</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>DEFAULT_ADMIN_ROLE</code></td>
+<td><code>InstantLayer.sol:198</code> (granted in constructor)</td>
+<td>Self / OZ default</td>
+<td>Deployment admin</td>
+<td>Standard OZ admin (grant/revoke).</td>
+<td>Can re-grant any other role on the helper.</td>
+</tr>
+<tr>
+<td><code>SETTER_ROLE</code></td>
+<td><code>InstantLayer.sol:61</code></td>
+<td><code>DEFAULT_ADMIN_ROLE</code></td>
+<td>Ops admin</td>
+<td><code>registerPartyB</code>/<code>unregisterPartyB</code>/<code>registerPartyBBatch</code> (<code>InstantLayer.sol:211</code>, <code>:221</code>, <code>:231</code>); <code>registerMultiAccount</code>/<code>unregisterMultiAccount</code>/<code>registerMultiAccountBatch</code> (<code>:243</code>, <code>:252</code>, <code>:261</code>); <code>addTemplate</code> (<code>:275</code>); <code>setTemplateActive</code> (<code>:294</code>).</td>
+<td>Can register arbitrary PartyB/MultiAccount addresses, install templates that chain results into Diamond calls, or auto-grant <code>OPERATOR_ROLE</code> (<code>registerPartyB</code> calls <code>_grantRole(OPERATOR_ROLE, partyB)</code> at <code>:213</code>).</td>
+</tr>
+<tr>
+<td><code>OPERATOR_ROLE</code></td>
+<td><code>InstantLayer.sol:64</code></td>
+<td><code>DEFAULT_ADMIN_ROLE</code>, or auto-granted to registered PartyBs (<code>InstantLayer.sol:213</code>)</td>
+<td>Off-chain executor / registered PartyBs</td>
+<td><code>executeTemplate</code> (<code>:311</code>), <code>executeBatch</code> (<code>:354</code>).</td>
+<td>Can submit signed-operation batches to the Diamond inside <code>callFromInstantLayer = true</code> windows, bypassing <code>whenInstantModeIsNotActive</code>. Replay still bounded by EIP-712 signatures and <code>usedOperationHashes</code>.</td>
+</tr>
+<tr>
+<td><code>MANAGER_ROLE</code></td>
+<td><code>InstantLayer.sol:70</code></td>
+<td><code>DEFAULT_ADMIN_ROLE</code></td>
+<td>Reserved</td>
+<td>Granted in constructor (<code>:201</code>); not consumed by <code>InstantLayer</code> itself.</td>
+<td>Reserved for future restricted ops.</td>
+</tr>
+<tr>
+<td><code>TRUSTED_ROLE</code></td>
+<td><code>InstantLayer.sol:67</code></td>
+<td><code>DEFAULT_ADMIN_ROLE</code></td>
+<td>Reserved</td>
+<td>Granted in constructor (<code>:202</code>); not consumed by <code>InstantLayer</code> itself.</td>
+<td>Reserved for trusted approvals/external calls.</td>
+</tr>
+</tbody></table>
+<p><code>SymmioPartyB</code> and <code>MultiAccount</code> helpers reuse the same <code>PAUSER_ROLE</code> / <code>UNPAUSER_ROLE</code> / <code>SETTER_ROLE</code> / <code>MANAGER_ROLE</code> / <code>TRUSTED_ROLE</code> / <code>DEFAULT_ADMIN_ROLE</code> names from OZ but those are scoped to those helper contracts (<code>contracts/helpers/SymmioPartyB.sol</code>, <code>contracts/helpers/MultiAccount.sol</code>) — not the Diamond.</p>
+<h2 id="part-2--pause-flags">Part 2 — Pause Flags</h2>
+<p>All flags live in <code>StateControlStorage.Layout</code> at <code>contracts/storages/StateControlStorage.sol:10-28</code>. Setters and unsetters are concentrated in <code>ControlFacet</code>. Every guarded path additionally checks <code>globalPaused</code> first (see <code>Pausable.sol</code>).</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Storage</th>
+<th>Gates</th>
+<th>Set by</th>
+<th>Unset by</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>globalPaused</code></td>
+<td><code>StateControlStorage.sol:11</code></td>
+<td>Every <code>Pausable</code> modifier checks this first; effectively halts deposits, withdrawals, transfers, party A/B actions, liquidation, third-party actions, and express withdrawals.</td>
+<td><code>pauseGlobal</code> — <code>ControlFacet.sol:430</code> (PAUSER_ROLE)</td>
+<td><code>unpauseGlobal</code> — <code>ControlFacet.sol:520</code> (UNPAUSER_ROLE)</td>
+</tr>
+<tr>
+<td><code>depositingPaused</code></td>
+<td><code>StateControlStorage.sol:12</code></td>
+<td><code>whenDepositingNotPaused</code> → <code>AccountFacet.deposit</code>, <code>depositFor</code>, <code>virtualDepositFor</code> (<code>AccountFacet.sol:39</code>, <code>:55</code>, <code>:78</code>).</td>
+<td><code>pauseDeposit</code> — <code>ControlFacet.sol:438</code></td>
+<td><code>unpauseDeposit</code> — <code>ControlFacet.sol:528</code></td>
+</tr>
+<tr>
+<td><code>withdrawingPaused</code></td>
+<td><code>StateControlStorage.sol:13</code></td>
+<td><code>whenWithdrawingNotPaused</code> → <code>completeWithdraw</code>, <code>cancelWithdraw</code> (<code>AccountFacet.sol:223</code>, <code>:233</code>); also <code>initiateWithdraw</code>, <code>initiateExpressWithdraw</code> (<code>AccountFacet.sol:155</code>, <code>:183</code>).</td>
+<td><code>pauseWithdraw</code> — <code>ControlFacet.sol:446</code></td>
+<td><code>unpauseWithdraw</code> — <code>ControlFacet.sol:536</code></td>
+</tr>
+<tr>
+<td><code>partyBActionsPaused</code></td>
+<td><code>StateControlStorage.sol:14</code></td>
+<td><code>whenPartyNotPaused(user)</code> when <code>user.isPartyB()</code> (<code>Pausable.sol:61-68</code>, <code>:77-82</code>) → all PartyB facet entrypoints (<code>PartyBOpenFacet.sol:29,40,55,69</code>, <code>PartyBCloseFacet.sol:26,38</code>).</td>
+<td><code>pausePartyBActions</code> — <code>ControlFacet.sol:478</code></td>
+<td><code>unpausePartyBActions</code> — <code>ControlFacet.sol:568</code></td>
+</tr>
+<tr>
+<td><code>partyAActionsPaused</code></td>
+<td><code>StateControlStorage.sol:15</code></td>
+<td><code>whenPartyNotPaused(user)</code> when <code>!isPartyB()</code> → all PartyA / Account / Trade entrypoints that take a user-side modifier.</td>
+<td><code>pausePartyAActions</code> — <code>ControlFacet.sol:486</code></td>
+<td><code>unpausePartyAActions</code> — <code>ControlFacet.sol:576</code></td>
+</tr>
+<tr>
+<td><code>liquidatingPaused</code></td>
+<td><code>StateControlStorage.sol:16</code></td>
+<td><code>whenNotLiquidationPaused</code> → every function on <code>ClearingHouseFacet</code> (see Part 1).</td>
+<td><code>pauseLiquidating</code> — <code>ControlFacet.sol:494</code></td>
+<td><code>unpauseLiquidating</code> — <code>ControlFacet.sol:584</code></td>
+</tr>
+<tr>
+<td><code>thirdPartyActionsPaused</code></td>
+<td><code>StateControlStorage.sol:17</code></td>
+<td><code>whenNotThirdPartyActionsPaused</code> → <code>TradeFacet.executeTrades</code> (<code>TradeFacet.sol:61</code>).</td>
+<td><code>pauseThirdPartyActions</code> — <code>ControlFacet.sol:502</code></td>
+<td><code>unpauseThirdPartyActions</code> — <code>ControlFacet.sol:592</code></td>
+</tr>
+<tr>
+<td><code>internalTransferPaused</code></td>
+<td><code>StateControlStorage.sol:18</code></td>
+<td><code>whenInternalTransferNotPaused</code> → <code>AccountFacet.internalTransfer</code> (<code>AccountFacet.sol:98</code>).</td>
+<td><code>pauseInternalTransfer</code> — <code>ControlFacet.sol:462</code></td>
+<td><code>unpauseInternalTransfer</code> — <code>ControlFacet.sol:544</code></td>
+</tr>
+<tr>
+<td><code>externalTransferPaused</code></td>
+<td><code>StateControlStorage.sol:19</code></td>
+<td><code>whenNotExternalTransferPaused</code> → <code>AccountFacet.externalTransfer</code> (<code>AccountFacet.sol:133</code>).</td>
+<td><code>pauseExternalTransfer</code> — <code>ControlFacet.sol:470</code></td>
+<td><code>unpauseExternalTransfer</code> — <code>ControlFacet.sol:552</code></td>
+</tr>
+<tr>
+<td><code>expressWithdrawPaused</code></td>
+<td><code>StateControlStorage.sol:20</code></td>
+<td><code>whenNotExpressWithdrawPaused</code> → <code>AccountFacet.initiateExpressWithdraw</code> (<code>AccountFacet.sol:184</code>).</td>
+<td><code>pauseExpressWithdraw</code> — <code>ControlFacet.sol:454</code></td>
+<td><code>unpauseExpressWithdraw</code> — <code>ControlFacet.sol:560</code></td>
+</tr>
+<tr>
+<td><code>instantLayerPaused</code></td>
+<td><code>StateControlStorage.sol:21</code></td>
+<td>Checked inside <code>setCallFromInstantLayer</code> (<code>ControlFacet.sol:938</code>); when set, blocks <code>InstantLayer</code> from entering instant mode. Reverts with <code>SystemErrors.InstantLayerPaused</code>.</td>
+<td><code>pauseInstantLayer</code> — <code>ControlFacet.sol:510</code></td>
+<td><code>unpauseInstantLayer</code> — <code>ControlFacet.sol:600</code></td>
+</tr>
+<tr>
+<td><code>partyBsEmergencyMode</code></td>
+<td><code>StateControlStorage.sol:23</code></td>
+<td>Checked in <code>LibPartyBOpen</code> lock and fill paths (<code>contracts/libraries/core/LibPartyBOpen.sol:52</code>, <code>:185</code>). When true, no PartyB can lock or fill open intents.</td>
+<td><code>activePartyBsEmergencyMode</code> — <code>ControlFacet.sol:612</code> (PAUSER_ROLE)</td>
+<td><code>deactivePartyBsEmergencyMode</code> — <code>ControlFacet.sol:620</code> (UNPAUSER_ROLE)</td>
+</tr>
+<tr>
+<td><code>partyBEmergencyMode[partyB]</code></td>
+<td><code>StateControlStorage.sol:24</code></td>
+<td>Checked in <code>LibPartyBOpen</code> against the acting PartyB (<code>LibPartyBOpen.sol:51</code>, <code>:184</code>). Targets one PartyB only.</td>
+<td><code>activePartyBEmergencyMode</code> — <code>ControlFacet.sol:629</code> (PAUSER_ROLE)</td>
+<td><code>deactivePartyBEmergencyMode</code> — <code>ControlFacet.sol:639</code> (UNPAUSER_ROLE)</td>
+</tr>
+<tr>
+<td><code>suspendedAddresses[user]</code></td>
+<td><code>StateControlStorage.sol:26</code></td>
+<td><code>whenNotSuspended(user)</code> (<code>Accessibility.sol:53-56</code>); also enforced via <code>checkNotSuspendedWithdrawal</code> against withdraw <code>user</code> and <code>to</code> (<code>Accessibility.sol:63-69</code>).</td>
+<td><code>suspendAddress</code> / <code>suspendAddresses</code> — <code>ControlFacet.sol:654</code>, <code>:676</code> (SUSPENDER_ROLE)</td>
+<td>Same setters with <code>_status = false</code>.</td>
+</tr>
+<tr>
+<td><code>suspendedWithdrawal[id]</code></td>
+<td><code>StateControlStorage.sol:27</code></td>
+<td><code>whenWithdrawalNotSuspended(id)</code> (<code>Accessibility.sol:58-61</code>) → <code>completeWithdraw</code>, <code>cancelWithdraw</code>.</td>
+<td><code>suspendWithdrawal</code> — <code>ControlFacet.sol:665</code>; <code>AccountFacet.suspendWithdraw</code> — <code>AccountFacet.sol:200</code> (SUSPENDER_ROLE)</td>
+<td><code>suspendWithdrawal(_status=false)</code>; <code>AccountFacet.restoreWithdraw</code> — <code>AccountFacet.sol:211</code> (DISPUTER_ROLE) clears the flag and rewrites <code>validAmount</code>.</td>
+</tr>
+</tbody></table>
+<h2 id="part-3--modifiers-reference">Part 3 — Modifiers Reference</h2>
+<h3 id="contractsutilsaccessibilitysol"><code>contracts/utils/Accessibility.sol</code></h3>
+<table>
+<thead>
+<tr>
+<th>Modifier</th>
+<th>Check</th>
+<th>Used by (representative)</th>
+<th>Reverts with</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>onlyPartyB(user)</code> (<code>Accessibility.sol:26</code>)</td>
+<td><code>LibParty.isPartyB(user) == true</code></td>
+<td><code>PartyBOpenFacet.lockOpenIntent</code> (<code>PartyBOpenFacet.sol:29</code>)</td>
+<td><code>ValidationErrors.NotPartyB(user)</code></td>
+</tr>
+<tr>
+<td><code>onlyNotPartyB(user)</code> (<code>Accessibility.sol:31</code>)</td>
+<td><code>LibParty.isPartyB(user) == false</code></td>
+<td><code>CounterPartyRelationsFacet.activateInstantActionMode</code>, <code>bindToPartyB</code> (<code>CounterPartyRelationsFacet.sol:29,62</code>); <code>AccountFacet.internalTransfer</code> (<code>AccountFacet.sol:104</code>)</td>
+<td><code>ValidationErrors.PartyBUser(user)</code></td>
+</tr>
+<tr>
+<td><code>onlyRole(role)</code> (<code>Accessibility.sol:36</code>)</td>
+<td><code>AccessControlStorage.hasRole[msg.sender][role]</code></td>
+<td>All <code>ControlFacet</code>/<code>ClearingHouseFacet</code>/<code>AccountFacet</code> admin entrypoints</td>
+<td><code>ValidationErrors.MissingRole(msg.sender, role)</code></td>
+</tr>
+<tr>
+<td><code>onlyPartyAOfTrade(tradeId)</code> (<code>Accessibility.sol:41</code>)</td>
+<td><code>TradeStorage.trades[tradeId].partyA == msg.sender</code></td>
+<td><code>TradeFacet.transferTrade</code> (<code>TradeFacet.sol:32</code>); <code>TradeFacet.mintNFTForTrade</code> (<code>TradeFacet.sol:71</code>); <code>PartyACloseFacet.requestCloseIntent</code> (<code>PartyACloseFacet.sol:43</code>)</td>
+<td><code>ValidationErrors.UnauthorizedSender(msg.sender, partyA)</code></td>
+</tr>
+<tr>
+<td><code>onlyPartyBOfTrade(tradeId)</code> (<code>Accessibility.sol:47</code>)</td>
+<td><code>TradeStorage.trades[tradeId].partyB == msg.sender</code></td>
+<td>(Reserved for PartyB-side trade-scoped functions)</td>
+<td><code>ValidationErrors.UnauthorizedSender(msg.sender, partyB)</code></td>
+</tr>
+<tr>
+<td><code>whenNotSuspended(user)</code> (<code>Accessibility.sol:53</code>)</td>
+<td><code>StateControlStorage.suspendedAddresses[user] == false</code></td>
+<td><code>AccountFacet.deposit/depositFor/internalTransfer/externalTransfer/initiateWithdraw/initiateExpressWithdraw/allocate/deallocate</code> (<code>AccountFacet.sol:39, 76-77, 99-100, 134, 156-158, 185-187, 266, 292</code>); <code>TradeFacet.transferTrade</code> (<code>TradeFacet.sol:32</code>)</td>
+<td><code>SystemErrors.UserSuspended(user)</code></td>
+</tr>
+<tr>
+<td><code>whenWithdrawalNotSuspended(id)</code> (<code>Accessibility.sol:58</code>)</td>
+<td>Withdraw user, recipient, and <code>suspendedWithdrawal[id]</code> all clear (<code>Accessibility.sol:63-69</code>)</td>
+<td><code>AccountFacet.completeWithdraw</code>, <code>cancelWithdraw</code> (<code>AccountFacet.sol:223, 233</code>)</td>
+<td><code>SystemErrors.UserSuspended(...)</code> or <code>SystemErrors.WithdrawalSuspended(id)</code></td>
+</tr>
+<tr>
+<td><code>whenInstantModeIsNotActive(sender)</code> (<code>Accessibility.sol:71</code>)</td>
+<td><code>instantActionsMode[sender] == false</code> OR <code>AppStorage.callFromInstantLayer == true</code></td>
+<td><code>PartyAOpenFacet.requestOpenIntent</code> (<code>PartyAOpenFacet.sol:64</code>); <code>PartyACloseFacet.requestCloseIntent</code> (<code>PartyACloseFacet.sol:43</code>); <code>AccountFacet.internalTransfer/externalTransfer/initiateWithdraw/initiateExpressWithdraw/allocate/deallocate/allocateToReserveBalance/deallocateFromReserveBalance</code></td>
+<td><code>PartyRelationsErrors.InstantModeActive(sender)</code></td>
+</tr>
+<tr>
+<td><code>whenInstantModeIsActive(sender)</code> (<code>Accessibility.sol:76</code>)</td>
+<td><code>instantActionsMode[sender] == true</code></td>
+<td><code>CounterPartyRelationsFacet.initiateDeactivateInstantActionMode</code> (<code>CounterPartyRelationsFacet.sol:41</code>)</td>
+<td><code>PartyRelationsErrors.InstantModeNotActive(sender)</code></td>
+</tr>
+</tbody></table>
+<h3 id="contractsutilspausablesol"><code>contracts/utils/Pausable.sol</code></h3>
+<p>Every modifier short-circuits on <code>globalPaused</code> first.</p>
+<table>
+<thead>
+<tr>
+<th>Modifier</th>
+<th>Check</th>
+<th>Used by</th>
+<th>Reverts with</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>whenNotGlobalPaused()</code> (<code>Pausable.sol:16</code>)</td>
+<td><code>!globalPaused</code></td>
+<td>(Generic; rarely used directly — most paths use a more specific modifier that already checks global.)</td>
+<td><code>SystemErrors.GlobalPaused()</code></td>
+</tr>
+<tr>
+<td><code>whenNotExpressWithdrawPaused()</code> (<code>Pausable.sol:21</code>)</td>
+<td><code>!globalPaused &amp;&amp; !expressWithdrawPaused</code></td>
+<td><code>AccountFacet.initiateExpressWithdraw</code> (<code>AccountFacet.sol:184</code>)</td>
+<td><code>GlobalPaused()</code> / <code>ExpressWithdrawPaused()</code></td>
+</tr>
+<tr>
+<td><code>whenDepositingNotPaused()</code> (<code>Pausable.sol:29</code>)</td>
+<td><code>!globalPaused &amp;&amp; !depositingPaused</code></td>
+<td><code>AccountFacet.deposit/depositFor/virtualDepositFor</code> (<code>AccountFacet.sol:39,55,75</code>)</td>
+<td><code>GlobalPaused()</code> / <code>DepositingPaused()</code></td>
+</tr>
+<tr>
+<td><code>whenInternalTransferNotPaused()</code> (<code>Pausable.sol:37</code>)</td>
+<td><code>!globalPaused &amp;&amp; !internalTransferPaused</code></td>
+<td><code>AccountFacet.internalTransfer</code> (<code>AccountFacet.sol:98</code>)</td>
+<td><code>GlobalPaused()</code> / <code>InternalTransferPaused()</code></td>
+</tr>
+<tr>
+<td><code>whenNotExternalTransferPaused()</code> (<code>Pausable.sol:45</code>)</td>
+<td><code>!globalPaused &amp;&amp; !externalTransferPaused</code></td>
+<td><code>AccountFacet.externalTransfer</code> (<code>AccountFacet.sol:133</code>)</td>
+<td><code>GlobalPaused()</code> / <code>ExternalTransferPaused()</code></td>
+</tr>
+<tr>
+<td><code>whenWithdrawingNotPaused()</code> (<code>Pausable.sol:53</code>)</td>
+<td><code>!globalPaused &amp;&amp; !withdrawingPaused</code></td>
+<td><code>AccountFacet.initiateWithdraw/completeWithdraw/cancelWithdraw</code> (<code>AccountFacet.sol:155,223,233</code>); <code>AccountFacet.initiateExpressWithdraw</code> (<code>AccountFacet.sol:183</code>)</td>
+<td><code>GlobalPaused()</code> / <code>WithdrawingPaused()</code></td>
+</tr>
+<tr>
+<td><code>whenPartyNotPaused(user)</code> (<code>Pausable.sol:61</code>)</td>
+<td>If <code>isPartyB(user)</code>: <code>!partyBActionsPaused</code>. Else: <code>!partyAActionsPaused</code>. (Plus <code>!globalPaused</code>.)</td>
+<td>All PartyA/PartyB user-facing entrypoints (<code>PartyAOpenFacet</code>, <code>PartyACloseFacet</code>, <code>PartyBOpenFacet</code>, <code>PartyBCloseFacet</code>, <code>ForceActionsFacet</code>, <code>TradeFacet</code>, <code>CounterPartyRelationsFacet</code>, most of <code>AccountFacet</code>)</td>
+<td><code>GlobalPaused()</code> / <code>PartyAActionsPaused()</code> / <code>PartyBActionsPaused()</code></td>
+</tr>
+<tr>
+<td><code>whenNotThirdPartyActionsPaused()</code> (<code>Pausable.sol:84</code>)</td>
+<td><code>!globalPaused &amp;&amp; !thirdPartyActionsPaused</code></td>
+<td><code>TradeFacet.executeTrades</code> (<code>TradeFacet.sol:61</code>)</td>
+<td><code>GlobalPaused()</code> / <code>ThirdPartyActionsPaused()</code></td>
+</tr>
+<tr>
+<td><code>whenNotLiquidationPaused()</code> (<code>Pausable.sol:92</code>)</td>
+<td><code>!globalPaused &amp;&amp; !liquidatingPaused</code></td>
+<td>All <code>ClearingHouseFacet</code> functions</td>
+<td><code>GlobalPaused()</code> / <code>LiquidatingPaused()</code></td>
+</tr>
+</tbody></table>
+<h3 id="contractsutilsownablesol"><code>contracts/utils/Ownable.sol</code></h3>
+<table>
+<thead>
+<tr>
+<th>Modifier</th>
+<th>Check</th>
+<th>Used by</th>
+<th>Reverts with</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>onlyOwner()</code> (<code>Ownable.sol:10</code>)</td>
+<td><code>LibDiamond.enforceIsContractOwner()</code> (Diamond owner)</td>
+<td><code>ControlFacet.setAdmin</code> (<code>ControlFacet.sol:53</code>); <code>DiamondCutFacet.diamondCut</code></td>
+<td><code>LibDiamond.NotContractOwner</code></td>
+</tr>
+</tbody></table>
+<h3 id="contractsutilsreentrancyguardsol"><code>contracts/utils/ReentrancyGuard.sol</code></h3>
+<table>
+<thead>
+<tr>
+<th>Modifier</th>
+<th>Check</th>
+<th>Used by</th>
+<th>Reverts with</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>nonReentrant()</code> (<code>ReentrancyGuard.sol:14</code>)</td>
+<td><code>AccessControlStorage.reentrancyGuardStatus != _ENTERED</code>; sets/clears around call.</td>
+<td><code>AccountFacet.deposit/depositFor/externalTransfer/initiateExpressWithdraw/completeWithdraw</code> (<code>AccountFacet.sol:39,73,132,182,223</code>); <code>TradeFacet.transferTrade/mintNFTForTrade</code> (<code>TradeFacet.sol:32,71</code>)</td>
+<td><code>ReentrancyGuardErrors.ReentrantCall()</code></td>
+</tr>
+</tbody></table>
+<h2 id="part-4--suspension-and-emergency">Part 4 — Suspension and Emergency</h2>
+<p>These are <strong>distinct</strong> from pause flags and from liquidation flagging:</p>
+<ul>
+<li><strong>Pause</strong> halts a class of actions for everybody.</li>
+<li><strong>Liquidation flagging</strong> (<code>flagIsolatedPartyBLiquidation</code>, etc.) marks a counterparty for clearing-house processing; it is not &quot;suspended&quot; in the access-control sense.</li>
+<li><strong>Suspension</strong> is a per-address denial of access enforced in user code paths.</li>
+<li><strong>Emergency mode</strong> is a PartyB-scoped lock specifically over <code>LibPartyBOpen</code> lock/fill paths.</li>
+</ul>
+<h3 id="address-suspension">Address suspension</h3>
+<p>Storage: <code>StateControlStorage.suspendedAddresses</code> (<code>StateControlStorage.sol:26</code>).</p>
+<p>What it blocks (via <code>whenNotSuspended</code> in <code>Accessibility.sol:53-56</code>):</p>
+<ul>
+<li><code>AccountFacet.deposit</code> (sender) — <code>AccountFacet.sol:39</code></li>
+<li><code>AccountFacet.virtualDepositFor</code> (recipient <code>user</code>) — <code>AccountFacet.sol:55</code></li>
+<li><code>AccountFacet.depositFor</code> (sender and <code>user</code>) — <code>AccountFacet.sol:76-77</code></li>
+<li><code>AccountFacet.internalTransfer</code> (sender and <code>user</code>) — <code>AccountFacet.sol:99-100</code></li>
+<li><code>AccountFacet.externalTransfer</code> (sender) — <code>AccountFacet.sol:134</code></li>
+<li><code>AccountFacet.initiateWithdraw</code> (sender, <code>to</code>) — <code>AccountFacet.sol:156, 158</code></li>
+<li><code>AccountFacet.initiateExpressWithdraw</code> (sender, <code>to</code>) — <code>AccountFacet.sol:185, 187</code></li>
+<li><code>AccountFacet.allocate</code>/<code>deallocate</code> (sender) — <code>AccountFacet.sol:266, 292</code></li>
+<li><code>TradeFacet.transferTrade</code> (sender, <code>receiver</code>) — <code>TradeFacet.sol:32</code></li>
+<li><code>TradeFacet.mintTradeNFTViaSig</code> (sender, <code>receiver</code>) — <code>TradeFacet.sol:49</code></li>
+</ul>
+<p>It also indirectly blocks <code>completeWithdraw</code> and <code>cancelWithdraw</code> because those run <code>checkNotSuspendedWithdrawal</code> against the withdraw&#39;s <code>user</code> and <code>to</code> (<code>Accessibility.sol:63-69</code>).</p>
+<p>What suspension does <strong>not</strong> block: read-only views, liquidation flow against the user, intent-side modifiers without a <code>whenNotSuspended</code> guard. A suspended user can still be liquidated.</p>
+<p>Flipped by:</p>
+<ul>
+<li><code>ControlFacet.suspendAddress(user, status)</code> — <code>ControlFacet.sol:654</code> (<code>SUSPENDER_ROLE</code>)</li>
+<li><code>ControlFacet.suspendAddresses(users[], statuses[])</code> — <code>ControlFacet.sol:676</code> (<code>SUSPENDER_ROLE</code>, batch)</li>
+</ul>
+<h3 id="withdrawal-suspension">Withdrawal suspension</h3>
+<p>Storage: <code>StateControlStorage.suspendedWithdrawal[withdrawId]</code> (<code>StateControlStorage.sol:27</code>).</p>
+<p>What it blocks (via <code>whenWithdrawalNotSuspended</code> in <code>Accessibility.sol:58-69</code>):</p>
+<ul>
+<li><code>AccountFacet.completeWithdraw(id)</code> — <code>AccountFacet.sol:223</code></li>
+<li><code>AccountFacet.cancelWithdraw(id)</code> — <code>AccountFacet.sol:233</code></li>
+</ul>
+<p>Flipped by:</p>
+<ul>
+<li><code>ControlFacet.suspendWithdrawal(id, status)</code> — <code>ControlFacet.sol:665</code> (<code>SUSPENDER_ROLE</code>)</li>
+<li><code>AccountFacet.suspendWithdraw(id)</code> — <code>AccountFacet.sol:200</code> (<code>SUSPENDER_ROLE</code>); sets the flag to <code>true</code>.</li>
+<li><code>AccountFacet.restoreWithdraw(id, validAmount)</code> — <code>AccountFacet.sol:211</code> (<code>DISPUTER_ROLE</code>); clears the flag and overwrites <code>Withdraw.amount</code> with <code>validAmount</code>. The disputer is the only role that can resolve a suspended withdrawal at a different amount; the suspender can only toggle the flag.</li>
+</ul>
+<h3 id="party-b-emergency-mode">Party B emergency mode</h3>
+<p>Two storage levels in <code>StateControlStorage.sol:23-24</code>:</p>
+<ul>
+<li><code>partyBsEmergencyMode</code> — global PartyB freeze.</li>
+<li><code>partyBEmergencyMode[partyB]</code> — single-PartyB freeze.</li>
+</ul>
+<p>What it blocks: locking and filling open intents. Enforced inside <code>LibPartyBOpen</code>:</p>
+<ul>
+<li><code>LibPartyBOpen.sol:51</code> checks <code>partyBEmergencyMode[sender]</code> on lock.</li>
+<li><code>LibPartyBOpen.sol:52</code> checks <code>partyBsEmergencyMode</code> on lock.</li>
+<li><code>LibPartyBOpen.sol:184</code> checks <code>partyBEmergencyMode[intent.partyB]</code> on fill.</li>
+<li><code>LibPartyBOpen.sol:185</code> checks <code>partyBsEmergencyMode</code> on fill.</li>
+</ul>
+<p>Reverts with <code>SystemErrors.PartyBInEmergencyMode(partyB)</code> or <code>SystemErrors.PartyBsInEmergencyMode()</code> (<code>contracts/errors/SystemErrors.sol:43-44</code>).</p>
+<p>Emergency mode does not block close-side flows or withdrawals; it specifically prevents new exposure being taken on by a problematic PartyB.</p>
+<p>Flipped by:</p>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Function</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Activate global PartyB freeze</td>
+<td><code>activePartyBsEmergencyMode</code> — <code>ControlFacet.sol:612</code></td>
+<td><code>PAUSER_ROLE</code></td>
+</tr>
+<tr>
+<td>Deactivate global PartyB freeze</td>
+<td><code>deactivePartyBsEmergencyMode</code> — <code>ControlFacet.sol:620</code></td>
+<td><code>UNPAUSER_ROLE</code></td>
+</tr>
+<tr>
+<td>Activate per-PartyB freeze</td>
+<td><code>activePartyBEmergencyMode(partyB)</code> — <code>ControlFacet.sol:629</code></td>
+<td><code>PAUSER_ROLE</code></td>
+</tr>
+<tr>
+<td>Deactivate per-PartyB freeze</td>
+<td><code>deactivePartyBEmergencyMode(partyB)</code> — <code>ControlFacet.sol:639</code></td>
+<td><code>UNPAUSER_ROLE</code></td>
+</tr>
+</tbody></table>
+<h3 id="read-access">Read access</h3>
+<p><code>ViewFacet</code> exposes the raw state for off-chain monitors:</p>
+<ul>
+<li><code>getStateControlStatus</code> (returns the full pause/emergency tuple) — <code>contracts/facets/View/ViewFacet.sol:758-774</code></li>
+<li><code>getPartyBsEmergencyMode</code> — <code>ViewFacet.sol:783</code></li>
+<li><code>getPartyBEmergencyMode(partyB)</code> — <code>ViewFacet.sol:792</code></li>
+</ul>
+<h2 id="part-5--role-hierarchy">Part 5 — Role Hierarchy</h2>
+<pre><code class="language-mermaid">flowchart TD
+    Owner[Diamond Owner via LibDiamond] --&gt;|setAdmin| Admin[DEFAULT_ADMIN_ROLE]
+
+    Admin --&gt;|grantRole| Setter[SETTER_ROLE]
+    Admin --&gt;|grantRole| Symbol[SYMBOL_MANAGER_ROLE]
+    Admin --&gt;|grantRole| Oracle[ORACLE_MANAGER_ROLE]
+    Admin --&gt;|grantRole| PartyB[PARTY_B_MANAGER_ROLE]
+    Admin --&gt;|grantRole| Affiliate[AFFILIATE_MANAGER_ROLE]
+    Admin --&gt;|grantRole| AffiliateFee[AFFILIATE_FEE_MANAGER_ROLE]
+    Admin --&gt;|grantRole| ExtTarget[EXTERNAL_TRANSFER_TARGET_MANAGER_ROLE]
+    Admin --&gt;|grantRole| Pauser[PAUSER_ROLE]
+    Admin --&gt;|grantRole| Unpauser[UNPAUSER_ROLE]
+    Admin --&gt;|grantRole| Suspender[SUSPENDER_ROLE]
+    Admin --&gt;|grantRole| Disputer[DISPUTER_ROLE]
+    Admin --&gt;|grantRole| Clearing[CLEARING_HOUSE_ROLE]
+    Admin --&gt;|grantRole| Virtual[VIRTUAL_DEPOSITOR_ROLE]
+    Admin --&gt;|grantRole| WindowUpd[WINDOW_UPDATER_ROLE]
+    Admin --&gt;|grantRole| Instant[INSTANT_LAYER_ROLE]
+
+    Pauser -.activate.-&gt; Emergency[partyBs / partyB EmergencyMode]
+    Unpauser -.deactivate.-&gt; Emergency
+    Pauser -.set true.-&gt; Pauses[All pause flags]
+    Unpauser -.set false.-&gt; Pauses
+    Suspender -.flip.-&gt; Suspension[suspendedAddresses, suspendedWithdrawal]
+    Disputer -.restore.-&gt; Suspension
+
+    Instant --&gt; ILayer[InstantLayer helper contract]
+    ILayer --&gt;|setCallFromInstantLayer| Diamond[Diamond AppStorage.callFromInstantLayer]
+</code></pre>
+</article></main></div><footer class="site-footer"><span>Options Core documentation.</span></footer></body></html>

@@ -1,4 +1,25 @@
 {
+	"extends": "solhint:recommended",
 	"plugins": [],
-	"rules": {}
+	"rules": {
+		"use-natspec": "off",
+		"func-visibility": "off",
+		"reason-string": "off",
+		"gas-small-strings": "off",
+		"gas-custom-errors": "off",
+		"gas-strict-inequalities": "off",
+		"function-max-lines": "off",
+		"no-empty-blocks": "off",
+		"no-inline-assembly": "off",
+		"gas-increment-by-one": "off",
+		"gas-indexed-events": "off",
+		"gas-calldata-parameters": "off",
+		"use-forbidden-name": "off",
+
+		"compiler-version": "off",
+		"no-global-import": "off",
+
+		"no-unused-import": "error",
+		"avoid-suicide": "error"
+	}
 }
