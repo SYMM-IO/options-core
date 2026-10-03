@@ -25,11 +25,11 @@ pragma solidity >=0.8.19;
  *         seamless call forwarding and signature validation mechanisms.
  */
 
-import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { ISymmio } from "../interfaces/ISymmio.sol";
 import { IMultiAccount } from "../interfaces/IMultiAccount.sol";
@@ -38,7 +38,7 @@ import { ISymmioPartyA } from "../interfaces/ISymmioPartyA.sol";
 import { SignatureVerifier } from "./SignatureVerifier.sol";
 
 contract MultiAccount is IMultiAccount, Initializable, SignatureVerifier, PausableUpgradeable, AccessControlUpgradeable {
-	using SafeERC20Upgradeable for IERC20Upgradeable;
+	using SafeERC20 for IERC20;
 
 	/* ─────────────────────────────── Roles ─────────────────────────────── */
 

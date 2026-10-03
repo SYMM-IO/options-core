@@ -22,11 +22,11 @@ pragma solidity >=0.8.19;
  */
 
 import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
-import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlEnumerableUpgradeable.sol";
+import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
+import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 
 import { SignatureVerifier } from "./SignatureVerifier.sol";
 
@@ -38,7 +38,7 @@ contract SymmioPartyB is
 	Initializable,
 	SignatureVerifier,
 	PausableUpgradeable,
-	ReentrancyGuardUpgradeable,
+	ReentrancyGuardTransient,
 	AccessControlEnumerableUpgradeable,
 	IERC1271
 {
@@ -127,7 +127,6 @@ contract SymmioPartyB is
 	function initialize(address admin, address symmioAddress_) public initializer {
 		__Pausable_init();
 		__AccessControl_init();
-		__ReentrancyGuard_init();
 
 		_grantRole(DEFAULT_ADMIN_ROLE, admin);
 		_grantRole(SETTER_ROLE, admin);
@@ -193,7 +192,7 @@ contract SymmioPartyB is
 	 * @dev Only callable by accounts with TRUSTED_ROLE when contract is not paused.
 	 */
 	function _approve(address token, uint256 amount) external onlyRole(TRUSTED_ROLE) whenNotPaused {
-		bool success = IERC20Upgradeable(token).approve(symmioAddress, amount);
+		bool success = IERC20(token).approve(symmioAddress, amount);
 		if (!success) revert TokenNotApproved(token, symmioAddress, amount);
 	}
 
@@ -205,7 +204,7 @@ contract SymmioPartyB is
 	 * @dev Only callable by accounts with MANAGER_ROLE. Tokens are sent to the caller.
 	 */
 	function withdrawERC20(address token, uint256 amount) external onlyRole(MANAGER_ROLE) {
-		bool success = IERC20Upgradeable(token).transfer(msg.sender, amount);
+		bool success = IERC20(token).transfer(msg.sender, amount);
 		if (!success) revert TokenNotTransferred(token, msg.sender, amount);
 	}
 

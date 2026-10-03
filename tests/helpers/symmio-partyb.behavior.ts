@@ -202,9 +202,9 @@ export function shouldBehaveLikeSymmioPartyB(): void {
 			await context.symmioPartyB.setRestrictedSelector(selector, true)
 			await context.controlFacet.setCallFromInstantLayer(true)
 
-			await expect(context.symmioPartyB.connect(partyA1.getSigner)._call([lockIntentCallData])).to.be.revertedWith(
-				`AccessControl: account ${partyA1.address.toLowerCase()} is missing role ${managerRole}`,
-			)
+			await expect(context.symmioPartyB.connect(partyA1.getSigner)._call([lockIntentCallData]))
+				.to.be.revertedWithCustomError(context.symmioPartyB, "AccessControlUnauthorizedAccount")
+				.withArgs(partyA1.address, managerRole)
 
 			await context.controlFacet.setCallFromInstantLayer(false)
 			expect(await context.viewFacet.isCallFromInstantLayer()).to.equal(false)

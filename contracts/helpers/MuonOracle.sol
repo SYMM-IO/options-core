@@ -4,8 +4,9 @@
 // For more information, see https://docs.symm.io/legal-disclaimer/license
 pragma solidity >=0.8.19;
 
-import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
+import { AccessControlEnumerable } from "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import { MessageHashUtils } from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 import { MuonConfig, SchnorrSign } from "../types/MuonTypes.sol";
 
@@ -15,6 +16,7 @@ import { SchnorrSECP256K1Verifier } from "./SchnorrSECP256K1Verifier.sol";
 
 contract MuonOracle is IMuonOracle, SchnorrSECP256K1Verifier, AccessControlEnumerable {
 	using ECDSA for bytes32;
+	using MessageHashUtils for bytes32;
 
 	// Custom errors
 	error InvalidSignature();
