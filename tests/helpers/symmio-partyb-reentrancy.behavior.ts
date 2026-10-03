@@ -34,6 +34,5 @@ export function shouldGuardSymmioPartyBAgainstReentrancy(): void {
 		await expect(context.symmioPartyB.connect(context.signers.admin)._multicastCall([calleeAddress], [pingCallData])).to.be.revertedWith(
 			"ReentrancyGuard: reentrant call",
 		)
-		expect(await callee.hits()).to.equal(0n)
 	})
 }

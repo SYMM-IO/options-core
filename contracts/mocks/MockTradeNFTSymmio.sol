@@ -19,14 +19,23 @@ contract MockTradeNFTSymmio {
 		address ownerAtCall;
 	}
 
+	error CallbackReached();
+
 	TransferCall[] public calls;
 	ITradeNFTForMock public nft;
+	/// @dev Makes callback ordering observable in reverted transactions: a revert rolls back `calls`, but not the error choice.
+	bool public revertOnCallback;
 
 	function setNFT(address nft_) external {
 		nft = ITradeNFTForMock(nft_);
 	}
 
+	function setRevertOnCallback(bool revertOnCallback_) external {
+		revertOnCallback = revertOnCallback_;
+	}
+
 	function transferTradeFromNFT(address from, address to, uint256 tradeId) external {
+		if (revertOnCallback) revert CallbackReached();
 		calls.push(TransferCall(from, to, tradeId, IERC721(address(nft)).ownerOf(tradeId)));
 	}
 

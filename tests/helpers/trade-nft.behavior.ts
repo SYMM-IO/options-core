@@ -85,19 +85,21 @@ export function shouldBehaveLikeTradeNFT(): void {
 
 	it("rejects a transfer by someone who is neither owner nor approved", async function () {
 		const { alice, bob, symmio, nft } = await loadFixture(deployTradeNFTFixture)
+		await symmio.setRevertOnCallback(true)
+		// If the Symmio callback ran before the authorization check, this would revert with CallbackReached instead.
 		await expect(nft.connect(bob).transferFrom(alice.address, bob.address, 1n)).to.be.revertedWith(
 			"ERC721: caller is not token owner or approved",
 		)
-		expect(await symmio.callCount()).to.equal(0n)
 		expect(await nft.ownerOf(1n)).to.equal(alice.address)
+		// Control: an authorized transfer does reach the callback, so the flag discriminates.
+		await expect(nft.connect(alice).transferFrom(alice.address, bob.address, 1n)).to.be.revertedWithCustomError(symmio, "CallbackReached")
 	})
 
 	it("rejects a transfer that names the wrong current owner", async function () {
-		const { alice, bob, symmio, nft } = await loadFixture(deployTradeNFTFixture)
+		const { alice, bob, nft } = await loadFixture(deployTradeNFTFixture)
 		await expect(nft.connect(alice).transferFrom(bob.address, alice.address, 1n)).to.be.revertedWith(
 			"ERC721: transfer from incorrect owner",
 		)
-		expect(await symmio.callCount()).to.equal(0n)
 	})
 
 	it("reports ERC165, ERC721 and ERC721Enumerable support", async function () {
