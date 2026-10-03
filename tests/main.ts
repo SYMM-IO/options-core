@@ -14,6 +14,8 @@ import { shouldBehaveLikeMultiAccount } from "./helpers/multi-account.behavior"
 import { shouldBehaveLikeSymmioPartyB } from "./helpers/symmio-partyb.behavior"
 import { shouldBehaveLikeClearingHouseFacet } from "./clearing-house"
 import { shouldBehaveLikeControlFacet } from "./control-facet.behavior"
+import { shouldBehaveLikeTradeNFT } from "./helpers/trade-nft.behavior"
+import { shouldGuardSymmioPartyBAgainstReentrancy } from "./helpers/symmio-partyb-reentrancy.behavior"
 
 describe(`${name}-v${version}`, () => {
 	if (process.env.TEST_MODE === TestModeEnum.UNIT_TEST) {
@@ -71,6 +73,14 @@ describe(`${name}-v${version}`, () => {
 
 		describe("Symmio Clearing House", async function () {
 			shouldBehaveLikeClearingHouseFacet()
+		})
+
+		describe("Trade NFT", async function () {
+			shouldBehaveLikeTradeNFT()
+		})
+
+		describe("Symmio PartyB reentrancy", async function () {
+			shouldGuardSymmioPartyBAgainstReentrancy()
 		})
 	} else {
 		throw new Error(`Invalid TEST_MODE property. Should be one of: ${Object.keys(TestModeEnum).join(", ")}`)
