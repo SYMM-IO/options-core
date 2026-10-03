@@ -7,7 +7,6 @@ import { PartyB } from "./models/partyB.model"
 import { ethers, network } from "hardhat"
 import { e } from "../utils/e"
 import { toUtf8Bytes, ZeroAddress } from "ethers"
-import { bigint } from "hardhat/internal/core/params/argumentTypes"
 import { moveTime } from "../utils/time"
 
 export function shouldBehaveLikeBridgeFacet(): void {
@@ -22,7 +21,6 @@ export function shouldBehaveLikeBridgeFacet(): void {
 			isActive: true,
 			lossCoverage: 0,
 			oracleId: 1,
-			symbolType: 0,
 		})
 
 		await partyA1.setBalances(context.collateral, e(100000), e(100000))

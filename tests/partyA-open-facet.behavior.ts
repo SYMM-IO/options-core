@@ -10,9 +10,6 @@ import { e } from "../utils/e"
 import { ContractEventPayload, parseUnits, ZeroAddress } from "ethers"
 import { IntentStatus, MarginType, TradeSide } from "./option-enums"
 import { CrossEntryStruct, OpenIntentStruct, SymbolStruct } from "../types/contracts/interfaces/ISymmio"
-import { BigNumber } from "@ethersproject/bignumber"
-import { bigint, int } from "hardhat/internal/core/params/argumentTypes"
-import { partyAOpen } from "../types/contracts/facets"
 
 import { getLatestBlockTime } from "../utils/time"
 

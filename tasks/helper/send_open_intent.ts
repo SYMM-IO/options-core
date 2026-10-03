@@ -13,6 +13,8 @@ task("send-open-intent", "Calls sendOpenIntent on the contract")
 	.addParam("margintype", "Margin type (0=Isolated, 1=Cross)")
 	.addParam("exercisefeerate", "Basis points of exercise fee (e.g. 500 = 5%)")
 	.addParam("exercisefeecap", "Cap of exercise fee")
+	.addOptionalParam("solverfeeopen", "Solver open fee", "0")
+	.addOptionalParam("solverfeeclose", "Solver close fee", "0")
 	.addParam("deadline", "Deadline timestamp")
 	.addParam("feetoken", "Address of the token used to pay fees")
 	.addParam("affiliate", "Address of the affiliate")
@@ -35,6 +37,8 @@ task("send-open-intent", "Calls sendOpenIntent on the contract")
 			margintype,
 			exercisefeerate,
 			exercisefeecap,
+			solverfeeopen,
+			solverfeeclose,
 			deadline,
 			feetoken,
 			affiliate,
@@ -45,6 +49,11 @@ task("send-open-intent", "Calls sendOpenIntent on the contract")
 		const exerciseFee = {
 			rate: BigInt(exercisefeerate),
 			cap: BigInt(exercisefeecap),
+		}
+
+		const solverFee = {
+			openFee: BigInt(solverfeeopen),
+			closeFee: BigInt(solverfeeclose),
 		}
 
 		const partyBsWhiteList = whitelist ? whitelist.split(",").map((addr: string) => addr.trim()) : []
@@ -60,6 +69,7 @@ task("send-open-intent", "Calls sendOpenIntent on the contract")
 			Number(tradeside),
 			Number(margintype),
 			exerciseFee,
+			solverFee,
 			BigInt(deadline),
 			feetoken,
 			affiliate,

@@ -24,14 +24,8 @@ import {
 	LiquidationSide,
 	OptionType,
 } from "./option-enums"
-import { address } from "hardhat/internal/core/config/config-validation"
 import { ContractEventPayload, ZeroAddress } from "ethers"
-import { clearingHouse, view } from "../types/contracts/facets"
-import { configure, exceptions } from "winston"
-import { Console } from "console"
-import { Context } from "mocha"
 import { ScheduledReleaseEntryStruct } from "../types/contracts/facets/View/ViewFacet"
-import { bigint } from "hardhat/internal/core/params/argumentTypes"
 import { LibAccessibility } from "../types"
 
 export function shouldBehaveLikeClearingHouseFacet(): void {

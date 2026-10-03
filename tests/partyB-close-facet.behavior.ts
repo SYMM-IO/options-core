@@ -12,8 +12,6 @@ import { CloseIntentStruct, SymbolStruct, TradeStruct } from "../types/contracts
 import { getLatestBlockTime } from "../utils/time"
 import { parseEther, parseUnits } from "ethers"
 import { closeIntentBuilder } from "./models/builders/close-intent.builder"
-import { extendConfig, extendProvider } from "hardhat/config"
-import { int } from "hardhat/internal/core/params/argumentTypes"
 import { CloseIntentOpsMock__factory } from "../types"
 
 export function shouldBehaveLikePartyBCloseFacet(): void {

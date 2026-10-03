@@ -8,11 +8,6 @@
 		"url": "https://github.com/SYMM-IO/options-core"
 	},
 	"devDependencies": {
-		"@ethersproject/abi": "^5.8.0",
-		"@ethersproject/abstract-signer": "^5.8.0",
-		"@ethersproject/bignumber": "^5.8.0",
-		"@ethersproject/bytes": "^5.8.0",
-		"@ethersproject/providers": "^5.8.0",
 		"@nomicfoundation/hardhat-chai-matchers": "^2.1.2",
 		"@nomicfoundation/hardhat-ethers": "^3.1.3",
 		"@nomicfoundation/hardhat-ignition": "^0.15.16",
@@ -81,7 +76,8 @@
 		"typechain": "symsec --project options-core run npx hardhat typechain",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
-		"precommit": "symsec --project options-core run yarn format && symsec --project options-core run  yarn compile && symsec --project options-core run  yarn test"
+		"precommit": "symsec --project options-core run yarn format && symsec --project options-core run  yarn compile && symsec --project options-core run  yarn test",
+		"typecheck": "tsc --noEmit -p ."
 	},
 	"dependencies": {
 		"@nomicfoundation/hardhat-toolbox": "^5.0.0",

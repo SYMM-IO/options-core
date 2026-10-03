@@ -9,15 +9,10 @@ import { PartyB } from "./models/partyB.model"
 import { ethers, network } from "hardhat"
 import { e } from "../utils/e"
 import { parseUnits, ZeroAddress } from "ethers"
-import { bigint, int } from "hardhat/internal/core/params/argumentTypes"
-import { config } from "dotenv"
 import { OpenIntentStruct, OpenIntentStructOutput, SymbolStruct } from "../types/contracts/interfaces/ISymmio"
 
 import { MarginType } from "./option-enums"
 import { getLatestBlockTime } from "../utils/time"
-import { tradeNftSol } from "../types/contracts/helpers"
-import { exitOnError } from "winston"
-import { account } from "../types/contracts/facets"
 
 export function shouldBehaveLikePartyBOpenFacet(): void {
 	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyA3: PartyA, partyB1: PartyB, partyB2: PartyB

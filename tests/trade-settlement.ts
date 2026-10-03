@@ -14,7 +14,6 @@ import { getLatestBlockTime, moveTime } from "../utils/time"
 import { settlementSigBuilder } from "./models/builders/settlement.builder"
 import { parseUnits, ZeroAddress } from "ethers"
 import { CloseIntentStatus, MarginType, OptionType, TradeSide, TradeStatus } from "./option-enums"
-import { bigint } from "hardhat/internal/core/params/argumentTypes"
 
 export function shouldBehaveLikeSettlementFacet(): void {
 	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyB1: PartyB, partyB2: PartyB

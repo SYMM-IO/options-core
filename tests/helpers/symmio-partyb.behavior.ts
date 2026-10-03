@@ -8,9 +8,7 @@ import { OpenIntent, openIntentRequestBuilder } from "../models/builders/send-op
 import { PartyB } from "../models/partyB.model"
 import { ethers, network } from "hardhat"
 import { e } from "../../utils/e"
-import { AbiCoder, encodeBytes32String, InterfaceAbi, ZeroAddress, AddressLike, toUtf8Bytes } from "ethers"
-import { bigint, int } from "hardhat/internal/core/params/argumentTypes"
-import { config } from "dotenv"
+import { AbiCoder, encodeBytes32String, InterfaceAbi, ZeroAddress, AddressLike, toUtf8Bytes, zeroPadValue } from "ethers"
 import { OpenIntentStruct, OpenIntentStructOutput, SymbolStruct, TradeStruct } from "../../types/contracts/interfaces/ISymmio"
 
 import { MarginType } from "../option-enums"
@@ -20,9 +18,6 @@ import { InstantLayer, MultiAccount } from "../../types"
 import * as diamond from "../../artifacts/contracts/Diamond.sol/Diamond.json"
 // import * as partyAOpenIntent from "../artifacts/contracts/facets/PartyAOpen/PartyAOpenFacet.sol/PartyAOpenFacet.json"
 // import * as partyBOpenIntent from "../artifacts/contracts/facets/PartyBOpen/PartyBOpenFacet.sol/PartyBOpenFacet.json"
-import { trace } from "console"
-import { hexZeroPad, zeroPad } from "@ethersproject/bytes"
-import { Context } from "mocha"
 
 export function shouldBehaveLikeSymmioPartyB(): void {
 	let context: RunContext, partyA1: PartyA, partyA2: PartyA, partyB1: PartyB, partyB2: PartyB
@@ -115,7 +110,7 @@ export function shouldBehaveLikeSymmioPartyB(): void {
 			const deadline = latestBlock + 300
 
 			const saltHex = "0xabc123"
-			const salt = hexZeroPad(saltHex, 32)
+			const salt = zeroPadValue(saltHex, 32)
 			let saltStr: string = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 
 			if (!/^0x[0-9a-fA-F]{64}$/.test(salt) || !/^0x[0-9a-fA-F]{64}$/.test(saltStr)) {
